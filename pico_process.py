@@ -1383,9 +1383,9 @@ def lint_code(ctxt, tokens, root, lint_rules):
             elif node.kind == VarKind.global_:
                 if lint_undefined and node.name not in allowed_globals:
                     if node.parent.type == NodeType.assign and node in node.parent.targets:
-                        add_error("Identifier %s not found - did you mean to use 'local'?" % node.name, node)
+                        add_error("Identifier %s not found - did you mean to use 'local' to define it?" % node.name, node)
                     elif node.parent.type == NodeType.function and node == node.parent.target:
-                        add_error("Identifier %s not found - did you mean to use 'local function'?" % node.name, node)
+                        add_error("Identifier %s not found - did you mean to use 'local function' to define it?" % node.name, node)
                     else:
                         add_error("Identifier %s not found" % node.name, node)
 
