@@ -5,6 +5,10 @@ __lua__
 -- various globals
 t(inext(band()))
 
+-- include
+#include included.lua
+?"$[disable[[this for now/ever]]]"
+
 -- preserve
 local my_key = "preserved_key"
 local my_obj = {preserved_key=123}

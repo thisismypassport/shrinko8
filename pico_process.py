@@ -218,7 +218,7 @@ define_use_re = re.compile(r"\$\[(\w*)\]")
 define_cond_re = re.compile(r"\$\[(\w+)\[(=*)\[(.*?)\]\2\]\]")
 p8_section_re = re.compile(r"^__\w+__\s*$")
 
-def read_code(filename, defines=None, pp_handler=None):
+def read_code(filename, defines=None, pp_handler=None, pp_inline=True):
     lines = []
     defines = defines.copy() if defines else {}
     ppstack = []
@@ -311,8 +311,9 @@ def read_code(filename, defines=None, pp_handler=None):
             mappings.append(Dynamic(line=len(lines), name=name, real_line=i + 1))
 
         elif active:
-            line = define_cond_re.sub(get_conditional, line)
-            line = define_use_re.sub(get_defined, line) # put this regex last (handles escape)
+            if pp_inline: # needs rework, too intrusive
+                line = define_cond_re.sub(get_conditional, line)
+                line = define_use_re.sub(get_defined, line) # put this regex last (handles escape)
 
             lines.append(to_pico_chars(line))
 
@@ -323,11 +324,14 @@ def read_code(filename, defines=None, pp_handler=None):
         start = 0
         while start < len(file_lines) and file_lines[start].strip() != "__lua__":
             start += 1
-        start += 1
+        if start < len(file_lines):
+            start += 1
 
-        end = start
-        while end < len(file_lines) and not p8_section_re.match(file_lines[end]):
-            end += 1
+            end = start
+            while end < len(file_lines) and not p8_section_re.match(file_lines[end]):
+                end += 1
+        else:
+            start, end = 0, len(file_lines) # treat as pure-code file
             
         mappings.append(Dynamic(line=len(lines), name=name, real_line=start))
 

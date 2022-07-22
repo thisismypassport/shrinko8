@@ -24,7 +24,7 @@ if args.preserve:
 
 cart = read_cart(args.input)
 try:
-    src = read_code(args.input) # supports #include (and other stuff), which read_cart currently does not
+    src = read_code(args.input, pp_inline=False) # supports #include (and other stuff), which read_cart currently does not
 except UnicodeDecodeError: # hacky png detection
     src = PicoSource(path_basename(args.input), cart.code)
 
