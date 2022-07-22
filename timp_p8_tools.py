@@ -11,7 +11,8 @@ parser.add_argument("--map", help="log renaming of identifiers to this file")
 parser.add_argument("-l", "--lint", action="store_true", help="enable erroring on lint errors")
 parser.add_argument("-c", "--count", action="store_true", help="enable printing token count, character count & compressed size")
 parser.add_argument("-m", "--minify", action="store_true", help="enable minification")
-parser.add_argument("-p", "--preserve", help="preserve identifiers in minification, e.g. 'global1,global2,*.member2,table3.*'")
+parser.add_argument("-p", "--preserve", help="preserve specific identifiers in minification, e.g. 'global1,global2,*.member2,table3.*'")
+parser.add_argument("--no-preserve", help="do not preserve specific built-in identifiers in minification, e.g. 'circfill,rectfill'")
 parser.add_argument("--input-count", action="store_true", help="enable printing input character count & compressed size, for now just for png format")
 parser.add_argument("--no-lint-unused", action="store_true", help="don't print lint errors on unused variables")
 parser.add_argument("--no-lint-duplicate", action="store_true", help="don't print lint errors on duplicate variables")
@@ -48,8 +49,12 @@ if args.minify:
     }
 
 args.obfuscate = bool(args.minify) and not args.no_minify_rename
-if args.preserve:
-    args.obfuscate = {k: False for k in args.preserve.split(",")}
+if args.obfuscate:
+    args.obfuscate = {}
+    if args.preserve:
+        args.obfuscate.update({k: False for k in args.preserve.split(",")})
+    if args.no_preserve:
+        args.obfuscate.update({k: True for k in args.no_preserve.split(",")})
 
 cart = read_cart(args.input, print_sizes=args.input_count)
 try:

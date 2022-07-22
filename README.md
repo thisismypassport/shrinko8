@@ -78,6 +78,20 @@ You can instruct the minifier to preserve certain identifiers:
 * my_member will not be renamed when used as a table member
 * table members will not be renamed when accessed through my_env
 
+## Renaming Pico-8 Built-in functions
+
+For cases like tweet-carts where you want really few characters, you can minify the names of built-in pico-8 functions while still using their original name as follows:
+
+`python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --no-preserve 'circfill,rectfill'`
+
+```
+circfill, rectfill = --[[string]]circfill, --[[string]]rectfill
+circfill(10,10,20); circfill(90,90,30)
+rectfill(0,0,100,100); rectfill(20,20,40,40)
+```
+
+Here, all uses of circfill and rectfill are renamed unless they're preceded by `--[[string]]`
+
 ## Options
 
 You can disable parts of the minification process via additional command-line options:
@@ -120,6 +134,8 @@ You can disable certain lints globally via additional command-line options:
 --no-lint-duplicate
 --no-lint-undefined
 ```
+
+Normally, a lint failure prevents cart creation, but `--no-lint-fail` overrides that.
 
 ## Undefined variable lints
 

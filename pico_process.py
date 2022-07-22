@@ -1404,13 +1404,23 @@ def obfuscate_tokens(ctxt, root, rules_input):
 
     if isinstance(rules_input, dict):
         for key, value in rules_input.items():
-            assert value == False
-            if key.endswith(".*"):
-                known_tables.add(key[:-2])
-            elif key.startswith("*."):
-                member_knowns.add(key[2:])
+            if value == False:
+                if key.endswith(".*"):
+                    known_tables.add(key[:-2])
+                elif key.startswith("*."):
+                    member_knowns.add(key[2:])
+                else:
+                    global_knowns.add(key)
+            elif value == True:
+                if key.endswith(".*"):
+                    known_tables.discard(key[:-2])
+                elif key.startswith("*."):
+                    member_knowns.discard(key[2:])
+                else:
+                    ctxt.globals.discard(key)
+                    global_knowns.discard(key)
             else:
-                global_knowns.add(key)
+                fail(value)
 
     # collect char histogram
 
@@ -1812,22 +1822,27 @@ def print_token_count(num_tokens, prefix=""):
     print(prefix + "tokens:", num_tokens, str(int(num_tokens / 8192 * 100)) + "%")
 
 def process_code(ctxt, source, count=False, lint=False, minify=False, obfuscate=False, fail=True):
+    need_count = count not in (None, False)
+    need_lint = lint not in (None, False)
+    need_minify = minify not in (None, False)
+    need_obfuscate = obfuscate not in (None, False)
+
     ok = False
     tokens, errors = tokenize(source)
-    if not errors and (lint or minify):
+    if not errors and (need_lint or need_minify):
         root, errors = parse(source, tokens)
         
     if not errors:
         ok = True
-        if count:
+        if need_count:
             num_tokens = count_tokens(tokens)
             print_token_count(num_tokens)
 
-        if lint:
+        if need_lint:
             errors = lint_code(ctxt, tokens, root, lint)
         
-        if minify:
-            if obfuscate:
+        if need_minify:
+            if need_obfuscate:
                 obfuscate_tokens(ctxt, root, obfuscate)
 
             source.new_text = minify_code(source, tokens, root, minify)
