@@ -464,8 +464,7 @@ def write_cart_to_source(cart):
         return "".join('%02x' % b for b in data)
     
     lines.append("__lua__")
-    for line in cart.code.splitlines():
-        lines.append(from_pico_chars(line))
+    lines.append(from_pico_chars(cart.code))
 
     lines.append("__gfx__")
     for y in range(128):

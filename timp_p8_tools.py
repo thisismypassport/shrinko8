@@ -1,6 +1,6 @@
 from utils import *
 from pico_process import read_code, PicoContext, process_code
-from pico_cart import Cart, read_cart, write_cart_to_source
+from pico_cart import Cart, read_cart, write_cart_to_source, from_pico_chars
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -35,4 +35,4 @@ if args.minify:
     if args.format == "p8":
         file_write_text(args.output, write_cart_to_source(cart))
     else:
-        file_write_text(args.output, "__lua__\n" + cart.code)
+        file_write_text(args.output, "__lua__\n" + from_pico_chars(cart.code))
