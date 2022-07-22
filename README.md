@@ -20,7 +20,7 @@ If you just want the lua source without the rest of the baggage (except the `__l
 
 `python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --format code`
 
-## Identifier renaming
+## Automatic renaming of identifiers
 
 The minifier renames all locals, globals, and table member accesses to minimize character count and compressed size.
 
