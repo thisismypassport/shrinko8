@@ -1382,7 +1382,12 @@ def lint_code(ctxt, tokens, root, lint_rules):
 
             elif node.kind == VarKind.global_:
                 if lint_undefined and node.name not in allowed_globals:
-                    add_error("Identifier %s not found" % node.name, node)
+                    if node.parent.type == NodeType.assign and node in node.parent.targets:
+                        add_error("Identifier %s not found - did you mean to use 'local'?" % node.name, node)
+                    elif node.parent.type == NodeType.function and node == node.parent.target:
+                        add_error("Identifier %s not found - did you mean to use 'local function'?" % node.name, node)
+                    else:
+                        add_error("Identifier %s not found" % node.name, node)
 
     def lint_post(node):
         for scope in node.end_scopes:
@@ -1807,11 +1812,13 @@ def print_token_count(num_tokens, prefix=""):
     print(prefix + "tokens:", num_tokens, str(int(num_tokens / 8192 * 100)) + "%")
 
 def process_code(ctxt, source, count=False, lint=False, minify=False, obfuscate=False, fail=True):
+    ok = False
     tokens, errors = tokenize(source)
     if not errors and (lint or minify):
         root, errors = parse(source, tokens)
         
     if not errors:
+        ok = True
         if count:
             num_tokens = count_tokens(tokens)
             print_token_count(num_tokens)
@@ -1827,7 +1834,7 @@ def process_code(ctxt, source, count=False, lint=False, minify=False, obfuscate=
 
     if fail and errors:
         raise Exception("\n".join(map(str, errors)))
-    return errors
+    return ok, errors
 
 def echo_code(code, echo):
     code = from_pico_chars(code)

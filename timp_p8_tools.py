@@ -16,6 +16,7 @@ parser.add_argument("--input-count", action="store_true", help="enable printing 
 parser.add_argument("--no-lint-unused", action="store_true", help="don't print lint errors on unused variables")
 parser.add_argument("--no-lint-duplicate", action="store_true", help="don't print lint errors on duplicate variables")
 parser.add_argument("--no-lint-undefined", action="store_true", help="don't print lint errors on undefined variables")
+parser.add_argument("--no-lint-fail", action="store_true", help="don't fail immediately on lint errors")
 parser.add_argument("--no-minify-rename", action="store_true", help="disable variable renaming in minification")
 parser.add_argument("--no-minify-spaces", action="store_true", help="disable space removal in minification")
 parser.add_argument("--no-minify-lines", action="store_true", help="disable line removal in minification")
@@ -57,7 +58,13 @@ except UnicodeDecodeError: # hacky png detection
     src = PicoSource(path_basename(args.input), cart.code)
 
 ctxt = PicoContext(srcmap=args.map)
-process_code(ctxt, src, count=args.count, lint=args.lint, minify=args.minify, obfuscate=args.obfuscate)
+ok, errors = process_code(ctxt, src, count=args.count, lint=args.lint, minify=args.minify, obfuscate=args.obfuscate, fail=False)
+if errors:
+    print("Lint errors:" if ok else "Compilation errors:")
+    for error in errors:
+        print(error)
+    if not ok or not args.no_lint_fail:
+        sys.exit(1)
 
 if args.map:
     file_write_text(args.map, "\n".join(ctxt.srcmap))
@@ -76,3 +83,6 @@ if args.output:
 
 #if args.count:
 #    write_code_sizes(cart.code)
+
+if errors:
+    sys.exit(2)
