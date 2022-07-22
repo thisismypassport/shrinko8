@@ -59,6 +59,19 @@ You can instruct the minifier to preserve certain identifiers:
 
 # other stuff?
 
+You can lint and count tokens
+
 `python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --lint --count --minify`
 
-Not too configurable right now, though.
+The lint is all-or-nothing right now.
+
+To tell it to ignore globals it didn't find you define:
+
+```
+--lint: global_1, global_2
+function f()
+    dostuff(global_1, global_2)
+end
+```
+
+It complains about unused variables not named "_", as well as about the last function parameter if it is unused and not named "_" (this should be revised)
