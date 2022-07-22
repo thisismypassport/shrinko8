@@ -2,6 +2,8 @@
 
 pico8 tools (minify, lint, etc.)
 
+Requires a modern verison of python to run.
+
 # Minification
 
 Greatly reduces the character count of your cart, as well as greatly improves its compression ratio (so that its compressed size is smaller).
