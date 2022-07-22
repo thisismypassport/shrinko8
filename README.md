@@ -3,6 +3,10 @@ p8 tools (e.g minify)
 
 # minification
 
+Greatly reduces the character count of your cart, as well as greatly improves its compression ratio (so that its compressed size is smaller).
+
+Note: it doesn't affect token count.
+
 ## To minify your p8 cart:
 
 `python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify`
