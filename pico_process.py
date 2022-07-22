@@ -1363,11 +1363,21 @@ def obfuscate_tokens(ctxt, root, rules_input):
             else:
                 global_knowns.add(key)
 
+    # collect char histogram
+
+    char_uses = CounterDictionary()
+    def collect_chars(token):
+        if token.type != TokenType.ident and not token.fake:
+            for ch in token.value:
+                char_uses[ch] += 1
+
+    root.traverse_tokens(collect_chars)
+
     # collect ident uses
 
-    global_uses = CounterDictionary() # also contains "global locals"
+    global_uses = CounterDictionary()
     member_uses = CounterDictionary()
-    local_uses = CounterDictionary() # non-global locals only
+    local_uses = CounterDictionary()
     scopes = []
 
     def collect_idents_pre(node):
@@ -1419,10 +1429,11 @@ def obfuscate_tokens(ctxt, root, rules_input):
                     scope.used_globals.add(node.name)
 
             elif node.effective_kind == VarKind.local:
-                if False: # glocals don't work well
-                    global_uses[node.var] += 1
-                else:
-                    local_uses[node.var] += 1
+                # should in theory help, but doesn't...
+                #if node.new:
+                #    local_uses[node.var] = 0
+                #else:
+                local_uses[node.var] += 1
 
                 if node.var.scope in scopes:
                     i = scopes.index(node.var.scope)
@@ -1437,13 +1448,30 @@ def obfuscate_tokens(ctxt, root, rules_input):
 
     # assign idents
 
+    k_identifier_chars = string.ascii_letters + string.digits + "_"
+    
+    ident_chars = []
+    for ch in sorted(char_uses, key=lambda k: char_uses[k], reverse=True):
+        if ch in k_identifier_chars:
+            ident_chars.append(ch)
+    
+    for ch in k_identifier_chars:
+        if ch not in ident_chars:
+            ident_chars.append(ch)
+
+    ident_char_order_map = {ch1: ch2 for ch1, ch2 in zip(ident_chars, ident_chars[1:])}
+
     def get_next_ident_char(ch, first):
-        if ch == None: return 'a', True
-        elif ch == 'z': return 'A' if first else '0', True # note: we avoid leading underscores
-        elif ch == '9': return '_', True
-        elif ch == '_': return 'A', True
-        elif ch == 'Z': return get_next_ident_char(None, first)[0], False
-        else: return chr(ord(ch) + 1), True
+        if ch == None:
+            return ident_chars[0], True
+        else:
+            nextch = ident_char_order_map.get(ch)
+            while first and nextch and (nextch.isdigit() or nextch == '_'): # note: we avoid leading underscores
+                nextch = ident_char_order_map.get(nextch)
+            if nextch:
+                return nextch, True
+            else:
+                return ident_chars[0], False
 
     def create_ident_stream():
         next_ident = ""
@@ -1476,11 +1504,11 @@ def obfuscate_tokens(ctxt, root, rules_input):
         return rename_map
 
     member_renames = assign_idents(member_uses, member_knowns)
-    global_renames = assign_idents(global_uses, global_knowns)  # also contains "global locals"
+    global_renames = assign_idents(global_uses, global_knowns)
     rev_global_renames = {v: k for k, v in global_renames.items()}
     
     local_ident_stream = create_ident_stream()
-    local_renames = {} # non-global locals only
+    local_renames = {}
 
     remaining_local_uses = list(sorted(local_uses, key=lambda k: local_uses[k], reverse=True))
     while remaining_local_uses:
@@ -1507,17 +1535,16 @@ def obfuscate_tokens(ctxt, root, rules_input):
 
     # output
 
-    def update_srcmap(mapping, kind, local_kind):
+    def update_srcmap(mapping, kind):
         for old, new in mapping.items():
             old_name = old.name if isinstance(old, Local) else old
-            this_kind = local_kind if isinstance(old, Local) else kind
 
-            ctxt.srcmap.append("%s %s <- %s" % (this_kind, from_pico_chars(new), old_name))
+            ctxt.srcmap.append("%s %s <- %s" % (kind, from_pico_chars(new), old_name))
 
     if e(ctxt.srcmap):
-        update_srcmap(member_renames, "member", None)
-        update_srcmap(global_renames, "global", "glocal")
-        update_srcmap(local_renames, None, "local")
+        update_srcmap(member_renames, "member")
+        update_srcmap(global_renames, "global")
+        update_srcmap(local_renames, "local")
 
     def update_idents(node):
         if node.type == NodeType.var:
@@ -1528,10 +1555,7 @@ def obfuscate_tokens(ctxt, root, rules_input):
             elif node.effective_kind == VarKind.global_:
                 node.name = global_renames[node.name]
             elif node.effective_kind == VarKind.local:
-                if False: # glocals don't work well
-                    node.name = global_renames[node.var]
-                else:
-                    node.name = local_renames[node.var]
+                node.name = local_renames[node.var]
             else:
                 return
 
