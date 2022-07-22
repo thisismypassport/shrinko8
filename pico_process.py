@@ -115,7 +115,7 @@ class Scope:
             return m.parent.find(item)
 
 class PicoContext:
-    def __init__(m, deprecated=False, undocumented=True, short=False, patterns=True, srcmap=None, extra_globals=set()):
+    def __init__(m, deprecated=True, undocumented=True, short=True, patterns=True, srcmap=None, extra_globals=set()):
         funcs = set(main_globals)
         if deprecated:
             funcs |= deprecated_globals

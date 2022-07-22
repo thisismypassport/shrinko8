@@ -1,6 +1,6 @@
 __lua__
 ?"hello ᶜ7there♥ら"
-local b="preserved_key"local c={preserved_key=123}
+t(inext(band()))local b="preserved_key"local c={preserved_key=123}
 ?c[b]
 local b="preserved_glob"preserved_glob=123
 ?_ENV[b]

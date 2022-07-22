@@ -2,6 +2,9 @@ __lua__
 -- special characters
 ?"hello ᶜ7there♥ら"
 
+-- various globals
+t(inext(band()))
+
 -- preserve
 local my_key = "preserved_key"
 local my_obj = {preserved_key=123}
