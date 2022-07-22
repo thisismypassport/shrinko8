@@ -3,34 +3,59 @@ p8 tools (e.g minify)
 
 # minification
 
-* To minify your p8 cart:
+## To minify your p8 cart:
 
 `python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify`
 
-* If you just want the lua source without the rest of the baggage (except the "__lua__" header line):
+## If you just want the lua source without the rest of the baggage (except the "__lua__" header line):
 
 `python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --format code`
 
-* If you want to avoid renaming certain identifiers
+## Identifier renaming
+
+The minifier renames all locals, globals, and table member accesses to minimize character count and compressed size.
+
+This means that if you have a table member (or global) you access both as an identifier and as a string, you'll need to take one of the two approaches below to fix this, or your minified cart won't work
+
+E.g:
+```
+local my_key = "key" -- here, key is a string
+local my_obj = {key=123} -- here, key is an identifier
+?my_obj[my_key] -- BUG! my_obj will not have a "key" member after minification
+```
+
+### Renaming strings (recommended, results in smaller carts)
+
+You can add a `--[[memberof]]` comment before a string to have the minifier rename it as if it were an identifier.
+
+E.g:
+```
+local my_key = --[[memberof]]"key" -- here, key is a string but is renamed as if it were an identifier
+local my_obj = {key=123} -- here, key is an identifier
+?my_obj[my_key] -- success, result is 123 after minification
+```
+
+You can also use this with multiple keys split by comma:
+```
+local my_keys = split --[[memberof]]"key1,key2,key3"
+```
+
+And you can similarly use `--[[nameof]]` for globals:
+```
+local my_key = --[[nameof]]"glob"
+glob = 123
+?_ENV[my_key] -- 123
+```
+
+### Preserving identifiers
+
+You can instruct the minifier to preserve certain identifiers:
 
 `python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --preserve 'my_global_1,my_global_2,*.my_member,my_env.*'`
 
--
-  - my_global_1 and my_global_2 will not be renamed when used as globals
-  - my_member will not be renamed when used as a table member
-  - table members will not be renamed when accessed through my_env
-
-* If you want to rename certain strings (better gains than above approach!)
-
-```
-local my_key = --[[memberof]]"key"
-?{key=123}[my_key] -- 123
-local my_keys = split --[[memberof]]"key1,key2,key3"
-?{key2=123}[my_keys[2]] -- 123
-local my_global = --[[nameof]]"glob"
-_ENV[my_global] = 123
-?glob -- 123
-```
+* my_global_1 and my_global_2 will not be renamed when used as globals
+* my_member will not be renamed when used as a table member
+* table members will not be renamed when accessed through my_env
 
 # other stuff?
 
