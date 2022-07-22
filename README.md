@@ -74,4 +74,4 @@ function f()
 end
 ```
 
-It complains about unused variables not named `"_"`, as well as about the last function parameter if it is unused and not named `"_"` (this should be revised)
+It complains about unused variables not named `_`, as well as about the last function parameter if it is unused and not named `_` (this should be revised)
