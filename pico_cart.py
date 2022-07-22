@@ -502,7 +502,7 @@ def read_cart_from_text(f):
         raise WrongFileTypeError()
     
     # cart?
-    if data.startswith("pico-8 cartridge"):
+    if data.startswith("pico-8 cartridge") or data.startswith("__lua__"):
         return read_cart_from_source(data)
         
     # cart block?
