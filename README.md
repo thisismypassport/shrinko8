@@ -2,7 +2,7 @@
 
 pico8 tools (minify, lint, etc.)
 
-Requires a modern verison of python to run.
+Requires a modern verison of [Python](https://www.python.org/) to run.
 
 # Minification
 
