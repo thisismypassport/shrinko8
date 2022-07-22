@@ -1,5 +1,6 @@
 # timp_p8_tools
-p8 tools (e.g minify)
+
+pico8 tools (minify, lint, etc.)
 
 # Minification
 
