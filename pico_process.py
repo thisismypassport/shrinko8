@@ -216,6 +216,7 @@ class Error:
 
 define_use_re = re.compile(r"\$\[(\w*)\]")
 define_cond_re = re.compile(r"\$\[(\w+)\[(=*)\[(.*?)\]\2\]\]")
+p8_section_re = re.compile(r"^__\w+__\s*$")
 
 def read_code(filename, defines=None, pp_handler=None):
     lines = []
@@ -318,15 +319,20 @@ def read_code(filename, defines=None, pp_handler=None):
     def add_code_file(name):
         data = file_read_text(path_join(root_dir, name))
         file_lines = data.splitlines(keepends=True)
-        i = 0
-        if list_get(file_lines, i).startswith("pico-8 cartridge"):
-            i += 1
-        if list_get(file_lines, i).startswith("__lua__"):
-            i += 1
-            
-        mappings.append(Dynamic(line=len(lines), name=name, real_line=i))
 
-        for line in file_lines[i:]:
+        start = 0
+        while start < len(file_lines) and file_lines[start].strip() != "__lua__":
+            start += 1
+        start += 1
+
+        end = start
+        while end < len(file_lines) and not p8_section_re.match(file_lines[end]):
+            end += 1
+            
+        mappings.append(Dynamic(line=len(lines), name=name, real_line=start))
+
+        i = start
+        for line in file_lines[start:end]:
             add_code_line(name, i, line)
             i += 1
     
