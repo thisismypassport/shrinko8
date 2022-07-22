@@ -192,12 +192,12 @@ def get_lz77(code, prev_code=None, min_c=3, max_c=0x7fff, max_o=0x7fff):
 
     return items
 
-def write_code(w, code):
+def write_code(w, code, force_compress=False):
     k_new = True
     
     print("code:", len(code), str(int(len(code) / 0xffff * 100)) + "%")
 
-    if len(code) >= k_code_size: # (>= due to null)
+    if len(code) >= k_code_size or force_compress: # (>= due to null)
         start_pos = w.pos()
         w.bytes(k_new_compressed_code_header if k_new else k_compressed_code_header)
         w.u16(len(code))

@@ -6,7 +6,7 @@ code = file_read_text("timp_p8_tools.py")
 
 def measure(kind, data):
     print("Measuring %s:" % kind)
-    write_code(BinaryWriter(BytesIO()), to_pico_chars(data.decode()))
+    write_code(BinaryWriter(BytesIO()), to_pico_chars(data.decode()), force_compress=True)
 
 def run_test(input, output, *args, private=False):
     prefix = "private_" if private else ""

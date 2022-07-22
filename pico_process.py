@@ -1373,6 +1373,19 @@ def obfuscate_tokens(ctxt, root, rules_input):
 
     root.traverse_tokens(collect_chars)
 
+    k_identifier_chars = string.ascii_letters + string.digits + "_"
+    
+    ident_chars = []
+    for ch in sorted(char_uses, key=lambda k: char_uses[k], reverse=True):
+        if ch in k_identifier_chars:
+            ident_chars.append(ch)
+    
+    for ch in k_identifier_chars:
+        if ch not in ident_chars:
+            ident_chars.append(ch)
+
+    ident_char_order_map = {ch1: ch2 for ch1, ch2 in zip(ident_chars, ident_chars[1:])}
+
     # collect ident uses
 
     global_uses = CounterDictionary()
@@ -1448,30 +1461,14 @@ def obfuscate_tokens(ctxt, root, rules_input):
 
     # assign idents
 
-    k_identifier_chars = string.ascii_letters + string.digits + "_"
-    
-    ident_chars = []
-    for ch in sorted(char_uses, key=lambda k: char_uses[k], reverse=True):
-        if ch in k_identifier_chars:
-            ident_chars.append(ch)
-    
-    for ch in k_identifier_chars:
-        if ch not in ident_chars:
-            ident_chars.append(ch)
-
-    ident_char_order_map = {ch1: ch2 for ch1, ch2 in zip(ident_chars, ident_chars[1:])}
-
     def get_next_ident_char(ch, first):
-        if ch == None:
-            return ident_chars[0], True
+        nextch = ident_char_order_map.get(ch) if ch else ident_chars[0]
+        while first and nextch and (nextch.isdigit() or nextch == '_'): # note: we avoid leading underscores too
+            nextch = ident_char_order_map.get(nextch)
+        if nextch:
+            return nextch, True
         else:
-            nextch = ident_char_order_map.get(ch)
-            while first and nextch and (nextch.isdigit() or nextch == '_'): # note: we avoid leading underscores
-                nextch = ident_char_order_map.get(nextch)
-            if nextch:
-                return nextch, True
-            else:
-                return ident_chars[0], False
+            return ident_chars[0], False
 
     def create_ident_stream():
         next_ident = ""
@@ -1489,14 +1486,17 @@ def obfuscate_tokens(ctxt, root, rules_input):
 
         return get_next_ident
 
-    def assign_idents(uses, excludes):
+    def assign_idents(uses, excludes, skip=0):
         ident_stream = create_ident_stream()
         rename_map = {}
+
+        for i in range(skip):
+            ident_stream()
 
         for value in sorted(uses, key=lambda k: uses[k], reverse=True):
             while True:
                 ident = ident_stream()
-                if ident not in excludes:
+                if ident not in excludes and ident not in keywords:
                     break
 
             rename_map[value] = ident
