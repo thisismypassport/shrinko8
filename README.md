@@ -13,11 +13,12 @@ p8 tools (e.g minify)
 
 * If you want to avoid renaming certain identifiers
 
-`python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --preserve 'my_global_1,my_global_2,*.my_member,my_env.*'
+`python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --preserve 'my_global_1,my_global_2,*.my_member,my_env.*'`
 
-** my_global_1 and my_global_2 will not be renamed when used as globals
-** my_member will not be renamed when used as a table member
-** table members will not be renamed when accessed through my_env
+-
+  - my_global_1 and my_global_2 will not be renamed when used as globals
+  - my_member will not be renamed when used as a table member
+  - table members will not be renamed when accessed through my_env
 
 * If you want to rename certain strings (better gains than above approach!)
 
