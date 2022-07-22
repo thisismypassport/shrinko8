@@ -348,8 +348,9 @@ def read_code(filename, defines=None, pp_handler=None, pp_inline=True):
 
 k_lint_prefix = "lint:"
 k_keep_prefix = "keep:"
-k_nameof_global_comment = "nameof"
-k_nameof_member_comment = "memberof"
+
+k_lint_func_prefix = "func::"
+k_lint_count_stop = "count::stop"
 
 k_wspace = " \t\r\n"
 
@@ -362,7 +363,8 @@ def tokenize(source):
     vline = 0
     tokens = []
     errors = []
-    next_nameof = None
+    next_var_kind = None
+    next_func_kind = None
 
     def peek(off=0):
         i = idx + off
@@ -397,17 +399,48 @@ def tokenize(source):
     def add_error(msg, off=-1):
         errors.append(Error(msg, Token.dummy(source, idx + off)))
 
+    def add_var_kind():
+        nonlocal next_var_kind
+        if next_var_kind != None:
+            tokens[-1].var_kind = next_var_kind
+            next_var_kind = None
+        
+    def add_func_kind():
+        nonlocal next_func_kind
+        if next_func_kind != None:
+            tokens[-1].func_kind = next_func_kind
+            next_func_kind = None
+
+    def process_comment(orig_idx, comment, isblock):
+        if comment.startswith(k_lint_prefix):
+            lints = [v.strip() for v in comment[len(k_lint_prefix):].split(",")]
+            add_token(TokenType.lint, orig_idx, value=lints)
+
+            for lint in lints:
+                if lint.startswith(k_lint_func_prefix):
+                    nonlocal next_func_kind
+                    next_func_kind = lint[len(k_lint_func_prefix):]
+
+        elif comment.startswith(k_keep_prefix):
+            keep_comment = comment[len(k_keep_prefix):].rstrip()
+            add_token(TokenType.comment, orig_idx, value=keep_comment)
+
+        elif isblock:
+            nonlocal next_var_kind
+            if comment in ("global", "nameof"):
+                next_var_kind = VarKind.global_
+            elif comment in ("member", "memberof"):
+                next_var_kind = VarKind.member
+            elif comment == "string":
+                next_var_kind = False
+
     def tokenize_line_comment():
         nonlocal vline
         orig_idx = idx
         while take() not in ('\n', ''): pass
         vline += 1
 
-        comment = text[orig_idx:idx]
-        if comment.startswith(k_lint_prefix):
-            add_token(TokenType.lint, orig_idx, value=[v.strip() for v in comment[len(k_lint_prefix):].split(",")])
-        elif comment.startswith(k_keep_prefix):
-            add_token(TokenType.comment, orig_idx, value=comment[len(k_keep_prefix):].rstrip())
+        process_comment(orig_idx, text[orig_idx:idx], isblock=False)
 
     def tokenize_long_brackets(off):
         nonlocal idx
@@ -433,14 +466,10 @@ def tokenize(source):
         return False, orig_idx, None, None
 
     def tokenize_long_comment():
-        nonlocal idx, next_nameof
+        nonlocal idx
         ok, orig_idx, start, end = tokenize_long_brackets(0)
         if ok:
-            comment = text[start:end]
-            if comment == k_nameof_global_comment:
-                next_nameof = VarKind.global_
-            elif comment == k_nameof_member_comment:
-                next_nameof = VarKind.member
+            process_comment(orig_idx, text[start:end], isblock=True)
         else:
             idx = orig_idx
         return ok
@@ -483,11 +512,13 @@ def tokenize(source):
             
         if text[orig_idx:idx] in keywords:
             add_token(TokenType.keyword, orig_idx)
+            add_func_kind()
         else:
             add_token(TokenType.ident, orig_idx)
+            add_var_kind()
 
     def tokenize_string(off):
-        nonlocal idx, next_nameof
+        nonlocal idx
         orig_idx = idx + off
         idx = orig_idx + 1
         quote = text[orig_idx]
@@ -507,9 +538,7 @@ def tokenize(source):
                 break
 
         add_token(TokenType.string, orig_idx)
-        if next_nameof:
-            tokens[-1].nameof = next_nameof
-            next_nameof = None
+        add_var_kind()
 
     def tokenize_long_string(off):
         ok, orig_idx, _, _ = tokenize_long_brackets(off)
@@ -566,7 +595,7 @@ def count_tokens(tokens):
     count = 0
     for i, token in enumerate(tokens):
         if token.fake:
-            if token.type == TokenType.lint and "count::stop" in token.value:
+            if token.type == TokenType.lint and k_lint_count_stop in token.value:
                 break
             continue
 
@@ -711,11 +740,13 @@ def parse(source, tokens, exts=False):
             if not var:
                 kind = VarKind.global_
 
-        return Node(NodeType.var, [token], name=name, kind=kind, var=var, new=bool(newscope))
+        effective_kind = getattr(token, "var_kind", kind)
+        return Node(NodeType.var, [token], name=name, kind=kind, effective_kind=effective_kind, var=var, new=bool(newscope))
     
     def parse_function(stmt=False, local=False):
         nonlocal scope
         tokens = [peek(-1)]
+        func_kind = getattr(tokens[0], "func_kind", None)
         
         target, name = None, None
         funcscope = Scope(scope, depth + 1)
@@ -768,7 +799,7 @@ def parse(source, tokens, exts=False):
         require("end", tokens)
         scope = scope.parent
 
-        return Node(NodeType.function, tokens, target=target, params=params, body=body, name=name, scopespec=funcscope)
+        return Node(NodeType.function, tokens, target=target, params=params, body=body, name=name, scopespec=funcscope, kind=func_kind)
 
     def parse_table():
         tokens = [peek(-1)]
@@ -819,12 +850,18 @@ def parse(source, tokens, exts=False):
         
         return Node(NodeType.call, tokens, func=expr, args=args)
 
-    def parse_nameof(node):
+    def parse_const_var_kind(node):
         token = node.token
-        if hasattr(token, "nameof"):
+        if getattr(token, "var_kind", None):
             node.extra_names = token.value[1:-1].split(",")
-            node.extra_children = [Node(NodeType.var, [], name=value, kind=token.nameof, var=None, new=False, parent=node, extra_i=i) 
-                                   for i, value in enumerate(node.extra_names)]
+            node.extra_children = []
+            for i, value in enumerate(node.extra_names):
+                subtoken = Token(TokenType.ident, value)
+                subtoken.var_kind = token.var_kind
+                subnode = parse_var(token=subtoken, member=True)
+                subnode.parent = node
+                subnode.extra_i = i
+                node.extra_children.append(subnode)
         return node
 
     def parse_core_expr():
@@ -833,7 +870,7 @@ def parse(source, tokens, exts=False):
         if value == None:
             add_error("unexpected end of input", fail=True)
         elif value in ("nil", "true", "false") or token.type in (TokenType.number, TokenType.string):
-            return parse_nameof(Node(NodeType.const, [token], token=token))
+            return parse_const_var_kind(Node(NodeType.const, [token], token=token))
         elif value == "{":
             return parse_table()
         elif value == "(":
@@ -1286,10 +1323,16 @@ def parse_string_literal(str):
                 
         return "".join(litparts)
 
-def lint_code(ctxt, tokens, root):
+def lint_code(ctxt, tokens, root, lint_rules):
     errors = []
     vars = CounterDictionary()
     allowed_globals = ctxt.globals.copy()
+
+    lint_undefined = lint_unused = lint_duplicate = True
+    if isinstance(lint_rules, dict):
+        lint_undefined = lint_rules.get("undefined")
+        lint_unused = lint_rules.get("unused")
+        lint_duplicate = lint_rules.get("duplicate")
 
     for token in tokens:
         if token.type == TokenType.lint:
@@ -1315,7 +1358,7 @@ def lint_code(ctxt, tokens, root):
                     func = node.parent.find_parent(NodeType.function)
                     assign = True
 
-                if assign and (func == None or (func.name == "_init" and func.find_parent(NodeType.function) == None)):
+                if assign and (func == None or func.kind == "_init" or (func.kind is None and func.name == "_init" and func.find_parent(NodeType.function) == None)):
                     allowed_globals.add(node.name)
 
             if node.kind == VarKind.local and not node.new and node.var not in used_locals:
@@ -1328,16 +1371,17 @@ def lint_code(ctxt, tokens, root):
     def lint_pre(node):
         if node.type == NodeType.var:
             if node.kind == VarKind.local and node.new:
-                if vars[node.name] > 0 and node.name not in ('_', '_ENV'):
+                if lint_duplicate and vars[node.name] > 0 and node.name not in ('_', '_ENV'):
                     add_error("Identifier %s already defined" % node.name, node)
+                
                 vars[node.name] += 1
 
-                if node.var not in used_locals and node.name not in ('_', '_ENV'):
+                if lint_unused and node.var not in used_locals and not node.name.startswith("_"):
                     if not (node.parent.type == NodeType.function and node in node.parent.params and node != node.parent.params[-1]):
                         add_error("identifier %s isn't used" % node.name, node)
 
             elif node.kind == VarKind.global_:
-                if node.name not in allowed_globals:
+                if lint_undefined and node.name not in allowed_globals:
                     add_error("Identifier %s not found" % node.name, node)
 
     def lint_post(node):
@@ -1401,8 +1445,6 @@ def obfuscate_tokens(ctxt, root, rules_input):
             scopes.append(scope)
             
         if node.type == NodeType.var:
-            node.effective_kind = node.kind
-
             while True:
                 if node.effective_kind == VarKind.member:
                     table_name = None
@@ -1436,6 +1478,7 @@ def obfuscate_tokens(ctxt, root, rules_input):
             
             if node.effective_kind == VarKind.member:
                 member_uses[node.name] += 1
+
             elif node.effective_kind == VarKind.global_:
                 global_uses[node.name] += 1
                 for scope in scopes:
@@ -1559,7 +1602,7 @@ def obfuscate_tokens(ctxt, root, rules_input):
             else:
                 return
 
-            if node.parent.type == NodeType.const: # nameof/memberof case
+            if node.parent.type == NodeType.const: # const string interpreted as identifier case
                 assert len(node.parent.children) == 1 and node.parent.extra_names[node.extra_i] == orig_name
                 node.parent.extra_names[node.extra_i] = node.name
                 node.parent.children[0].value = '"%s"' % ",".join(node.parent.extra_names)
@@ -1771,7 +1814,7 @@ def process_code(ctxt, source, count=False, lint=False, minify=False, obfuscate=
             print("tokens:", num_tokens, str(int(num_tokens / 8192 * 100)) + "%")
 
         if lint:
-            errors = lint_code(ctxt, tokens, root)
+            errors = lint_code(ctxt, tokens, root, lint)
         
         if minify:
             if obfuscate:

@@ -9,9 +9,8 @@ __lua__
 ]] x=1
 assert(true,1)
 assert(x==1,2)
-assert("\0\0123\n\t\+\z  
-  \x41\x61"=="\000\x0c\x33\
-\9\5Aa")
+assert("\0\0123\n\t\+\z    \x41\x61"=="\000\x0c\x33\
+\9\5Aa") -- (removed newline in \z - pico8 doesn't like it...)
 assert("\'\"\\'"==[['"\']],3)
 assert([==[]]]==]=="]]",4)
 x=1e2e3=1
@@ -62,7 +61,7 @@ assert(g()==nil and pack(g()).n==0,35)
 function h(...) return ... end
 a={1,2,a=1;b=2;3;4,[12]=4,h(5,6,nil,8)}
 assert(a[1]==1 and a[2]==2 and a[3]==3 and a[4]==4 and a[5]==5 and a[6]==6,36)
-assert(a[7]==nil and a[8]==8 and a['a']==1 and a.b==2 and a[12]==4,37)
+assert(a[7]==nil and a[8]==8 and a[--[[member]]'a']==1 and a.b==2 and a[12]==4,37)
 function h(...) return {...,} end
 do local function h(...) return {...,a=3} end
    assert(#h(1,2)==1 and h(1,2).a==3,38) end
@@ -74,7 +73,7 @@ assert(1!=2 and 1~=2 or assert(false,43),43.1)
 x={f=function(u) return u.z end,z=3}
 assert(x:f()==3 and x.f{z=4}==4,44)
 setmetatable(x,{__index=function(o,k) return k end})
-assert(x.boo=="boo",45)
+assert(x.boo==--[[member]]"boo",45)
 x.g=x
 function x.g.g.z(x) return x end; assert(x.z(false)==false,46)
 function x.g.g:zoo(x) return self,x end
@@ -85,11 +84,11 @@ goto x end ::e:: assert(u==4,48) end
 do ::y:: do goto y assert(false,49) ::y:: end end
 u=0; for k,v in next, {5} do assert(k==1 and v==5,50); u+=1 end
 assert(u==1,50.5)
-do local oldadd, _ENV = add, {assert=assert}
-  oldadd(_ENV, 3) assert(add==nil and _ENV[1] == 3,51) end
+do local oldadd, _ENV = add, {--[[global]]assert=assert}
+  oldadd(_ENV, 3) assert(_ENV[1] == 3,51) end -- removed add=nil check as not true in pico8 due to global-as-local inclusion
 local function o(k) _ENV=k end
 local oldenv = _ENV
-o({assert=assert,uvw=123}) assert(uvw==123,52) o(oldenv)
+o({--[[global]]assert=assert,--[[global]]uvw=123}) assert(uvw==123,52) o(oldenv)
 function f() return 9,0,1 end
 function s(f) return f() end
 function r(f) return (f()) end

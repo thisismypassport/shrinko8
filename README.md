@@ -1,7 +1,7 @@
 # timp_p8_tools
 p8 tools (e.g minify)
 
-# minification
+# Minification
 
 Greatly reduces the character count of your cart, as well as greatly improves its compression ratio (so that its compressed size is smaller).
 
@@ -11,7 +11,7 @@ Note: it doesn't affect token count.
 
 `python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify`
 
-## If you just want the lua source without the rest of the baggage (except the "__lua__" header line):
+If you just want the lua source without the rest of the baggage (except the `__lua__` header line):
 
 `python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --format code`
 
@@ -30,25 +30,39 @@ local my_obj = {key=123} -- here, key is an identifier
 
 ### Renaming strings (recommended, results in smaller carts)
 
-You can add a `--[[memberof]]` comment before a string to have the minifier rename it as if it were an identifier.
+You can add a `--[[member]]` comment before a string to have the minifier rename it as if it were an identifier.
 
 E.g:
 ```
-local my_key = --[[memberof]]"key" -- here, key is a string but is renamed as if it were an identifier
+local my_key = --[[member]]"key" -- here, key is a string but is renamed as if it were an identifier
 local my_obj = {key=123} -- here, key is an identifier
 ?my_obj[my_key] -- success, result is 123 after minification
 ```
 
 You can also use this with multiple keys split by comma:
 ```
-local my_keys = split --[[memberof]]"key1,key2,key3"
+local my_keys = split --[[member]]"key1,key2,key3"
 ```
 
-And you can similarly use `--[[nameof]]` for globals:
+And you can similarly use `--[[global]]` for globals:
 ```
-local my_key = --[[nameof]]"glob"
+local my_key = --[[global]]"glob"
 glob = 123
 ?_ENV[my_key] -- 123
+```
+
+#### Advanced renaming
+
+These hints, together with `--[[string]]` can also be used on identifiers to change the way they're renamed:
+```
+do
+  local _ENV = {--[[global]]assert=assert}
+  assert(true)
+end
+for _ENV in all({{x=1}, {x=2}}) do
+  --[[member]]x += 1
+end
+--[[string]]some_future_pico8_api(1,2,3)
 ```
 
 ### Preserving identifiers
@@ -61,15 +75,41 @@ You can instruct the minifier to preserve certain identifiers:
 * my_member will not be renamed when used as a table member
 * table members will not be renamed when accessed through my_env
 
-# other stuff?
+## Options
 
-You can lint and count tokens
+You can disable parts of the minification process via additional command-line options:
+
+```
+--no-minify-rename
+--no-minify-spaces
+--no-minify-lines
+```
+
+# Linting
+
+Linting finds common code issues in your cart, like forgetting to use a 'local' statement
+
+## To lint your p8 cart:
+
+`python timp_p8_tools.py path-to-input.p8 --lint`
+
+You can combine linting with other options:
 
 `python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --lint --count --minify`
 
-The lint is all-or-nothing right now.
+## Options
 
-To tell it to ignore globals it didn't find you define:
+You can disable certain lints globally via additional command-line options:
+
+```
+--no-lint-unused
+--no-lint-duplicate
+--no-lint-undefined
+```
+
+## Undefined variable lints
+
+To tell the linter to ignore globals it didn't see you define:
 
 ```
 --lint: global_1, global_2
@@ -78,4 +118,23 @@ function f()
 end
 ```
 
-It complains about unused variables not named `_`, as well as about the last function parameter if it is unused and not named `_` (this should be revised)
+The linter normally allows you to define variables in the global scope or in the _init function, but you can extend this to other functions like this:
+
+```
+--lint: func::_init
+function my_init()
+    global_1, global_2 = 1, 2 -- these globals can be used anywhere now that they're assigned to here
+end
+```
+
+## Unused variable lints
+
+The linter allows unused variables if their names starts with underscore (e.g. `_my_unused`).
+
+The linter checks both locals and the last function parameter of every function if it unused.
+
+## Duplicate variable lints
+
+The linter checks for duplicate locals in the same or inner scope (even across functions)
+
+The linter allows duplicate variables named `_`, though

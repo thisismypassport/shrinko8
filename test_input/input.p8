@@ -34,3 +34,12 @@ local my_obj = {key1=123,key2=234,key3=345}
 local my_key = --[[nameof]]"glob"
 glob = 123
 ?_ENV[my_key]
+
+do
+  local _ENV = {--[[global]]assert=assert}
+  assert(true)
+end
+for _ENV in all({{x=1}, {x=2}}) do
+  --[[member]]x += 1
+end
+--[[string]]some_future_pico8_api(1,2,3)
