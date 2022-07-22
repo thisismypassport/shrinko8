@@ -92,6 +92,8 @@ rectfill(0,0,100,100); rectfill(20,20,40,40)
 
 Here, all uses of circfill and rectfill are renamed unless they're preceded by `--[[string]]`
 
+Be aware that doing this won't reduce the compressed size of the cart, and will increases the token count (due to the assignment), so it's of limited use, for when you care about character count above all else.
+
 ## Options
 
 You can disable parts of the minification process via additional command-line options:
