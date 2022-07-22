@@ -1,17 +1,18 @@
 from utils import *
 from pico_process import read_code, PicoContext, process_code, PicoSource
-from pico_cart import read_cart, write_cart_to_source, from_pico_chars
+from pico_cart import read_cart, write_cart_to_source, write_cart_to_image, from_pico_chars, write_code_sizes
 import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("input", help="input file, can be in p8/png/code format")
 parser.add_argument("output", help="output file", nargs='?')
-parser.add_argument("-f", "--format", choices=["p8", "code"], default="p8", help="output format")
+parser.add_argument("-f", "--format", choices=["p8", "code"], help="output format")
 parser.add_argument("--map", help="log renaming of identifiers to this file")
 parser.add_argument("-l", "--lint", action="store_true", help="enable erroring on lint errors")
-parser.add_argument("-c", "--count", action="store_true", help="enable printing token count")
+parser.add_argument("-c", "--count", action="store_true", help="enable printing token count, character count & compressed size")
 parser.add_argument("-m", "--minify", action="store_true", help="enable minification")
 parser.add_argument("-p", "--preserve", help="preserve identifiers in minification, e.g. 'global1,global2,*.member2,table3.*'")
+parser.add_argument("--input-count", action="store_true", help="enable printing input character count & compressed size, for now just for png format")
 parser.add_argument("--no-lint-unused", action="store_true", help="don't print lint errors on unused variables")
 parser.add_argument("--no-lint-duplicate", action="store_true", help="don't print lint errors on duplicate variables")
 parser.add_argument("--no-lint-undefined", action="store_true", help="don't print lint errors on undefined variables")
@@ -24,10 +25,13 @@ def fail(msg):
     print(msg)
     sys.exit(1)
 
-if not args.lint and not args.count and not args.minify:
-    fail("No operation (--lint/--count/--minify) specified")
-if args.minify and not args.output:
-    fail("Output should be specified under --minify")
+if not args.lint and not args.count and not args.minify and not args.format and not args.input_count:
+    fail("No operation (--lint/--count/--minify/--format) specified")
+if args.format and not args.output:
+    fail("Output should be specified under --format")
+if args.minify and not args.output and not args.count:
+    fail("Output (or --count) should be specified under --minify")
+args.format = args.format or "p8"
 
 if args.lint:
     args.lint = {
@@ -46,7 +50,7 @@ args.obfuscate = bool(args.minify) and not args.no_minify_rename
 if args.preserve:
     args.obfuscate = {k: False for k in args.preserve.split(",")}
 
-cart = read_cart(args.input)
+cart = read_cart(args.input, print_sizes=args.input_count)
 try:
     src = read_code(args.input, pp_inline=False) # supports #include (and other stuff), which read_cart currently does not
 except UnicodeDecodeError: # hacky png detection
@@ -57,10 +61,18 @@ process_code(ctxt, src, count=args.count, lint=args.lint, minify=args.minify, ob
 
 if args.map:
     file_write_text(args.map, "\n".join(ctxt.srcmap))
+    
+cart.code = src.new_text if args.minify else src.text
 
-if args.minify:
-    cart.code = src.new_text
+if args.output:
     if args.format == "p8":
         file_write_text(args.output, write_cart_to_source(cart))
+    #elif args.format == "png":
+    #    with file_create(args.output) as f:
+    #        write_cart_to_image(f, cart, path_dirname(path_resolve(__file__)), print_sizes=args.count, force_compress=args.count)
+    #        args.count = False # done above
     else:
         file_write_text(args.output, "__lua__\n" + from_pico_chars(cart.code))
+
+#if args.count:
+#    write_code_sizes(cart.code)

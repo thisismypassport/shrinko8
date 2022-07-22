@@ -845,6 +845,10 @@ class BinaryBitReader(BinaryBase):
         else:
             return 0
 
+    @property
+    def bit_position(m):
+        return (m.pos() - 1) * 8 + m._bit
+
     def _bits_le(m, n, advance):
         bit, byte = m._bit, m._byte
         read_count = 0
@@ -1061,6 +1065,10 @@ class BinaryBitWriter(BinaryBase):
 
     def _u8(m, v):
         m.f.write(byte(v))
+
+    @property
+    def bit_position(m):
+        return m.pos() * 8 + m._bit
 
     def bits_le(m, n, v):
         source_bit = 0

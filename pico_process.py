@@ -1803,6 +1803,9 @@ def minify_code(source, tokens, root, minify):
 
     return "".join(output)
 
+def print_token_count(num_tokens, prefix=""):
+    print(prefix + "tokens:", num_tokens, str(int(num_tokens / 8192 * 100)) + "%")
+
 def process_code(ctxt, source, count=False, lint=False, minify=False, obfuscate=False, fail=True):
     tokens, errors = tokenize(source)
     if not errors and (lint or minify):
@@ -1811,7 +1814,7 @@ def process_code(ctxt, source, count=False, lint=False, minify=False, obfuscate=
     if not errors:
         if count:
             num_tokens = count_tokens(tokens)
-            print("tokens:", num_tokens, str(int(num_tokens / 8192 * 100)) + "%")
+            print_token_count(num_tokens)
 
         if lint:
             errors = lint_code(ctxt, tokens, root, lint)

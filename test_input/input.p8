@@ -22,19 +22,20 @@ local preserving_obj = {}
 preserving_obj["whatever"] = 123
 ?preserving_obj.whatever -- requires preserve of 'preserving_obj.*'
 
--- nameof/memberof
-local my_key = --[[memberof]]"key"
+-- member/global on string
+local my_key = --[[member]]"key"
 local my_obj = {key=123}
 ?my_obj[my_key]
 
-local my_keys = split --[[memberof]]"key1,key2,key3"
+local my_keys = split --[[member]]"key1,key2,key3"
 local my_obj = {key1=123,key2=234,key3=345}
 ?my_obj[my_keys[2]]
 
-local my_key = --[[nameof]]"glob"
+local my_key = --[[global]]"glob"
 glob = 123
 ?_ENV[my_key]
 
+-- member/global on identifier
 do
   local _ENV = {--[[global]]assert=assert}
   assert(true)

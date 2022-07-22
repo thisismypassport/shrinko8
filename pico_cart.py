@@ -11,8 +11,17 @@ class Cart:
         m.date = k_latest_date
         m.rom = Memory(k_rom_size)
         m.code = ""
-        m.screenshot = defaultlist(int)
+        m.screenshot = None
         m.meta = defaultdict(list)
+
+    def get_title(m):
+        title = m.meta.get("title")
+        if title is None:
+            title = []
+            for line in m.code.splitlines()[:2]:
+                if line.startswith("--"):
+                    title.append(line[2:].strip())
+        return title
 
 class WrongFileTypeError(Exception):
     pass
@@ -30,25 +39,30 @@ k_inv_code_table = {ch: i for i, ch in enumerate(k_code_table)}
 k_compressed_code_header = b":c:\0"
 k_new_compressed_code_header = b"\0pxa"
 
-def read_code(r):
+def read_code(r, print_sizes=False):
     start_pos = r.pos()
     header = r.bytes(4)
+
     if header == k_new_compressed_code_header:
-        
         unc_size = r.u16()
         com_size = r.u16()
+
+        if print_sizes:
+            print_compressed_size(com_size, "input ")
         
         table = [chr(i) for i in range(256)]
         br = BinaryBitReader(r.f)
         
         code = []
         while len(code) < unc_size:
+            #last_bit_pos = br.bit_position
             if br.bit():
                 extra = 0
                 while br.bit():
                     extra += 1
                 idx = br.bits(4 + extra) + make_mask(4, extra)
                 
+                #print(len(code), ord(table[idx]), br.bit_position - last_bit_pos)
                 code.append(table[idx])
                 
                 for i in range(idx, 0, -1):
@@ -66,6 +80,7 @@ def read_code(r):
                             code.append(chr(ch))
                         else:
                             break
+                    #print("******", br.bit_position - last_bit_pos)
                 
                 else:
                     count = 3
@@ -75,12 +90,12 @@ def read_code(r):
                         if part != 7:
                             break
                     
+                    #print(len(code), "%s:%s" % (offset - 1, count - 3), br.bit_position - last_bit_pos)
                     for _ in range(count):
                         code.append(code[-offset])
         
         assert r.pos() == start_pos + com_size
         assert len(code) == unc_size
-        return "".join(code)
 
     elif header == k_compressed_code_header:
         unc_size = r.u16()
@@ -104,19 +119,26 @@ def read_code(r):
                 for _ in range(count):
                     code.append(code[-offset])
 
+        if print_sizes:
+            print_compressed_size(r.pos() - start_pos, "input ")
+
         assert len(code) in (unc_size, unc_size - 1) # extra null at the end dropped?
-        return "".join(code)
 
     else:
         r.addpos(-4)
-        return "".join(chr(c) for c in r.zbytes())
+        code = [chr(c) for c in r.zbytes()]
 
-def read_cart_raw(f):
+    if print_sizes:
+        print_code_size(len(code), "input ")    
+    
+    return "".join(code)
+
+def read_cart_raw(f, **opts):
     cart = Cart()
     
     with BinaryReader(f, big_end = True) as r:
         cart.rom.replace(r.bytes(k_rom_size))
-        cart.code = read_code(r)
+        cart.code = read_code(r, **opts)
 
         r.setpos(k_memory_size)
         cart.version = r.u8()
@@ -124,10 +146,13 @@ def read_cart_raw(f):
 
     return cart
 
-def read_cart_from_rom(buffer):
-    return read_cart_raw(BytesIO(buffer))
+def read_cart_from_rom(buffer, **opts):
+    return read_cart_raw(BytesIO(buffer), **opts)
 
-def get_lz77(code, prev_code=None, min_c=3, max_c=0x7fff, max_o=0x7fff):    
+class Lz77Tuple(Tuple):
+    fields = ("off", "cnt")
+
+def get_lz77(code, prev_code=None, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=None):
     min_matches = defaultdict(list)
 
     if prev_code:
@@ -166,41 +191,67 @@ def get_lz77(code, prev_code=None, min_c=3, max_c=0x7fff, max_o=0x7fff):
 
     i = 0
     prev_i = 0
-    items = []
     while i < len(code):
         best_c, best_j = find_match(i)
 
+        if best_c >= 0 and measure and best_c <= measure_c:
+            lz_cost = measure(Lz77Tuple(i - best_j - 1, best_c - min_c))
+            ch_cost = measure(code[i:i+best_c])
+            if ch_cost < lz_cost:
+                best_c = -1
+
         if best_c >= 0 and i + 1 < len(code):
             best_cp1, best_jp1 = find_match(i+1)
+            if measure and best_cp1 in (best_c, best_c - 1):
+                lz_cost = measure(Lz77Tuple(i - best_j - 1, best_c - min_c)) + (measure(code[best_j:best_j+1]) if best_cp1 == best_c else 0)
+                p1_cost = measure(code[i:i+1]) + measure(Lz77Tuple(i - best_jp1, best_cp1 - min_c))
+                #print(p1_cost, "vs.", lz_cost)
+                if p1_cost < lz_cost:
+                    best_c = -1
+
+            """if measure:
+                best_cp2, best_jp2 = find_match(i+2)
+                if best_cp2 > best_cp1 + 1 and best_cp2 > best_c + 1:
+                    lz_cost = 
+                    p2_cost = measure(code[i:i+2]) + measure(Lz77Tuple(i - best_jp2))
+
+                    yield code[i]
+                    yield code[i+1]
+                    i += 2
+                    best_c, best_j = best_cp2, best_jp2"""
+
             if best_cp1 > best_c:
-                items.append(code[i])
+                yield code[i]
                 i += 1
                 best_c, best_j = best_cp1, best_jp1
 
         if best_c >= 0:
-            offset_val = i - best_j - 1
-            count_val = best_c - min_c
-            items.append(Dynamic(off=offset_val, cnt=count_val))
+            yield Lz77Tuple(i - best_j - 1, best_c - min_c)
             i += best_c
         else:
-            items.append(code[i])
+            yield code[i]
             i += 1
             
         for j in range(prev_i, i):
             min_matches[code[j:j+min_c]].append(j)
         prev_i = i
 
-    return items
+def print_code_size(size, prefix=""):
+    print(prefix + "chars:", size, str(int(size / 0xffff * 100)) + "%")
 
-def write_code(w, code, force_compress=False):
+def print_compressed_size(size, prefix=""):
+    print(prefix + "compressed:", size, str(int(size / k_code_size * 100)) + "%")
+
+def write_code(w, code, print_sizes=True, force_compress=False, fail_on_error=True):
     k_new = True
     
-    print("code:", len(code), str(int(len(code) / 0xffff * 100)) + "%")
+    if print_sizes:
+        print_code_size(len(code))
 
     if len(code) >= k_code_size or force_compress: # (>= due to null)
         start_pos = w.pos()
         w.bytes(k_new_compressed_code_header if k_new else k_compressed_code_header)
-        w.u16(len(code))
+        w.u16(len(code) & 0xffff)
         len_pos = w.pos()
         w.u16(0) # revised below
                 
@@ -208,7 +259,37 @@ def write_code(w, code, force_compress=False):
             bw = BinaryBitWriter(w.f)
             mtf = [chr(i) for i in range(0x100)]
 
-        items = get_lz77(code, max_c=None if k_new else 0x11, max_o=0x7fff if k_new else 0xc3f)
+            def update_mtf(mtf, idx, ch):
+                for ii in range(idx, 0, -1):
+                    mtf[ii] = mtf[ii - 1]
+                mtf[0] = ch
+            
+            def measure(items):
+                if isinstance(items, Lz77Tuple):
+                    offset_bits = max(round_up(count_significant_bits(items.off), 5), 5)
+                    count_bits = ((items.cnt // 7) + 1) * 3
+                    return 2 + (offset_bits < 15) + offset_bits + count_bits
+
+                else:
+                    mtfcopy = mtf[:]
+                    count = 0
+                    for item in items:
+                        ch_i = mtfcopy.index(item)
+
+                        mask = 1 << 4
+                        large = False
+                        while ch_i >= mask:
+                            mask = (mask << 1) | (1 << 4)
+                            count += 2
+                            large = True
+                        count += 4 if large else 6 # large is a heuristic since mtf usually pays forward
+
+                        update_mtf(mtfcopy, ch_i, item)                        
+                    return count
+
+            measure_c = 3
+        else:
+            measure = measure_c = None
 
         def write_match(offset_val, count_val):
             if k_new:
@@ -246,10 +327,8 @@ def write_code(w, code, force_compress=False):
                     
                 bw.bit(0)
                 bw.bits(i_bits, i_val)
-                
-                for ii in range(ch_i, 0, -1):
-                    mtf[ii] = mtf[ii - 1]
-                mtf[0] = ch 
+                                
+                update_mtf(mtf, ch_i, ch)
                 
             else:
                 ch_i = k_inv_code_table.get(ch, 0)
@@ -261,18 +340,28 @@ def write_code(w, code, force_compress=False):
                     w.u8(0)
                     w.u8(ord(ch))
 
-        for item in items:
-            if isinstance(item, Dynamic):
+        #dbg_size = 0
+        for item in get_lz77(code, max_c=None if k_new else 0x11, max_o=0x7fff if k_new else 0xc3f, measure=measure, measure_c=measure_c):
+            last_bit_pos = bw.bit_position
+            if isinstance(item, Lz77Tuple):
                 write_match(item.off, item.cnt)
+                #print(dbg_size, "%s:%s" % (item.off, item.cnt), bw.bit_position - last_bit_pos)
+                #dbg_size += item.cnt + 3
             else:
                 write_literal(item)
+                #print(dbg_size, ord(item), bw.bit_position - last_bit_pos)
+                #dbg_size += 1
                 
         if k_new:
             bw.flush()
 
         size = w.pos() - start_pos
-        print("space:", size, str(int(size / k_code_size * 100)) + "%")
-        assert w.pos() <= k_memory_size
+        if print_sizes:
+            print_compressed_size(size)
+        
+        if fail_on_error:
+            assert len(code) < 0x10000
+            assert w.pos() <= k_memory_size
         
         if k_new:   
             w.setpos(len_pos)
@@ -281,14 +370,17 @@ def write_code(w, code, force_compress=False):
     else:
         w.bytes(bytes(ord(c) for c in code))
 
-def write_cart_to_rom(cart):
+def write_code_sizes(code):
+    write_code(BinaryWriter(BytesIO()), code, force_compress=True, fail_on_error=False)
+
+def write_cart_to_rom(cart, **opts):
     output = BytesIO(bytearray(k_memory_size + 0x20))
     
     w = BinaryWriter(output, big_end = True)
     
     w.bytes(cart.rom.get_block(0, k_rom_size))
     
-    write_code(w, cart.code)
+    write_code(w, cart.code, **opts)
             
     w.setpos(k_memory_size)
     w.u8(cart.version)
@@ -297,6 +389,9 @@ def write_cart_to_rom(cart):
     return output.getbuffer()
 
 k_cart_image_width, k_cart_image_height = 160, 205
+k_screenshot_rect = Rect(0, 0, 128, 128)
+k_screenshot_offset = Point(16, 24)
+k_title_offset = Point(18, 167)
 
 def load_cart_image(f):
     r = BinaryReader(f)
@@ -310,7 +405,7 @@ def load_cart_image(f):
 
     return image
 
-def read_cart_from_image(f):
+def read_cart_from_image(f, **opts):
     image = load_cart_image(f)
     width, height = image.size
 
@@ -323,10 +418,10 @@ def read_cart_from_image(f):
             data.append(byte)
     image.unlock()
 
-    return read_cart_raw(BytesIO(data))
+    return read_cart_raw(BytesIO(data), **opts)
     
-def write_cart_to_image(f, cart, res_path, screenshot_path=None, title=None):
-    output = write_cart_to_rom(cart)
+def write_cart_to_image(f, cart, res_path, screenshot_path=None, title=None, **opts):
+    output = write_cart_to_rom(cart, **opts)
     
     with file_open(path_join(res_path, "template.png")) as template_f:
         image = load_cart_image(template_f)
@@ -336,8 +431,18 @@ def write_cart_to_image(f, cart, res_path, screenshot_path=None, title=None):
             with file_open(screenshot_path) as screenshot_f:
                 screenshot_surf = Surface.load(screenshot_f)
                 screenshot_surf.blend_mode = BlendMode.none
-                image.draw(screenshot_surf, Point(16, 24), Rect(0, 0, 128, 128))
+                image.draw(screenshot_surf, k_screenshot_offset, k_screenshot_rect)
+        elif cart.screenshot:
+            screenshot_surf = Surface.create(*k_screenshot_rect.size)
+            screenshot_surf.lock()
+            for y in range(k_screenshot_rect.h):
+                for x in range(k_screenshot_rect.w):
+                    screenshot_surf.set_at((x, y), k_palette[cart.screenshot[x, y]])
+            screenshot_surf.unlock()
+            image.draw(screenshot_surf, k_screenshot_offset, k_screenshot_rect)
         
+        if title is None:
+            title = "\n".join(cart.get_title())
         if title:
             with file_open(path_join(res_path, "font.png")) as font_f:
                 font_surf = Surface.load(font_f)
@@ -352,7 +457,7 @@ def write_cart_to_image(f, cart, res_path, screenshot_path=None, title=None):
                             break
                         elif ch == '\n':
                             continue
-                    image.draw(font_surf, Point(18, 167) + Point(x, y), chrect)
+                    image.draw(font_surf, k_title_offset + Point(x, y), chrect)
                     x += chrect.w
         
         image.lock()
@@ -369,6 +474,8 @@ def write_cart_to_image(f, cart, res_path, screenshot_path=None, title=None):
         image.unlock()
 
         image.save(f)
+
+k_meta_prefix = "meta:"
         
 def read_cart_from_source(data):
     cart = Cart()
@@ -455,11 +562,16 @@ def read_cart_from_source(data):
 
         elif header == "label" and clean:
             assert len(clean) == 0x80
+            if cart.screenshot is None:
+                cart.screenshot = MultidimArray(k_screenshot_rect.size, 0)
+            x = 0
             for b in ext_nybbles(clean):
-                cart.screenshot.append(b)
+                cart.screenshot[x, y] = b
+                x += 1
+            y += 1
 
-        elif header and header.startswith("meta:"):
-            cart.meta[header].append(line)
+        elif header and header.startswith(k_meta_prefix):
+            cart.meta[header[len(k_meta_prefix):]].append(line)
             
         elif header == None and clean.startswith("version "):
             cart.version = int(clean.split()[1])
@@ -515,15 +627,15 @@ def write_cart_to_source(cart):
     if cart.screenshot:
         lines.append("__label__")
         for y in range(128):
-            lines.append(ext_nybbles(cart.screenshot[y*128:(y+1)*128]))
+            lines.append(ext_nybbles(cart.screenshot[x, y] for x in range(128)))
     
     for meta, metalines in cart.meta.items():
-        lines.append("__%s__" % meta)
+        lines.append("__%s__" % (k_meta_prefix + meta))
         lines += metalines
 
     return "\n".join(lines)
         
-def read_cart_from_text(f):
+def read_cart_from_text(f, **opts):
     try:
         data = f.read().decode()
     except UnicodeDecodeError:
@@ -542,17 +654,17 @@ def read_cart_from_text(f):
     data = data[len(prefix):-len(suffix)]
     data = bytes.fromhex(data)
 
-    return read_cart_from_stream(BytesIO(data))
+    return read_cart_from_stream(BytesIO(data), **opts)
 
-def read_cart_from_stream(f):
+def read_cart_from_stream(f, **opts):
     try:
         pos = f.tell()
-        return read_cart_from_text(f)
+        return read_cart_from_text(f, **opts)
     except WrongFileTypeError:
         f.seek(pos)
-        return read_cart_from_image(f)
+        return read_cart_from_image(f, **opts)
 
-def read_cart_from_export(data, name):
+def read_cart_from_export(data, name, **opts):
     data = data.decode()
     cartnames_raw = re.search("var\s+_cartname\s*=\s*\[(.*?)\]", data, re.S)
     assert cartnames_raw
@@ -573,16 +685,19 @@ def read_cart_from_export(data, name):
     for i, b in enumerate(cartdata_raw.group(1).split(",")[cartpos*cartsize : (cartpos+1)*cartsize]):
         cartdata[i] = int(b.strip())
     
-    return read_cart_from_rom(cartdata)
+    return read_cart_from_rom(cartdata, **opts)
 
-def read_cart(path):
+def read_cart(path, **opts):
     try:
         with file_open(path) as f:
-            return read_cart_from_stream(f)
+            return read_cart_from_stream(f, **opts)
     except IOError:
         name = None
         while not path_exists(path):
             path, namepart = path_split_name(path)
             name = namepart if name is None else namepart + "/" + name
-        with file_open(path) as f:
-            return read_cart_from_export(f.read(), name)
+        if path_is_file(path):
+            with file_open(path) as f:
+                return read_cart_from_export(f.read(), name, **opts)
+        else:
+            raise

@@ -88,6 +88,17 @@ You can disable parts of the minification process via additional command-line op
 --no-minify-lines
 ```
 
+## Keeping comments
+
+You can keep specific comments in the output via:
+
+```
+--keep: This is a comment to keep
+-- But this comment is gone after minify
+```
+
+Currently, all kept comments are placed at the start of the file, however.
+
 # Linting
 
 Linting finds common code issues in your cart, like forgetting to use a 'local' statement
