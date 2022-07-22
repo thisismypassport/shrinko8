@@ -494,10 +494,11 @@ def tokenize(source):
                 add_error("Unterminated_string")
                 break
             elif ch == '\\':
-                take() # at least
                 if accept('z'): # skip line breaks
                     while peek() in k_wspace:
                         take()
+                else:
+                    take() # at least
             elif ch == quote:
                 break
 
@@ -1754,7 +1755,8 @@ def process_code(ctxt, source, count=False, lint=False, minify=False, obfuscate=
         raise Exception("\n".join(map(str, errors)))
     return errors
 
-def echo_code(code, echo):  
+def echo_code(code, echo):
+    code = from_pico_chars(code)
     if echo == True:
         for line in code.splitlines():
             print(line)

@@ -1,6 +1,6 @@
 from utils import *
-from pico_process import read_code, PicoContext, process_code
-from pico_cart import Cart, read_cart, write_cart_to_source, from_pico_chars
+from pico_process import read_code, PicoContext, process_code, PicoSource
+from pico_cart import read_cart, write_cart_to_source, from_pico_chars
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -23,7 +23,11 @@ if args.preserve:
     args.obfuscate = {k: False for k in args.preserve.split(",")}
 
 cart = read_cart(args.input)
-src = read_code(args.input) # supports #include (and other stuff), which read_cart currently does not
+try:
+    src = read_code(args.input) # supports #include (and other stuff), which read_cart currently does not
+except UnicodeDecodeError: # hacky png detection
+    src = PicoSource(path_basename(args.input), cart.code)
+
 ctxt = PicoContext(srcmap=args.map)
 process_code(ctxt, src, count=args.count, lint=args.lint, minify=args.minify, obfuscate=args.obfuscate)
 

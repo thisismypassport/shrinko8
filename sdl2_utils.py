@@ -11,6 +11,31 @@ class Color(Tuple):
 
 class Surface:
     @staticmethod
-    def load():
-        raise Exception("this is not supported in this git")
+    def load(f):
+        try:
+            from PIL import Image # type: ignore
+        except:
+            raise Exception("You need pillow (or PIL) for this")
+        return Surface(Image.open(f))
+
+    def __init__(m, pil):
+        m.pil = pil
+
+    @property
+    def width(m):
+        return m.pil.width
+    @property
+    def height(m):
+        return m.pil.height
+    @property
+    def size(m):
+        return Point(m.width, m.height)
+
+    def get_at(m, pos):
+        return m.pa[pos]
+
+    def lock(m):
+        m.pa = m.pil.load()
+    def unlock(m):
+        m.pa = None
         
