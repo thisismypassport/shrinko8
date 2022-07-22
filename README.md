@@ -4,6 +4,8 @@ pico8 tools (minify, lint, etc.)
 
 Requires a modern verison of [Python](https://www.python.org/) to run.
 
+[Download the latest version.](https://github.com/thisismypassport/timp_p8_tools/archive/refs/heads/main.zip)
+
 # Minification
 
 Greatly reduces the character count of your cart, as well as greatly improves its compression ratio (so that its compressed size is smaller).
