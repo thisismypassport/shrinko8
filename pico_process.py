@@ -431,7 +431,7 @@ def tokenize(source):
                 next_var_kind = VarKind.global_
             elif comment in ("member", "memberof"):
                 next_var_kind = VarKind.member
-            elif comment == "string":
+            elif comment in ("preserve", "string"):
                 next_var_kind = False
 
     def tokenize_line_comment():

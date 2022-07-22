@@ -43,9 +43,9 @@ end
 for _ENV in all({{x=1}, {x=2}}) do
   --[[member]]x += 1
 end
---[[string]]some_future_pico8_api(1,2,3)
+--[[preserve]]some_future_pico8_api(1,2,3)
 
 -- semi-automatic pico8 global renaming
-circfill, rectfill = --[[string]]circfill, --[[string]]rectfill
+circfill, rectfill = --[[preserve]]circfill, --[[preserve]]rectfill
 circfill(10,10,20); circfill(90,90,30)
 rectfill(0,0,100,100); rectfill(20,20,40,40)

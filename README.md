@@ -56,7 +56,7 @@ glob = 123
 ?_ENV[my_key] -- 123
 ```
 
-These hints, together with `--[[string]]` can also be used on identifiers to change the way they're renamed:
+These hints, together with `--[[preserve]]` can also be used on identifiers to change the way they're renamed:
 ```
 do
   local _ENV = {--[[global]]assert=assert}
@@ -65,7 +65,7 @@ end
 for _ENV in all({{x=1}, {x=2}}) do
   --[[member]]x += 1
 end
---[[string]]some_future_pico8_api(1,2,3)
+--[[preserve]]some_future_pico8_api(1,2,3)
 ```
 
 ### Preserving identifiers
@@ -85,12 +85,12 @@ For cases like tweet-carts where you want really few characters, you can minify 
 `python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --no-preserve 'circfill,rectfill'`
 
 ```
-circfill, rectfill = --[[string]]circfill, --[[string]]rectfill
+circfill, rectfill = --[[preserve]]circfill, --[[preserve]]rectfill
 circfill(10,10,20); circfill(90,90,30)
 rectfill(0,0,100,100); rectfill(20,20,40,40)
 ```
 
-Here, all uses of circfill and rectfill are renamed unless they're preceded by `--[[string]]`
+Here, all uses of circfill and rectfill are renamed unless they're preceded by `--[[preserve]]`
 
 Be aware that doing this won't reduce the compressed size of the cart, and will increases the token count (due to the assignment), so it's of limited use, for when you care about character count above all else.
 
