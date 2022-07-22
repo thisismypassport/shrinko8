@@ -51,8 +51,6 @@ glob = 123
 ?_ENV[my_key] -- 123
 ```
 
-#### Advanced renaming
-
 These hints, together with `--[[string]]` can also be used on identifiers to change the way they're renamed:
 ```
 do
@@ -138,3 +136,13 @@ The linter checks both locals and the last function parameter of every function 
 The linter checks for duplicate locals in the same or inner scope (even across functions)
 
 The linter allows duplicate variables named `_`, though
+
+# Token counting
+
+You can enable printing the number of tokens in the cart (including percentage):
+
+`python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --lint --count --minify`
+
+E.g may print:
+
+`tokens: 4159 50%`
