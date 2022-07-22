@@ -11,6 +11,8 @@ class Cart:
         m.date = k_latest_date
         m.rom = Memory(k_rom_size)
         m.code = ""
+        m.screenshot = defaultlist(int)
+        m.meta = defaultdict(list)
 
 class WrongFileTypeError(Exception):
     pass
@@ -383,6 +385,13 @@ def read_cart_from_source(data):
         for i in range(0, len(line), 2):
             yield int(line[i] + line[i + 1], 16)
     
+    def ext_nybbles(line):
+        for b in line:
+            if 'v' >= b.lower() >= 'g':
+                yield ord(b.lower()) - ord('g') + 16
+            else:
+                yield int(b, 16)
+    
     header = None
     code = []
     y = 0
@@ -443,6 +452,14 @@ def read_cart_from_source(data):
                 cart.rom.set8(mem_music_addr(y, x), value)
                 x += 1
             y += 1
+
+        elif header == "label" and clean:
+            assert len(clean) == 0x80
+            for b in ext_nybbles(clean):
+                cart.screenshot.append(b)
+
+        elif header and header.startswith("meta:"):
+            cart.meta[header].append(line)
             
         elif header == None and clean.startswith("version "):
             cart.version = int(clean.split()[1])
@@ -462,6 +479,9 @@ def write_cart_to_source(cart):
     
     def bytes(data):
         return "".join('%02x' % b for b in data)
+
+    def ext_nybbles(data):
+        return "".join(('%01x' % b if b < 16 else chr(b - 16 + ord('g'))) for b in data)
     
     lines.append("__lua__")
     lines.append(from_pico_chars(cart.code))
@@ -491,6 +511,15 @@ def write_cart_to_source(cart):
         flags = bytes((sum(((ch >> 7) & 1) << i for i, ch in enumerate(chans)),))
         ids = bytes(ch & 0x7f for ch in chans)
         lines.append(flags + " " + ids)
+    
+    if cart.screenshot:
+        lines.append("__label__")
+        for y in range(128):
+            lines.append(ext_nybbles(cart.screenshot[y*128:(y+1)*128]))
+    
+    for meta, metalines in cart.meta.items():
+        lines.append("__%s__" % meta)
+        lines += metalines
 
     return "\n".join(lines)
         
