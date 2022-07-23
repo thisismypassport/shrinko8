@@ -56,11 +56,11 @@ glob = 123
 ?_ENV[my_key] -- 123
 ```
 
-For advanced usecases, see the "Controlling renaming" section below.
+For more advanced usecases, see the [below section](#advanced---controlling-renaming-of-identifiers).
 
-### Preserving identifiers
+### Preserving identifiers across the entire cart
 
-You can instruct the minifier to preserve certain identifiers:
+You can instruct the minifier to preserve certain identifiers across the entire cart:
 
 `python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --preserve 'my_global_1,my_global_2,*.my_member,my_env.*'`
 
@@ -72,7 +72,7 @@ You can also choose to preserve *all* table members, which allows freely accessi
 
 `python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --preserve '*.*'`
 
-## Controlling renaming of identifiers
+## Advanced - Controlling renaming of identifiers
 
 The `--[[global]]` and `--[[member]]` hints can also be used on identifiers to change the way they're renamed.
 
@@ -110,7 +110,7 @@ for --[[member-keys]]_ENV in all({{x=1,y=5}, {x=2,y=6}}) do
 end
 ```
 
-## Renaming Pico-8 Built-in functions
+## Advanced - Renaming Built-in Pico-8 functions
 
 For cases like tweet-carts where you want really few characters, you can minify the names of built-in pico-8 functions while still using their original name as follows:
 
