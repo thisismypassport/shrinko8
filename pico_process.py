@@ -95,9 +95,18 @@ class PicoComplexSource(PicoSource):
 class VarKind(Enum):
     values = ("local", "global_", "member")
     
-class Local:
+class VarBase():
+    def __init__(m, name):
+        m.name = name
+        m.keys_kind = None
+
+class Local(VarBase):
     def __init__(m, name, scope, implicit):
-        m.name, m.scope, m.implicit = name, scope, implicit
+        super().__init__(name)
+        m.scope, m.implicit = scope, implicit
+
+class Global(VarBase):
+    pass
 
 class Scope:
     def __init__(m, parent=None, depth=0):
@@ -375,6 +384,7 @@ def tokenize(source):
     tokens = []
     errors = []
     next_var_kind = None
+    next_keys_kind = None
     next_func_kind = None
 
     def peek(off=0):
@@ -406,18 +416,19 @@ def tokenize(source):
         if value is None:
             value = text[start:end]
         tokens.append(Token(type, value, source, start, end, vline))
+        add_token_kinds()
 
     def add_error(msg, off=-1):
         errors.append(Error(msg, Token.dummy(source, idx + off)))
 
-    def add_var_kind():
-        nonlocal next_var_kind
+    def add_token_kinds():
+        nonlocal next_var_kind, next_keys_kind, next_func_kind
         if next_var_kind != None:
             tokens[-1].var_kind = next_var_kind
             next_var_kind = None
-        
-    def add_func_kind():
-        nonlocal next_func_kind
+        if next_keys_kind != None:
+            tokens[-1].keys_kind = next_keys_kind
+            next_keys_kind = None
         if next_func_kind != None:
             tokens[-1].func_kind = next_func_kind
             next_func_kind = None
@@ -437,13 +448,19 @@ def tokenize(source):
             add_token(TokenType.comment, orig_idx, value=keep_comment)
 
         elif isblock:
-            nonlocal next_var_kind
-            if comment in ("global", "nameof"):
+            nonlocal next_var_kind, next_keys_kind
+            if comment in ("global", "nameof"): # nameof is deprecated
                 next_var_kind = VarKind.global_
-            elif comment in ("member", "memberof"):
+            elif comment in ("member", "memberof"): # memberof is deprecated
                 next_var_kind = VarKind.member
             elif comment in ("preserve", "string"):
                 next_var_kind = False
+            elif comment == "global-keys":
+                next_keys_kind = VarKind.global_
+            elif comment == "member-keys":
+                next_keys_kind = VarKind.member
+            elif comment in ("preserve-keys", "string-keys"):
+                next_keys_kind = False
 
     def tokenize_line_comment():
         nonlocal vline
@@ -523,10 +540,8 @@ def tokenize(source):
             
         if text[orig_idx:idx] in keywords:
             add_token(TokenType.keyword, orig_idx)
-            add_func_kind()
         else:
             add_token(TokenType.ident, orig_idx)
-            add_var_kind()
 
     def tokenize_string(off):
         nonlocal idx
@@ -549,7 +564,6 @@ def tokenize(source):
                 break
 
         add_token(TokenType.string, orig_idx)
-        add_var_kind()
 
     def tokenize_long_string(off):
         ok, orig_idx, _, _ = tokenize_long_brackets(off)
@@ -693,6 +707,7 @@ def parse(source, tokens, exts=False):
     scope = None
     depth = -1
     errors = []
+    globals = LazyDict(lambda key: Global(key))
 
     tokens = [t for t in tokens if not t.fake]
    
@@ -750,9 +765,13 @@ def parse(source, tokens, exts=False):
                 var = scope.find(name)
             if not var:
                 kind = VarKind.global_
+                var = globals[name]
 
-        effective_kind = getattr(token, "var_kind", kind)
-        return Node(NodeType.var, [token], name=name, kind=kind, effective_kind=effective_kind, var=var, new=bool(newscope))
+        var_kind = getattr(token, "var_kind", None)
+        if var and hasattr(token, "keys_kind"):
+            var.keys_kind = token.keys_kind
+
+        return Node(NodeType.var, [token], name=name, kind=kind, var_kind=var_kind, var=var, new=bool(newscope), scope=scope)
     
     def parse_function(stmt=False, local=False):
         nonlocal scope
@@ -814,6 +833,8 @@ def parse(source, tokens, exts=False):
 
     def parse_table():
         tokens = [peek(-1)]
+        keys_kind = getattr(tokens[0], "keys_kind", None)
+        
         items = []
         while not accept("}", tokens):
             if accept("["):
@@ -841,7 +862,7 @@ def parse(source, tokens, exts=False):
             if not accept(";", tokens):
                 require(",", tokens)
 
-        return Node(NodeType.table, tokens, items=items)
+        return Node(NodeType.table, tokens, items=items, keys_kind=keys_kind)
 
     def parse_call(expr, extra_arg=None):
         tokens = [expr, peek(-1)]
@@ -1207,6 +1228,7 @@ def parse(source, tokens, exts=False):
 
     def parse_root():
         root = parse_block()
+        root.globals = globals
         if peek().type != None:
             add_error("Expected end of input")
         assert scope is None
@@ -1468,6 +1490,59 @@ def obfuscate_tokens(ctxt, root, rules_input):
     local_uses = CounterDictionary()
     scopes = []
 
+    def compute_effective_kind(node, kind, explicit):
+        if kind == VarKind.member:
+            table_name = None
+            
+            if node.parent.type == NodeType.member and node.parent.key == node and node.parent.child.type == NodeType.var:
+                var_node = node.parent.child
+                table_name = var_node.name
+
+                if not explicit and var_node.var and var_node.var.keys_kind != None:
+                    return compute_effective_kind(node, var_node.var.keys_kind, explicit=True)
+
+            elif not explicit and node.parent.type == NodeType.table_member and node.parent.key == node:
+                table_node = node.parent.parent
+                if table_node.keys_kind != None:
+                    return compute_effective_kind(node, table_node.keys_kind, explicit=True)
+
+                if table_node.parent.type in (NodeType.assign, NodeType.local) and table_node in table_node.parent.sources:
+                    assign_i = table_node.parent.sources.index(table_node)
+                    target_node = list_get(table_node.parent.targets, assign_i)
+                    if target_node and target_node.type == NodeType.var and target_node.var and target_node.var.keys_kind != None:
+                        return compute_effective_kind(node, target_node.var.keys_kind, explicit=True)
+            
+            if preserve_members:
+                return None
+            elif node.name in member_knowns:
+                return None
+            elif table_name in known_tables:
+                return None
+            elif table_name == "_ENV":
+                return compute_effective_kind(node, VarKind.global_, explicit=True)
+
+        elif kind == VarKind.global_:
+            if not explicit:
+                env_var = (node.scope and node.scope.find("_ENV")) or root.globals["_ENV"]
+                if env_var.keys_kind != None:
+                    return compute_effective_kind(node, env_var.keys_kind, explicit=True)
+
+            if node.name == "_ENV":
+                return None
+            elif node.name in global_knowns:
+                return None
+            elif node.name in ctxt.globals:
+                global_knowns.add(node.name)
+                return None
+
+        elif kind == VarKind.local:
+            if node.name == "_ENV":
+                return None
+            elif node.var.implicit:
+                return None
+
+        return kind
+
     def collect_idents_pre(node):
         scope = node.start_scope
         if e(scope):
@@ -1476,38 +1551,7 @@ def obfuscate_tokens(ctxt, root, rules_input):
             scopes.append(scope)
             
         if node.type == NodeType.var:
-            while True:
-                if node.effective_kind == VarKind.member:
-                    table_name = None
-                    if node.parent.type == NodeType.member and node.parent.child.type == NodeType.var:
-                        table_name = node.parent.child.name
-                    
-                    if preserve_members:
-                        node.effective_kind = None
-                    elif node.name in member_knowns:
-                        node.effective_kind = None
-                    elif table_name in known_tables:
-                        node.effective_kind = None
-                    elif table_name == "_ENV":
-                        node.effective_kind = VarKind.global_
-                        continue
-
-                elif node.effective_kind == VarKind.global_:
-                    if node.name == "_ENV":
-                        node.effective_kind = None
-                    elif node.name in global_knowns:
-                        node.effective_kind = None
-                    elif node.name in ctxt.globals:
-                        global_knowns.add(node.name)
-                        node.effective_kind = None
-
-                elif node.effective_kind == VarKind.local:
-                    if node.name == "_ENV":
-                        node.effective_kind = None
-                    elif node.var.implicit:
-                        node.effective_kind = None
-
-                break
+            node.effective_kind = compute_effective_kind(node, default(node.var_kind, node.kind), explicit=e(node.var_kind))
             
             if node.effective_kind == VarKind.member:
                 member_uses[node.name] += 1

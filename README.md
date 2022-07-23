@@ -56,17 +56,7 @@ glob = 123
 ?_ENV[my_key] -- 123
 ```
 
-These hints, together with `--[[preserve]]` can also be used on identifiers to change the way they're renamed:
-```
-do
-  local _ENV = {--[[global]]assert=assert}
-  assert(true)
-end
-for _ENV in all({{x=1}, {x=2}}) do
-  --[[member]]x += 1
-end
---[[preserve]]some_future_pico8_api(1,2,3)
-```
+For advanced usecases, see the "Controlling renaming" section below.
 
 ### Preserving identifiers
 
@@ -81,6 +71,44 @@ You can instruct the minifier to preserve certain identifiers:
 You can also choose to preserve *all* table members, which allows freely accessing all tables through strings or through identifiers, if you prefer:
 
 `python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --preserve '*.*'`
+
+## Controlling renaming of identifiers
+
+The `--[[global]]` and `--[[member]]` hints can also be used on identifiers to change the way they're renamed.
+
+In additon, the `--[[preserve]]` hint can prevent identifiers from being renamed at all:
+```
+do
+  local _ENV = {--[[global]]assert=assert}
+  assert(true)
+end
+for _ENV in all({{x=1}, {x=2}}) do
+  --[[member]]x += 1
+end
+--[[preserve]]some_future_pico8_api(1,2,3)
+```
+
+Additionally, you can use `--[[preserve-keys]]`, `--[[global-keys]]` and `--[[member-keys]]` to affect how *all* keys of a table are renamed.
+
+This can be applied on either table constructors (aka `{...}`) or on variables. When applying on variables, the hint affects all members accessed through that variable, as well as any table constructors directly assigned to it.
+```
+local --[[preserve-keys]]my_table = {preserved1=1, preserved2=2}
+my_table.preserved1 += 1 -- all member accesses through my_table are preserved
+?my_table["preserved1"]
+
+-- here, {preserved3=3} is not directly assigned to my_table and so needs its own hint
+my_table = setmetatable(--[[preserve-keys]]{preserved3=3}, my_meta)
+?my_table["preserved3"]
+
+do
+  local _ENV = --[[global-keys]]{assert=assert, add=add}
+  assert(add({}, 1) == 1)
+end
+
+for --[[member-keys]]_ENV in all({{x=1,y=5}, {x=2,y=6}}) do
+  x += y + y*x
+end
+```
 
 ## Renaming Pico-8 Built-in functions
 
