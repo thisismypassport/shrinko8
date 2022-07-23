@@ -2,7 +2,7 @@
 
 pico8 tools (minify, lint, etc.)
 
-Requires a modern verison of [Python](https://www.python.org/) to run.
+Requires [Python](https://www.python.org/) 3.8 or above to run.
 
 [Download the latest version.](https://github.com/thisismypassport/timp_p8_tools/archive/refs/heads/main.zip)
 
