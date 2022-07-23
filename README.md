@@ -78,6 +78,10 @@ You can instruct the minifier to preserve certain identifiers:
 * my_member will not be renamed when used as a table member
 * table members will not be renamed when accessed through my_env
 
+You can also choose to preserve *all* table members, which allows freely accessing all tables through strings or through identifiers, if you prefer:
+
+`python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --preserve '*.*'`
+
 ## Renaming Pico-8 Built-in functions
 
 For cases like tweet-carts where you want really few characters, you can minify the names of built-in pico-8 functions while still using their original name as follows:

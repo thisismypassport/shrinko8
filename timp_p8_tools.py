@@ -3,6 +3,9 @@ from pico_process import read_code, PicoContext, process_code, PicoSource
 from pico_cart import read_cart, write_cart_to_source, write_cart_to_image, from_pico_chars, write_code_sizes
 import argparse
 
+def CommaSep(val):
+    return val.split(",")
+
 parser = argparse.ArgumentParser()
 parser.add_argument("input", help="input file, can be in p8/png/code format")
 parser.add_argument("output", help="output file", nargs='?')
@@ -11,8 +14,8 @@ parser.add_argument("--map", help="log renaming of identifiers to this file")
 parser.add_argument("-l", "--lint", action="store_true", help="enable erroring on lint errors")
 parser.add_argument("-c", "--count", action="store_true", help="enable printing token count, character count & compressed size")
 parser.add_argument("-m", "--minify", action="store_true", help="enable minification")
-parser.add_argument("-p", "--preserve", help="preserve specific identifiers in minification, e.g. 'global1,global2,*.member2,table3.*'")
-parser.add_argument("--no-preserve", help="do not preserve specific built-in identifiers in minification, e.g. 'circfill,rectfill'")
+parser.add_argument("-p", "--preserve", type=CommaSep, action="extend", help="preserve specific identifiers in minification, e.g. 'global1,global2,*.member2,table3.*'")
+parser.add_argument("--no-preserve", type=CommaSep, action="extend", help="do not preserve specific built-in identifiers in minification, e.g. 'circfill,rectfill'")
 parser.add_argument("--input-count", action="store_true", help="enable printing input character count & compressed size, for now just for png format")
 parser.add_argument("--no-lint-unused", action="store_true", help="don't print lint errors on unused variables")
 parser.add_argument("--no-lint-duplicate", action="store_true", help="don't print lint errors on duplicate variables")
@@ -52,15 +55,21 @@ args.obfuscate = bool(args.minify) and not args.no_minify_rename
 if args.obfuscate:
     args.obfuscate = {}
     if args.preserve:
-        args.obfuscate.update({k: False for k in args.preserve.split(",")})
+        args.obfuscate.update({k: False for k in args.preserve})
     if args.no_preserve:
-        args.obfuscate.update({k: True for k in args.no_preserve.split(",")})
+        args.obfuscate.update({k: True for k in args.no_preserve})
 
 cart = read_cart(args.input, print_sizes=args.input_count)
 try:
-    src = read_code(args.input, pp_inline=False) # supports #include (and other stuff), which read_cart currently does not
+    src = read_code(args.input, pp_inline=False, fail=False) # supports #include (and other stuff), which read_cart currently does not
 except UnicodeDecodeError: # hacky png detection
     src = PicoSource(path_basename(args.input), cart.code)
+
+if src.errors:
+    print("Preprocessor errors:")
+    for error in src.errors:
+        print(error)
+    sys.exit(1)
 
 ctxt = PicoContext(srcmap=args.map)
 ok, errors = process_code(ctxt, src, count=args.count, lint=args.lint, minify=args.minify, obfuscate=args.obfuscate, fail=False)

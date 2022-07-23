@@ -43,6 +43,9 @@ def run():
     run_test("minify", "input.p8", "output.p8", "--minify", "--format", "code", 
              "--preserve", "*.preserved_key,preserved_glob,preserving_obj.*",
              "--no-preserve", "circfill,rectfill")
+    run_test("semiobfuscate", "input.p8", "output_semiob.p8", "--minify", "--format", "code", 
+             "--preserve", "*.*", "--preserve", "preserved_glob",
+             "--no-minify-spaces", "--no-minify-lines")
     run_test("test", "test.p8", "test.p8", "--minify")
     #run_test("p82png", "test.p8", "testcvt.png", "--format", "png")
     #run_test("test_png", "test.png", "test.png", "--minify", "--format", "png")

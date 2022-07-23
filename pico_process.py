@@ -61,7 +61,7 @@ keywords = {
 
 class PicoSource:
     def __init__(m, name, text):
-        m.name, m.text = name, text
+        m.name, m.text, m.errors = name, text, []
 
     def get_name_line_col(m, idx):
         start = 0
@@ -218,18 +218,23 @@ define_use_re = re.compile(r"\$\[(\w*)\]")
 define_cond_re = re.compile(r"\$\[(\w+)\[(=*)\[(.*?)\]\2\]\]")
 p8_section_re = re.compile(r"^__\w+__\s*$")
 
-def read_code(filename, defines=None, pp_handler=None, pp_inline=True):
+def read_code(filename, defines=None, pp_handler=None, pp_inline=True, fail=True):
     lines = []
     defines = defines.copy() if defines else {}
     ppstack = []
     ppline = None
     active = True
     mappings = []
+    errors = []
+
+    def add_error(ctxt, error):
+        name, i = ctxt
+        errors.append("%s(%s) - %s" % (name, i, error))
 
     def get_active():
         return ppstack[-1] if ppstack else True
 
-    def get_defined(m):
+    def get_defined(m, ctxt):
         key = m.group(1)
         if not key:
             return "$[" # escape $[ with $[]
@@ -240,9 +245,11 @@ def read_code(filename, defines=None, pp_handler=None, pp_inline=True):
                 pp_result = pp_handler(op="$" + key, args=(), ppline=m.group(), active=True, lines=lines)
                 if isinstance(pp_result, str):
                     return pp_result
-            raise Exception("Undefined: %s" % key)
+            
+            add_error(ctxt, "Undefined: %s" % key)
+            return ""
 
-    def get_conditional(m):
+    def get_conditional(m, ctxt):
         key = m.group(1)
         if key in defines:
             return m.group(3)
@@ -255,6 +262,7 @@ def read_code(filename, defines=None, pp_handler=None, pp_inline=True):
     
     def add_code_line(name, i, line, raw=False):
         nonlocal active, ppline
+        ctxt = (name, i)
 
         if ppline:
             line, ppline = ppline + line, None
@@ -306,14 +314,14 @@ def read_code(filename, defines=None, pp_handler=None, pp_inline=True):
                 active = get_active()
 
             elif not (pp_handler and pp_handler(op=op, args=args, ppline=line, active=active, lines=lines)):
-                raise Exception("Invalid preprocessor line: %s" % line)
+                add_error(ctxt, "Invalid preprocessor line: %s" % line)
 
             mappings.append(Dynamic(line=len(lines), name=name, real_line=i + 1))
 
         elif active:
             if pp_inline: # needs rework, too intrusive
-                line = define_cond_re.sub(get_conditional, line)
-                line = define_use_re.sub(get_defined, line) # put this regex last (handles escape)
+                line = define_cond_re.sub(lambda m: get_conditional(m, ctxt), line)
+                line = define_use_re.sub(lambda m: get_defined(m, ctxt), line) # put this regex last (handles escape)
 
             lines.append(to_pico_chars(line))
 
@@ -342,6 +350,9 @@ def read_code(filename, defines=None, pp_handler=None, pp_inline=True):
     
     root_dir = path_dirname(filename)
     add_code_file(path_basename(filename))
+
+    if fail and errors:
+        raise Exception("\n".join(errors))
 
     text = "".join(lines)
     return PicoComplexSource(path_basename(filename), text, mappings)
@@ -1401,18 +1412,23 @@ def obfuscate_tokens(ctxt, root, rules_input):
     global_knowns = global_callbacks.copy()
     member_knowns = member_strings.copy()
     known_tables = set()
+    preserve_members = False
 
     if isinstance(rules_input, dict):
         for key, value in rules_input.items():
             if value == False:
-                if key.endswith(".*"):
+                if key == "*.*":
+                    preserve_members = True
+                elif key.endswith(".*"):
                     known_tables.add(key[:-2])
                 elif key.startswith("*."):
                     member_knowns.add(key[2:])
                 else:
                     global_knowns.add(key)
             elif value == True:
-                if key.endswith(".*"):
+                if key == "*.*":
+                    preserve_members = False
+                elif key.endswith(".*"):
                     known_tables.discard(key[:-2])
                 elif key.startswith("*."):
                     member_knowns.discard(key[2:])
@@ -1466,7 +1482,9 @@ def obfuscate_tokens(ctxt, root, rules_input):
                     if node.parent.type == NodeType.member and node.parent.child.type == NodeType.var:
                         table_name = node.parent.child.name
                     
-                    if node.name in member_knowns:
+                    if preserve_members:
+                        node.effective_kind = None
+                    elif node.name in member_knowns:
                         node.effective_kind = None
                     elif table_name in known_tables:
                         node.effective_kind = None
@@ -1810,7 +1828,7 @@ def minify_code(source, tokens, root, minify):
             if token.type == TokenType.comment:
                 output.append("--%s\n" % token.value)
             else:
-                output.append(source.text[token.idx:token.endidx])
+                output.append(token.value)
                 
             prev_token = token
 
