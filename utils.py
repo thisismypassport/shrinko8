@@ -1836,17 +1836,17 @@ def file_open(path):
     """Open a binary file for reading"""
     return open(path, "rb")
 
-def file_open_text(path, encoding = "utf-8"):
+def file_open_text(path, encoding = "utf-8", errors = None, newline = None):
     """Open a text file for reading"""
-    return open(path, "r", encoding=encoding)
+    return open(path, "r", encoding=encoding, errors=errors, newline=newline)
 
 def file_create(path):
     """Create or replace a binary file for writing"""
     return open(path, "wb")
 
-def file_create_text(path, encoding = "utf-8"):
+def file_create_text(path, encoding = "utf-8", errors = None, newline = "\n"):
     """Create or replace a text file for writing"""
-    return open(path, "w", encoding=encoding)
+    return open(path, "w", encoding=encoding, errors=errors, newline=newline)
 
 def file_read(path, offset = 0, size = None):
     """Read all data from a binary file (or optionally, a subset of data)"""
@@ -1858,9 +1858,9 @@ def file_read(path, offset = 0, size = None):
         else:
             return f.read()
         
-def file_read_text(path, encoding = "utf-8"):
+def file_read_text(path, encoding = "utf-8", errors = None, newline = None):
     """Read all text from a text file"""
-    with file_open_text(path, encoding) as f:
+    with file_open_text(path, encoding, errors, newline) as f:
         return f.read()
 
 def file_read_json(path):
@@ -1873,9 +1873,9 @@ def file_write(path, value):
     with file_create(path) as f:
         f.write(value)
         
-def file_write_text(path, value, encoding = "utf-8"):
+def file_write_text(path, value, encoding = "utf-8", errors = None, newline = "\n"):
     """Create or replace a text file, writing 'value' into it"""
-    with file_create_text(path, encoding) as f:
+    with file_create_text(path, encoding, errors, newline) as f:
         f.write(value)
 
 def file_write_json(path, value):
@@ -1890,10 +1890,10 @@ def try_file_read(path, defval = None):
     except Exception:
         return defval
 
-def try_file_read_text(path, defval = None, encoding = "utf-8"):
+def try_file_read_text(path, defval = None, encoding = "utf-8", errors = None, newline = None):
     """Try reading all text from a text file, or return 'defval' on any error"""
     try:
-        return file_read_text(path, encoding)
+        return file_read_text(path, encoding, errors, newline)
     except Exception:
         return defval
 
@@ -1912,10 +1912,10 @@ def try_file_write(path, value):
     except Exception:
         return False
 
-def try_file_write_text(path, value, encoding = "utf-8"):
+def try_file_write_text(path, value, encoding = "utf-8", errors = None, newline = "\n"):
     """Try creating or replacing a text file, writing 'value' into it. Return if succeeded"""
     try:
-        file_write_text(path, value, encoding)
+        file_write_text(path, value, encoding, errors, newline)
         return True
     except Exception:
         return False

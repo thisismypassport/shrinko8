@@ -4,6 +4,11 @@ from unittest.mock import patch
 code_file = "timp_p8_tools.py"
 code = file_read_text(code_file)
 measure_all = "--measure" in sys.argv[1:]
+status = 0
+
+def fail_test():
+    global status
+    status = 1
 
 def run_code(*args):
     try:
@@ -34,6 +39,7 @@ def run_test(name, input, output, *args, private=False):
         print("ERROR - test %s failed" % name)
         measure("new", outpath)
         measure("old", cmppath)
+        fail_test()
     elif measure_all and "--minify" in args:
         print("Measuring %s" % name)
         measure("out", outpath)
@@ -56,8 +62,10 @@ if __name__ == "__main__":
     run()
 
     try:
-        from private_run_tests import run
-        run()
+        from private_run_tests import run as private_run
+        private_run()
     except ImportError:
         pass
+    
     print("All done")
+    sys.exit(status)
