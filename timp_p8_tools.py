@@ -31,13 +31,17 @@ def fail(msg):
     print(msg)
     sys.exit(1)
 
-if not args.lint and not args.count and not args.minify and not args.format and not args.input_count:
-    fail("No operation (--lint/--count/--minify/--format) specified")
+if not args.lint and not args.count and not args.output and not args.input_count:
+    fail("No operation (--lint/--count) or output file specified")
 if args.format and not args.output:
     fail("Output should be specified under --format")
 if args.minify and not args.output and not args.count:
     fail("Output (or --count) should be specified under --minify")
-args.format = args.format or "p8"
+    
+if not args.format and args.output:
+    args.format = path_extension(args.output)[1:].lower()
+    if args.format not in ("p8", "png"):
+        args.format = "p8"
 
 if args.lint:
     args.lint = {

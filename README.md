@@ -26,7 +26,7 @@ If you just want the lua source without the rest of the baggage (except the `__l
 
 If you want to create a png cart:
 
-`python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --format png`
+`python timp_p8_tools.py path-to-input.p8 path-to-output.png --minify`
 
 This tool often compresses a bit better than Pico-8. (caveat - if your *code* contains pre-compressed strings, this tool will currently give worse compression)
 
@@ -235,8 +235,13 @@ You can combine counting with other operations, in which case the counts are of 
 
 # Format Conversion
 
-By specifying `--format <p8/code/png>` you can control the format of the output cart, e.g:
+This tool supports both p8 and png cart formats, and allows converting between them, e.g:
+```
+python timp_p8_tools.py path-to-input.p8 path-to-output.png
+python timp_p8_tools.py path-to-input.png path-to-output.p8
+```
 
-`python timp_p8_tools.py path-to-input.p8 path-to-output.png --format png`
+You can also specify the output format explicitly via `--format <p8/code/png>` (by default, it looks at the extension)
 
-This allows converting png carts to p8 carts, and p8 carts to png carts - potentially in tandem with other operations.
+You can combine conversion with other operations:
+`python timp_p8_tools.py path-to-input.p8 path-to-output.png --count --lint --minify`

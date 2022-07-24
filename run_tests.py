@@ -59,11 +59,11 @@ def run():
              "--preserve", "*.*", "--preserve", "preserved_glob",
              "--no-minify-spaces", "--no-minify-lines")
     run_test("test", "test.p8", "test.p8", "--minify")
-    run_test("p82png", "test.p8", "testcvt.png", "--format", "png")
-    run_test("test_png", "test.png", "test.png", "--minify", "--format", "png")
-    run_test("png2p8", "test.png", "testcvt.p8", "--format", "p8")
-    if run_test("compress", "test.p8", "testtmp.png", "--format", "png", "--force-compression", to_temp=True):
-        run_test("compress_check", "testtmp.png", "test_post_compress.p8", "--format", "p8", from_temp=True)
+    run_test("p82png", "test.p8", "testcvt.png")
+    run_test("test_png", "test.png", "test.png", "--minify")
+    run_test("png2p8", "test.png", "testcvt.p8")
+    if run_test("compress", "test.p8", "testtmp.png", "--force-compression", to_temp=True):
+        run_test("compress_check", "testtmp.png", "test_post_compress.p8", from_temp=True)
 
 if __name__ == "__main__":
     os.makedirs("test_output", exist_ok=True)
