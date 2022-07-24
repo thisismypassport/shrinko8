@@ -8,7 +8,9 @@ The supported tools are:
 
 Requires [Python](https://www.python.org/) 3.8 or above to run.
 
-[Download the latest version.](https://github.com/thisismypassport/timp_p8_tools/archive/refs/heads/main.zip)
+Reading/Writing PNGs additionally requires the Pillow module (`python -m pip install pillow` to install)
+
+[Download the latest version here.](https://github.com/thisismypassport/timp_p8_tools/archive/refs/heads/main.zip)
 
 # Minification
 
