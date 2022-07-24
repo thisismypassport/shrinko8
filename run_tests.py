@@ -1,10 +1,16 @@
 from utils import *
 from unittest.mock import patch
+import argparse
 
 code_file = "timp_p8_tools.py"
 code = file_read_text(code_file)
-measure_all = "--measure" in sys.argv[1:]
 status = 0
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--measure", action="store_true")
+parser.add_argument("--test", action="append")
+parser.add_argument("--no-private", action="store_true")
+opts = parser.parse_args()
 
 def fail_test():
     global status
@@ -23,13 +29,16 @@ def run_code(*args):
         return False
 
 def measure(kind, path, input=False):
-    print("\nMeasuring %s..." % kind)
+    print("Measuring %s..." % kind)
     if path_exists(path):
         run_code(path, "--input-count" if input else "--count")
     else:
         print("MISSING!")
 
 def run_test(name, input, output, *args, private=False, from_temp=False, to_temp=False):
+    if opts.test and name not in opts.test:
+        return None
+
     prefix = "private_" if private else ""
     inpath = path_join(prefix + ("test_temp" if from_temp else "test_input"), input)
     outpath = path_join(prefix + ("test_temp" if to_temp else "test_output"), output)
@@ -40,15 +49,17 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
         success = try_file_read(outpath) == try_file_read(cmppath)
 
     if not success:
-        print("ERROR - test %s failed" % name)
+        print("\nERROR - test %s failed" % name)
         measure("new", outpath)
         measure("old", cmppath)
         fail_test()
         return False
-    elif measure_all and "--minify" in args:
-        print("Measuring %s" % name)
-        measure("out", outpath)
+    elif opts.measure:
+        print("\nMeasuring %s" % name)
         measure("in", inpath, input=True)
+        measure("out", outpath)
+    else:
+        print("\nTest %s succeeded" % name)
     return True
 
 def run():
@@ -64,17 +75,19 @@ def run():
     run_test("png2p8", "test.png", "testcvt.p8")
     if run_test("compress", "test.p8", "testtmp.png", "--force-compression", to_temp=True):
         run_test("compress_check", "testtmp.png", "test_post_compress.p8", from_temp=True)
+    run_test("genend", "genend.p8.png", "genend.p8")
 
 if __name__ == "__main__":
     os.makedirs("test_output", exist_ok=True)
     os.makedirs("test_temp", exist_ok=True)
     run()
 
-    try:
-        from private_run_tests import run as private_run
-        private_run()
-    except ImportError:
-        pass
+    if not opts.no_private:
+        try:
+            from private_run_tests import run as private_run
+            private_run()
+        except ImportError:
+            pass
     
-    print("All done")
+    print("\nAll done")
     sys.exit(status)

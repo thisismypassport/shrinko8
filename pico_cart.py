@@ -48,6 +48,11 @@ k_inv_code_table = {ch: i for i, ch in enumerate(k_code_table)}
 k_compressed_code_header = b":c:\0"
 k_new_compressed_code_header = b"\0pxa"
 
+def update_mtf(mtf, idx, ch):
+    for ii in range(idx, 0, -1):
+        mtf[ii] = mtf[ii - 1]
+    mtf[0] = ch
+
 def read_code(r, print_sizes=False):
     start_pos = r.pos()
     header = r.bytes(4)
@@ -59,7 +64,7 @@ def read_code(r, print_sizes=False):
         if print_sizes:
             print_compressed_size(com_size, "input ")
         
-        table = [chr(i) for i in range(256)]
+        mtf = [chr(i) for i in range(0x100)]
         br = BinaryBitReader(r.f)
         
         code = []
@@ -71,19 +76,17 @@ def read_code(r, print_sizes=False):
                     extra += 1
                 idx = br.bits(4 + extra) + make_mask(4, extra)
                 
-                #print(len(code), ord(table[idx]), br.bit_position - last_bit_pos)
-                code.append(table[idx])
+                #print(len(code), ord(mtf[idx]), br.bit_position - last_bit_pos)
+                code.append(mtf[idx])
                 
-                for i in range(idx, 0, -1):
-                    table[i] = table[i - 1]
-                table[0] = code[-1]
+                update_mtf(mtf, idx, code[-1])
             else:
                 offlen = (5 if br.bit() else 10) if br.bit() else 15                
                 offset = br.bits(offlen) + 1
 
                 if offset == 1 and offlen != 5:
                     assert offlen == 10
-                    while len(code) < unc_size: # or True?
+                    while True:
                         ch = br.bits(8)
                         if ch != 0:
                             code.append(chr(ch))
@@ -289,11 +292,6 @@ def write_code(w, code, print_sizes=True, force_compress=False, fail_on_error=Tr
             bw = BinaryBitWriter(w.f)
             mtf = [chr(i) for i in range(0x100)]
 
-            def update_mtf(mtf, idx, ch):
-                for ii in range(idx, 0, -1):
-                    mtf[ii] = mtf[ii - 1]
-                mtf[0] = ch
-            
             def measure(items):
                 if isinstance(items, Lz77Tuple):
                     offset_bits = max(round_up(count_significant_bits(items.off), 5), 5)
@@ -639,7 +637,7 @@ def write_cart_to_source(cart):
         return "".join(('%01x' % b if b < 16 else chr(b - 16 + ord('g'))) for b in data)
     
     lines.append("__lua__")
-    lines.append(from_pico_chars(cart.code))
+    lines.append(str_remove_suffix(from_pico_chars(cart.code), "\n"))
 
     lines.append("__gfx__")
     for y in range(128):
