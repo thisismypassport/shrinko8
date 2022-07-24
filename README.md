@@ -4,7 +4,7 @@ The supported tools are:
 * [Minification](#minification) - Reduce the character count and compression ratio of your cart.
 * [Linting](#linting) - Check for common code errors such as forgetting to declare a local.
 * [Getting Cart Size](#getting-cart-size) - Count the amount of tokens, characters, and compressed bytes your cart uses.
-* [Format Conversion](#format-conversion) - Convert between p8 and png files, often with slightly better compression than Pico-8's.
+* [Format Conversion](#format-conversion) - Convert between p8 and png files, often with slightly better code compression than Pico-8's.
 
 Requires [Python](https://www.python.org/) 3.7 or above to run.
 
@@ -30,7 +30,7 @@ If you want to create a png cart:
 
 `python timp_p8_tools.py path-to-input.p8 path-to-output.png --minify`
 
-This tool often compresses a bit better than Pico-8. (caveat - if your *code* contains pre-compressed strings, this tool will currently give worse compression)
+This tool often compresses code a bit better than Pico-8. (caveat - if your *code* contains pre-compressed strings, this tool will currently give worse compression)
 
 ## Automatic renaming of identifiers
 
@@ -229,7 +229,7 @@ chars: 30320 46%
 compressed: 12176 77%
 ```
 
-Note that the compressed size is how *this* tool would compress this cart, which is often a bit better than how Pico-8 would.
+Note that the compressed size is how *this* tool would compress the code, which is often a bit better than how Pico-8 would.
 
 You can combine counting with other operations, in which case the counts are of the output cart, not the input cart:
 
