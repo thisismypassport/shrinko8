@@ -23,6 +23,15 @@ class Cart:
                     title.append(line[2:].strip())
         return title
 
+    def set_title(m, title):
+        m.meta["title"] = title
+
+    def set_code(m, code):
+        title = m.get_title()
+        m.code = code
+        if title != m.get_title():
+            m.set_title(title)
+
 class WrongFileTypeError(Exception):
     pass
 
@@ -152,42 +161,40 @@ def read_cart_from_rom(buffer, **opts):
 class Lz77Tuple(Tuple):
     fields = ("off", "cnt")
 
-def get_lz77(code, prev_code=None, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=None):
+def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=None, max_o_steps=None):
     min_matches = defaultdict(list)
 
-    if prev_code:
-        for i in range(len(prev_code) - min_c + 1):
-            min_matches[prev_code[i:i+min_c]].append(i - len(prev_code))
-
-    def get_match_length(left, left_i, right, right_i):
-        c = 0
+    def get_match_length(left, left_i, right, right_i, min_c):
+        c = min_c
         limit = min(len(left) - left_i, len(right) - right_i)
-        while left[left_i + c] == right[right_i + c]:
+        while c < limit and left[left_i + c] == right[right_i + c]:
             c += 1
-            if c >= limit:
-                break
         return c
 
-    def find_match(i):
-        best_c = -1
-        best_j = -1
+    def find_match(i, max_o=max_o):
+        best_c, best_j = -1, -1
         for j in min_matches[code[i:i+min_c]]:
             if e(max_o) and j < i - max_o:
                 continue
 
-            if j < 0:
-                c = get_match_length(code, i, prev_code, j + len(prev_code))
+            if best_c >= 0:
+                if code[i:i+best_c] == code[j:j+best_c]: # some speed-up, esp. for cpython
+                    c = get_match_length(code, i, code, j, best_c)
+                else:
+                    continue
             else:
-                c = get_match_length(code, i, code, j)
+                c = get_match_length(code, i, code, j, min_c)
 
             if e(max_c):
                 c = min(c, max_c)
 
             if c > best_c and c >= min_c or c == best_c and j > best_j:
-                best_c = c
-                best_j = j
+                best_c, best_j = c, j
         
         return best_c, best_j
+
+    def mktuple(i, j, count):
+        return Lz77Tuple(i - j - 1, count - min_c)
 
     i = 0
     prev_i = 0
@@ -195,38 +202,56 @@ def get_lz77(code, prev_code=None, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_
         best_c, best_j = find_match(i)
 
         if best_c >= 0 and measure and best_c <= measure_c:
-            lz_cost = measure(Lz77Tuple(i - best_j - 1, best_c - min_c))
+            lz_cost = measure(mktuple(i, best_j, best_c))
             ch_cost = measure(code[i:i+best_c])
             if ch_cost < lz_cost:
                 best_c = -1
 
-        if best_c >= 0 and i + 1 < len(code):
+        if best_c >= 0:
             best_cp1, best_jp1 = find_match(i+1)
             if measure and best_cp1 in (best_c, best_c - 1):
-                lz_cost = measure(Lz77Tuple(i - best_j - 1, best_c - min_c)) + (measure(code[best_j:best_j+1]) if best_cp1 == best_c else 0)
-                p1_cost = measure(code[i:i+1]) + measure(Lz77Tuple(i - best_jp1, best_cp1 - min_c))
-                #print(p1_cost, "vs.", lz_cost)
+                lz_cost = measure(mktuple(i, best_j, best_c)) + (measure(code[best_j:best_j+1]) if best_cp1 == best_c else 0)
+                p1_cost = measure(code[i:i+1]) + measure(mktuple(i, best_jp1, best_cp1))
                 if p1_cost < lz_cost:
                     best_c = -1
 
-            """if measure:
+            # this one is too specific...
+            if measure and best_c >= 0:
                 best_cp2, best_jp2 = find_match(i+2)
-                if best_cp2 > best_cp1 + 1 and best_cp2 > best_c + 1:
-                    lz_cost = 
-                    p2_cost = measure(code[i:i+2]) + measure(Lz77Tuple(i - best_jp2))
+                if best_cp2 == best_c:
+                    lz_cost = measure(Lz77Tuple(i - best_j - 1, best_c - min_c)) + measure(code[best_j:best_j+2])
+                    p2_cost = measure(code[i:i+2]) + measure(Lz77Tuple(i - best_jp2, best_cp2 - min_c))
+                    if p2_cost < lz_cost:
+                        best_c = -1
+                else:
+                    best_cp2 = -1
 
-                    yield code[i]
-                    yield code[i+1]
-                    i += 2
-                    best_c, best_j = best_cp2, best_jp2"""
+                if best_cp2 > best_cp1:
+                    best_cp1 = best_cp2
 
             if best_cp1 > best_c:
                 yield code[i]
                 i += 1
-                best_c, best_j = best_cp1, best_jp1
+                continue
+
+            if measure and max_o_steps:
+                for step in max_o_steps:
+                    if i - best_j <= step:
+                        break
+
+                    best_cs, best_js = find_match(i, max_o=step)
+                    if best_cs >= 0:
+                        best_cs2, best_js2 = find_match(i + best_cs)
+                        best_c2, best_j2 = find_match(i + best_c)
+                        if best_cs + best_cs2 >= best_c + best_c2 and best_c2 >= 0:
+                            lz_cost = measure(mktuple(i, best_j, best_c)) + measure(mktuple(i + best_c, best_j2, best_c2))
+                            s2_cost = measure(mktuple(i, best_js, best_cs)) + measure(mktuple(i + best_cs, best_js2, best_cs2))
+                            if s2_cost < lz_cost:
+                                best_c, best_j = best_cs, best_js
+                                break
 
         if best_c >= 0:
-            yield Lz77Tuple(i - best_j - 1, best_c - min_c)
+            yield mktuple(i, best_j, best_c)
             i += best_c
         else:
             yield code[i]
@@ -288,8 +313,9 @@ def write_code(w, code, print_sizes=True, force_compress=False, fail_on_error=Tr
                     return count
 
             measure_c = 3
+            max_o_steps = (0x20, 0x400)
         else:
-            measure = measure_c = None
+            measure = measure_c = max_o_steps = None
 
         def write_match(offset_val, count_val):
             if k_new:
@@ -341,8 +367,8 @@ def write_code(w, code, print_sizes=True, force_compress=False, fail_on_error=Tr
                     w.u8(ord(ch))
 
         #dbg_size = 0
-        for item in get_lz77(code, max_c=None if k_new else 0x11, max_o=0x7fff if k_new else 0xc3f, measure=measure, measure_c=measure_c):
-            last_bit_pos = bw.bit_position
+        for item in get_lz77(code, max_c=None if k_new else 0x11, max_o=0x7fff if k_new else 0xc3f, measure=measure, measure_c=measure_c, max_o_steps=max_o_steps):
+            #last_bit_pos = bw.bit_position
             if isinstance(item, Lz77Tuple):
                 write_match(item.off, item.cnt)
                 #print(dbg_size, "%s:%s" % (item.off, item.cnt), bw.bit_position - last_bit_pos)
@@ -393,6 +419,8 @@ k_screenshot_rect = Rect(0, 0, 128, 128)
 k_screenshot_offset = Point(16, 24)
 k_title_offset = Point(18, 167)
 
+k_palette_map_6bpp = {Color(c.r & ~3, c.g & ~3, c.b & ~3, c.a & ~3): i for c, i in k_palette_map.items()}
+
 def load_cart_image(f):
     r = BinaryReader(f)
     if r.bytes(8) != b"\x89PNG\r\n\x1a\n":
@@ -410,15 +438,25 @@ def read_cart_from_image(f, **opts):
     width, height = image.size
 
     data = bytearray()
+    screenshot = MultidimArray(k_screenshot_rect.size, 0)
     image.lock()
+
     for y in range(height):
         for x in range(width):
             r, g, b, a = image.get_at((x,y))
             byte = ((b & 3) << 0) | ((g & 3) << 2) | ((r & 3) << 4) | ((a & 3) << 6)
             data.append(byte)
+
+    for y in range(k_screenshot_rect.h):
+        for x in range(k_screenshot_rect.w):
+            r, g, b, a = image.get_at(Point(x, y) + k_screenshot_offset)
+            screenshot[x, y] = k_palette_map_6bpp.get((r & ~3, g & ~3, b & ~3, a & ~3), 0)
+
     image.unlock()
 
-    return read_cart_raw(BytesIO(data), **opts)
+    cart = read_cart_raw(BytesIO(data), **opts)
+    cart.screenshot = screenshot
+    return cart
     
 def write_cart_to_image(f, cart, res_path, screenshot_path=None, title=None, **opts):
     output = write_cart_to_rom(cart, **opts)
