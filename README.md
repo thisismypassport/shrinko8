@@ -3,8 +3,8 @@
 The supported tools are:
 * [Minification](#minification) - Reduce the character count and compression ratio of your cart.
 * [Linting](#linting) - Check for common code errors such as forgetting to declare a local.
-* [Cart Size in Tokens/Chars/Bytes](#counting-tokens-chars-bytes) - Count the amount of tokens, characters, and compressed bytes your cart uses.
-* [Format Conversion](#format-convertion) - Convert between p8 and png files, often with slightly better compression than Pico-8.
+* [Getting Cart Size](#getting-cart-size) - Count the amount of tokens, characters, and compressed bytes your cart uses.
+* [Format Conversion](#format-conversion) - Convert between p8 and png files, often with slightly better compression than Pico-8.
 
 Requires [Python](https://www.python.org/) 3.8 or above to run.
 
@@ -213,7 +213,7 @@ The linter checks for duplicate locals in the same or inner scope (even across f
 
 The linter allows duplicate variables named `_`, though
 
-# Counting Tokens/Chars/Bytes
+# Getting Cart Size
 
 You can enable printing the number of tokens, characters, and compressed bytes used by the code in the cart (including percentages):
 
