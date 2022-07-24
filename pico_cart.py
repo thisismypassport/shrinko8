@@ -261,11 +261,16 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
             min_matches[code[j:j+min_c]].append(j)
         prev_i = i
 
+def print_size(name, size, limit):
+    percent = size / limit * 100
+    fmt = "%.2f%%" if percent >= 95 else "%.0f%%"
+    print(name, size, fmt % percent)
+
 def print_code_size(size, prefix=""):
-    print(prefix + "chars:", size, str(int(size / 0xffff * 100)) + "%")
+    print_size(prefix + "chars:", size, 0xffff)
 
 def print_compressed_size(size, prefix=""):
-    print(prefix + "compressed:", size, str(int(size / k_code_size * 100)) + "%")
+    print_size(prefix + "compressed:", size, k_code_size)
 
 def write_code(w, code, print_sizes=True, force_compress=False, fail_on_error=True):
     k_new = True
@@ -386,8 +391,8 @@ def write_code(w, code, print_sizes=True, force_compress=False, fail_on_error=Tr
             print_compressed_size(size)
         
         if fail_on_error:
-            assert len(code) < 0x10000
-            assert w.pos() <= k_memory_size
+            assert len(code) < 0x10000, "cart has too many characters!"
+            assert w.pos() <= k_memory_size, "cart takes too much compressed space!"
         
         if k_new:   
             w.setpos(len_pos)

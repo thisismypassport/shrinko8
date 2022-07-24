@@ -1,5 +1,6 @@
 from utils import *
 from pico_defs import to_pico_chars, from_pico_chars
+from pico_cart import print_size
 
 main_globals = {
     "abs", "add", "all", "assert", "atan2", "btn", "btnp",
@@ -639,9 +640,7 @@ class NodeType(Enum):
     values = ("var", "index", "member", "const", "group", "unary_op", "binary_op", "call",
               "table", "table_index", "table_member", "varargs", "assign", "op_assign",
               "local", "function", "if_", "elseif", "else_", "while_", "repeat", "until",
-              "for_", "for_in", "return_", "break_", "goto", "label", "print", "block", "do",
-              # ext-only:
-              "explicit_varargs")
+              "for_", "for_in", "return_", "break_", "goto", "label", "print", "block", "do")
 
 class Node(TokenNodeBase):
     def __init__(m, type, children, **kwargs):
@@ -702,7 +701,7 @@ k_right_binary_ops = {
 
 k_block_ends = ("end", "else", "elseif", "until")
 
-def parse(source, tokens, exts=False):
+def parse(source, tokens):
     idx = 0
     scope = None
     depth = -1
@@ -955,8 +954,6 @@ def parse(source, tokens, exts=False):
             elif value in k_binary_op_precs and compare_prec(value, prec):
                 other = parse_expr(k_binary_op_precs[value])
                 expr = Node(NodeType.binary_op, [expr, token, other], left=expr, right=other, op=value)
-            elif value == "..." and exts:
-                return Node(NodeType.explicit_varargs, [expr, token], child=expr)
             else:
                 idx -= 1
                 return expr
@@ -1881,7 +1878,7 @@ def minify_code(source, tokens, root, minify):
     return "".join(output)
 
 def print_token_count(num_tokens, prefix=""):
-    print(prefix + "tokens:", num_tokens, str(int(num_tokens / 8192 * 100)) + "%")
+    print_size(prefix + "tokens:", num_tokens, 8192)
 
 def process_code(ctxt, source, count=False, lint=False, minify=False, obfuscate=False, fail=True):
     need_count = count not in (None, False)
