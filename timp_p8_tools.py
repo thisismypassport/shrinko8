@@ -6,6 +6,8 @@ import argparse
 def CommaSep(val):
     return val.split(",")
 
+extend_arg = "extend" if sys.version_info >= (3,8) else None
+
 parser = argparse.ArgumentParser()
 parser.add_argument("input", help="input file, can be in p8/png/code format")
 parser.add_argument("output", help="output file", nargs='?')
@@ -14,8 +16,8 @@ parser.add_argument("--map", help="log renaming of identifiers to this file")
 parser.add_argument("-l", "--lint", action="store_true", help="enable erroring on lint errors")
 parser.add_argument("-c", "--count", action="store_true", help="enable printing token count, character count & compressed size")
 parser.add_argument("-m", "--minify", action="store_true", help="enable minification")
-parser.add_argument("-p", "--preserve", type=CommaSep, action="extend", help="preserve specific identifiers in minification, e.g. 'global1,global2,*.member2,table3.*'")
-parser.add_argument("--no-preserve", type=CommaSep, action="extend", help="do not preserve specific built-in identifiers in minification, e.g. 'circfill,rectfill'")
+parser.add_argument("-p", "--preserve", type=CommaSep, action=extend_arg, help="preserve specific identifiers in minification, e.g. 'global1,global2,*.member2,table3.*'")
+parser.add_argument("--no-preserve", type=CommaSep, action=extend_arg, help="do not preserve specific built-in identifiers in minification, e.g. 'circfill,rectfill'")
 parser.add_argument("--input-count", action="store_true", help="enable printing input character count & compressed size, for now just for png format")
 parser.add_argument("--no-lint-unused", action="store_true", help="don't print lint errors on unused variables")
 parser.add_argument("--no-lint-duplicate", action="store_true", help="don't print lint errors on duplicate variables")

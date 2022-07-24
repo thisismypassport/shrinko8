@@ -6,7 +6,7 @@ The supported tools are:
 * [Getting Cart Size](#getting-cart-size) - Count the amount of tokens, characters, and compressed bytes your cart uses.
 * [Format Conversion](#format-conversion) - Convert between p8 and png files, often with slightly better compression than Pico-8's.
 
-Requires [Python](https://www.python.org/) 3.8 or above to run.
+Requires [Python](https://www.python.org/) 3.7 or above to run.
 
 Reading/Writing PNGs additionally requires the Pillow module (`python -m pip install pillow` to install)
 
