@@ -1,6 +1,10 @@
 # timp_p8_tools
 
-pico8 tools (minify, lint, etc.)
+The supported tools are:
+* [Minification](#minification) - Reduce the character count and compression ratio of your cart.
+* [Linting](#linting) - Check for common code errors such as forgetting to declare a local.
+* [Cart Size in Tokens/Chars/Bytes](#counting-tokens-chars-bytes) - Count the amount of tokens, characters, and compressed bytes your cart uses.
+* [Format Conversion](#format-convertion) - Convert between p8 and png files, often with slightly better compression than Pico-8.
 
 Requires [Python](https://www.python.org/) 3.8 or above to run.
 
@@ -10,7 +14,7 @@ Requires [Python](https://www.python.org/) 3.8 or above to run.
 
 Greatly reduces the character count of your cart, as well as greatly improves its compression ratio (so that its compressed size is smaller).
 
-Note: it doesn't affect token count.
+Note: it doesn't affect token count. (Might be added in the future)
 
 ## To minify your p8 cart:
 
@@ -19,6 +23,12 @@ Note: it doesn't affect token count.
 If you just want the lua source without the rest of the baggage (except the `__lua__` header line):
 
 `python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --format code`
+
+If you want to create a png cart:
+
+`python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --format png`
+
+This tool often compresses a bit better than Pico-8. (caveat - if your *code* contains pre-compressed strings, this tool will currently give worse compression)
 
 ## Automatic renaming of identifiers
 
@@ -155,7 +165,7 @@ Linting finds common code issues in your cart, like forgetting to use a 'local' 
 
 `python timp_p8_tools.py path-to-input.p8 --lint`
 
-You can combine linting with other options:
+You can combine linting with other operations:
 
 `python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --lint --count --minify`
 
@@ -203,12 +213,30 @@ The linter checks for duplicate locals in the same or inner scope (even across f
 
 The linter allows duplicate variables named `_`, though
 
-# Token counting
+# Counting Tokens/Chars/Bytes
 
-You can enable printing the number of tokens in the cart (including percentage):
+You can enable printing the number of tokens, characters, and compressed bytes used by the code in the cart (including percentages):
 
-`python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --lint --count --minify`
+`python timp_p8_tools.py path-to-input.p8 --count`
 
 E.g may print:
 
-`tokens: 4159 50%`
+```
+tokens: 8053 98%
+chars: 30320 46%
+compressed: 12176 77%
+```
+
+Note that the compressed size is how this tool would compress this cart, which is often a bit better than Pico-8.
+
+You can combine counting with other operations, in which case the counts are of the output cart, not the input cart:
+
+`python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --lint --count --minify`
+
+# Format Conversion
+
+By specifying `--format <p8/code/png>` you can control the format of the output cart, e.g:
+
+`python timp_p8_tools.py path-to-input.p8 path-to-output.png --format png`
+
+This allows converting png carts to p8 carts, and p8 carts to png carts - potentially in tandem with other operations.

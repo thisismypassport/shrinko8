@@ -9,7 +9,7 @@ def CommaSep(val):
 parser = argparse.ArgumentParser()
 parser.add_argument("input", help="input file, can be in p8/png/code format")
 parser.add_argument("output", help="output file", nargs='?')
-parser.add_argument("-f", "--format", choices=["p8", "code"], help="output format")
+parser.add_argument("-f", "--format", choices=["p8", "png", "code"], help="output format")
 parser.add_argument("--map", help="log renaming of identifiers to this file")
 parser.add_argument("-l", "--lint", action="store_true", help="enable erroring on lint errors")
 parser.add_argument("-c", "--count", action="store_true", help="enable printing token count, character count & compressed size")
@@ -24,6 +24,7 @@ parser.add_argument("--no-lint-fail", action="store_true", help="don't fail imme
 parser.add_argument("--no-minify-rename", action="store_true", help="disable variable renaming in minification")
 parser.add_argument("--no-minify-spaces", action="store_true", help="disable space removal in minification")
 parser.add_argument("--no-minify-lines", action="store_true", help="disable line removal in minification")
+parser.add_argument("--force-compression", action="store_true", help="force code compression even if code fits")
 args = parser.parse_args()
 
 def fail(msg):
@@ -52,7 +53,7 @@ if args.minify:
     }
 
 args.obfuscate = bool(args.minify) and not args.no_minify_rename
-if args.obfuscate:
+if args.obfuscate and (args.preserve or args.no_preserve):
     args.obfuscate = {}
     if args.preserve:
         args.obfuscate.update({k: False for k in args.preserve})
@@ -83,20 +84,21 @@ if errors:
 if args.map:
     file_write_text(args.map, "\n".join(ctxt.srcmap))
     
-cart.code = src.new_text if args.minify else src.text
+cart.set_code(src.new_text if args.minify else src.text)
 
 if args.output:
     if args.format == "p8":
         file_write_text(args.output, write_cart_to_source(cart))
-    #elif args.format == "png":
-    #    with file_create(args.output) as f:
-    #        write_cart_to_image(f, cart, path_dirname(path_resolve(__file__)), print_sizes=args.count, force_compress=args.count)
-    #        args.count = False # done above
+    elif args.format == "png":
+        with file_create(args.output) as f:
+            write_cart_to_image(f, cart, path_dirname(path_resolve(__file__)),
+                                print_sizes=args.count, force_compress=args.count or args.force_compression)
+            args.count = False # done above
     else:
         file_write_text(args.output, "__lua__\n" + from_pico_chars(cart.code))
 
-#if args.count:
-#    write_code_sizes(cart.code)
+if args.count:
+    write_code_sizes(cart.code)
 
 if errors:
     sys.exit(2)

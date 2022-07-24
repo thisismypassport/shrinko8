@@ -116,6 +116,8 @@ k_palette = [
     Color(0xFF, 0x9D, 0x81, 0xff),
 ]
 
+k_palette_map = {color: i for i, color in enumerate(k_palette)}
+
 k_charset = [
     None, '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '	', '\n', 'ᵇ', 'ᶜ', '\r', 'ᵉ', 'ᶠ',
     '▮', '■', '□', '⁙', '⁘', '‖', '◀', '▶', '「', '」', '¥', '•', '、', '。', '゛', '゜'
