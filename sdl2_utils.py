@@ -26,7 +26,7 @@ class Surface:
         try:
             from PIL import Image # type: ignore
         except:
-            raise ImportError("You need pillow (or PIL) for this (do 'python -m pip install pillow')")
+            raise ImportError("You need pillow (or PIL) to read/write PNGs (do 'python -m pip install pillow')")
         return Image
 
     @staticmethod
