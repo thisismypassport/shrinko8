@@ -16,17 +16,24 @@ def fail_test():
     global status
     status = 1
 
-def run_code(*args):
+def run_code(*args, exit_code=None):
+    stdout = StringIO()
+    actual_code = None
     try:
         with patch.object(sys, "argv", ["dontcare", *args]):
-            exec(code, {"__file__": code_file})
-        return True
-    except SystemExit:
-        print("EXIT!")
-        return False
+            with patch.object(sys, "stdout", stdout):
+                exec(code, {"__file__": code_file})
+    except SystemExit as e:
+        actual_code = e.code
     except Exception:
         traceback.print_exc()
-        return False
+        return False, stdout
+        
+    if exit_code == actual_code:
+        return True, stdout
+    else:
+        print("Exit with unexpected code %s" % actual_code)
+        return False, stdout
 
 def measure(kind, path, input=False):
     print("Measuring %s..." % kind)
@@ -44,7 +51,7 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
     outpath = path_join(prefix + ("test_temp" if to_temp else "test_output"), output)
     cmppath = path_join(prefix + "test_compare", output)
 
-    success = run_code(inpath, outpath, *args)
+    success, stdout = run_code(inpath, outpath, *args)
     if success and not to_temp:
         success = try_file_read(outpath) == try_file_read(cmppath)
 
@@ -58,6 +65,29 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
         print("\nMeasuring %s" % name)
         measure("in", inpath, input=True)
         measure("out", outpath)
+    else:
+        print("\nTest %s succeeded" % name)
+    return True
+
+def run_fail_test(name, input, *args, private=False, output=None):
+    if opts.test and name not in opts.test:
+        return None
+
+    prefix = "private_" if private else ""
+    inpath = path_join(prefix + "test_input", input)
+    outpath = path_join(prefix + "test_output", output)
+    cmppath = path_join(prefix + "test_compare", output)
+
+    success, stdout = run_code(inpath, *args, exit_code=1)
+    file_write_text(outpath, stdout.getvalue())
+    if success:
+        success = stdout.getvalue() == try_file_read_text(cmppath)
+
+    if not success:
+        print("\nERROR - test %s failed" % name)
+        print(stdout.getvalue())
+        fail_test()
+        return False
     else:
         print("\nTest %s succeeded" % name)
     return True
@@ -76,6 +106,7 @@ def run():
     if run_test("compress", "test.p8", "testtmp.png", "--force-compression", to_temp=True):
         run_test("compress_check", "testtmp.png", "test_post_compress.p8", from_temp=True)
     run_test("genend", "genend.p8.png", "genend.p8")
+    run_fail_test("lint", "bad.p8", "--lint", output="bad.txt")
 
 if __name__ == "__main__":
     os.makedirs("test_output", exist_ok=True)
@@ -89,5 +120,5 @@ if __name__ == "__main__":
         except ImportError:
             pass
     
-    print("\nAll done")
+    print("\nAll passed" if status == 0 else "\nSome FAILED!")
     sys.exit(status)

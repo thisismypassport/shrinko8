@@ -1,0 +1,27 @@
+Lint errors:
+bad.p8(5:8) - Identifier 'u' not found
+bad.p8(5:11) - Identifier 'v' not found
+bad.p8(6:3) - Identifier 'x' not found - did you mean to use 'local' to define it?
+bad.p8(6:6) - Identifier 'y' not found - did you mean to use 'local' to define it?
+bad.p8(6:9) - Built-in global 't' assigned outside _init - did you mean to use 'local'?
+bad.p8(7:12) - Identifier 'f1' not found - did you mean to use 'local function' to define it?
+bad.p8(8:18) - Local 'f12' isn't used
+bad.p8(14:12) - Built-in global 'band' assigned outside _init - did you mean to use 'local function'?
+bad.p8(21:9) - Local 'a' isn't used
+bad.p8(21:12) - Local 'b' is only ever assigned to, never used
+bad.p8(25:13) - Local 'd' is only ever assigned to, never used
+bad.p8(25:17) - Local 'f' isn't used
+bad.p8(31:7) - Local 'uu' isn't used
+bad.p8(33:9) - Local 'z' isn't used
+bad.p8(33:12) - Local 'g_a' has the same name as a global
+bad.p8(33:12) - Local 'g_a' isn't used
+bad.p8(33:17) - Local 'uu' has the same name as a local declared at the top level
+bad.p8(33:17) - Local 'uu' isn't used
+bad.p8(34:7) - Local 'i' isn't used
+bad.p8(35:7) - Local 'i' has the same name as a local declared in a parent scope
+bad.p8(35:7) - Local 'i' isn't used
+bad.p8(36:11) - Local 'i' has the same name as a local declared in the same scope
+bad.p8(36:11) - Local 'i' isn't used
+bad.p8(37:20) - Local 'finner' isn't used
+bad.p8(37:27) - Local 'z' has the same name as a local declared in a parent function
+bad.p8(37:27) - Local 'z' isn't used

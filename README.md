@@ -195,6 +195,8 @@ function f()
 end
 ```
 
+### Defining global variables
+
 The linter normally allows you to define global variables in the global scope or in the _init function. If you don't, your options are either:
 
 Tell the linter about the globals it didn't see you define via the `--lint` hint:
@@ -210,6 +212,26 @@ Tell the linter to allow you to define globals (by assigning to them) in a speci
 --lint: func::_init
 function my_init()
     global_1, global_2 = 1, 2 -- these globals can be used anywhere now that they're assigned here
+end
+```
+
+### Re-assigning built-in globals
+
+Similarly, to protect against accidental use of built-in globals like `run` or `t`, the linter only allows you to assign to built-in globals in the global scope or in an _init function:
+```lua
+function f()
+    t = func() -- lint warning: you probably meant to use 'local' here, even though t is a built-in global
+end
+```
+
+If you do want to reassign some built-in global anywhere, you can use `--lint`:
+```lua
+--lint: print
+function f()
+    local old_print = print
+    print = function() end
+    call_something()
+    print = old_print
 end
 ```
 

@@ -19,7 +19,7 @@ main_globals = {
     "serial", "sfx", "sget", "sgn", "sin", "split",
     "spr", "sqrt", "srand", "sset", "sspr", "stat", "stop",
     "sub", "time", "tline", "tonum", "tostr", "trace", "type",
-    "unpack", "yield",
+    "unpack", "yield", "t",
 }
 
 deprecated_globals = {
@@ -30,11 +30,8 @@ deprecated_globals = {
 
 undocumented_globals = {
     "holdframe", "_set_fps", "_update_buttons",
-    "_map_display", "_get_menu_item_selected", "_ENV",
-}
-
-short_globals = {
-    "t",
+    "_map_display", "_get_menu_item_selected",
+    "set_draw_slice",
 }
 
 pattern_globals = set(chr(ch) for ch in range(0x80, 0x9a))
@@ -110,9 +107,10 @@ class Global(VarBase):
     pass
 
 class Scope:
-    def __init__(m, parent=None, depth=0):
+    def __init__(m, parent=None, depth=0, funcdepth=0):
         m.parent = parent
         m.depth = depth
+        m.funcdepth = funcdepth
         m.items = {}
 
     def add(m, var):
@@ -125,14 +123,12 @@ class Scope:
             return m.parent.find(item)
 
 class PicoContext:
-    def __init__(m, deprecated=True, undocumented=True, short=True, patterns=True, srcmap=None, extra_globals=set()):
+    def __init__(m, deprecated=True, undocumented=True, patterns=True, srcmap=None, extra_globals=set()):
         funcs = set(main_globals)
         if deprecated:
             funcs |= deprecated_globals
         if undocumented:
             funcs |= undocumented_globals
-        if short:
-            funcs |= short_globals
         if patterns:
             funcs |= pattern_globals
         funcs |= extra_globals
@@ -703,12 +699,15 @@ k_block_ends = ("end", "else", "elseif", "until")
 
 def parse(source, tokens):
     idx = 0
-    scope = None
     depth = -1
+    funcdepth = 0
+    scope = Scope(None, depth, funcdepth)
     errors = []
     globals = LazyDict(lambda key: Global(key))
 
     tokens = [t for t in tokens if not t.fake]
+    
+    scope.add(Local("_ENV", scope, True))
    
     def peek(off=0):
         i = idx + off
@@ -770,15 +769,16 @@ def parse(source, tokens):
         if var and hasattr(token, "keys_kind"):
             var.keys_kind = token.keys_kind
 
-        return Node(NodeType.var, [token], name=name, kind=kind, var_kind=var_kind, var=var, new=bool(newscope), scope=scope)
+        return Node(NodeType.var, [token], name=name, kind=kind, var_kind=var_kind, var=var, new=bool(newscope), parent_scope=scope)
     
     def parse_function(stmt=False, local=False):
-        nonlocal scope
+        nonlocal scope, funcdepth
         tokens = [peek(-1)]
         func_kind = getattr(tokens[0], "func_kind", None)
         
         target, name = None, None
-        funcscope = Scope(scope, depth + 1)
+        funcscope = Scope(scope, depth + 1, funcdepth + 1)
+
         params = []
         if stmt:
             if local:
@@ -822,11 +822,13 @@ def parse(source, tokens):
             if param.type == NodeType.var:
                 funcscope.add(param.var)
 
+        funcdepth += 1
         scope = funcscope
         body = parse_block()
         tokens.append(body)
         require("end", tokens)
         scope = scope.parent
+        funcdepth -= 1
 
         return Node(NodeType.function, tokens, target=target, params=params, body=body, name=name, scopespec=funcscope, kind=func_kind)
 
@@ -1047,7 +1049,7 @@ def parse(source, tokens):
         tokens = [peek(-1)]
 
         if peek(1).value == "=":
-            newscope = Scope(scope, depth + 1)
+            newscope = Scope(scope, depth + 1, funcdepth)
             target = parse_var(newscope=newscope)
             tokens.append(target)
             require("=", tokens)
@@ -1073,7 +1075,7 @@ def parse(source, tokens):
             return Node(NodeType.for_, tokens, target=target, min=min, max=max, step=step, body=body, scopespec=newscope)
 
         else:
-            newscope = Scope(scope, depth + 1)
+            newscope = Scope(scope, depth + 1, funcdepth)
             targets = parse_list(tokens, lambda: parse_var(newscope=newscope))
             require("in", tokens)
             sources = parse_list(tokens, parse_expr)
@@ -1101,7 +1103,7 @@ def parse(source, tokens):
     def parse_local():
         nonlocal scope
         tokens = [peek(-1)]
-        newscope = Scope(scope, depth)
+        newscope = Scope(scope, depth, funcdepth)
 
         if accept("function"):
             scope = newscope
@@ -1228,7 +1230,7 @@ def parse(source, tokens):
         root.globals = globals
         if peek().type != None:
             add_error("Expected end of input")
-        assert scope is None
+        assert scope.parent is None
         #verify_parse(root) # DEBUG
         return root
 
@@ -1355,8 +1357,9 @@ def parse_string_literal(str):
 
 def lint_code(ctxt, tokens, root, lint_rules):
     errors = []
-    vars = CounterDictionary()
-    allowed_globals = ctxt.globals.copy()
+    vars = defaultdict(list)
+    builtin_globals = ctxt.globals
+    custom_globals = set()
 
     lint_undefined = lint_unused = lint_duplicate = True
     if isinstance(lint_rules, dict):
@@ -1367,7 +1370,7 @@ def lint_code(ctxt, tokens, root, lint_rules):
     for token in tokens:
         if token.type == TokenType.lint:
             for value in token.value:
-                allowed_globals.add(value)
+                custom_globals.add(value)
 
     def add_error(msg, node):
         err = Error(msg, node)
@@ -1376,23 +1379,35 @@ def lint_code(ctxt, tokens, root, lint_rules):
     # find global assignment, and check for uses
 
     used_locals = set()
+    assigned_locals = set()
+
+    def is_assign_target(node):
+        return node.parent.type == NodeType.assign and node in node.parent.targets
+    def is_op_assign_target(node):
+        return node.parent.type == NodeType.op_assign and node == node.parent.target
+    def is_function_target(node):
+        return node.parent.type == NodeType.function and node == node.parent.target
 
     def preprocess_vars(node):        
         if node.type == NodeType.var:
-            if node.kind == VarKind.global_ and node.name not in allowed_globals:
+            if node.kind == VarKind.global_ and node.name not in custom_globals:
                 assign = False
-                if node.parent.type == NodeType.assign and node in node.parent.targets:
+                if is_assign_target(node):
                     func = node.find_parent(NodeType.function)
                     assign = True
-                elif node.parent.type == NodeType.function and node == node.parent.target:
+                elif is_function_target(node):
                     func = node.parent.find_parent(NodeType.function)
                     assign = True
 
                 if assign and (func == None or func.kind == "_init" or (func.kind is None and func.name == "_init" and func.find_parent(NodeType.function) == None)):
-                    allowed_globals.add(node.name)
+                    custom_globals.add(node.name)
+                    vars[node.name].append(node.var)
 
-            if node.kind == VarKind.local and not node.new and node.var not in used_locals:
-                used_locals.add(node.var)
+            if node.kind == VarKind.local and not node.new:
+                if is_assign_target(node) or is_op_assign_target(node) or is_function_target(node):
+                    assigned_locals.add(node.var)
+                else:
+                    used_locals.add(node.var)
 
     root.traverse_nodes(preprocess_vars)
 
@@ -1401,33 +1416,53 @@ def lint_code(ctxt, tokens, root, lint_rules):
     def lint_pre(node):
         if node.type == NodeType.var:
             if node.kind == VarKind.local and node.new:
-                if lint_duplicate and vars[node.name] > 0 and node.name not in ('_', '_ENV'):
-                    add_error("Identifier %s already defined" % node.name, node)
+                if lint_duplicate and vars[node.name] and node.name not in ('_', '_ENV'):
+                    prev_var = vars[node.name][-1]
+                    if isinstance(prev_var, Global):
+                        add_error("Local '%s' has the same name as a global" % node.name, node)
+                    elif prev_var.scope.funcdepth < node.var.scope.funcdepth:
+                        if prev_var.scope.funcdepth == 0:
+                            add_error("Local '%s' has the same name as a local declared at the top level" % node.name, node)
+                        else:
+                            add_error("Local '%s' has the same name as a local declared in a parent function" % node.name, node)
+                    elif prev_var.scope.depth < node.var.scope.depth:
+                        add_error("Local '%s' has the same name as a local declared in a parent scope" % node.name, node)
+                    else:
+                        add_error("Local '%s' has the same name as a local declared in the same scope" % node.name, node)
                 
-                vars[node.name] += 1
+                vars[node.name].append(node.var)
 
                 if lint_unused and node.var not in used_locals and not node.name.startswith("_"):
-                    if not (node.parent.type == NodeType.function and node in node.parent.params and node != node.parent.params[-1]):
-                        add_error("identifier %s isn't used" % node.name, node)
+                    if node.var in assigned_locals:
+                        add_error("Local '%s' is only ever assigned to, never used" % node.name, node)
+                    elif not (node.parent.type == NodeType.function and node in node.parent.params and node != node.parent.params[-1]):
+                        add_error("Local '%s' isn't used" % node.name, node)
 
             elif node.kind == VarKind.global_:
-                if lint_undefined and node.name not in allowed_globals:
-                    if node.parent.type == NodeType.assign and node in node.parent.targets:
-                        add_error("Identifier %s not found - did you mean to use 'local' to define it?" % node.name, node)
-                    elif node.parent.type == NodeType.function and node == node.parent.target:
-                        add_error("Identifier %s not found - did you mean to use 'local function' to define it?" % node.name, node)
+                if lint_undefined and node.name not in custom_globals:
+                    if node.name in builtin_globals:
+                        if is_assign_target(node):
+                            add_error("Built-in global '%s' assigned outside _init - did you mean to use 'local'?" % node.name, node)
+                        elif is_function_target(node):
+                            add_error("Built-in global '%s' assigned outside _init - did you mean to use 'local function'?" % node.name, node)
                     else:
-                        add_error("Identifier %s not found" % node.name, node)
+                        if is_assign_target(node):
+                            add_error("Identifier '%s' not found - did you mean to use 'local' to define it?" % node.name, node)
+                        elif is_function_target(node):
+                            add_error("Identifier '%s' not found - did you mean to use 'local function' to define it?" % node.name, node)
+                        else:
+                            add_error("Identifier '%s' not found" % node.name, node)
 
     def lint_post(node):
         for scope in node.end_scopes:
             for item in scope.items:
-                vars[item] -= 1
+                vars[item].pop()
 
     root.traverse_nodes(lint_pre, lint_post, extra=True)
     return errors
 
 def obfuscate_tokens(ctxt, root, rules_input):
+    all_globals = ctxt.globals.copy()
     global_knowns = global_callbacks.copy()
     member_knowns = member_strings.copy()
     known_tables = set()
@@ -1452,7 +1487,7 @@ def obfuscate_tokens(ctxt, root, rules_input):
                 elif key.startswith("*."):
                     member_knowns.discard(key[2:])
                 else:
-                    ctxt.globals.discard(key)
+                    all_globals.discard(key)
                     global_knowns.discard(key)
             else:
                 fail(value)
@@ -1520,22 +1555,20 @@ def obfuscate_tokens(ctxt, root, rules_input):
 
         elif kind == VarKind.global_:
             if not explicit:
-                env_var = (node.scope and node.scope.find("_ENV")) or root.globals["_ENV"]
-                if env_var.keys_kind != None:
+                env_var = node.parent_scope.find("_ENV")
+                if env_var and env_var.keys_kind != None:
                     return compute_effective_kind(node, env_var.keys_kind, explicit=True)
 
-            if node.name == "_ENV":
+            if node.name in global_knowns:
                 return None
-            elif node.name in global_knowns:
-                return None
-            elif node.name in ctxt.globals:
+            elif node.name in all_globals:
                 global_knowns.add(node.name)
                 return None
 
         elif kind == VarKind.local:
-            if node.name == "_ENV":
+            if node.var.implicit:
                 return None
-            elif node.var.implicit:
+            elif node.name == "_ENV": # e.g. new locals named it
                 return None
 
         return kind
