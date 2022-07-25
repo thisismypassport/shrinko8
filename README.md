@@ -39,7 +39,7 @@ The minifier renames all locals, globals, and table member accesses to minimize 
 This means that if you have a table member (or global) you access both as an identifier and as a string, you'll need to take one of the two approaches below to fix this, or your minified cart won't work
 
 E.g:
-```
+```lua
 local my_key = "key" -- here, key is a string
 local my_obj = {key=123} -- here, key is an identifier
 ?my_obj[my_key] -- BUG! my_obj will not have a "key" member after minification
@@ -50,19 +50,19 @@ local my_obj = {key=123} -- here, key is an identifier
 You can add a `--[[member]]` comment before a string to have the minifier rename it as if it were an identifier.
 
 E.g:
-```
+```lua
 local my_key = --[[member]]"key" -- here, key is a string but is renamed as if it were an identifier
 local my_obj = {key=123} -- here, key is an identifier
 ?my_obj[my_key] -- success, result is 123 after minification
 ```
 
 You can also use this with multiple keys split by comma:
-```
+```lua
 local my_keys = split --[[member]]"key1,key2,key3"
 ```
 
 And you can similarly use `--[[global]]` for globals:
-```
+```lua
 local my_key = --[[global]]"glob"
 glob = 123
 ?_ENV[my_key] -- 123
@@ -89,7 +89,7 @@ You can also choose to preserve *all* table members, which allows freely accessi
 The `--[[global]]` and `--[[member]]` hints can also be used on identifiers to change the way they're renamed.
 
 In additon, the `--[[preserve]]` hint can prevent identifiers from being renamed at all:
-```
+```lua
 do
   local _ENV = {--[[global]]assert=assert}
   assert(true)
@@ -103,7 +103,7 @@ end
 Additionally, you can use `--[[preserve-keys]]`, `--[[global-keys]]` and `--[[member-keys]]` to affect how *all* keys of a table are renamed.
 
 This can be applied on either table constructors (aka `{...}`) or on variables. When applying on variables, the hint affects all members accessed through that variable, as well as any table constructors directly assigned to it.
-```
+```lua
 local --[[preserve-keys]]my_table = {preserved1=1, preserved2=2}
 my_table.preserved1 += 1 -- all member accesses through my_table are preserved
 ?my_table["preserved1"]
@@ -128,7 +128,7 @@ For cases like tweet-carts where you want really few characters, you can minify 
 
 `python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --no-preserve 'circfill,rectfill'`
 
-```
+```lua
 circfill, rectfill = --[[preserve]]circfill, --[[preserve]]rectfill
 circfill(10,10,20); circfill(90,90,30)
 rectfill(0,0,100,100); rectfill(20,20,40,40)
@@ -152,7 +152,7 @@ You can disable parts of the minification process via additional command-line op
 
 You can keep specific comments in the output via:
 
-```
+```lua
 --keep: This is a comment to keep
 -- But this comment is gone after minify
 ```
@@ -185,35 +185,68 @@ Normally, a lint failure prevents cart creation, but `--no-lint-fail` overrides 
 
 ## Undefined variable lints
 
-To tell the linter to ignore globals it didn't see you define:
+In Pico-8 (and lua in general), variables that aren't explicitly declared as local (via a `local` statement) are implicitly global. This can cause all sorts of bugs and headaches if you typo the name of a local or forget to declare a local.
 
+This lint alerts you when you're accessing a variable that wasn't declared as local and isn't a known global variable, e.g:
+```lua
+function f()
+    x, y = 10, 20 -- lint warning: you probably meant to use 'local' here instead of assigning to global variables.
+    while x < y do stuff(x, y) end
+end
 ```
+
+The linter normally allows you to define global variables in the global scope or in the _init function. If you don't, your options are either:
+
+Tell the linter about the globals it didn't see you define via the `--lint` hint:
+```lua
 --lint: global_1, global_2
 function f()
     dostuff(global_1, global_2)
 end
 ```
 
-The linter normally allows you to define variables in the global scope or in the _init function, but you can extend this to other functions like this:
-
-```
+Tell the linter to allow you to define globals (by assigning to them) in a specific function via the `--lint func::_init` hint:
+```lua
 --lint: func::_init
 function my_init()
-    global_1, global_2 = 1, 2 -- these globals can be used anywhere now that they're assigned to here
+    global_1, global_2 = 1, 2 -- these globals can be used anywhere now that they're assigned here
 end
 ```
 
 ## Unused variable lints
 
-The linter allows unused variables if their names starts with underscore (e.g. `_my_unused`).
+This lint alerts you when you've declared a local but never used it, which is usually a mistake.
 
-The linter checks both locals and the last function parameter of every function if it unused.
+It also tells you when the *last* parameter of a function is unused, as that's either a mistake or a waste of a token.
+
+To tell the linter that some specific local is OK to be unused, named it beginning with underscore (e.g. `_` or `_some_name`). E.g:
+```lua
+do
+  local _, _, x, y = get_stuff() -- lint warning about y (but not about _) - you probably meant to pass it to do_stuff
+  do_stuff(x, x)
+end
+```
 
 ## Duplicate variable lints
 
-The linter checks for duplicate locals in the same or inner scope (even across functions)
+This lint alerts you when you declare a local with the same name as a local in a parent scope (even across functions).
 
-The linter allows duplicate variables named `_`, though
+This can cause confusion and bugs since you can accidentally use the wrong local. E.g:
+```lua
+function f()
+  for i=1,10 do
+    do_stuff(i)
+    for i=1,5 do -- lint warning about i
+      do_more(i)
+    end
+  end
+end
+```
+
+The linter allows duplicate variables if they're all named `_`:
+```lua
+local _, _, x, y, _, z = stuff()
+```
 
 # Getting Cart Size
 
