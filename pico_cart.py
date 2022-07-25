@@ -164,7 +164,7 @@ def read_cart_from_rom(buffer, **opts):
 class Lz77Tuple(Tuple):
     fields = ("off", "cnt")
 
-def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=None, max_o_steps=None):
+def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=None, max_o_steps=None, no_opt=False):
     min_matches = defaultdict(list)
 
     def get_match_length(left, left_i, right, right_i, min_c):
@@ -205,16 +205,16 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
         best_c, best_j = find_match(i)
 
         if best_c >= 0 and measure and best_c <= measure_c:
-            lz_cost = measure(mktuple(i, best_j, best_c))
-            ch_cost = measure(code[i:i+best_c])
+            lz_cost = measure(i, mktuple(i, best_j, best_c))
+            ch_cost = measure(i, *code[i:i+best_c])
             if ch_cost < lz_cost:
                 best_c = -1
 
         if best_c >= 0:
             best_cp1, best_jp1 = find_match(i+1)
             if measure and best_cp1 in (best_c, best_c - 1):
-                lz_cost = measure(mktuple(i, best_j, best_c)) + (measure(code[best_j:best_j+1]) if best_cp1 == best_c else 0)
-                p1_cost = measure(code[i:i+1]) + measure(mktuple(i, best_jp1, best_cp1))
+                lz_cost = measure(i, mktuple(i, best_j, best_c), *code[best_j:best_j+(1 + best_cp1 - best_c)])
+                p1_cost = measure(i, code[i], mktuple(i + 1, best_jp1, best_cp1))
                 if p1_cost < lz_cost:
                     best_c = -1
 
@@ -222,8 +222,8 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
             if measure and best_c >= 0:
                 best_cp2, best_jp2 = find_match(i+2)
                 if best_cp2 == best_c:
-                    lz_cost = measure(Lz77Tuple(i - best_j - 1, best_c - min_c)) + measure(code[best_j:best_j+2])
-                    p2_cost = measure(code[i:i+2]) + measure(Lz77Tuple(i - best_jp2, best_cp2 - min_c))
+                    lz_cost = measure(i, mktuple(i, best_j, best_c), *code[best_j:best_j+2])
+                    p2_cost = measure(i, *code[i:i+2], mktuple(i + 2, best_jp2, best_cp2))
                     if p2_cost < lz_cost:
                         best_c = -1
                 else:
@@ -233,7 +233,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
                     best_cp1 = best_cp2
 
             if best_cp1 > best_c:
-                yield code[i]
+                yield i, code[i]
                 i += 1
                 continue
 
@@ -247,21 +247,22 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
                         best_cs2, best_js2 = find_match(i + best_cs)
                         best_c2, best_j2 = find_match(i + best_c)
                         if best_cs + best_cs2 >= best_c + best_c2 and best_c2 >= 0:
-                            lz_cost = measure(mktuple(i, best_j, best_c)) + measure(mktuple(i + best_c, best_j2, best_c2))
-                            s2_cost = measure(mktuple(i, best_js, best_cs)) + measure(mktuple(i + best_cs, best_js2, best_cs2))
+                            lz_cost = measure(i, mktuple(i, best_j, best_c), mktuple(i + best_c, best_j2, best_c2))
+                            s2_cost = measure(i, mktuple(i, best_js, best_cs), mktuple(i + best_cs, best_js2, best_cs2))
                             if s2_cost < lz_cost:
                                 best_c, best_j = best_cs, best_js
                                 break
 
         if best_c >= 0:
-            yield mktuple(i, best_j, best_c)
+            yield i, mktuple(i, best_j, best_c)
             i += best_c
         else:
-            yield code[i]
+            yield i, code[i]
             i += 1
             
-        for j in range(prev_i, i):
-            min_matches[code[j:j+min_c]].append(j)
+        if not (no_opt and best_c >= 0):
+            for j in range(prev_i, i):
+                min_matches[code[j:j+min_c]].append(j)
         prev_i = i
 
 def print_size(name, size, limit):
@@ -277,6 +278,7 @@ def print_compressed_size(size, prefix=""):
 
 def write_code(w, code, print_sizes=True, force_compress=False, fail_on_error=True):
     k_new = True
+    min_c = 3
     
     if print_sizes:
         print_code_size(len(code))
@@ -292,36 +294,88 @@ def write_code(w, code, print_sizes=True, force_compress=False, fail_on_error=Tr
             bw = BinaryBitWriter(w.f)
             mtf = [chr(i) for i in range(0x100)]
 
-            def measure(items):
-                if isinstance(items, Lz77Tuple):
-                    offset_bits = max(round_up(count_significant_bits(items.off), 5), 5)
-                    count_bits = ((items.cnt // 7) + 1) * 3
-                    return 2 + (offset_bits < 15) + offset_bits + count_bits
+            def mtf_cost(ch_i):
+                mask = 1 << 4
+                count = 6
+                while ch_i >= mask:
+                    mask = (mask << 1) | (1 << 4)
+                    count += 2
+                return count
 
-                else:
-                    mtfcopy = mtf[:]
-                    count = 0
-                    for item in items:
+            def measure(i, *items):
+                count = 0
+                mtfcopy = None
+
+                for item in items:
+                    if isinstance(item, Lz77Tuple):
+                        offset_bits = max(round_up(count_significant_bits(item.off), 5), 5)
+                        count_bits = ((item.cnt // 7) + 1) * 3
+                        count += 2 + (offset_bits < 15) + offset_bits + count_bits
+                        i += item.cnt + min_c
+
+                    else:
+                        if mtfcopy is None:
+                            mtfcopy = mtf[:]
+                            
                         ch_i = mtfcopy.index(item)
 
-                        mask = 1 << 4
-                        large = False
-                        while ch_i >= mask:
-                            mask = (mask << 1) | (1 << 4)
-                            count += 2
-                            large = True
-                        count += 4 if large else 6 # large is a heuristic since mtf usually pays forward
+                        cost = mtf_cost(ch_i)
+                        if ch_i >= 16:
+                            cost -= 2 # heuristic, since mtf generally pays forward
 
-                        update_mtf(mtfcopy, ch_i, item)                        
-                    return count
+                        update_mtf(mtfcopy, ch_i, item)
+                        count += cost
+                        i += 1
 
-            measure_c = 3
-            max_o_steps = (0x20, 0x400)
-        else:
-            measure = measure_c = max_o_steps = None
+                return count
 
-        def write_match(offset_val, count_val):
-            if k_new:
+            def preprocess_litblock_idxs():
+                premtf = [chr(i) for i in range(0x100)]
+                pre_min_c = 4 # ignore questionable lz77s
+                last_cost_len = 0x20
+                last_cost_mask = last_cost_len - 1
+                last_costs = [0 for i in range(last_cost_len)]
+                sum_costs = 0
+                litblock_idxs = deque()
+
+                in_litblock = False
+                def add_last_cost(i, cost):
+                    nonlocal sum_costs, in_litblock
+
+                    cost_i = i & last_cost_mask
+                    sum_costs -= last_costs[cost_i]
+                    last_costs[cost_i] = cost
+                    sum_costs += cost
+
+                    if i >= last_cost_len and (not in_litblock and sum_costs > 19) or (in_litblock and sum_costs < 0):
+                        in_litblock = not in_litblock
+
+                        ordered_costs = last_costs[cost_i + 1:] + last_costs[:cost_i + 1]
+                        best_func = max if in_litblock else min
+                        best_j = best_func(range(last_cost_len), key=lambda j: sum(ordered_costs[-j-1:]))
+
+                        litblock_idxs.append(i - best_j)
+
+                for i, item in get_lz77(code, min_c=pre_min_c, no_opt=True):
+                    if isinstance(item, Lz77Tuple):
+                        count = item.cnt + pre_min_c
+                        cost = (20 - count * 8) // count
+                        for j in range(count):
+                            add_last_cost(i + j, cost)
+                    else:
+                        ch_i = premtf.index(item)
+                        update_mtf(premtf, ch_i, item)
+                        cost = mtf_cost(ch_i) - 8
+                        if cost > 0:
+                            cost -= 2 # hueristic due to mtf generally paying it forward (also makes entering litblock much harder)
+                        add_last_cost(i, cost)                        
+
+                for i in range(last_cost_len): # flush litblock
+                    add_last_cost(len(code) + i, cost)
+
+                return litblock_idxs
+                    
+            def write_match(offset_val, count_val):
                 bw.bit(0)
                 
                 offset_bits = max(round_up(count_significant_bits(offset_val), 5), 5)
@@ -335,15 +389,8 @@ def write_code(w, code, print_sizes=True, force_compress=False, fail_on_error=Tr
                     bw.bits(3, 7)
                     count_val -= 7
                 bw.bits(3, count_val)
-                
-            else:
-                offset_val += 1
-                count_val += 1
-                w.u8(0x3c + (offset_val >> 4))
-                w.u8((offset_val & 0xf) + (count_val << 4))
 
-        def write_literal(ch):
-            if k_new:
+            def write_literal(ch):
                 bw.bit(1)
                 ch_i = mtf.index(ch)
                 
@@ -358,8 +405,48 @@ def write_code(w, code, print_sizes=True, force_compress=False, fail_on_error=Tr
                 bw.bits(i_bits, i_val)
                                 
                 update_mtf(mtf, ch_i, ch)
-                
-            else:
+
+            litblock_idxs = preprocess_litblock_idxs()
+            in_litblock = False
+            next_litblock = litblock_idxs.popleft() if litblock_idxs else len(code)
+
+            for i, item in get_lz77(code, min_c=min_c, max_c=None if k_new else 0x11, max_o=0x7fff if k_new else 0xc3f,
+                                    measure=measure, measure_c=3, max_o_steps=(0x20, 0x400)):
+                #last_bit_pos = bw.bit_position
+                if i >= next_litblock:
+                    in_litblock = not in_litblock
+                    next_litblock = litblock_idxs.popleft() if litblock_idxs else len(code)
+                    if in_litblock:
+                        #print(i, "******", (next_litblock - i) * 8 + 19)
+                        bw.bit(0); bw.bit(1); bw.bit(0)
+                        bw.bits(10, 0)
+                    else:
+                        bw.bits(8, 0)
+
+                if in_litblock:
+                    if isinstance(item, Lz77Tuple):
+                        for j in range(item.cnt + min_c):
+                            bw.bits(8, ord(code[i - item.off - 1 + j]))
+                    else:
+                        bw.bits(8, ord(item))
+                else:
+                    if isinstance(item, Lz77Tuple):
+                        write_match(item.off, item.cnt)
+                        #print(i, "%s:%s" % (item.off, item.cnt), bw.bit_position - last_bit_pos)
+                    else:
+                        write_literal(item)
+                        #print(i, ord(item), bw.bit_position - last_bit_pos)
+                    
+            bw.flush()
+
+        else:
+            def write_match(offset_val, count_val):
+                offset_val += 1
+                count_val += 1
+                w.u8(0x3c + (offset_val >> 4))
+                w.u8((offset_val & 0xf) + (count_val << 4))
+
+            def write_literal(ch):
                 ch_i = k_inv_code_table.get(ch, 0)
                 
                 if ch_i > 0:
@@ -369,20 +456,11 @@ def write_code(w, code, print_sizes=True, force_compress=False, fail_on_error=Tr
                     w.u8(0)
                     w.u8(ord(ch))
 
-        #dbg_size = 0
-        for item in get_lz77(code, max_c=None if k_new else 0x11, max_o=0x7fff if k_new else 0xc3f, measure=measure, measure_c=measure_c, max_o_steps=max_o_steps):
-            #last_bit_pos = bw.bit_position
-            if isinstance(item, Lz77Tuple):
-                write_match(item.off, item.cnt)
-                #print(dbg_size, "%s:%s" % (item.off, item.cnt), bw.bit_position - last_bit_pos)
-                #dbg_size += item.cnt + 3
-            else:
-                write_literal(item)
-                #print(dbg_size, ord(item), bw.bit_position - last_bit_pos)
-                #dbg_size += 1
-                
-        if k_new:
-            bw.flush()
+            for i, item in get_lz77(code, min_c=min_c, max_c=0x11, max_o=0xc3f):
+                if isinstance(item, Lz77Tuple):
+                    write_match(item.off, item.cnt)
+                else:
+                    write_literal(item)
 
         size = w.pos() - start_pos
         if print_sizes:
