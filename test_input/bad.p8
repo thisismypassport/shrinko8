@@ -40,3 +40,7 @@ function f3()
   end
 end
 
+-- bugs
+function f3:foo()
+  return self
+end

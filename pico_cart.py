@@ -371,7 +371,7 @@ def write_code(w, code, print_sizes=True, force_compress=False, fail_on_error=Tr
                         add_last_cost(i, cost)                        
 
                 for i in range(last_cost_len): # flush litblock
-                    add_last_cost(len(code) + i, cost)
+                    add_last_cost(len(code) + i, 0)
 
                 return litblock_idxs
                     

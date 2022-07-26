@@ -774,6 +774,7 @@ def parse(source, tokens):
     def parse_function(stmt=False, local=False):
         nonlocal scope, funcdepth
         tokens = [peek(-1)]
+        extra_children = None
         func_kind = getattr(tokens[0], "func_kind", None)
         
         target, name = None, None
@@ -802,6 +803,7 @@ def parse(source, tokens):
                     name += ":" + key.name
 
                     params.append(parse_var(token=Token(TokenType.ident, "self"), newscope=funcscope, implicit=True))
+                    extra_children = [params[-1]]
 
             tokens.append(target)
 
@@ -830,7 +832,10 @@ def parse(source, tokens):
         scope = scope.parent
         funcdepth -= 1
 
-        return Node(NodeType.function, tokens, target=target, params=params, body=body, name=name, scopespec=funcscope, kind=func_kind)
+        funcnode = Node(NodeType.function, tokens, target=target, params=params, body=body, name=name, scopespec=funcscope, kind=func_kind)
+        if extra_children:
+            funcnode.extra_children = extra_children
+        return funcnode
 
     def parse_table():
         tokens = [peek(-1)]
