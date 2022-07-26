@@ -57,6 +57,7 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
 
     if not success:
         print("\nERROR - test %s failed" % name)
+        print(stdout.getvalue())
         measure("new", outpath)
         measure("old", cmppath)
         fail_test()
@@ -107,6 +108,8 @@ def run():
         run_test("compress_check", "testtmp.png", "test_post_compress.p8", from_temp=True)
     run_test("genend", "genend.p8.png", "genend.p8")
     run_fail_test("lint", "bad.p8", "--lint", output="bad.txt")
+    run_test("script", "script.p8", "script.p8", "--script", path_join("test_input", "my_script.py"),
+             "--script-args", "my-script-arg", "--my-script-opt", "123")
 
 if __name__ == "__main__":
     os.makedirs("test_output", exist_ok=True)

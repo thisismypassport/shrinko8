@@ -57,10 +57,12 @@ keywords = {
     "while"
 }
 
-class PicoSource:
-    def __init__(m, name, text):
-        m.name, m.text, m.errors = name, text, []
+class PicoSource: # keep this light - created for temp. tokenizations
+    __slots__ = ("name", "text")
 
+    def __init__(m, name, text):
+        m.name, m.text = name, text
+        
     def get_name_line_col(m, idx):
         start = 0
         line = 0
@@ -75,9 +77,11 @@ class PicoSource:
         return m.name, line, idx - start
 
 class PicoComplexSource(PicoSource):
-    def __init__(m, name, text, mappings):
+    def __init__(m, name, text, mappings=(), errors=()):
+        m.cart = None
         super().__init__(name, text)
         m.mappings = mappings
+        m.errors = errors
 
     def get_name_line_col(m, idx):
         name, line, col = super().get_name_line_col(idx)
@@ -89,6 +93,21 @@ class PicoComplexSource(PicoSource):
                 real_line = line - mapping.line + mapping.real_line
         
         return real_name, real_line, col
+
+    @property
+    def text(m):
+        return m.cart.code if m.cart else m._text
+
+    @text.setter
+    def text(m, v):
+        if m.cart:
+            m.cart.set_code(v)
+        else:
+            m._text = v
+
+    def tie_to(m, cart):
+        cart.set_code(m.text)
+        m.cart = cart
 
 class VarKind(Enum):
     values = ("local", "global_", "member")
@@ -224,7 +243,7 @@ define_use_re = re.compile(r"\$\[(\w*)\]")
 define_cond_re = re.compile(r"\$\[(\w+)\[(=*)\[(.*?)\]\2\]\]")
 p8_section_re = re.compile(r"^__\w+__\s*$")
 
-def read_code(filename, defines=None, pp_handler=None, pp_inline=True, fail=True):
+def read_code(filename, defines=None, pp_handler=None, pp_inline=False, fail=True):
     lines = []
     defines = defines.copy() if defines else {}
     ppstack = []
@@ -361,7 +380,7 @@ def read_code(filename, defines=None, pp_handler=None, pp_inline=True, fail=True
         raise Exception("\n".join(errors))
 
     text = "".join(lines)
-    return PicoComplexSource(path_basename(filename), text, mappings)
+    return PicoComplexSource(path_basename(filename), text, mappings, errors)
 
 k_lint_prefix = "lint:"
 k_keep_prefix = "keep:"
@@ -1942,7 +1961,7 @@ def process_code(ctxt, source, count=False, lint=False, minify=False, obfuscate=
             if need_obfuscate:
                 obfuscate_tokens(ctxt, root, obfuscate)
 
-            source.new_text = minify_code(source, tokens, root, minify)
+            source.text = minify_code(source, tokens, root, minify)
 
     if fail and errors:
         raise Exception("\n".join(map(str, errors)))

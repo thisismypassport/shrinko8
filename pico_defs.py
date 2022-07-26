@@ -1,27 +1,27 @@
 from utils import *
 from sdl2_utils import Color
 
-class Memory:
-    def __init__(m, src):
-        m.replace(src)
+class Memory(bytearray):
+    def copy(m):
+        return Memory(m[:])
 
     def replace(m, src):
-        m.data = bytearray(src)
+        m[:] = src
 
     def size(m):
-        return len(m.data)
+        return len(m)
 
     def get8(m, i):
-        return m.data[i]
+        return m[i]
 
     def set8(m, i, v):
-        m.data[i] = v
+        m[i] = v
         
     def get_block(m, start, size):
-        return m.data[start:start+size]
+        return m[start:start+size]
         
     def set_block(m, start, src):
-        m.data[start:start+len(src)] = src
+        m[start:start+len(src)] = src
 
     def copy8(m, dest, src, size, src_memory = None):
         m.set_block(dest, (src_memory or m).get_block(src, size))

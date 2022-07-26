@@ -14,6 +14,9 @@ class Cart:
         m.screenshot = None
         m.meta = defaultdict(list)
 
+    def copy(m):
+        return deepcopy(m)
+
     def get_title(m):
         title = m.meta.get("title")
         if title is None:
@@ -276,7 +279,7 @@ def print_code_size(size, prefix=""):
 def print_compressed_size(size, prefix=""):
     print_size(prefix + "compressed:", size, k_code_size)
 
-def write_code(w, code, print_sizes=True, force_compress=False, fail_on_error=True):
+def write_code(w, code, print_sizes=False, force_compress=False, fail_on_error=True):
     k_new = True
     min_c = 3
     
@@ -539,7 +542,7 @@ def read_cart_from_image(f, **opts):
     cart.screenshot = screenshot
     return cart
     
-def write_cart_to_image(f, cart, res_path, screenshot_path=None, title=None, **opts):
+def write_cart_to_image(cart, res_path, screenshot_path=None, title=None, **opts):
     output = write_cart_to_rom(cart, **opts)
     
     with file_open(path_join(res_path, "template.png")) as template_f:
@@ -592,7 +595,9 @@ def write_cart_to_image(f, cart, res_path, screenshot_path=None, title=None, **o
                 image.set_at((x, y), (r, g, b, a))
         image.unlock()
 
+        f = BytesIO()
         image.save(f)
+        return f.getvalue()
 
 k_meta_prefix = "meta:"
         
@@ -807,16 +812,5 @@ def read_cart_from_export(data, name, **opts):
     return read_cart_from_rom(cartdata, **opts)
 
 def read_cart(path, **opts):
-    try:
-        with file_open(path) as f:
-            return read_cart_from_stream(f, **opts)
-    except IOError:
-        name = None
-        while not path_exists(path):
-            path, namepart = path_split_name(path)
-            name = namepart if name is None else namepart + "/" + name
-        if path_is_file(path):
-            with file_open(path) as f:
-                return read_cart_from_export(f.read(), name, **opts)
-        else:
-            raise
+    with file_open(path) as f:
+        return read_cart_from_stream(f, **opts)

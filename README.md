@@ -5,6 +5,7 @@ The supported tools are:
 * [Linting](#linting) - Check for common code errors such as forgetting to declare a local.
 * [Getting Cart Size](#getting-cart-size) - Count the amount of tokens, characters, and compressed bytes your cart uses.
 * [Format Conversion](#format-conversion) - Convert between p8 and png files, usually with slightly better code compression than Pico-8's.
+* [Custom Python Script](#custom-python-script) - Run a custom python script to preprocess or postprocess your cart
 
 Requires [Python](https://www.python.org/) 3.7 or above to run.
 
@@ -302,3 +303,61 @@ You can also specify the output format explicitly via `--format <p8/code/png>` (
 
 You can combine conversion with other operations:
 `python timp_p8_tools.py path-to-input.p8 path-to-output.png --count --lint --minify`
+
+# Custom Python Script
+
+For advanced usecases, you can create a python script that will be called to preprocess or postprocess the cart before/after the other steps.
+
+This can be used for:
+* Merging in code and data (from other carts, or data files, etc.)
+* Splitting up code that was minified/linted as a single unit into multiple carts.
+* Likely much more.
+
+To run, use `--script <path>`, here shown together with other tools:
+`python timp_p8_tools.py path-to-input.p8 path-to-output.png --count --lint --minify --script path-to-script.py`
+
+You can also pass arguments to your script by putting them after `--script-args`:
+`python timp_p8_tools.py path-to-input.p8 path-to-output.png --count --lint --minify --script path-to-script.py --script-args my-script-arg --my-script-opt 123`
+
+Example python script showing the API and various capabilities:
+```python
+# this is called after your cart is read but before any processing is done on it:
+def preprocess_main(cart, args, **_):
+    print("hello from preprocess_main!")
+
+    # 'cart' contains 'code' and 'rom' attributes that can be used to read or modify it
+    # 'cart.code' is just a string
+    # 'cart.rom' is a bytearray with some extra APIs like get16/set32/etc (see Memory in pico_defs.py)
+
+    # copy the spritesheet from another cart
+    from pico_cart import read_cart
+    other_cart = read_cart("test.p8") # can be used to read p8 or png carts
+    cart.rom[0x0000:0x2000] = other_cart.rom[0x0000:0x2000]
+
+    # encode binary data into a string in our cart
+    # our cart's code should contain a string like so: "$$DATA$$"
+    from pico_utils import bytes_to_string_contents
+    with open("binary.dat", "rb") as f:
+        cart.code = cart.code.replace("$$DATA$$", bytes_to_string_contents(f.read()))
+
+    # args.script_args contains any arguments sent to this script
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("arg", help="first arg sent to script", nargs="?")
+    parser.add_argument("--my-script-opt", type=int, help="option sent to script")
+    opts = parser.parse_args(args.script_args)
+    print("Received args:", opts.arg, opts.my_script_opt)
+
+# this is called before your cart is written, after it was fully processed
+def postprocess_main(cart, res_path, **_):
+    print("hello from postprocess_main!")
+
+    # write a new cart with the same code but zeroed spritesheet, in both p8 and png formats
+    from pico_cart import write_cart_to_source, write_cart_to_image
+    new_cart = cart.copy()
+    new_cart.rom[0x0000:0x2000] = bytearray(0x2000) # zero it out
+    with open("new_cart.p8", "w", encoding="utf8") as f:
+        f.write(write_cart_to_source(new_cart))
+    with open("new_cart.p8.png", "wb") as f:
+        f.write(write_cart_to_image(new_cart, res_path))
+```

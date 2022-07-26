@@ -1,7 +1,7 @@
 from utils import *
-from pico_process import read_code, PicoContext, process_code, PicoSource
+from pico_process import read_code, PicoContext, process_code, PicoComplexSource
 from pico_cart import read_cart, write_cart_to_source, write_cart_to_image, from_pico_chars, write_code_sizes
-import argparse
+import argparse, importlib.util
 
 def CommaSep(val):
     return val.split(",")
@@ -9,25 +9,35 @@ def CommaSep(val):
 extend_arg = "extend" if sys.version_info >= (3,8) else None
 
 parser = argparse.ArgumentParser()
+# input/output
 parser.add_argument("input", help="input file, can be in p8/png/code format")
 parser.add_argument("output", help="output file", nargs='?')
 parser.add_argument("-f", "--format", choices=["p8", "png", "code"], help="output format")
-parser.add_argument("--map", help="log renaming of identifiers to this file")
+# lint
 parser.add_argument("-l", "--lint", action="store_true", help="enable erroring on lint errors")
-parser.add_argument("-c", "--count", action="store_true", help="enable printing token count, character count & compressed size")
-parser.add_argument("-m", "--minify", action="store_true", help="enable minification")
-parser.add_argument("-p", "--preserve", type=CommaSep, action=extend_arg, help="preserve specific identifiers in minification, e.g. 'global1,global2,*.member2,table3.*'")
-parser.add_argument("--no-preserve", type=CommaSep, action=extend_arg, help="do not preserve specific built-in identifiers in minification, e.g. 'circfill,rectfill'")
-parser.add_argument("--input-count", action="store_true", help="enable printing input character count & compressed size, for now just for png format")
 parser.add_argument("--no-lint-unused", action="store_true", help="don't print lint errors on unused variables")
 parser.add_argument("--no-lint-duplicate", action="store_true", help="don't print lint errors on duplicate variables")
 parser.add_argument("--no-lint-undefined", action="store_true", help="don't print lint errors on undefined variables")
 parser.add_argument("--no-lint-fail", action="store_true", help="don't fail immediately on lint errors")
+# minify
+parser.add_argument("-m", "--minify", action="store_true", help="enable minification")
+parser.add_argument("-p", "--preserve", type=CommaSep, action=extend_arg, help="preserve specific identifiers in minification, e.g. 'global1,global2,*.member2,table3.*'")
+parser.add_argument("--no-preserve", type=CommaSep, action=extend_arg, help="do not preserve specific built-in identifiers in minification, e.g. 'circfill,rectfill'")
 parser.add_argument("--no-minify-rename", action="store_true", help="disable variable renaming in minification")
 parser.add_argument("--no-minify-spaces", action="store_true", help="disable space removal in minification")
 parser.add_argument("--no-minify-lines", action="store_true", help="disable line removal in minification")
-parser.add_argument("--force-compression", action="store_true", help="force code compression even if code fits")
+# count
+parser.add_argument("-c", "--count", action="store_true", help="enable printing token count, character count & compressed size")
+parser.add_argument("--input-count", action="store_true", help="enable printing input character count & compressed size, for now just for png format")
+# script
+parser.add_argument("-s", "--script", help="manipulate the cart via a custom python script - see README for api details")
+parser.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
+# misc (semi-undocumented)
+parser.add_argument("--rename-map", help="log renaming of identifiers (from minify step) to this file")
+parser.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
 args = parser.parse_args()
+
+res_path = path_dirname(path_resolve(__file__))
 
 def fail(msg):
     print(msg)
@@ -66,19 +76,31 @@ if args.obfuscate and (args.preserve or args.no_preserve):
     if args.no_preserve:
         args.obfuscate.update({k: True for k in args.no_preserve})
 
+preproc_cb, postproc_cb = None, None
+if args.script:
+    script_spec = importlib.util.spec_from_file_location(path_basename_no_extension(args.script), args.script)
+    script_mod = importlib.util.module_from_spec(script_spec)
+    script_spec.loader.exec_module(script_mod)
+    preproc_cb = getattr(script_mod, "preprocess_main", None)
+    postproc_cb = getattr(script_mod, "postprocess_main", None)
+
 cart = read_cart(args.input, print_sizes=args.input_count)
 try:
-    src = read_code(args.input, pp_inline=False, fail=False) # supports #include (and other stuff), which read_cart currently does not
+    src = read_code(args.input, fail=False) # supports #include (and other stuff), which read_cart currently does not
 except UnicodeDecodeError: # hacky png detection
-    src = PicoSource(path_basename(args.input), cart.code)
+    src = PicoComplexSource(path_basename(args.input), cart.code)
+src.tie_to(cart)
 
 if src.errors:
     print("Preprocessor errors:")
     for error in src.errors:
         print(error)
     sys.exit(1)
+    
+ctxt = PicoContext(srcmap=args.rename_map)
+if preproc_cb:
+    preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args, res_path=res_path)
 
-ctxt = PicoContext(srcmap=args.map)
 ok, errors = process_code(ctxt, src, count=args.count, lint=args.lint, minify=args.minify, obfuscate=args.obfuscate, fail=False)
 if errors:
     print("Lint errors:" if ok else "Compilation errors:")
@@ -87,19 +109,19 @@ if errors:
     if not ok or not args.no_lint_fail:
         sys.exit(1)
 
-if args.map:
-    file_write_text(args.map, "\n".join(ctxt.srcmap))
+if args.rename_map:
+    file_write_text(args.rename_map, "\n".join(ctxt.srcmap))
     
-cart.set_code(src.new_text if args.minify else src.text)
+if postproc_cb:
+    postproc_cb(cart=cart, args=args, res_path=res_path)
 
 if args.output:
     if args.format == "p8":
         file_write_text(args.output, write_cart_to_source(cart))
     elif args.format == "png":
-        with file_create(args.output) as f:
-            write_cart_to_image(f, cart, path_dirname(path_resolve(__file__)),
-                                print_sizes=args.count, force_compress=args.count or args.force_compression)
-            args.count = False # done above
+        file_write(args.output, write_cart_to_image(cart, res_path,
+            print_sizes=args.count, force_compress=args.count or args.force_compression))
+        args.count = False # done above
     else:
         file_write_text(args.output, "__lua__\n" + from_pico_chars(cart.code))
 

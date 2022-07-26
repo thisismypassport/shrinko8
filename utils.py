@@ -1648,6 +1648,9 @@ class MultidimArray(object):
         m.dim = len(size)
         m.size = size
         m.array = [defval] * product(size)
+
+    def copy(m):
+        return deepcopy(m)
         
     def _getindex(m, indices):
         array_index = 0
