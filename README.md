@@ -310,7 +310,7 @@ For advanced usecases, you can create a python script that will be called to pre
 
 This can be used for:
 * Merging in code and data (from other carts, or data files, etc.)
-* Splitting up code that was minified/linted as a single unit into multiple carts.
+* Saving minor variations of the cart.
 * Likely much more.
 
 To run, use `--script <path>`, here shown together with other tools:
