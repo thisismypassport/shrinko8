@@ -1,4 +1,4 @@
-# timp_p8_tools
+# shrinko8
 
 The supported tools are:
 * [Minification](#minification) - Reduce the token count, character count and compression ratio of your cart.
@@ -11,7 +11,7 @@ Requires [Python](https://www.python.org/) 3.7 or above to run.
 
 Reading/Writing PNGs additionally requires the Pillow module (`python -m pip install pillow` to install)
 
-[Download the latest version here.](https://github.com/thisismypassport/timp_p8_tools/archive/refs/heads/main.zip)
+[Download the latest version here.](https://github.com/thisismypassport/shrinko8/archive/refs/heads/main.zip)
 
 # Minification
 
@@ -25,15 +25,15 @@ In detail:
 
 ## To minify your p8 cart:
 
-`python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify`
+`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify`
 
 If you just want the lua source without the rest of the baggage (except the `__lua__` header line):
 
-`python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --format code`
+`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --format code`
 
 If you want to create a png cart:
 
-`python timp_p8_tools.py path-to-input.p8 path-to-output.png --minify`
+`python shrinko8.py path-to-input.p8 path-to-output.png --minify`
 
 This tool usually compresses code a bit better than Pico-8.
 
@@ -79,7 +79,7 @@ For more advanced usecases, see the [below section](#advanced---controlling-rena
 
 You can instruct the minifier to preserve certain identifiers across the entire cart:
 
-`python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --preserve 'my_global_1,my_global_2,*.my_member,my_env.*'`
+`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --preserve 'my_global_1,my_global_2,*.my_member,my_env.*'`
 
 * my_global_1 and my_global_2 will not be renamed when used as globals
 * my_member will not be renamed when used as a table member
@@ -87,7 +87,7 @@ You can instruct the minifier to preserve certain identifiers across the entire 
 
 You can also choose to preserve *all* table members, which allows freely accessing all tables through strings or through identifiers, if you prefer:
 
-`python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --preserve '*.*'`
+`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --preserve '*.*'`
 
 ## Advanced - Controlling renaming of identifiers
 
@@ -131,7 +131,7 @@ end
 
 For cases like tweet-carts where you want really few characters, you can minify the names of built-in pico-8 functions while still using their original name as follows:
 
-`python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify --no-preserve 'circfill,rectfill'`
+`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --no-preserve 'circfill,rectfill'`
 
 ```lua
 circfill, rectfill = --[[preserve]]circfill, --[[preserve]]rectfill
@@ -169,11 +169,11 @@ Linting finds common code issues in your cart, like forgetting to use a 'local' 
 
 ## To lint your p8 cart:
 
-`python timp_p8_tools.py path-to-input.p8 --lint`
+`python shrinko8.py path-to-input.p8 --lint`
 
 You can combine linting with other operations:
 
-`python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --lint --count --minify`
+`python shrinko8.py path-to-input.p8 path-to-output.p8 --lint --count --minify`
 
 ## Options
 
@@ -276,7 +276,7 @@ local _, _, x, y, _, z = stuff()
 
 You can enable printing the number of tokens, characters, and compressed bytes used by the code in the cart (including percentages):
 
-`python timp_p8_tools.py path-to-input.p8 --count`
+`python shrinko8.py path-to-input.p8 --count`
 
 E.g may print:
 
@@ -290,20 +290,20 @@ Note that the compressed size is how *this* tool would compress the code, which 
 
 You can combine counting with other operations, in which case the counts are of the output cart, not the input cart:
 
-`python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --lint --count --minify`
+`python shrinko8.py path-to-input.p8 path-to-output.p8 --lint --count --minify`
 
 # Format Conversion
 
 This tool supports both p8 and png cart formats, and allows converting between them, e.g:
 ```
-python timp_p8_tools.py path-to-input.p8 path-to-output.png
-python timp_p8_tools.py path-to-input.png path-to-output.p8
+python shrinko8.py path-to-input.p8 path-to-output.png
+python shrinko8.py path-to-input.png path-to-output.p8
 ```
 
 You can also specify the output format explicitly via `--format <p8/code/png>` (by default, it looks at the extension)
 
 You can combine conversion with other operations:
-`python timp_p8_tools.py path-to-input.p8 path-to-output.png --count --lint --minify`
+`python shrinko8.py path-to-input.p8 path-to-output.png --count --lint --minify`
 
 # Custom Python Script
 
@@ -315,10 +315,10 @@ This can be used for:
 * Likely much more.
 
 To run, use `--script <path>`, here shown together with other tools:
-`python timp_p8_tools.py path-to-input.p8 path-to-output.png --count --lint --minify --script path-to-script.py`
+`python shrinko8.py path-to-input.p8 path-to-output.png --count --lint --minify --script path-to-script.py`
 
 You can also pass arguments to your script by putting them after `--script-args`:
-`python timp_p8_tools.py path-to-input.p8 path-to-output.png --count --lint --minify --script path-to-script.py --script-args my-script-arg --my-script-opt 123`
+`python shrinko8.py path-to-input.p8 path-to-output.png --count --lint --minify --script path-to-script.py --script-args my-script-arg --my-script-opt 123`
 
 Example python script showing the API and various capabilities:
 ```python

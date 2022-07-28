@@ -2,7 +2,7 @@ from utils import *
 from unittest.mock import patch
 import argparse
 
-code_file = "timp_p8_tools.py"
+code_file = "shrinko8.py"
 code = file_read_text(code_file)
 status = 0
 
