@@ -1387,9 +1387,9 @@ def lint_code(ctxt, tokens, root, lint_rules):
 
     lint_undefined = lint_unused = lint_duplicate = True
     if isinstance(lint_rules, dict):
-        lint_undefined = lint_rules.get("undefined")
-        lint_unused = lint_rules.get("unused")
-        lint_duplicate = lint_rules.get("duplicate")
+        lint_undefined = lint_rules.get("undefined", True)
+        lint_unused = lint_rules.get("unused", True)
+        lint_duplicate = lint_rules.get("duplicate", True)
 
     for token in tokens:
         if token.type == TokenType.lint:
@@ -1812,36 +1812,81 @@ def format_string_literal(value):
             litparts.append(ch)
     return '"%s"' % "".join(litparts)
 
+def get_precedence(node):
+    if node.type == NodeType.binary_op:
+        return k_binary_op_precs[node.op]
+    elif node.type == NodeType.unary_op:
+        return k_unary_ops_prec
+
+def is_right_assoc(node):
+    if node.type == NodeType.binary_op:
+        return node.op in k_right_binary_ops
+    else:
+        return False
+
+def is_vararg_expr(node):
+    return node.type in (NodeType.call, NodeType.varargs)
+    
 def minify_code(source, tokens, root, minify):
+
+    minify_lines = minify_wspace = minify_tokens = minify_comments = True
+    if isinstance(minify, dict):
+        minify_lines = minify.get("lines", True)
+        minify_wspace = minify.get("wspace", True)
+        minify_tokens = minify.get("tokens", True)
+        minify_comments = minify.get("comments", True)
+
     vlines = defaultdict(set)
 
-    minify_lines = True
-    minify_wspace = True
-    if isinstance(minify, dict):
-        minify_lines = minify.get("lines")
-        minify_wspace = minify.get("wspace")
+    def remove_parens(token):
+        token.value = None
+        end_token = token.parent.children[-1]
+        assert end_token.value == ")"
+        end_token.value = None
 
-    output = []
+    def fixup_tokens(token):
+        # update vline data
 
-    if minify_wspace:
-        def fixup_tokens(token):
-            nonlocal prev_token
+        if token.value in ("if", "then", "while", "do", "?"):
+            vlines[token.vline].add(token.value)
 
-            # update vline data
-
-            if token.value in ("if", "then", "while", "do", "?"):
-                vlines[token.vline].add(token.value)
-
+        if minify_tokens:
+            
             # remove unneeded tokens
 
-            if token.value == ";" and token.parent.type == NodeType.block and token.next_token().value != "(" and \
-               (token.parent.stmts or not getattr(token.parent.parent, "short", False)):
-                token.value = None
-                return
+            if token.value == ";" and token.parent.type == NodeType.block and token.next_token().value != "(":
+                if not (getattr(token.parent.parent, "short", False) and not token.parent.stmts):
+                    token.value = None
+                    return
 
             if token.value in (",", ";") and token.parent.type == NodeType.table and token.next_sibling().value == "}":
                 token.value = None
                 return
+
+            if token.value == "(" and token.parent.type == NodeType.call and len(token.parent.args) == 1:
+                arg = token.parent.args[0]
+                if arg.type == NodeType.table or (arg.type == NodeType.const and arg.token.type == TokenType.string):
+                    return remove_parens(token)
+
+            if token.value == "(" and token.parent.type == NodeType.group:
+                inner, outer = token.parent.child, token.parent.parent
+                inner_prec, outer_prec = get_precedence(inner), get_precedence(outer)
+                if e(inner_prec) and e(outer_prec) and (inner_prec > outer_prec or (inner_prec == outer_prec and
+                        (outer_prec == k_unary_ops_prec or is_right_assoc(outer) == (outer.right == token.parent)))):
+                    return remove_parens(token)
+                if outer.type in (NodeType.group, NodeType.table_index, NodeType.table_member, NodeType.op_assign):
+                    return remove_parens(token)
+                if outer.type in (NodeType.call, NodeType.print) and (token.parent in outer.args[:-1] or 
+                        (outer.args and token.parent == outer.args[-1] and not is_vararg_expr(inner))):
+                    return remove_parens(token)
+                if outer.type in (NodeType.assign, NodeType.local, NodeType.for_in) and (token.parent in outer.sources[:-1] or 
+                        (outer.sources and token.parent == outer.sources[-1] and (not is_vararg_expr(inner) or len(outer.targets) <= len(outer.sources)))):
+                    return remove_parens(token)
+                if outer.type == NodeType.return_ and (token.parent in outer.rets[:-1] or 
+                        (outer.rets and token.parent == outer.rets[-1] and not is_vararg_expr(inner))):
+                    return remove_parens(token)
+                if outer.type in (NodeType.if_, NodeType.elseif, NodeType.while_, NodeType.until) and not getattr(outer, "short", False):
+                    return remove_parens(token)
 
             # replace tokens for higher consistency
 
@@ -1857,10 +1902,11 @@ def minify_code(source, tokens, root, minify):
             if token.type == TokenType.number:
                 token.value = format_fixnum(parse_fixnum(token.value))
 
-        root.traverse_tokens(fixup_tokens)
+    root.traverse_tokens(fixup_tokens)
 
-        prev_token = Token.dummy(None)
+    output = []
 
+    if minify_wspace:
         # add keep: comments (for simplicity, at start)
         for token in tokens:
             if token.type == TokenType.comment:
@@ -1870,6 +1916,7 @@ def minify_code(source, tokens, root, minify):
             data = vlines[vline]
             return ("if" in data and "then" not in data) or ("while" in data and "do" not in data) or ("?" in data)
 
+        prev_token = Token.dummy(None)
         def output_tokens(token):
             nonlocal prev_token
             if token.value is None:
@@ -1893,29 +1940,32 @@ def minify_code(source, tokens, root, minify):
         root.traverse_tokens(output_tokens)
 
     else:
-        # just remove the comments, with minimal impact on visible whitespace
+        # just remove the comments (if needed), with minimal impact on visible whitespace
         prev_token = Token.dummy(None)
 
         def output_wspace(wspace):
-            i = 0
-            pre_i, post_i = 0, 0
-            while True:
-                next_i = wspace.find("--", i)
-                if next_i < 0:
-                    post_i = i
-                    break
-                
-                if pre_i == 0:
-                    pre_i = next_i
+            if minify_comments:
+                i = 0
+                pre_i, post_i = 0, 0
+                while True:
+                    next_i = wspace.find("--", i)
+                    if next_i < 0:
+                        post_i = i
+                        break
+                    
+                    if pre_i == 0:
+                        pre_i = next_i
 
-                # TODO: --[[]]/etc comments...
-                i = wspace.find("\n", next_i)
-                i = i if i >= 0 else len(wspace)
+                    # TODO: --[[]]/etc comments...
+                    i = wspace.find("\n", next_i)
+                    i = i if i >= 0 else len(wspace)
 
-            result = wspace[:pre_i] + wspace[post_i:]
-            if post_i > 0 and not result:
-                result = " "
-            output.append(result)
+                result = wspace[:pre_i] + wspace[post_i:]
+                if post_i > 0 and not result:
+                    result = " "
+                output.append(result)
+            else:
+                output.append(wspace)
 
         for token in tokens:
             if token.type == TokenType.lint:
@@ -1925,7 +1975,7 @@ def minify_code(source, tokens, root, minify):
 
             if token.type == TokenType.comment:
                 output.append("--%s\n" % token.value)
-            else:
+            elif token.value != None:
                 output.append(token.value)
                 
             prev_token = token

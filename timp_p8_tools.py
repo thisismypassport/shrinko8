@@ -26,6 +26,7 @@ parser.add_argument("--no-preserve", type=CommaSep, action=extend_arg, help="do 
 parser.add_argument("--no-minify-rename", action="store_true", help="disable variable renaming in minification")
 parser.add_argument("--no-minify-spaces", action="store_true", help="disable space removal in minification")
 parser.add_argument("--no-minify-lines", action="store_true", help="disable line removal in minification")
+parser.add_argument("--no-minify-tokens", action="store_true", help="disable token removal in minification")
 # count
 parser.add_argument("-c", "--count", action="store_true", help="enable printing token count, character count & compressed size")
 parser.add_argument("--input-count", action="store_true", help="enable printing input character count & compressed size, for now just for png format")
@@ -66,6 +67,7 @@ if args.minify:
     args.minify = {
         "lines": not args.no_minify_lines,
         "wspace": not args.no_minify_spaces,
+        "tokens": not args.no_minify_tokens,
     }
 
 args.obfuscate = bool(args.minify) and not args.no_minify_rename

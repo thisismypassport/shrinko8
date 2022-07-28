@@ -1,7 +1,7 @@
 # timp_p8_tools
 
 The supported tools are:
-* [Minification](#minification) - Reduce the character count and compression ratio of your cart.
+* [Minification](#minification) - Reduce the token count, character count and compression ratio of your cart.
 * [Linting](#linting) - Check for common code errors such as forgetting to declare a local.
 * [Getting Cart Size](#getting-cart-size) - Count the amount of tokens, characters, and compressed bytes your cart uses.
 * [Format Conversion](#format-conversion) - Convert between p8 and png files, usually with slightly better code compression than Pico-8's.
@@ -15,9 +15,7 @@ Reading/Writing PNGs additionally requires the Pillow module (`python -m pip ins
 
 # Minification
 
-Greatly reduces the character count of your cart, as well as greatly improves its compression ratio (so that its compressed size is smaller).
-
-Note: it doesn't affect token count. (Might be added in the future)
+Greatly reduces the character count of your cart, as well as greatly improves its compression ratio (so that its compressed size is smaller) and can reduce the number of tokens as well.
 
 ## To minify your p8 cart:
 
@@ -143,11 +141,10 @@ Be aware that doing this won't reduce the compressed size of the cart, and will 
 
 You can disable parts of the minification process via additional command-line options:
 
-```
---no-minify-rename
---no-minify-spaces
---no-minify-lines
-```
+* `--no-minify-rename` : Disable all renaming of identifiers
+* `--no-minify-spaces` : Disable removal of spaces (and line breaks)
+* `--no-minify-lines` : Disable removal of line breaks
+* `--no-minify-tokens` : Disable removal and alteration of tokens (not including identifier renaming)
 
 ## Keeping comments
 
@@ -176,11 +173,9 @@ You can combine linting with other operations:
 
 You can disable certain lints globally via additional command-line options:
 
-```
---no-lint-unused
---no-lint-duplicate
---no-lint-undefined
-```
+* `--no-lint-unused` : Disable lint on unused variables
+* `--no-lint-duplicate` : Disable lint on duplicate variable names
+* `--no-lint-undefined` : Disable lint on undefined variables
 
 Normally, a lint failure prevents cart creation, but `--no-lint-fail` overrides that.
 
