@@ -481,7 +481,7 @@ def write_code(w, code, print_sizes=False, force_compress=False, fail_on_error=T
         w.bytes(bytes(ord(c) for c in code))
 
 def write_code_sizes(code):
-    write_code(BinaryWriter(BytesIO()), code, force_compress=True, fail_on_error=False)
+    write_code(BinaryWriter(BytesIO()), code, print_sizes=True, force_compress=True, fail_on_error=False)
 
 def write_cart_to_rom(cart, **opts):
     output = BytesIO(bytearray(k_memory_size + 0x20))

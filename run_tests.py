@@ -38,7 +38,8 @@ def run_code(*args, exit_code=None):
 def measure(kind, path, input=False):
     print("Measuring %s..." % kind)
     if path_exists(path):
-        run_code(path, "--input-count" if input else "--count")
+        _, stdout = run_code(path, "--input-count" if input else "--count")
+        print(stdout.getvalue(), end="")
     else:
         print("MISSING!")
 
@@ -70,7 +71,7 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
         print("\nTest %s succeeded" % name)
     return True
 
-def run_fail_test(name, input, *args, private=False, output=None):
+def run_stdout_test(name, input, *args, private=False, output=None, exit_code=None):
     if opts.test and name not in opts.test:
         return None
 
@@ -79,7 +80,7 @@ def run_fail_test(name, input, *args, private=False, output=None):
     outpath = path_join(prefix + "test_output", output)
     cmppath = path_join(prefix + "test_compare", output)
 
-    success, stdout = run_code(inpath, *args, exit_code=1)
+    success, stdout = run_code(inpath, *args, exit_code=exit_code)
     file_write_text(outpath, stdout.getvalue())
     if success:
         success = stdout.getvalue() == try_file_read_text(cmppath)
@@ -107,7 +108,8 @@ def run():
     if run_test("compress", "test.p8", "testtmp.png", "--force-compression", to_temp=True):
         run_test("compress_check", "testtmp.png", "test_post_compress.p8", from_temp=True)
     run_test("genend", "genend.p8.png", "genend.p8")
-    run_fail_test("lint", "bad.p8", "--lint", output="bad.txt")
+    run_stdout_test("lint", "bad.p8", "--lint", output="bad.txt", exit_code=1)
+    run_stdout_test("count", "bad.p8", "--count", output="badcount.txt")
     run_test("script", "script.p8", "script.p8", "--script", path_join("test_input", "my_script.py"),
              "--script-args", "my-script-arg", "--my-script-opt", "123")
 
