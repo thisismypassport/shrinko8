@@ -17,6 +17,12 @@ Reading/Writing PNGs additionally requires the Pillow module (`python -m pip ins
 
 Greatly reduces the character count of your cart, as well as greatly improves its compression ratio (so that its compressed size is smaller) and can reduce the number of tokens as well.
 
+In detail:
+* All unnecessary spaces and line breaks are removed
+* Unnecessary tokens like parentheses and trailing commas are removed
+* Identifiers are renamed to be as short as possible
+* Tokens are made more consistent, to reduce compression ratio
+
 ## To minify your p8 cart:
 
 `python timp_p8_tools.py path-to-input.p8 path-to-output.p8 --minify`
