@@ -168,6 +168,8 @@ class TokenNodeBase:
 
     def _sibling(m, delta):
         parent = m.parent
+        if parent is None:
+            return None
         i = parent.children.index(m) + delta
         return list_get(parent.children, i)
 
@@ -1119,10 +1121,10 @@ def parse(source, tokens):
     def parse_return(vline):
         tokens = [peek(-1)]
         if peek().value in k_block_ends + (";",) or (e(vline) and peek().vline > vline):
-            return Node(NodeType.return_, tokens, rets=[])
+            return Node(NodeType.return_, tokens, items=[])
         else:
             rets = parse_list(tokens, parse_expr)
-            return Node(NodeType.return_, tokens, rets=rets)
+            return Node(NodeType.return_, tokens, items=rets)
 
     def parse_local():
         nonlocal scope
@@ -1874,16 +1876,16 @@ def minify_code(source, tokens, root, minify):
                 if e(inner_prec) and e(outer_prec) and (inner_prec > outer_prec or (inner_prec == outer_prec and
                         (outer_prec == k_unary_ops_prec or is_right_assoc(outer) == (outer.right == token.parent)))):
                     return remove_parens(token)
-                if outer.type in (NodeType.group, NodeType.table_index, NodeType.table_member, NodeType.op_assign):
+                if outer.type in (NodeType.group, NodeType.table_member, NodeType.table_index, NodeType.op_assign):
                     return remove_parens(token)
                 if outer.type in (NodeType.call, NodeType.print) and (token.parent in outer.args[:-1] or 
                         (outer.args and token.parent == outer.args[-1] and not is_vararg_expr(inner))):
                     return remove_parens(token)
-                if outer.type in (NodeType.assign, NodeType.local, NodeType.for_in) and (token.parent in outer.sources[:-1] or 
+                if outer.type in (NodeType.assign, NodeType.local) and (token.parent in outer.sources[:-1] or 
                         (outer.sources and token.parent == outer.sources[-1] and (not is_vararg_expr(inner) or len(outer.targets) <= len(outer.sources)))):
                     return remove_parens(token)
-                if outer.type == NodeType.return_ and (token.parent in outer.rets[:-1] or 
-                        (outer.rets and token.parent == outer.rets[-1] and not is_vararg_expr(inner))):
+                if outer.type in (NodeType.return_, NodeType.table) and (token.parent in outer.items[:-1] or
+                        (outer.items and token.parent == outer.items[-1] and not is_vararg_expr(inner))):
                     return remove_parens(token)
                 if outer.type in (NodeType.if_, NodeType.elseif, NodeType.while_, NodeType.until) and not getattr(outer, "short", False):
                     return remove_parens(token)

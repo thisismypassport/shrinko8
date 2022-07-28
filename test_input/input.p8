@@ -83,13 +83,24 @@ rectfill(120,120,123,123); rectfill(123,123,126,126)
 -- punct removal
 while (1==0);
 while (1==0) sin=cos; cos=sin;
+if (1 == 2);
+if (1 == 2) ;;;sin=cos;;; cos=sin;;;
 local tbls = {1,}, {1;2,3;4;}
 
 -- paren removal
 ?(((1 or 1) or (2 and ((3 == 4) >= (4 | (5 ^^ (((6 << 1) >>< (1 .. (2 .. (3 - ((-(1^(4^1))) / 1))))) & 7)))))))
 ?((~(((((((tonum(((3 or 4) and 5) != 2) | 1) ^^ 2) & 3) >> 1) .. 1) - (1 + 3)) * 3)) ^ 2) ^ 1
 local prefix = ({})[1], (function()end)()
-local calls1, calls2 = sin((1),(2)), (cos((cos())))
+local calls1, calls2 = (sin((1),(2))), (cos((cos())))
 local calls1_, calls2_ = (cos((cos())))
 local obj = {ord=ord, pal=pal}
 local calls3 = ord("123"), pal({1,2}), obj:ord("ord"), obj:pal({1,2}), sin(1)
+local moretests = {(ord("1")),[(2)]=(3),x=(4),(ord("1"))}
+calls3 += (1)
+calls1, calls2 = (sin((1),(2))), (cos((cos())))
+calls1_, calls2_ = (cos((cos())))
+function xxx() return (1), (2), (ord("1")), (ord("1")) return end
+if (1 == 2) then elseif (1 == 2) then else end
+while (1 == 2) do end
+repeat until (1 == 1);
+for a in (pairs({})) do end
