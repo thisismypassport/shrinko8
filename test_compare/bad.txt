@@ -1,4 +1,5 @@
 Lint errors:
+badinc.p8(3:7) - Local 'from_include' isn't used
 bad.p8(5:8) - Identifier 'u' not found
 bad.p8(5:11) - Identifier 'v' not found
 bad.p8(6:3) - Identifier 'x' not found - did you mean to use 'local' to define it?

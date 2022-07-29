@@ -29,9 +29,9 @@ In detail:
 
 `python shrinko8.py path-to-input.p8 path-to-output.p8 --minify`
 
-If you just want the lua source without the rest of the baggage (except the `__lua__` header line):
+If you just want the lua source without the rest of the baggage (if you do want the `__lua__` header line, try `--format code`):
 
-`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --format code`
+`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --format lua`
 
 If you want to create a png cart:
 

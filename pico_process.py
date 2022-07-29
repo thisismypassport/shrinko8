@@ -245,6 +245,7 @@ define_use_re = re.compile(r"\$\[(\w*)\]")
 define_cond_re = re.compile(r"\$\[(\w+)\[(=*)\[(.*?)\]\2\]\]")
 p8_section_re = re.compile(r"^__\w+__\s*$")
 
+# supports some weird preprocessor dialect, token-unaware
 def read_code(filename, defines=None, pp_handler=None, pp_inline=False, fail=True):
     lines = []
     defines = defines.copy() if defines else {}

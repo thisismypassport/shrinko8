@@ -16,7 +16,6 @@ class Cart:
         m.code = ""
         m.screenshot = None
         m.meta = defaultdict(list)
-        m.is_source = False
 
     def copy(m):
         return deepcopy(m)
@@ -711,7 +710,6 @@ def read_cart_from_source(data):
             cart.version_id = int(clean.split()[1])
             
     cart.code = "".join(code)
-    cart.is_source = True
     return cart
 
 def write_cart_to_source(cart):
@@ -729,6 +727,17 @@ def write_cart_to_source(cart):
 
     def ext_nybbles(data):
         return "".join(('%01x' % b if b < 16 else chr(b - 16 + ord('g'))) for b in data)
+
+    def remove_empty_section_lines(num_spaces=0):
+        while True:
+            line = lines[-1]
+            if line.startswith("__"):
+                lines.pop()
+                break
+            elif line.count('0') == len(line) - num_spaces:
+                lines.pop()
+            else:
+                break
     
     lines.append("__lua__")
     lines.append(str_remove_suffix(from_pico_chars(cart.code), "\n"))
@@ -736,14 +745,17 @@ def write_cart_to_source(cart):
     lines.append("__gfx__")
     for y in range(128):
         lines.append(nybbles(cart.rom.get4(mem_tile_addr(x, y)) for x in range(128)))
+    remove_empty_section_lines()
 
     lines.append("__map__")
     for y in range(32):
         lines.append(bytes(cart.rom.get8(mem_map_addr(x, y)) for x in range(128)))
+    remove_empty_section_lines()
 
     lines.append("__gff__")
     for y in range(2):
-        lines.append(bytes(cart.rom.get8(mem_flag_addr(x, y)) for x in range(128)))    
+        lines.append(bytes(cart.rom.get8(mem_flag_addr(x, y)) for x in range(128)))
+    remove_empty_section_lines() 
 
     lines.append("__sfx__")
     for y in range(64):
@@ -751,6 +763,7 @@ def write_cart_to_source(cart):
         notes = (cart.rom.get16(mem_sfx_addr(y, x)) for x in range(32))
         note_groups = nybble_groups(((n >> 4) & 0x3, n & 0xf, ((n >> 6) & 0x7) | (n >> 12) & 0x8, (n >> 9) & 0x7, (n >> 12) & 0x7) for n in notes)
         lines.append(info + note_groups)
+    remove_empty_section_lines()
 
     lines.append("__music__")
     for y in range(64):
@@ -758,11 +771,13 @@ def write_cart_to_source(cart):
         flags = bytes((sum(((ch >> 7) & 1) << i for i, ch in enumerate(chans)),))
         ids = bytes(ch & 0x7f for ch in chans)
         lines.append(flags + " " + ids)
+    remove_empty_section_lines(num_spaces=1)
     
     if cart.screenshot:
         lines.append("__label__")
         for y in range(128):
             lines.append(ext_nybbles(cart.screenshot[x, y] for x in range(128)))
+        remove_empty_section_lines()
     
     for meta, metalines in cart.meta.items():
         lines.append("__%s__" % (k_meta_prefix + meta))
@@ -773,7 +788,7 @@ def write_cart_to_source(cart):
 def read_cart_from_text(f, **opts):
     try:
         data = f.read().decode()
-    except UnicodeDecodeError:
+    except UnicodeDecodeError: # required to happen for png images
         raise WrongFileTypeError()
     
     # cart?
@@ -781,16 +796,21 @@ def read_cart_from_text(f, **opts):
         return read_cart_from_source(data)
         
     # cart block?
-    data = data.strip()
+    block = data.strip()
     prefix, suffix = "[cart]", "[/cart]"
-    if not data.startswith(prefix) or not data.endswith(suffix):
+    if block.startswith(prefix) and block.endswith(suffix):
+        block = bytes.fromhex(block[len(prefix):-len(suffix)])
+
+        with BytesIO(block) as f:
+            return read_cart_from_stream(f, **opts)
+
+    # plain text?
+    if "\0" in data:
         raise WrongFileTypeError()
 
-    data = data[len(prefix):-len(suffix)]
-    data = bytes.fromhex(data)
-
-    with BytesIO(data) as f:
-        return read_cart_from_stream(f, **opts)
+    cart = Cart()
+    cart.code = data
+    return cart
 
 def read_cart_from_stream(f, **opts):
     try:

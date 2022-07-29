@@ -107,6 +107,7 @@ def run():
     run_test("png2p8", "test.png", "testcvt.p8")
     if run_test("compress", "test.p8", "testtmp.png", "--force-compression", to_temp=True):
         run_test("compress_check", "testtmp.png", "test_post_compress.p8", from_temp=True)
+    run_test("lua2p8", "included.lua", "testlua.p8")
     run_test("genend", "genend.p8.png", "genend.p8")
     run_stdout_test("lint", "bad.p8", "--lint", output="bad.txt", exit_code=1)
     run_stdout_test("count", "bad.p8", "--count", output="badcount.txt")

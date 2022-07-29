@@ -11,9 +11,9 @@ extend_arg = "extend" if sys.version_info >= (3,8) else None
 
 parser = argparse.ArgumentParser()
 # input/output
-parser.add_argument("input", help="input file, can be in p8/png/code format")
+parser.add_argument("input", help="input file, can be in p8/png/lua/code format")
 parser.add_argument("output", help="output file", nargs='?')
-parser.add_argument("-f", "--format", choices=["p8", "png", "code"], help="output format")
+parser.add_argument("-f", "--format", choices=["p8", "png", "lua", "code"], help="output format")
 # lint
 parser.add_argument("-l", "--lint", action="store_true", help="enable erroring on lint errors")
 parser.add_argument("--no-lint-unused", action="store_true", help="don't print lint errors on unused variables")
@@ -54,7 +54,7 @@ if args.minify and not args.output and not args.count:
     
 if not args.format and args.output:
     args.format = path_extension(args.output)[1:].lower()
-    if args.format not in ("p8", "png"):
+    if args.format not in ("p8", "png", "lua"):
         args.format = "p8"
 
 if args.lint:
@@ -126,7 +126,8 @@ if args.output:
             print_sizes=args.count, force_compress=args.count or args.force_compression))
         args.count = False # done above
     else:
-        file_write_text(args.output, "__lua__\n" + from_pico_chars(cart.code))
+        prefix = "__lua__\n" if args.format == "code" else ""
+        file_write_text(args.output, prefix + from_pico_chars(cart.code))
 
 if args.count:
     write_code_sizes(cart.code)

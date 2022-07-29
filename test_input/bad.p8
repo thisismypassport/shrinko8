@@ -1,5 +1,5 @@
 __lua__
-
+#include badinc.p8
 -- undef
 function f0()
   band(u, v)
