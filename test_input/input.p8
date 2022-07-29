@@ -12,6 +12,11 @@ local include={1,2,3}
 print(
 #include
 )
+print(
+#[[
+#include notaninclude
+]]
+)
 
 -- preserve
 local my_key = "preserved_key"

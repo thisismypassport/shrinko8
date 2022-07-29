@@ -931,7 +931,7 @@ def preprocess_code(name, path, code, start_line=0, preprocessor=None):
         elif ch != '#':
             i += 1
 
-        elif list_get(code, i + 1) == '[': # #[...] inline directive
+        elif list_get(code, i + 1) == '[' and list_get(code, i + 2) != '[': # #[...] inline directive
             flush_output()
             active, i, start_i, out_i = preprocessor.handle_inline(path, code, i, start_i, out_i, outparts, outmappings)
 

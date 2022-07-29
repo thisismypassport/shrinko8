@@ -12,11 +12,16 @@ local d={1,2,3}
 print(
 #d
 )
+print(
+#[[
+#include notaninclude
+]]
+)
 
 
 local d = "preserved_key"
-local r = {preserved_key=123}
-?r[d] 
+local c = {preserved_key=123}
+?c[d] 
 
 local d = "preserved_glob"
 preserved_glob = 123
@@ -31,12 +36,12 @@ function d:subfunc() end
 
 
 local d = "key"
-local r = {key=123}
-?r[d]
+local c = {key=123}
+?c[d]
 
 local d = split "key1,key2,key3"
-local r = {key1=123,key2=234,key3=345}
-?r[d[2]]
+local c = {key1=123,key2=234,key3=345}
+?c[d[2]]
 
 local d = "l"
 l = 123
@@ -96,13 +101,13 @@ local e = {1}, {1,2,3,4}
 ?((~(((((((tonum(((3 or 4) and 5) ~= 2) | 1) ^^ 2) & 3) >> 1) .. 1) - (1 + 3)) * 3)) ^ 2) ^ 1
 local e = ({})[1], (function()end)()
 local l, o = sin(1,2), cos((cos()))
-local d, r = (cos((cos())))
+local d, c = (cos((cos())))
 local e = {ord=ord, pal=pal}
-local c = ord"123", pal{1,2}, e:ord("ord"), e:pal({1,2}), sin(1)
+local r = ord"123", pal{1,2}, e:ord("ord"), e:pal({1,2}), sin(1)
 local e = {ord"1",[2]=3,x=4,(ord"1")}
-c += 1
+r += 1
 l, o = sin(1,2), cos((cos()))
-d, r = (cos((cos())))
+d, c = (cos((cos())))
 function n() return 1, 2, ord"1", (ord"1") end
 if 1 == 2 then elseif 1 == 2 then else end
 while 1 == 2 do end
