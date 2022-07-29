@@ -44,3 +44,11 @@ end
 function f3:foo()
   return self
 end
+----[]
+  #include badinc.p8.png
+--[[
+#include notaninclude
+]]
+print("\"\z  
+#include notaninclude\
+")

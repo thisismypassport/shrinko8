@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from utils import *
-from pico_process import read_code, PicoContext, process_code, PicoComplexSource
+from pico_process import PicoContext, process_code, CartSource, CustomPreprocessor
 from pico_cart import read_cart, write_cart_to_source, write_cart_to_image, from_pico_chars, write_code_sizes
 import argparse, importlib.util
 
@@ -37,6 +37,7 @@ parser.add_argument("--script-args", nargs=argparse.REMAINDER, help="send argume
 # misc (semi-undocumented)
 parser.add_argument("--rename-map", help="log renaming of identifiers (from minify step) to this file")
 parser.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
+parser.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
 args = parser.parse_args()
 
 res_path = path_dirname(path_resolve(__file__))
@@ -87,18 +88,9 @@ if args.script:
     preproc_cb = getattr(script_mod, "preprocess_main", None)
     postproc_cb = getattr(script_mod, "postprocess_main", None)
 
-cart = read_cart(args.input, print_sizes=args.input_count)
-try:
-    src = read_code(args.input, fail=False) # supports #include (and other stuff), which read_cart currently does not
-except UnicodeDecodeError: # hacky png detection
-    src = PicoComplexSource(path_basename(args.input), cart.code)
-src.tie_to(cart)
-
-if src.errors:
-    print("Preprocessor errors:")
-    for error in src.errors:
-        print(error)
-    sys.exit(1)
+preprocessor = CustomPreprocessor() if args.custom_preprocessor else None
+cart = read_cart(args.input, print_sizes=args.input_count, preprocessor=preprocessor)
+src = CartSource(cart)
     
 ctxt = PicoContext(srcmap=args.rename_map)
 if preproc_cb:

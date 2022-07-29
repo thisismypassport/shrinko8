@@ -357,6 +357,9 @@ class TupleMetaclass(type):
         new_def += "    return tuple.__new__(__cls, (%s))\n" % (", ".join(all_fields) + ("," if len(all_fields) == 1 else ""))
         __new__ = exec_def("__new__", new_def)
         __new__.__defaults__ = defaults
+
+        def __reduce_ex__(m, proto):
+            return (m.__new__, (m.__class__, *m))
         
         @recursive_repr()
         def __repr__(m):
@@ -368,6 +371,7 @@ class TupleMetaclass(type):
     
         tuple_dict = {}
         tuple_dict["__new__"] = __new__
+        tuple_dict["__reduce_ex__"] = __reduce_ex__
         tuple_dict["__repr__"] = __repr__
         tuple_dict["__slots__"] = () # fields come from tuple
         tuple_dict["_replace"] = _replace

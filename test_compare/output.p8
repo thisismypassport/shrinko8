@@ -1,7 +1,7 @@
 __lua__
 ?"hello ᶜ7there♥ら"
-t(stat(band()))
-print"this is included"?"$[disable[[this for now/ever]]]"
+t(stat(band()))print"this is included"
+?"#[disable[[this for now/ever]]]"
 local c="preserved_key"local a={preserved_key=123}
 ?a[c]
 local c="preserved_glob"preserved_glob=123
@@ -32,4 +32,4 @@ if(1==2)sin=cos cos=sin
 local e={1},{1,2,3,4}
 ?1or 1or 2and 3==4>=4|5^^6<<1>><1 ..2 ..3- -1^4^1/1&7
 ?((~(((((((tonum(((3or 4)and 5)~=2)|1)^^2)&3)>>1)..1)-(1+3))*3))^2)^1
-local e=({})[1],(function()end)()local l,o=sin(1,2),cos((cos()))local n,d=(cos((cos())))local e={i=ord,t=pal}local c=ord"123",pal{1,2},e:i("ord"),e:t({1,2}),sin(1)local e={ord"1",[2]=3,e=4,(ord"1")}c+=1l,o=sin(1,2),cos((cos()))n,d=(cos((cos())))function r()return 1,2,ord"1",(ord"1")return end if 1==2then elseif 1==2then else end while 1==2do end repeat until 1==1for e in(pairs{})do end
+local e=({})[1],(function()end)()local l,o=sin(1,2),cos((cos()))local n,d=(cos((cos())))local e={i=ord,t=pal}local c=ord"123",pal{1,2},e:i("ord"),e:t({1,2}),sin(1)local e={ord"1",[2]=3,e=4,(ord"1")}c+=1l,o=sin(1,2),cos((cos()))n,d=(cos((cos())))function r()return 1,2,ord"1",(ord"1")end if 1==2then elseif 1==2then else end while 1==2do end repeat until 1==1for e in(pairs{})do end

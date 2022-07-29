@@ -7,13 +7,18 @@ k_latest_version_id = 36
 k_latest_version_hex = 0x00020402 # v0.2.4c
 k_default_platform = 'w' # also 'l', 'x'
 
+class CodeMapping(Tuple):
+    fields = ("idx", "src_name", "src_code", "src_idx", "src_line")
+
 class Cart:
     def __init__(m):
         m.version_id = k_latest_version_id
         m.version_hex = k_latest_version_hex
         m.platform = k_default_platform
         m.rom = Memory(k_rom_size)
+        m.name = ""
         m.code = ""
+        m.code_map = ()
         m.screenshot = None
         m.meta = defaultdict(list)
 
@@ -38,9 +43,6 @@ class Cart:
         if title != m.get_title():
             m.set_title(title)
 
-class WrongFileTypeError(Exception):
-    pass
-
 k_code_table = [
     None, '\n', ' ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', # 00
     'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', # 0d
@@ -59,7 +61,7 @@ def update_mtf(mtf, idx, ch):
         mtf[ii] = mtf[ii - 1]
     mtf[0] = ch
 
-def read_code(r, print_sizes=False, **_):
+def read_code_from_rom(r, print_sizes=False, **_):
     start_pos = r.pos()
     header = r.bytes(4)
 
@@ -151,12 +153,13 @@ def read_code(r, print_sizes=False, **_):
     
     return "".join(code)
 
-def read_cart_from_rom(buffer, **opts):
+def read_cart_from_rom(buffer, path=None, **opts):
     cart = Cart()
     
     with BinaryReader(BytesIO(buffer), big_end = True) as r:
+        cart.name = path_basename(path)
         cart.rom.replace(r.bytes(k_rom_size))
-        cart.code = read_code(r, **opts)
+        cart.code = read_code_from_rom(r, **opts)
 
         r.setpos(k_memory_size)
         cart.version_id = r.u8()
@@ -517,12 +520,12 @@ k_palette_map_6bpp = {Color(c.r & ~3, c.g & ~3, c.b & ~3, c.a & ~3): i for c, i 
 def load_cart_image(f):
     r = BinaryReader(f)
     if r.bytes(8) != b"\x89PNG\r\n\x1a\n":
-        raise WrongFileTypeError()
+        raise Exception("Not a valid png")
     r.subpos(8)
 
     image = Surface.load(f)
     if image.width != k_cart_image_width or image.height != k_cart_image_height:
-        raise WrongFileTypeError()
+        raise Exception("Png has wrong size")
 
     return image
 
@@ -610,7 +613,7 @@ def write_cart_to_image(cart, res_path, screenshot_path=None, title=None, **opts
 
 k_meta_prefix = "meta:"
         
-def read_cart_from_source(data):
+def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
     cart = Cart()
     
     def nybbles(line):
@@ -632,19 +635,24 @@ def read_cart_from_source(data):
             else:
                 yield int(b, 16)
     
-    header = None
+    header = "lua" if raw else None
     code = []
+    code_line = 0
     y = 0
-    for line in data.splitlines():
+    for line_i, line in enumerate(data.split("\n")): # not splitlines, that eats a trailing empty line
         clean = line.strip()
             
-        if line.startswith("__") and line.endswith("__"):
-            header = line[2:-2]
+        if line.startswith("__") and clean.endswith("__") and not raw: # may end with whitespace
+            header = clean[2:-2]
             y = 0
             
         elif header == "lua":
+            if y == 0:
+                code_line = line_i
+            else:
+                code.append("\n")
             code.append(to_pico_chars(line))
-            code.append("\n")
+            y += 1
             
         elif header == "gfx" and clean:
             assert len(clean) == 0x80
@@ -704,12 +712,13 @@ def read_cart_from_source(data):
             y += 1
 
         elif header and header.startswith(k_meta_prefix):
-            cart.meta[header[len(k_meta_prefix):]].append(line)
+            cart.meta[header[len(k_meta_prefix):]].append(line.rstrip('\n'))
             
         elif header == None and clean.startswith("version "):
             cart.version_id = int(clean.split()[1])
             
-    cart.code = "".join(code)
+    cart.name = path_basename(path)
+    cart.code, cart.code_map = preprocess_code(cart.name, path, "".join(code), code_line, preprocessor=preprocessor)
     return cart
 
 def write_cart_to_source(cart):
@@ -740,7 +749,7 @@ def write_cart_to_source(cart):
                 break
     
     lines.append("__lua__")
-    lines.append(str_remove_suffix(from_pico_chars(cart.code), "\n"))
+    lines.append(from_pico_chars(cart.code))
 
     lines.append("__gfx__")
     for y in range(128):
@@ -785,40 +794,22 @@ def write_cart_to_source(cart):
 
     return "\n".join(lines)
         
-def read_cart_from_text(f, **opts):
-    try:
-        data = f.read().decode()
-    except UnicodeDecodeError: # required to happen for png images
-        raise WrongFileTypeError()
-    
+def read_cart_from_text(text, **opts):
     # cart?
-    if data.startswith("pico-8 cartridge") or data.startswith("__lua__"):
-        return read_cart_from_source(data)
+    if text.startswith("pico-8 cartridge") or text.startswith("__lua__"):
+        return read_cart_from_source(text, **opts)
         
     # cart block?
-    block = data.strip()
+    block = text.strip()
     prefix, suffix = "[cart]", "[/cart]"
     if block.startswith(prefix) and block.endswith(suffix):
         block = bytes.fromhex(block[len(prefix):-len(suffix)])
 
         with BytesIO(block) as f:
-            return read_cart_from_stream(f, **opts)
+            return read_cart_from_image(f, **opts)
 
     # plain text?
-    if "\0" in data:
-        raise WrongFileTypeError()
-
-    cart = Cart()
-    cart.code = data
-    return cart
-
-def read_cart_from_stream(f, **opts):
-    try:
-        pos = f.tell()
-        return read_cart_from_text(f, **opts)
-    except WrongFileTypeError:
-        f.seek(pos)
-        return read_cart_from_image(f, **opts)
+    return read_cart_from_source(text, raw=True, **opts)
 
 def read_cart_from_export(data, name, **opts):
     data = data.decode()
@@ -841,8 +832,125 @@ def read_cart_from_export(data, name, **opts):
     for i, b in enumerate(cartdata_raw.group(1).split(",")[cartpos*cartsize : (cartpos+1)*cartsize]):
         cartdata[i] = int(b.strip())
     
-    return read_cart_from_rom(cartdata, **opts)
+    return read_cart_from_rom(cartdata, path=name, **opts)
 
 def read_cart(path, **opts):
-    with file_open(path) as f:
-        return read_cart_from_stream(f, **opts)
+    try:
+        return read_cart_from_text(file_read_text(path), path=path, **opts)
+    except UnicodeDecodeError:
+        with file_open(path) as f:
+            return read_cart_from_image(f, path=path, **opts)
+
+def read_included_cart(orig_path, inc_name, out_i, outparts, outmappings, preprocessor):
+    inc_path = path_join(path_dirname(orig_path), inc_name)
+    if not path_exists(inc_path):
+        raise Exception("cannot open included cart at: %s" % inc_path)
+
+    inc_cart = read_cart(inc_path, preprocessor=preprocessor)
+    if inc_cart.code_map:
+        for map in inc_cart.code_map:
+            outmappings.append(CodeMapping(out_i + map.idx, map.src_name, map.src_code, map.src_idx, map.src_line))
+    else:
+        outmappings.append(CodeMapping(out_i, inc_name, inc_cart.code, 0, 0))
+    outparts.append(inc_cart.code)
+
+    return out_i + len(inc_cart.code)
+
+@staticclass
+class PicoPreprocessor:
+    strict = True
+
+    def start(path, code):
+        pass
+
+    def handle(path, code, i, start_i, out_i, outparts, outmappings):
+        end_i = code.find("\n", i)
+        end_i = end_i if end_i >= 0 else len(code)
+
+        args = code[i:end_i].split(maxsplit=1)
+        if len(args) == 2 and args[0] == "#include":
+            out_i = read_included_cart(path, args[1], out_i, outparts, outmappings, PicoPreprocessor)
+            return True, end_i, end_i, out_i
+        else:
+            return True, i + 1, start_i, out_i
+
+    def handle_inline(path, code, i, start_i, out_i, outparts, outmappings):
+        return True, i + 1, start_i, out_i
+        
+    def finish(path, code):
+        pass
+
+k_long_brackets_re = re.compile(r"\[(=*)\[(.*?)\]\1\]", re.S)
+k_wspace = " \t\r\n"
+
+def preprocess_code(name, path, code, start_line=0, preprocessor=None):
+    outparts = []
+    outmappings = []
+    i = start_i = out_i = 0
+    active = True
+    
+    if preprocessor is None:
+        preprocessor = PicoPreprocessor
+    preprocessor.start(path, code)
+
+    def skip_long_brackets():
+        nonlocal i
+        m = k_long_brackets_re.match(code, i)
+        if m:
+            i = m.end()
+            return True
+
+    def flush_output():
+        nonlocal start_i, out_i
+        if i > start_i and active:
+            outparts.append(code[start_i:i])
+            outmappings.append(CodeMapping(out_i, name, code, start_i, start_line))
+            out_i += (i - start_i)
+        start_i = i
+
+    strict = preprocessor.strict
+
+    while i < len(code):
+        ch = code[i]
+
+        if ch == '-' and list_get(code, i + 1) == '-' and strict: # comment
+            i += 2
+            if not skip_long_brackets():
+                while list_get(code, i) not in ('\n', None):
+                    i += 1
+
+        elif ch == '[' and list_get(code, i + 1) == '[' and strict: # long string
+            skip_long_brackets()
+
+        elif ch in ('"', "'") and strict:
+            i += 1
+            while list_get(code, i) not in (ch, None):
+                i += 2 if code[i] == '\\' else 1
+            i += 1
+
+        elif ch != '#':
+            i += 1
+
+        elif list_get(code, i + 1) == '[': # #[...] inline directive
+            flush_output()
+            active, i, start_i, out_i = preprocessor.handle_inline(path, code, i, start_i, out_i, outparts, outmappings)
+
+        elif list_get(code, i + 1, '') not in k_wspace: # normal directive?
+            hash_i = i
+            while list_get(code, i - 1, '') in k_wspace:
+                if i == 0 or code[i - 1] == '\n':
+                    break
+                i -= 1
+            else:
+                i = hash_i + 1
+                continue
+
+            flush_output()
+            active, i, start_i, out_i = preprocessor.handle(path, code, hash_i, start_i, out_i, outparts, outmappings)
+
+        else:
+            i += 1
+
+    flush_output()
+    preprocessor.finish(path, code)
+    return "".join(outparts), outmappings

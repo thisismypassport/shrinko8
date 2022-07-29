@@ -1,6 +1,6 @@
 from utils import *
-from pico_defs import to_pico_chars, from_pico_chars
-from pico_cart import print_size
+from pico_defs import from_pico_chars
+from pico_cart import print_size, read_included_cart, k_long_brackets_re, k_wspace
 
 main_globals = {
     "abs", "add", "all", "assert", "atan2", "btn", "btnp",
@@ -57,57 +57,55 @@ keywords = {
     "while"
 }
 
+def get_line_col(text, idx): # (0-based)
+    start = 0
+    line = 0
+
+    while start < idx:
+        end = text.find("\n", start)
+        if end < 0 or end >= idx:
+            break
+        line += 1
+        start = end + 1
+    
+    return line, idx - start
+
 class PicoSource: # keep this light - created for temp. tokenizations
     __slots__ = ("name", "text")
 
     def __init__(m, name, text):
         m.name, m.text = name, text
         
-    def get_name_line_col(m, idx):
-        start = 0
-        line = 0
+    def get_name_line_col(m, idx): # (0-based)
+        line, col = get_line_col(m.text, idx)        
+        return m.name, line, col
 
-        while start < idx:
-            end = m.text.find("\n", start)
-            if end < 0 or end >= idx:
-                break
-            line += 1
-            start = end + 1
-        
-        return m.name, line, idx - start
-
-class PicoComplexSource(PicoSource):
-    def __init__(m, name, text, mappings=(), errors=()):
-        m.cart = None
-        super().__init__(name, text)
-        m.mappings = mappings
-        m.errors = errors
+class CartSource(PicoSource):
+    def __init__(m, cart):
+        m.cart = cart
+        m.mappings = cart.code_map
+        # no __init__ - we override with properties
 
     def get_name_line_col(m, idx):
-        name, line, col = super().get_name_line_col(idx)
-
-        real_name, real_line = name, line
-        for mapping in m.mappings:
-            if line >= mapping.line:
-                real_name = mapping.name
-                real_line = line - mapping.line + mapping.real_line
+        for mapping in reversed(m.mappings):
+            if idx >= mapping.idx:
+                name = mapping.src_name
+                line, col = get_line_col(mapping.src_code, mapping.src_idx + (idx - mapping.idx))
+                return name, line + mapping.src_line, col
         
-        return real_name, real_line, col
+        return super().get_name_line_col(idx)
 
     @property
+    def name(m):
+        return m.cart.name
+        
+    @property
     def text(m):
-        return m.cart.code if m.cart else m._text
+        return m.cart.code
 
     @text.setter
-    def text(m, v):
-        if m.cart:
-            m.cart.set_code(v)
-        else:
-            m._text = v
-
-    def tie_to(m, cart):
-        cart.set_code(m.text)
-        m.cart = cart
+    def text(m, val):
+        m.cart.set_code(val)
 
 class VarKind(Enum):
     values = ("local", "global_", "member")
@@ -241,157 +239,115 @@ class Error:
         name, line, col = token.source.get_name_line_col(token.idx) if token.source else ("???", 0, 0)
         return "%s(%s:%s) - %s" % (name, line + 1, col + 1, m.msg)
 
-define_use_re = re.compile(r"\$\[(\w*)\]")
-define_cond_re = re.compile(r"\$\[(\w+)\[(=*)\[(.*?)\]\2\]\]")
-p8_section_re = re.compile(r"^__\w+__\s*$")
+class CustomPreprocessor:
+    def __init__(m, defines=None, pp_handler=None, strict=True):
+        m.defines = defines.copy() if defines else {}
+        m.pp_handler = pp_handler
+        m.ppstack = []
+        m.active = True
+        m.strict = strict
+        
+    def get_active(m):
+        return m.ppstack[-1] if m.ppstack else True
+        
+    def start(m, path, code):
+        pass
 
-# supports some weird preprocessor dialect, token-unaware
-def read_code(filename, defines=None, pp_handler=None, pp_inline=False, fail=True):
-    lines = []
-    defines = defines.copy() if defines else {}
-    ppstack = []
-    ppline = None
-    active = True
-    mappings = []
-    errors = []
+    def handle(m, path, code, i, start_i, out_i, outparts, outmappings):
+        end_i = code.find("\n", i)
+        while end_i >= 0 and code[end_i - 1] == '\\':
+            end_i = code.find("\n", end_i + 1)
 
-    def add_error(ctxt, error):
-        name, i = ctxt
-        errors.append("%s(%s) - %s" % (name, i, error))
+        end_i = end_i if end_i >= 0 else len(code)
+        line = code[i:end_i].replace("\\\n", "")
+        args = line.split()
+        
+        op = args[0] if args else ""
 
-    def get_active():
-        return ppstack[-1] if ppstack else True
+        if op == "#include" and len(args) == 2:
+            if m.active:
+                out_i = read_included_cart(path, args[1], out_i, outparts, outmappings, m)
 
-    def get_defined(m, ctxt):
-        key = m.group(1)
-        if not key:
-            return "$[" # escape $[ with $[]
-        elif key in defines:
-            return defines[key]
-        else:
-            if pp_handler:
-                pp_result = pp_handler(op="$" + key, args=(), ppline=m.group(), active=True, lines=lines)
-                if isinstance(pp_result, str):
-                    return pp_result
-            
-            add_error(ctxt, "Undefined: %s" % key)
-            return ""
+        elif op == "#define" and len(args) >= 2:
+            if m.active:
+                value = line.split(maxsplit=2)[2].rstrip() if len(args) > 2 else ""
+                m.defines[args[1]] = value
 
-    def get_conditional(m, ctxt):
-        key = m.group(1)
-        if key in defines:
-            return m.group(3)
-        else:
-            if pp_handler:
-                pp_result = pp_handler(op="$" + key, args=[m.group(3)], ppline=m.group(), active=True, lines=lines)
-                if isinstance(pp_result, str):
-                    return pp_result
-            return ""
-    
-    def add_code_line(name, i, line, raw=False):
-        nonlocal active, ppline
-        ctxt = (name, i)
+        elif op == "#undef" and len(args) == 2:
+            if m.active:
+                del m.defines[args[1]]
 
-        if ppline:
-            line, ppline = ppline + line, None
+        elif op == "#ifdef" and len(args) == 2:
+            m.active &= args[1] in m.defines
+            m.ppstack.append(m.active)
 
-        lstrip = line.lstrip()
-        if lstrip.startswith("#") and not raw:
-            if lstrip.startswith("##"): # escape starting # with ##
-                line = line[:-len(lstrip)] + lstrip[1:]
-                return add_code_line(name, i, line, raw=True) 
+        elif op == "#ifndef" and len(args) == 2:
+            m.active &= args[1] not in m.defines
+            m.ppstack.append(m.active)
 
-            if line.endswith("\\\n"):
-                ppline = line[:-2] + "\n"
-                return
+        elif op == "#else" and len(args) == 1 and m.ppstack:
+            old_active = m.ppstack.pop()
+            m.active = m.get_active() and not old_active
+            m.ppstack.append(m.active)
 
-            args = line.split()
-            op = args[0] if args else ""
+        elif op == "#endif" and len(args) == 1 and m.ppstack:
+            m.ppstack.pop()
+            m.active = m.get_active()
 
-            if op == "#" and len(args) == 1:
-                pass
+        elif not (m.pp_handler and m.pp_handler(op=op, args=args, ppline=line, active=m.active, outparts=outparts)):
+            raise Exception("Invalid preprocessor line: %s" % line)
 
-            elif op == "#include" and len(args) == 2:
-                if active:
-                    add_code_file(args[1])
+        # (do not keep empty lines, unlike PicoPreprocessor)
+        return m.active, end_i + 1, end_i + 1, out_i
+        
+    def handle_inline(m, path, code, i, start_i, out_i, outparts, outmappings):
+        if not m.active:
+            return False, i + 1, start_i, out_i
 
-            elif op == "#define" and len(args) >= 2:
-                if active:
-                    value = line.split(None, 2)[2].rstrip() if len(args) > 2 else ""
-                    defines[args[1]] = value
-
-            elif op == "#undef" and len(args) == 2:
-                if active:
-                    del defines[args[1]]
-
-            elif op == "#ifdef" and len(args) == 2:
-                active &= args[1] in defines
-                ppstack.append(active)
-
-            elif op == "#ifndef" and len(args) == 2:
-                active &= args[1] not in defines
-                ppstack.append(active)
-
-            elif op == "#else" and len(args) == 1 and ppstack:
-                old_active = ppstack.pop()
-                active = get_active() and not old_active
-                ppstack.append(active)
-
-            elif op == "#endif" and len(args) == 1 and ppstack:
-                ppstack.pop()
-                active = get_active()
-
-            elif not (pp_handler and pp_handler(op=op, args=args, ppline=line, active=active, lines=lines)):
-                add_error(ctxt, "Invalid preprocessor line: %s" % line)
-
-            mappings.append(Dynamic(line=len(lines), name=name, real_line=i + 1))
-
-        elif active:
-            if pp_inline: # needs rework, too intrusive
-                line = define_cond_re.sub(lambda m: get_conditional(m, ctxt), line)
-                line = define_use_re.sub(lambda m: get_defined(m, ctxt), line) # put this regex last (handles escape)
-
-            lines.append(to_pico_chars(line))
-
-    def add_code_file(name):
-        data = file_read_text(path_join(root_dir, name))
-        file_lines = data.splitlines(keepends=True)
-
-        start = 0
-        while start < len(file_lines) and file_lines[start].strip() != "__lua__":
-            start += 1
-        if start < len(file_lines):
-            start += 1
-
-            end = start
-            while end < len(file_lines) and not p8_section_re.match(file_lines[end]):
-                end += 1
-        else:
-            start, end = 0, len(file_lines) # treat as pure-code file
-            
-        mappings.append(Dynamic(line=len(lines), name=name, real_line=start))
-
-        i = start
-        for line in file_lines[start:end]:
-            add_code_line(name, i, line)
+        orig_i = i
+        i += 2
+        key_i = i
+        while is_ident_char(list_get(code, i, '')):
             i += 1
+        key = code[key_i:i]
+        inline = code[orig_i:i + 1]
+
+        if list_get(code, i) == ']':
+            end_i = i + 1
+            if key in m.defines:
+                value = m.defines[key]
+            else:
+                value = m.pp_handler(op="#[%s]" % key, args=(), ppline=inline, active=True, outparts=outparts) if m.pp_handler else None
+                if value is None:
+                    raise Exception("Undefined preprocessor variable: %s" % key)
+
+        elif list_get(code, i) == '[':
+            match = k_long_brackets_re.match(code, i)
+            if not match:
+                raise Exception("Unterminated preprocessor long brackets")
+            end_i = match.end() + 1
+            assert list_get(code, end_i - 1) == ']'
+            cond_code = match.group(2)
+            if key in m.defines:
+                value = cond_code
+            else:
+                value = (m.pp_handler(op="#[%s]" % key, args=(cond_code,), ppline=inline, active=True, outparts=outparts) or "") if m.pp_handler else ""
+
+        else:
+            raise Exception("Invalid inline preprocesor directive: %s" % inline)
+
+        outparts.append(value)
+        return True, end_i, end_i, out_i + len(value)
+
+    def finish(m, path, code):
+        if m.ppstack:
+            raise Exception("Unterminated preprocessor ifs")
     
-    root_dir = path_dirname(filename)
-    add_code_file(path_basename(filename))
-
-    if fail and errors:
-        raise Exception("\n".join(errors))
-
-    text = "".join(lines)
-    return PicoComplexSource(path_basename(filename), text, mappings, errors)
-
 k_lint_prefix = "lint:"
 k_keep_prefix = "keep:"
 
 k_lint_func_prefix = "func::"
 k_lint_count_stop = "count::stop"
-
-k_wspace = " \t\r\n"
 
 def is_ident_char(ch):
     return '0' <= ch <= '9' or 'a' <= ch <= 'z' or 'A' <= ch <= 'Z' or ch == '_' or ch >= chr(0x80)

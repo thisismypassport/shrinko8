@@ -7,7 +7,7 @@ t(stat(band()))
 
 -- include
 #include included.lua
-?"$[disable[[this for now/ever]]]"
+?"#[disable[[this for now/ever]]]"
 
 -- preserve
 local my_key = "preserved_key"
@@ -99,7 +99,7 @@ local moretests = {(ord("1")),[(2)]=(3),x=(4),(ord("1"))}
 calls3 += (1)
 calls1, calls2 = (sin((1),(2))), (cos((cos())))
 calls1_, calls2_ = (cos((cos())))
-function xxx() return (1), (2), (ord("1")), (ord("1")) return end
+function xxx() return (1), (2), (ord("1")), (ord("1")) end
 if (1 == 2) then elseif (1 == 2) then else end
 while (1 == 2) do end
 repeat until (1 == 1);

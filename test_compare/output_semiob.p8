@@ -6,7 +6,8 @@ __lua__
 t(stat(band()))
 
 
-print"this is included"?"$[disable[[this for now/ever]]]"
+print"this is included"
+?"#[disable[[this for now/ever]]]"
 
 
 local d = "preserved_key"
@@ -98,7 +99,7 @@ local e = {ord"1",[2]=3,x=4,(ord"1")}
 c += 1
 l, o = sin(1,2), cos((cos()))
 d, r = (cos((cos())))
-function n() return 1, 2, ord"1", (ord"1") return end
+function n() return 1, 2, ord"1", (ord"1") end
 if 1 == 2 then elseif 1 == 2 then else end
 while 1 == 2 do end
 repeat until 1 == 1
