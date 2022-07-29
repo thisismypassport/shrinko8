@@ -8,6 +8,10 @@ t(stat(band()))
 -- include
 #include included.lua
 ?"#[disable[[this for now/ever]]]"
+local include={1,2,3}
+print(
+#include
+)
 
 -- preserve
 local my_key = "preserved_key"

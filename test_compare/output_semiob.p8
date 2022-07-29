@@ -8,6 +8,10 @@ t(stat(band()))
 
 print"this is included"
 ?"#[disable[[this for now/ever]]]"
+local d={1,2,3}
+print(
+#d
+)
 
 
 local d = "preserved_key"

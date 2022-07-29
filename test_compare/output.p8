@@ -2,7 +2,7 @@ __lua__
 ?"hello ᶜ7there♥ら"
 t(stat(band()))print"this is included"
 ?"#[disable[[this for now/ever]]]"
-local c="preserved_key"local a={preserved_key=123}
+local c={1,2,3}print(#c)local c="preserved_key"local a={preserved_key=123}
 ?a[c]
 local c="preserved_glob"preserved_glob=123
 ?_ENV[c]
