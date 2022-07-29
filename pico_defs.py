@@ -78,6 +78,7 @@ def mem_sfx_info_addr(sound, i):
 
 k_rom_size = 0x4300
 k_memory_size = 0x8000
+k_png_data_size = 0x8020
 k_code_size = k_memory_size - k_rom_size
 
 k_palette = [

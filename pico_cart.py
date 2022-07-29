@@ -1,18 +1,22 @@
 from utils import *
 from sdl2_utils import Surface, BlendMode
 from pico_defs import *
+import hashlib
 
-k_latest_version = 35
-k_latest_date = 132215
+k_latest_version_id = 36
+k_latest_version_hex = 0x00020402 # v0.2.4c
+k_default_platform = 'w' # also 'l', 'x'
 
 class Cart:
     def __init__(m):
-        m.version = k_latest_version
-        m.date = k_latest_date
+        m.version_id = k_latest_version_id
+        m.version_hex = k_latest_version_hex
+        m.platform = k_default_platform
         m.rom = Memory(k_rom_size)
         m.code = ""
         m.screenshot = None
         m.meta = defaultdict(list)
+        m.is_source = False
 
     def copy(m):
         return deepcopy(m)
@@ -56,7 +60,7 @@ def update_mtf(mtf, idx, ch):
         mtf[ii] = mtf[ii - 1]
     mtf[0] = ch
 
-def read_code(r, print_sizes=False):
+def read_code(r, print_sizes=False, **_):
     start_pos = r.pos()
     header = r.bytes(4)
 
@@ -148,21 +152,25 @@ def read_code(r, print_sizes=False):
     
     return "".join(code)
 
-def read_cart_raw(f, **opts):
+def read_cart_from_rom(buffer, **opts):
     cart = Cart()
     
-    with BinaryReader(f, big_end = True) as r:
+    with BinaryReader(BytesIO(buffer), big_end = True) as r:
         cart.rom.replace(r.bytes(k_rom_size))
         cart.code = read_code(r, **opts)
 
         r.setpos(k_memory_size)
-        cart.version = r.u8()
-        cart.date = r.u32()
+        cart.version_id = r.u8()
+        cart.version_hex = r.u8() << 16
+        cart.version_hex |= r.u16() << 8
+        cart.platform = chr(r.u8())
+        cart.version_hex |= r.u8()
+        hash = r.bytes(20)
+
+        if hash != bytes(20) and hash != hashlib.sha1(buffer[:k_memory_size]).digest():
+            raise Exception("corrupted cart (wrong hash)")
 
     return cart
-
-def read_cart_from_rom(buffer, **opts):
-    return read_cart_raw(BytesIO(buffer), **opts)
 
 class Lz77Tuple(Tuple):
     fields = ("off", "cnt")
@@ -279,7 +287,7 @@ def print_code_size(size, prefix=""):
 def print_compressed_size(size, prefix=""):
     print_size(prefix + "compressed:", size, k_code_size)
 
-def write_code(w, code, print_sizes=False, force_compress=False, fail_on_error=True):
+def write_code(w, code, print_sizes=False, force_compress=False, fail_on_error=True, **_):
     k_new = True
     min_c = 3
     
@@ -484,19 +492,21 @@ def write_code_sizes(code):
     write_code(BinaryWriter(BytesIO()), code, print_sizes=True, force_compress=True, fail_on_error=False)
 
 def write_cart_to_rom(cart, **opts):
-    output = BytesIO(bytearray(k_memory_size + 0x20))
-    
-    w = BinaryWriter(output, big_end = True)
-    
-    w.bytes(cart.rom.get_block(0, k_rom_size))
-    
-    write_code(w, cart.code, **opts)
-            
-    w.setpos(k_memory_size)
-    w.u8(cart.version)
-    w.u32(cart.date)
+    io = BytesIO(bytearray(k_png_data_size))
 
-    return output.getbuffer()
+    with BinaryWriter(io, big_end = True) as w:
+        w.bytes(cart.rom.get_block(0, k_rom_size))        
+        write_code(w, cart.code, **opts)
+
+        w.setpos(k_memory_size)
+        w.u8(cart.version_id)
+        w.u8(cart.version_hex >> 24)
+        w.u16((cart.version_hex >> 8) & 0xffff)
+        w.u8(ord(cart.platform))
+        w.u8(cart.version_hex & 0xff)
+        w.bytes(hashlib.sha1(io.getvalue()[:k_memory_size]).digest())
+
+        return io.getvalue()
 
 k_cart_image_width, k_cart_image_height = 160, 205
 k_screenshot_rect = Rect(0, 0, 128, 128)
@@ -538,7 +548,7 @@ def read_cart_from_image(f, **opts):
 
     image.unlock()
 
-    cart = read_cart_raw(BytesIO(data), **opts)
+    cart = read_cart_from_rom(data, **opts)
     cart.screenshot = screenshot
     return cart
     
@@ -698,14 +708,15 @@ def read_cart_from_source(data):
             cart.meta[header[len(k_meta_prefix):]].append(line)
             
         elif header == None and clean.startswith("version "):
-            cart.version = int(clean.split()[1])
+            cart.version_id = int(clean.split()[1])
             
     cart.code = "".join(code)
+    cart.is_source = True
     return cart
 
 def write_cart_to_source(cart):
     lines = ["pico-8 cartridge // http://www.pico-8.com"]
-    lines.append("version %d" % cart.version)
+    lines.append("version %d" % cart.version_id)
 
     def nybbles(data):
         return "".join('%01x' % b for b in data)
@@ -778,7 +789,8 @@ def read_cart_from_text(f, **opts):
     data = data[len(prefix):-len(suffix)]
     data = bytes.fromhex(data)
 
-    return read_cart_from_stream(BytesIO(data), **opts)
+    with BytesIO(data) as f:
+        return read_cart_from_stream(f, **opts)
 
 def read_cart_from_stream(f, **opts):
     try:

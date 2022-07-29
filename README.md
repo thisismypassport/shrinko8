@@ -1,10 +1,12 @@
-# shrinko8
+# Shrinko8
+
+A set of Pico-8 cart tools, with a focus on shrinking code size.
 
 The supported tools are:
 * [Minification](#minification) - Reduce the token count, character count and compression ratio of your cart.
 * [Linting](#linting) - Check for common code errors such as forgetting to declare a local.
 * [Getting Cart Size](#getting-cart-size) - Count the amount of tokens, characters, and compressed bytes your cart uses.
-* [Format Conversion](#format-conversion) - Convert between p8 and png files, usually with slightly better code compression than Pico-8's.
+* [Format Conversion](#format-conversion) - Convert between p8 and png files. Achieves slightly better code compression than Pico-8's.
 * [Custom Python Script](#custom-python-script) - Run a custom python script to preprocess or postprocess your cart
 
 Requires [Python](https://www.python.org/) 3.7 or above to run.
@@ -35,7 +37,7 @@ If you want to create a png cart:
 
 `python shrinko8.py path-to-input.p8 path-to-output.png --minify`
 
-This tool usually compresses code a bit better than Pico-8.
+This tool compresses code a bit better than Pico-8.
 
 ## Automatic renaming of identifiers
 
@@ -286,7 +288,7 @@ chars: 30320 46%
 compressed: 12176 77%
 ```
 
-Note that the compressed size is how *this* tool would compress the code, which is usually a bit better than how Pico-8 would.
+Note that the compressed size is how *this* tool would compress the code, which is slightly better than how Pico-8 would.
 
 You can combine counting with other operations, in which case the counts are of the output cart, not the input cart:
 
