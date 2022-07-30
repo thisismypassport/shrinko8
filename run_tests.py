@@ -101,6 +101,9 @@ def run():
     run_test("semiobfuscate", "input.p8", "output_semiob.p8", "--minify", "--format", "code", 
              "--preserve", "*.*,preserved_glob",
              "--no-minify-spaces", "--no-minify-lines")
+    run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify", "--format", "code", 
+             "--preserve", "*.*,preserved_glob",
+             "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename")
     run_test("test", "test.p8", "test.p8", "--minify")
     run_test("p82png", "test.p8", "testcvt.png")
     run_test("test_png", "test.png", "test.png", "--minify")
