@@ -306,35 +306,52 @@ class CustomPreprocessor:
 
         orig_i = i
         i += 2
+        negate = False
+        if list_get(code, i) == '!':
+            i += 1
+            negate = True
         key_i = i
         while is_ident_char(list_get(code, i, '')):
             i += 1
         key = code[key_i:i]
-        inline = code[orig_i:i + 1]
+        op = code[orig_i:i + 1]
 
-        if list_get(code, i) == ']':
+        if list_get(code, i) == ']' and not negate:
             end_i = i + 1
-            if key in m.defines:
-                value = m.defines[key]
-            else:
-                value = m.pp_handler(op="#[%s]" % key, args=(), ppline=inline, active=True, outparts=outparts) if m.pp_handler else None
-                if value is None:
+
+            value = m.pp_handler(op=op, args=(), ppline=op, active=True, outparts=outparts) if m.pp_handler else None
+            if value is None:
+                if key in m.defines:
+                    value = m.defines[key]
+                else:
                     raise Exception("Undefined preprocessor variable: %s" % key)
 
         elif list_get(code, i) == '[':
-            match = k_long_brackets_re.match(code, i)
-            if not match:
-                raise Exception("Unterminated preprocessor long brackets")
-            end_i = match.end() + 1
-            assert list_get(code, end_i - 1) == ']'
-            cond_code = match.group(2)
-            if key in m.defines:
-                value = cond_code
-            else:
-                value = (m.pp_handler(op="#[%s]" % key, args=(cond_code,), ppline=inline, active=True, outparts=outparts) or "") if m.pp_handler else ""
+            cond_args = []
+            while list_get(code, i) == '[':
+                match = k_long_brackets_re.match(code, i)
+                if not match:
+                    raise Exception("Unterminated preprocessor long brackets")
 
+                i = match.end()
+                inline = code[orig_i:i + 1]
+                cond_args.append(match.group(2))
+
+            if list_get(code, i) == ']':
+                end_i = i + 1
+            else:
+                raise Exception("Invalid inline preprocesor directive: %s" % inline)
+
+            value = m.pp_handler(op=op, args=cond_args, ppline=inline, active=True, outparts=outparts) if m.pp_handler else None
+            if value is None:
+                if len(cond_args) > 2:
+                    raise Exception("Too many inline preprocessor directive params: %s" % inline)
+                if (key in m.defines) ^ negate:
+                    value = list_get(cond_args, 0, "")
+                else:
+                    value = list_get(cond_args, 1, "")
         else:
-            raise Exception("Invalid inline preprocesor directive: %s" % inline)
+            raise Exception("Invalid inline preprocesor directive: %s" % op)
 
         outparts.append(value)
         return True, end_i, end_i, out_i + len(value)

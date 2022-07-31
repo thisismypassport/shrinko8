@@ -37,6 +37,7 @@ parser.add_argument("-s", "--script", help="manipulate the cart via a custom pyt
 parser.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
 # misc (semi-undocumented)
 parser.add_argument("--rename-map", help="log renaming of identifiers (from minify step) to this file")
+parser.add_argument("--fast-compression", action="store_true", help="force fast but poor compression (when creating pngs)")
 parser.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
 parser.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
 args = parser.parse_args()
@@ -117,14 +118,14 @@ if args.output:
         file_write_text(args.output, write_cart_to_source(cart))
     elif args.format == "png":
         file_write(args.output, write_cart_to_image(cart, res_path,
-            print_sizes=args.count, force_compress=args.count or args.force_compression))
+            print_sizes=args.count, force_compress=args.count or args.force_compression, fast_compress=args.fast_compression))
         args.count = False # done above
     else:
         prefix = "__lua__\n" if args.format == "code" else ""
         file_write_text(args.output, prefix + from_pico_chars(cart.code))
 
 if args.count:
-    write_code_sizes(cart.code)
+    write_code_sizes(cart.code, fast_compress=args.fast_compression)
 
 if errors:
     sys.exit(2)

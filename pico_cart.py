@@ -177,7 +177,7 @@ def read_cart_from_rom(buffer, path=None, **opts):
 class Lz77Tuple(Tuple):
     fields = ("off", "cnt")
 
-def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=None, max_o_steps=None, no_opt=False):
+def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=None, max_o_steps=None, fast_c=None):
     min_matches = defaultdict(list)
 
     def get_match_length(left, left_i, right, right_i, min_c):
@@ -273,7 +273,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
             yield i, code[i]
             i += 1
             
-        if not (no_opt and best_c >= 0):
+        if not (e(fast_c) and best_c >= fast_c):
             for j in range(prev_i, i):
                 min_matches[code[j:j+min_c]].append(j)
         prev_i = i
@@ -289,7 +289,7 @@ def print_code_size(size, prefix=""):
 def print_compressed_size(size, prefix=""):
     print_size(prefix + "compressed:", size, k_code_size)
 
-def write_code(w, code, print_sizes=False, force_compress=False, fail_on_error=True, **_):
+def write_code(w, code, print_sizes=False, force_compress=False, fail_on_error=True, fast_compress=False, **_):
     k_new = True
     min_c = 3
     
@@ -369,7 +369,7 @@ def write_code(w, code, print_sizes=False, force_compress=False, fail_on_error=T
 
                         litblock_idxs.append(i - best_j)
 
-                for i, item in get_lz77(code, min_c=pre_min_c, no_opt=True):
+                for i, item in get_lz77(code, min_c=pre_min_c, fast_c=0):
                     if isinstance(item, Lz77Tuple):
                         count = item.cnt + pre_min_c
                         cost = (20 - count * 8) // count
@@ -419,12 +419,18 @@ def write_code(w, code, print_sizes=False, force_compress=False, fail_on_error=T
                                 
                 update_mtf(mtf, ch_i, ch)
 
-            litblock_idxs = preprocess_litblock_idxs()
-            in_litblock = False
-            next_litblock = litblock_idxs.popleft() if litblock_idxs else len(code)
+            if fast_compress:
+                litblock_idxs, in_litblock, next_litblock = (), False, sys.maxsize
 
-            for i, item in get_lz77(code, min_c=min_c, max_c=None if k_new else 0x11, max_o=0x7fff if k_new else 0xc3f,
-                                    measure=measure, measure_c=3, max_o_steps=(0x20, 0x400)):
+                items = get_lz77(code, min_c=min_c, max_c=None, fast_c=16)
+            else:
+                litblock_idxs = preprocess_litblock_idxs()
+                in_litblock = False
+                next_litblock = litblock_idxs.popleft() if litblock_idxs else len(code)
+
+                items = get_lz77(code, min_c=min_c, max_c=None, measure=measure, measure_c=3, max_o_steps=(0x20, 0x400))
+
+            for i, item in items:
                 #last_bit_pos = bw.bit_position
                 if i >= next_litblock:
                     in_litblock = not in_litblock
@@ -490,8 +496,8 @@ def write_code(w, code, print_sizes=False, force_compress=False, fail_on_error=T
     else:
         w.bytes(bytes(ord(c) for c in code))
 
-def write_code_sizes(code):
-    write_code(BinaryWriter(BytesIO()), code, print_sizes=True, force_compress=True, fail_on_error=False)
+def write_code_sizes(code, **opts):
+    write_code(BinaryWriter(BytesIO()), code, print_sizes=True, force_compress=True, fail_on_error=False, **opts)
 
 def write_cart_to_rom(cart, **opts):
     io = BytesIO(bytearray(k_png_data_size))
