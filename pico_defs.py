@@ -77,9 +77,9 @@ def mem_sfx_info_addr(sound, i):
     return mem_sfx_addr(sound, 0x20) + i
 
 k_rom_size = 0x4300
-k_memory_size = 0x8000
-k_png_data_size = 0x8020
-k_code_size = k_memory_size - k_rom_size
+k_cart_size = 0x8000
+k_code_size = k_cart_size - k_rom_size
+k_trailer_size = 0x20
 
 k_palette = [
     Color(0x00, 0x00, 0x00, 0xff), # black

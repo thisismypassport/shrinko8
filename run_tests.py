@@ -111,11 +111,15 @@ def run():
     if run_test("compress", "test.p8", "testtmp.png", "--force-compression", to_temp=True):
         run_test("compress_check", "testtmp.png", "test_post_compress.p8", from_temp=True)
     run_test("lua2p8", "included.lua", "testlua.p8")
+    run_test("rom2p8", "test.rom", "test.rom.p8")
+    run_test("p82rom", "test.p8", "test.p8.rom")
     run_test("genend", "genend.p8.png", "genend.p8")
     run_stdout_test("lint", "bad.p8", "--lint", output="bad.txt", exit_code=1)
     run_stdout_test("count", "bad.p8", "--count", output="badcount.txt")
     run_test("script", "script.p8", "script.p8", "--script", path_join("test_input", "my_script.py"),
              "--script-args", "my-script-arg", "--my-script-opt", "123")
+    run_test("unkform1", "unkform1", "unkform1")
+    run_test("unkform2", "unkform2", "unkform2", "--format", "png")
 
 if __name__ == "__main__":
     os.makedirs("test_output", exist_ok=True)

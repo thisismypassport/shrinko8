@@ -27,14 +27,12 @@ def preprocess_main(cart, args, **_):
     assert(opts.arg == "my-script-arg" and opts.my_script_opt == 123)
 
 # this is called before your cart is written, after it was fully processed
-def postprocess_main(cart, res_path, **_):
+def postprocess_main(cart, **_):
     print("hello from postprocess_main!")
 
     # write a new cart with the same code but zeroed spritesheet, in both p8 and png formats
-    from pico_cart import write_cart_to_source, write_cart_to_image
+    from pico_cart import write_cart, CartFormat
     new_cart = cart.copy()
     new_cart.rom[0x0000:0x2000] = bytearray(0x2000) # zero it out
-    with open("test_output/new_cart.p8", "w", encoding="utf8") as f:
-        f.write(write_cart_to_source(new_cart))
-    with open("test_output/new_cart.p8.png", "wb") as f:
-        f.write(write_cart_to_image(new_cart, res_path))
+    write_cart("new_cart.p8", new_cart, CartFormat.p8)
+    write_cart("new_cart.p8.png", new_cart, CartFormat.png)

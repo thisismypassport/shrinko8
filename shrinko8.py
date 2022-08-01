@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from utils import *
 from pico_process import PicoContext, process_code, CartSource, CustomPreprocessor
-from pico_cart import read_cart, write_cart_to_source, write_cart_to_image, from_pico_chars, write_code_sizes
+from pico_cart import CartFormat, read_cart, write_cart, write_code_sizes
 import argparse, importlib.util
 
 def CommaSep(val):
@@ -9,11 +9,12 @@ def CommaSep(val):
 
 extend_arg = "extend" if sys.version_info >= (3,8) else None
 
+supported_formats = ["p8", "png", "lua", "rom", "code"]
+
 parser = argparse.ArgumentParser()
 # input/output
 parser.add_argument("input", help="input file, can be in p8/png/lua/code format")
 parser.add_argument("output", help="output file", nargs='?')
-parser.add_argument("-f", "--format", choices=["p8", "png", "lua", "code"], help="output format")
 # lint
 parser.add_argument("-l", "--lint", action="store_true", help="enable erroring on lint errors")
 parser.add_argument("--no-lint-unused", action="store_true", help="don't print lint errors on unused variables")
@@ -35,14 +36,15 @@ parser.add_argument("--input-count", action="store_true", help="enable printing 
 # script
 parser.add_argument("-s", "--script", help="manipulate the cart via a custom python script - see README for api details")
 parser.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
+# format conversion
+parser.add_argument("-f", "--format", type=CartFormat, help="output format {%s}" % ",".join(CartFormat._values))
+parser.add_argument("--input-format", type=CartFormat, help="input format {%s}" % ",".join(CartFormat._values))
 # misc (semi-undocumented)
 parser.add_argument("--rename-map", help="log renaming of identifiers (from minify step) to this file")
 parser.add_argument("--fast-compression", action="store_true", help="force fast but poor compression (when creating pngs)")
 parser.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
 parser.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
 args = parser.parse_args()
-
-res_path = path_dirname(path_resolve(__file__))
 
 def fail(msg):
     print(msg)
@@ -56,9 +58,16 @@ if args.minify and not args.output and not args.count:
     fail("Output (or --count) should be specified under --minify")
     
 if not args.format and args.output:
-    args.format = path_extension(args.output)[1:].lower()
-    if args.format not in ("p8", "png", "lua"):
-        args.format = "p8"
+    try:
+        args.format = CartFormat(path_extension(args.output)[1:].lower())
+    except ValueError:
+        args.format = CartFormat.p8
+
+if not args.input_format and args.input:
+    try:
+        args.input_format = CartFormat(path_extension(args.input)[1:].lower())
+    except:
+        pass # auto-detect
 
 if args.lint:
     args.lint = {
@@ -92,12 +101,12 @@ if args.script:
     postproc_cb = getattr(script_mod, "postprocess_main", None)
 
 preprocessor = CustomPreprocessor() if args.custom_preprocessor else None
-cart = read_cart(args.input, print_sizes=args.input_count, preprocessor=preprocessor)
+cart = read_cart(args.input, args.input_format, print_sizes=args.input_count, preprocessor=preprocessor)
 src = CartSource(cart)
     
 ctxt = PicoContext(srcmap=args.rename_map)
 if preproc_cb:
-    preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args, res_path=res_path)
+    preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args, res_path=None) # (res_path is obsolete)
 
 ok, errors = process_code(ctxt, src, count=args.count, lint=args.lint, minify=args.minify, obfuscate=args.obfuscate, fail=False)
 if errors:
@@ -111,18 +120,14 @@ if args.rename_map:
     file_write_text(args.rename_map, "\n".join(ctxt.srcmap))
     
 if postproc_cb:
-    postproc_cb(cart=cart, args=args, res_path=res_path)
+    postproc_cb(cart=cart, args=args, res_path=None) # (res_path is obsolete)
 
 if args.output:
-    if args.format == "p8":
-        file_write_text(args.output, write_cart_to_source(cart))
-    elif args.format == "png":
-        file_write(args.output, write_cart_to_image(cart, res_path,
-            print_sizes=args.count, force_compress=args.count or args.force_compression, fast_compress=args.fast_compression))
-        args.count = False # done above
-    else:
-        prefix = "__lua__\n" if args.format == "code" else ""
-        file_write_text(args.output, prefix + from_pico_chars(cart.code))
+    write_cart(args.output, cart, args.format, print_sizes=args.count, 
+               force_compress=args.count or args.force_compression,
+               fast_compress=args.fast_compression)
+    if args.format in ("png", "rom"):
+        args.count = False # handled above
 
 if args.count:
     write_code_sizes(cart.code, fast_compress=args.fast_compression)

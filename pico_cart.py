@@ -7,6 +7,9 @@ k_latest_version_id = 36
 k_latest_version_hex = 0x00020402 # v0.2.4c
 k_default_platform = 'w' # also 'l', 'x'
 
+class CartFormat(Enum):
+    values = ("p8", "png", "lua", "rom", "code")
+
 class CodeMapping(Tuple):
     fields = ("idx", "src_name", "src_code", "src_idx", "src_line")
 
@@ -161,16 +164,17 @@ def read_cart_from_rom(buffer, path=None, **opts):
         cart.rom.replace(r.bytes(k_rom_size))
         cart.code = read_code_from_rom(r, **opts)
 
-        r.setpos(k_memory_size)
-        cart.version_id = r.u8()
-        cart.version_hex = r.u8() << 16
-        cart.version_hex |= r.u16() << 8
-        cart.platform = chr(r.u8())
-        cart.version_hex |= r.u8()
-        hash = r.bytes(20)
+        r.setpos(k_cart_size)
+        if r.pos() < r.len():
+            cart.version_id = r.u8()
+            cart.version_hex = r.u8() << 16
+            cart.version_hex |= r.u16() << 8
+            cart.platform = chr(r.u8())
+            cart.version_hex |= r.u8()
+            hash = r.bytes(20)
 
-        if hash != bytes(20) and hash != hashlib.sha1(buffer[:k_memory_size]).digest():
-            raise Exception("corrupted cart (wrong hash)")
+            if hash != bytes(20) and hash != hashlib.sha1(buffer[:k_cart_size]).digest():
+                raise Exception("corrupted cart (wrong hash)")
 
     return cart
 
@@ -487,7 +491,7 @@ def write_code(w, code, print_sizes=False, force_compress=False, fail_on_error=T
         
         if fail_on_error:
             assert len(code) < 0x10000, "cart has too many characters!"
-            assert w.pos() <= k_memory_size, "cart takes too much compressed space!"
+            assert w.pos() <= k_cart_size, "cart takes too much compressed space!"
         
         if k_new:   
             w.setpos(len_pos)
@@ -499,20 +503,21 @@ def write_code(w, code, print_sizes=False, force_compress=False, fail_on_error=T
 def write_code_sizes(code, **opts):
     write_code(BinaryWriter(BytesIO()), code, print_sizes=True, force_compress=True, fail_on_error=False, **opts)
 
-def write_cart_to_rom(cart, **opts):
-    io = BytesIO(bytearray(k_png_data_size))
+def write_cart_to_rom(cart, with_trailer=False, **opts):
+    io = BytesIO(bytearray(k_cart_size + (k_trailer_size if with_trailer else 0)))
 
     with BinaryWriter(io, big_end = True) as w:
         w.bytes(cart.rom.get_block(0, k_rom_size))        
         write_code(w, cart.code, **opts)
 
-        w.setpos(k_memory_size)
-        w.u8(cart.version_id)
-        w.u8(cart.version_hex >> 24)
-        w.u16((cart.version_hex >> 8) & 0xffff)
-        w.u8(ord(cart.platform))
-        w.u8(cart.version_hex & 0xff)
-        w.bytes(hashlib.sha1(io.getvalue()[:k_memory_size]).digest())
+        if with_trailer:
+            w.setpos(k_cart_size)
+            w.u8(cart.version_id)
+            w.u8(cart.version_hex >> 24)
+            w.u16((cart.version_hex >> 8) & 0xffff)
+            w.u8(ord(cart.platform))
+            w.u8(cart.version_hex & 0xff)
+            w.bytes(hashlib.sha1(io.getvalue()[:k_cart_size]).digest())
 
         return io.getvalue()
 
@@ -535,8 +540,8 @@ def load_cart_image(f):
 
     return image
 
-def read_cart_from_image(f, **opts):
-    image = load_cart_image(f)
+def read_cart_from_image(data, **opts):
+    image = load_cart_image(BytesIO(data))
     width, height = image.size
 
     data = bytearray()
@@ -560,8 +565,11 @@ def read_cart_from_image(f, **opts):
     cart.screenshot = screenshot
     return cart
     
-def write_cart_to_image(cart, res_path, screenshot_path=None, title=None, **opts):
-    output = write_cart_to_rom(cart, **opts)
+def write_cart_to_image(cart, res_path=None, screenshot_path=None, title=None, **opts):
+    output = write_cart_to_rom(cart, with_trailer=True, **opts)
+
+    if res_path is None:
+        res_path = path_dirname(path_resolve(__file__))
     
     with file_open(path_join(res_path, "template.png")) as template_f:
         image = load_cart_image(template_f)
@@ -727,7 +735,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
     cart.code, cart.code_map = preprocess_code(cart.name, path, "".join(code), code_line, preprocessor=preprocessor)
     return cart
 
-def write_cart_to_source(cart):
+def write_cart_to_source(cart, **_):
     lines = ["pico-8 cartridge // http://www.pico-8.com"]
     lines.append("version %d" % cart.version_id)
 
@@ -800,23 +808,6 @@ def write_cart_to_source(cart):
 
     return "\n".join(lines)
         
-def read_cart_from_text(text, **opts):
-    # cart?
-    if text.startswith("pico-8 cartridge") or text.startswith("__lua__"):
-        return read_cart_from_source(text, **opts)
-        
-    # cart block?
-    block = text.strip()
-    prefix, suffix = "[cart]", "[/cart]"
-    if block.startswith(prefix) and block.endswith(suffix):
-        block = bytes.fromhex(block[len(prefix):-len(suffix)])
-
-        with BytesIO(block) as f:
-            return read_cart_from_image(f, **opts)
-
-    # plain text?
-    return read_cart_from_source(text, raw=True, **opts)
-
 def read_cart_from_export(data, name, **opts):
     data = data.decode()
     cartnames_raw = re.search("var\s+_cartname\s*=\s*\[(.*?)\]", data, re.S)
@@ -833,19 +824,45 @@ def read_cart_from_export(data, name, **opts):
     cartdata_raw = re.search("var\s+_cartdat\s*=\s*\[(.*?)\]", data, re.S)
     assert cartdata_raw
     
-    cartsize = k_memory_size
+    cartsize = k_cart_size
     cartdata = bytearray(k_rom_size)
     for i, b in enumerate(cartdata_raw.group(1).split(",")[cartpos*cartsize : (cartpos+1)*cartsize]):
         cartdata[i] = int(b.strip())
     
     return read_cart_from_rom(cartdata, path=name, **opts)
 
-def read_cart(path, **opts):
+def read_cart_autodetect(path, **opts):
     try:
-        return read_cart_from_text(file_read_text(path), path=path, **opts)
-    except UnicodeDecodeError:
-        with file_open(path) as f:
-            return read_cart_from_image(f, path=path, **opts)
+        text = file_read_text(path)
+
+        # cart?
+        if text.startswith("pico-8 cartridge") or text.startswith("__lua__"):
+            return read_cart_from_source(text, path=path, **opts)
+            
+        # cart block?
+        block = text.strip()
+        prefix, suffix = "[cart]", "[/cart]"
+        if block.startswith(prefix) and block.endswith(suffix):
+            block = bytes.fromhex(block[len(prefix):-len(suffix)])
+            return read_cart_from_image(block, path=path, **opts)
+
+        # plain text?
+        return read_cart_from_source(text, raw=True, path=path, **opts)
+        
+    except UnicodeDecodeError: # required to happen for pngs
+        return read_cart(path, CartFormat.png, **opts)
+
+def read_cart(path, format=None, **opts):
+    if format in (CartFormat.p8, CartFormat.code):
+        return read_cart_from_source(file_read_text(path), path=path, **opts)
+    elif format == CartFormat.png:
+        return read_cart_from_image(file_read(path), path=path, **opts)
+    elif format == CartFormat.rom:
+        return read_cart_from_rom(file_read(path), path=path, **opts)
+    elif format == CartFormat.lua:
+        return read_cart_from_source(file_read_text(path), raw=True, path=path, **opts)
+    else:
+        return read_cart_autodetect(path, **opts)
 
 def read_included_cart(orig_path, inc_name, out_i, outparts, outmappings, preprocessor):
     inc_path = path_join(path_dirname(orig_path), inc_name)
@@ -960,3 +977,18 @@ def preprocess_code(name, path, code, start_line=0, preprocessor=None):
     flush_output()
     preprocessor.finish(path, code)
     return "".join(outparts), outmappings
+
+def write_cart(path, cart, format, **opts):
+    if format == CartFormat.p8:
+        file_write_text(path, write_cart_to_source(cart, **opts))
+    elif format == CartFormat.png:
+        file_write(path, write_cart_to_image(cart, **opts))
+    elif format == CartFormat.rom:
+        file_write(path, write_cart_to_rom(cart, **opts))
+    elif format == CartFormat.lua:
+        file_write_text(path, from_pico_chars(cart.code))
+    elif format == CartFormat.code:
+        file_write_text(path, "__lua__\n" + from_pico_chars(cart.code))
+    else:
+        fail("invalid format: %s" % format)
+

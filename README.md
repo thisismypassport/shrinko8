@@ -29,11 +29,11 @@ In detail:
 
 `python shrinko8.py path-to-input.p8 path-to-output.p8 --minify`
 
-If you just want the lua source without the rest of the baggage (if you do want the `__lua__` header line, try `--format code`):
+If you just want the lua source without the rest of the baggage, change the output extension to .lua:
 
-`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --format lua`
+`python shrinko8.py path-to-input.p8 path-to-output.lua --minify`
 
-If you want to create a png cart:
+If you want to create a png cart, change the output extension to .png:
 
 `python shrinko8.py path-to-input.p8 path-to-output.png --minify`
 
@@ -297,16 +297,22 @@ You can combine counting with other operations, in which case the counts are of 
 
 # Format Conversion
 
-This tool supports both p8 and png cart formats, and allows converting between them, e.g:
+This tool supports multiple cart formats, and allows converting between them:
+* p8 - Pico-8 cart source
+* png - Pico-8 cart exported into a png
+* rom - Pico-8 cart exported into a rom
+* lua - raw lua code, with no headers
+
+E.g:
 ```
 python shrinko8.py path-to-input.p8 path-to-output.png
 python shrinko8.py path-to-input.png path-to-output.p8
 ```
 
-You can also specify the output format explicitly via `--format <p8/code/png>` (by default, it looks at the extension)
+You can also specify the input and output formats explicitly via `--input-format <format>` and `--format <format>`, where `<format>` is one of the formats listed above.
 
 You can combine conversion with other operations:
-`python shrinko8.py path-to-input.p8 path-to-output.png --count --lint --minify`
+`python shrinko8.py path-to-input.p8 path-to-output.rom --count --lint --minify`
 
 # Custom Python Script
 
@@ -353,15 +359,13 @@ def preprocess_main(cart, args, **_):
     print("Received args:", opts.arg, opts.my_script_opt)
 
 # this is called before your cart is written, after it was fully processed
-def postprocess_main(cart, res_path, **_):
+def postprocess_main(cart, **_):
     print("hello from postprocess_main!")
 
     # write a new cart with the same code but zeroed spritesheet, in both p8 and png formats
-    from pico_cart import write_cart_to_source, write_cart_to_image
+    from pico_cart import write_cart, CartFormat
     new_cart = cart.copy()
     new_cart.rom[0x0000:0x2000] = bytearray(0x2000) # zero it out
-    with open("new_cart.p8", "w", encoding="utf8") as f:
-        f.write(write_cart_to_source(new_cart))
-    with open("new_cart.p8.png", "wb") as f:
-        f.write(write_cart_to_image(new_cart, res_path))
+    write_cart("new_cart.p8", new_cart, CartFormat.p8)
+    write_cart("new_cart.p8.png", new_cart, CartFormat.png)
 ```
