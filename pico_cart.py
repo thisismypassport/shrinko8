@@ -8,7 +8,10 @@ k_latest_version_hex = 0x00020402 # v0.2.4c
 k_default_platform = 'w' # also 'l', 'x'
 
 class CartFormat(Enum):
-    values = ("p8", "png", "lua", "rom", "code")
+    values = ("auto", "p8", "png", "lua", "rom", "code")
+
+    _output_values = tuple(value for value in values if value != "auto")
+    _ext_values = tuple(value for value in _output_values if value != "code")
 
 class CodeMapping(Tuple):
     fields = ("idx", "src_name", "src_code", "src_idx", "src_line")
@@ -861,8 +864,10 @@ def read_cart(path, format=None, **opts):
         return read_cart_from_rom(file_read(path), path=path, **opts)
     elif format == CartFormat.lua:
         return read_cart_from_source(file_read_text(path), raw=True, path=path, **opts)
-    else:
+    elif format in (None, CartFormat.auto):
         return read_cart_autodetect(path, **opts)
+    else:
+        fail("invalid read format: %s" % format)
 
 def read_included_cart(orig_path, inc_name, out_i, outparts, outmappings, preprocessor):
     inc_path = path_join(path_dirname(orig_path), inc_name)
@@ -990,5 +995,5 @@ def write_cart(path, cart, format, **opts):
     elif format == CartFormat.code:
         file_write_text(path, "__lua__\n" + from_pico_chars(cart.code))
     else:
-        fail("invalid format: %s" % format)
+        fail("invalid write format: %s" % format)
 

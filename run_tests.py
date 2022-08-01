@@ -119,7 +119,7 @@ def run():
     run_test("script", "script.p8", "script.p8", "--script", path_join("test_input", "my_script.py"),
              "--script-args", "my-script-arg", "--my-script-opt", "123")
     run_test("unkform1", "unkform1", "unkform1")
-    run_test("unkform2", "unkform2", "unkform2", "--format", "png")
+    run_test("unkform2", "unkform2.png", "unkform2", "--format", "png", "--input-format", "auto")
 
 if __name__ == "__main__":
     os.makedirs("test_output", exist_ok=True)

@@ -37,7 +37,7 @@ parser.add_argument("--input-count", action="store_true", help="enable printing 
 parser.add_argument("-s", "--script", help="manipulate the cart via a custom python script - see README for api details")
 parser.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
 # format conversion
-parser.add_argument("-f", "--format", type=CartFormat, help="output format {%s}" % ",".join(CartFormat._values))
+parser.add_argument("-f", "--format", type=CartFormat, help="output format {%s}" % ",".join(CartFormat._output_values))
 parser.add_argument("--input-format", type=CartFormat, help="input format {%s}" % ",".join(CartFormat._values))
 # misc (semi-undocumented)
 parser.add_argument("--rename-map", help="log renaming of identifiers (from minify step) to this file")
@@ -58,16 +58,16 @@ if args.minify and not args.output and not args.count:
     fail("Output (or --count) should be specified under --minify")
     
 if not args.format and args.output:
-    try:
-        args.format = CartFormat(path_extension(args.output)[1:].lower())
-    except ValueError:
+    ext = path_extension(args.output)[1:].lower()
+    if ext in CartFormat._ext_values:
+        args.format = CartFormat(ext)
+    else:
         args.format = CartFormat.p8
 
 if not args.input_format and args.input:
-    try:
-        args.input_format = CartFormat(path_extension(args.input)[1:].lower())
-    except:
-        pass # auto-detect
+    ext = path_extension(args.input)[1:].lower()
+    if ext in CartFormat._ext_values:
+        args.input_format = CartFormat(ext)
 
 if args.lint:
     args.lint = {
@@ -126,7 +126,7 @@ if args.output:
     write_cart(args.output, cart, args.format, print_sizes=args.count, 
                force_compress=args.count or args.force_compression,
                fast_compress=args.fast_compression)
-    if args.format in ("png", "rom"):
+    if args.format in (CartFormat.png, CartFormat.rom):
         args.count = False # handled above
 
 if args.count:
