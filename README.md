@@ -307,12 +307,17 @@ This tool supports multiple cart formats, and allows converting between them:
 E.g:
 ```
 python shrinko8.py path-to-input.p8 path-to-output.png
-python shrinko8.py path-to-input.png path-to-output.p8
+python shrinko8.py path-to-input.png path-to-output.rom
+python shrinko8.py path-to-input.rom path-to-output.lua
 ```
 
-You can also specify the input and output formats explicitly via `--input-format <format>` and `--format <format>`, where `<format>` is one of the formats listed above.
+By default, the format is determined by the file extension, but you can specify it explicitly via:
+* `--input-format <format>` for the input format.
+* `--format <format>` for the output format
+(Where `<format>` is one of the formats listed above)
 
 You can combine conversion with other operations:
+
 `python shrinko8.py path-to-input.p8 path-to-output.rom --count --lint --minify`
 
 # Custom Python Script
@@ -325,9 +330,11 @@ This can be used for:
 * Likely much more.
 
 To run, use `--script <path>`, here shown together with other tools:
+
 `python shrinko8.py path-to-input.p8 path-to-output.png --count --lint --minify --script path-to-script.py`
 
 You can also pass arguments to your script by putting them after `--script-args`:
+
 `python shrinko8.py path-to-input.p8 path-to-output.png --count --lint --minify --script path-to-script.py --script-args my-script-arg --my-script-opt 123`
 
 Example python script showing the API and various capabilities:
