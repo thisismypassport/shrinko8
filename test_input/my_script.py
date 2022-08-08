@@ -34,5 +34,5 @@ def postprocess_main(cart, **_):
     from pico_cart import write_cart, CartFormat
     new_cart = cart.copy()
     new_cart.rom[0x0000:0x2000] = bytearray(0x2000) # zero it out
-    write_cart("new_cart.p8", new_cart, CartFormat.p8)
-    write_cart("new_cart.p8.png", new_cart, CartFormat.png)
+    write_cart("test_output/new_cart.p8", new_cart, CartFormat.p8)
+    write_cart("test_output/new_cart.p8.png", new_cart, CartFormat.png)
