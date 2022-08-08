@@ -1445,7 +1445,8 @@ def lint_code(ctxt, tokens, root, lint_rules):
                 if lint_unused and node.var not in used_locals and not node.name.startswith("_"):
                     if node.var in assigned_locals:
                         add_error("Local '%s' is only ever assigned to, never used" % node.name, node)
-                    elif not (node.parent.type == NodeType.function and node in node.parent.params and node != node.parent.params[-1]):
+                    elif not (node.parent.type == NodeType.function and node in node.parent.params and 
+                              (node != node.parent.params[-1] or node not in node.parent.children)): # don't warn for non-last or implicit params
                         add_error("Local '%s' isn't used" % node.name, node)
 
             elif node.kind == VarKind.global_:

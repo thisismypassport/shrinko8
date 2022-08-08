@@ -45,6 +45,7 @@ function f3:foo()
   return self
 end
 function f3:foo2() end
+function f3:foo3(unused) end
 ----[]
   #include badinc.p8.png
 --[[
