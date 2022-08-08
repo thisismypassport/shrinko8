@@ -107,6 +107,10 @@ end
 --[[preserve]]some_future_pico8_api(1,2,3)
 ```
 
+Note that this affects only a specific usage of an identifier. If you want to rename all usages of a global, `--preserve` is the recommended approach.
+
+## Advanced - Controlling renaming of all keys of a table
+
 Additionally, you can use `--[[preserve-keys]]`, `--[[global-keys]]` and `--[[member-keys]]` to affect how *all* keys of a table are renamed.
 
 This can be applied on either table constructors (aka `{...}`) or on variables. When applying on variables, the hint affects all members accessed through that variable, as well as any table constructors directly assigned to it.
@@ -154,6 +158,10 @@ You can disable parts of the minification process via additional command-line op
 * `--no-minify-lines` : Disable removal of line breaks
 * `--no-minify-comments` : Disable removal of comments (requires `--no-minify-spaces`)
 * `--no-minify-tokens` : Disable removal and alteration of tokens (not including identifier renaming)
+
+You can also generate a file telling you how the identifiers were renamed: (This can be useful for debugging and more) 
+
+* `--rename-map <file>`
 
 ## Keeping comments
 
