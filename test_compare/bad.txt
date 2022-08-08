@@ -26,5 +26,6 @@ bad.p8(36:11) - Local 'i' isn't used
 bad.p8(37:20) - Local 'finner' isn't used
 bad.p8(37:27) - Local 'z' has the same name as a local declared in a parent function
 bad.p8(37:27) - Local 'z' isn't used
+bad.p8(47:17) - Local 'self' isn't used
 badinc.p8.png(2:7) - Local 'from_include' has the same name as a local declared in the same scope
 badinc.p8.png(2:7) - Local 'from_include' isn't used

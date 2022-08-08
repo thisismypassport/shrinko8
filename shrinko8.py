@@ -30,6 +30,7 @@ parser.add_argument("--no-minify-spaces", action="store_true", help="disable spa
 parser.add_argument("--no-minify-lines", action="store_true", help="disable line removal in minification")
 parser.add_argument("--no-minify-comments", action="store_true", help="disable comment removal in minification (requires --no-minify-spaces)")
 parser.add_argument("--no-minify-tokens", action="store_true", help="disable token removal in minification")
+parser.add_argument("--rename-map", help="log renaming of identifiers (from minify step) to this file")
 # count
 parser.add_argument("-c", "--count", action="store_true", help="enable printing token count, character count & compressed size")
 parser.add_argument("--input-count", action="store_true", help="enable printing input character count & compressed size, for now just for png format")
@@ -40,7 +41,6 @@ parser.add_argument("--script-args", nargs=argparse.REMAINDER, help="send argume
 parser.add_argument("-f", "--format", type=CartFormat, help="output format {%s}" % ",".join(CartFormat._output_values))
 parser.add_argument("--input-format", type=CartFormat, help="input format {%s}" % ",".join(CartFormat._values))
 # misc (semi-undocumented)
-parser.add_argument("--rename-map", help="log renaming of identifiers (from minify step) to this file")
 parser.add_argument("--fast-compression", action="store_true", help="force fast but poor compression (when creating pngs)")
 parser.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
 parser.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")

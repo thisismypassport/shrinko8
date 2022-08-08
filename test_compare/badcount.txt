@@ -1,3 +1,3 @@
-tokens: 126 2%
-chars: 722 1%
-compressed: 354 2%
+tokens: 130 2%
+chars: 745 1%
+compressed: 358 2%

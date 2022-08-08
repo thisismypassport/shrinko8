@@ -212,6 +212,13 @@ class TokenNodeBase:
             else:
                 visit(child)
 
+    def add_extra_child(m, child):
+        if not hasattr(m, "extra_children"):
+            m.extra_children = []
+        child.parent = m
+        child.extra_i = len(m.extra_children)
+        m.extra_children.append(child)
+
 class TokenType(Enum):
     values = ("number", "string", "ident", "keyword", "punct", "comment", "lint")
 
@@ -225,6 +232,12 @@ class Token(TokenNodeBase):
         if idx is None:
             idx = len(source.text) if source else 0
         return Token(None, None, source, idx, idx, 0)
+
+    @classmethod
+    def synthetic(m, type, value, other, append=False, prepend=False):
+        idx = other.endidx if append else other.idx
+        endidx = other.idx if prepend else other.endidx
+        return Token(type, value, other.source, idx, endidx, 0)
 
     @property
     def fake(m):
@@ -769,7 +782,7 @@ def parse(source, tokens):
     def parse_function(stmt=False, local=False):
         nonlocal scope, funcdepth
         tokens = [peek(-1)]
-        extra_children = None
+        self_param = None
         func_kind = getattr(tokens[0], "func_kind", None)
         
         target, name = None, None
@@ -797,8 +810,9 @@ def parse(source, tokens):
                     target = Node(NodeType.member, [target, token, key], key=key, child=target, method=True)
                     name += ":" + key.name
 
-                    params.append(parse_var(token=Token(TokenType.ident, "self"), newscope=funcscope, implicit=True))
-                    extra_children = [params[-1]]
+                    self_token = Token.synthetic(TokenType.ident, "self", target, append=True)
+                    self_param = parse_var(token=self_token, newscope=funcscope, implicit=True)
+                    params.append(self_param)
 
             tokens.append(target)
 
@@ -828,8 +842,8 @@ def parse(source, tokens):
         funcdepth -= 1
 
         funcnode = Node(NodeType.function, tokens, target=target, params=params, body=body, name=name, scopespec=funcscope, kind=func_kind)
-        if extra_children:
-            funcnode.extra_children = extra_children
+        if self_param:
+            funcnode.add_extra_child(self_param)
         return funcnode
 
     def parse_table():
@@ -887,14 +901,10 @@ def parse(source, tokens):
         token = node.token
         if getattr(token, "var_kind", None):
             node.extra_names = token.value[1:-1].split(",")
-            node.extra_children = []
             for i, value in enumerate(node.extra_names):
-                subtoken = Token(TokenType.ident, value)
+                subtoken = Token.synthetic(TokenType.ident, value, token)
                 subtoken.var_kind = token.var_kind
-                subnode = parse_var(token=subtoken, member=True)
-                subnode.parent = node
-                subnode.extra_i = i
-                node.extra_children.append(subnode)
+                node.add_extra_child(parse_var(token=subtoken, member=True))
         return node
 
     def parse_core_expr():
