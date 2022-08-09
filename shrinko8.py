@@ -92,19 +92,20 @@ if args.obfuscate and (args.preserve or args.no_preserve):
     if args.no_preserve:
         args.obfuscate.update({k: True for k in args.no_preserve})
 
-preproc_cb, postproc_cb = None, None
+preproc_cb, postproc_cb, sublang_cb = None, None, None
 if args.script:
     script_spec = importlib.util.spec_from_file_location(path_basename_no_extension(args.script), args.script)
     script_mod = importlib.util.module_from_spec(script_spec)
     script_spec.loader.exec_module(script_mod)
     preproc_cb = getattr(script_mod, "preprocess_main", None)
     postproc_cb = getattr(script_mod, "postprocess_main", None)
+    sublang_cb = getattr(script_mod, "sublanguage_main", None)
 
 preprocessor = CustomPreprocessor() if args.custom_preprocessor else None
 cart = read_cart(args.input, args.input_format, print_sizes=args.input_count, preprocessor=preprocessor)
 src = CartSource(cart)
     
-ctxt = PicoContext(srcmap=args.rename_map)
+ctxt = PicoContext(srcmap=args.rename_map, sublang_getter=sublang_cb)
 if preproc_cb:
     preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args, res_path=None) # (res_path is obsolete)
 

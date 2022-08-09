@@ -139,8 +139,24 @@ class Scope:
         elif m.parent:
             return m.parent.find(item)
 
+class SubLanguageBase:
+    def __init__(m, str, **_):
+        pass
+    def get_defined_globals(m, **_):
+        return () 
+    def lint(m, **_):
+        pass
+    get_unminified_chars = None
+    def get_global_usages(m, **_):
+        return dict()
+    def get_member_usages(m, **_):
+        return dict()
+    def rename(m, **_):
+        pass
+    minify = None
+
 class PicoContext:
-    def __init__(m, deprecated=True, undocumented=True, patterns=True, srcmap=None, extra_globals=set()):
+    def __init__(m, deprecated=True, undocumented=True, patterns=True, srcmap=None, extra_globals=set(), sublang_getter=None):
         funcs = set(main_globals)
         if deprecated:
             funcs |= deprecated_globals
@@ -153,6 +169,7 @@ class PicoContext:
         m.globals = funcs
 
         m.srcmap = [] if srcmap else None
+        m.sublang_getter = sublang_getter
 
 class TokenNodeBase:
     def __init__(m):
@@ -379,10 +396,12 @@ k_keep_prefix = "keep:"
 k_lint_func_prefix = "func::"
 k_lint_count_stop = "count::stop"
 
+k_language_prefix = "language::"
+
 def is_ident_char(ch):
     return '0' <= ch <= '9' or 'a' <= ch <= 'z' or 'A' <= ch <= 'Z' or ch == '_' or ch >= chr(0x80)
 
-def tokenize(source):
+def tokenize(source, ctxt=None):
     text = source.text
     idx = 0
     vline = 0
@@ -391,6 +410,7 @@ def tokenize(source):
     next_var_kind = None
     next_keys_kind = None
     next_func_kind = None
+    next_sublang = None
 
     def peek(off=0):
         i = idx + off
@@ -426,8 +446,17 @@ def tokenize(source):
     def add_error(msg, off=-1):
         errors.append(Error(msg, Token.dummy(source, idx + off)))
 
+    def add_sublang(token, sublang_name):
+        if ctxt and ctxt.sublang_getter and token.type == TokenType.string:
+            sublang_cls = ctxt.sublang_getter(sublang_name)
+            if sublang_cls:
+                add_lang_error = lambda msg: add_error("%s: %s" % (sublang_name, msg))
+                tokens[-1].sublang_name = sublang_name
+                tokens[-1].sublang = sublang_cls(parse_string_literal(token.value), on_error=add_lang_error)
+                return
+
     def add_token_kinds():
-        nonlocal next_var_kind, next_keys_kind, next_func_kind
+        nonlocal next_var_kind, next_keys_kind, next_func_kind, next_sublang
         if next_var_kind != None:
             tokens[-1].var_kind = next_var_kind
             next_var_kind = None
@@ -437,6 +466,9 @@ def tokenize(source):
         if next_func_kind != None:
             tokens[-1].func_kind = next_func_kind
             next_func_kind = None
+        if next_sublang != None:
+            add_sublang(tokens[-1], next_sublang)
+            next_sublang = None
 
     def process_comment(orig_idx, comment, isblock):
         if comment.startswith(k_lint_prefix):
@@ -453,7 +485,7 @@ def tokenize(source):
             add_token(TokenType.comment, orig_idx, value=keep_comment)
 
         elif isblock:
-            nonlocal next_var_kind, next_keys_kind
+            nonlocal next_var_kind, next_keys_kind, next_sublang
             if comment in ("global", "nameof"): # nameof is deprecated
                 next_var_kind = VarKind.global_
             elif comment in ("member", "memberof"): # memberof is deprecated
@@ -466,6 +498,8 @@ def tokenize(source):
                 next_keys_kind = VarKind.member
             elif comment in ("preserve-keys", "string-keys"):
                 next_keys_kind = False
+            elif comment.startswith(k_language_prefix) and not any(ch.isspace() for ch in comment):
+                next_sublang = comment[len(k_language_prefix):]
 
     def tokenize_line_comment():
         nonlocal vline
@@ -644,7 +678,8 @@ class NodeType(Enum):
     values = ("var", "index", "member", "const", "group", "unary_op", "binary_op", "call",
               "table", "table_index", "table_member", "varargs", "assign", "op_assign",
               "local", "function", "if_", "elseif", "else_", "while_", "repeat", "until",
-              "for_", "for_in", "return_", "break_", "goto", "label", "print", "block", "do")
+              "for_", "for_in", "return_", "break_", "goto", "label", "print", "block", "do",
+              "sublang") # special
 
 class Node(TokenNodeBase):
     def __init__(m, type, children, **kwargs):
@@ -897,7 +932,7 @@ def parse(source, tokens):
         
         return Node(NodeType.call, tokens, func=expr, args=args)
 
-    def parse_const_var_kind(node):
+    def add_const_extra_children(node):
         token = node.token
         if getattr(token, "var_kind", None):
             node.extra_names = token.value[1:-1].split(",")
@@ -905,6 +940,9 @@ def parse(source, tokens):
                 subtoken = Token.synthetic(TokenType.ident, value, token)
                 subtoken.var_kind = token.var_kind
                 node.add_extra_child(parse_var(token=subtoken, member=True))
+        if hasattr(token, "sublang"):
+            sublang_token = Token.synthetic(TokenType.string, "", token)
+            node.add_extra_child(Node(NodeType.sublang, (sublang_token,), name=token.sublang_name, lang=token.sublang))
         return node
 
     def parse_core_expr():
@@ -913,7 +951,7 @@ def parse(source, tokens):
         if value == None:
             add_error("unexpected end of input", fail=True)
         elif value in ("nil", "true", "false") or token.type in (TokenType.number, TokenType.string):
-            return parse_const_var_kind(Node(NodeType.const, [token], token=token))
+            return add_const_extra_children(Node(NodeType.const, [token], token=token))
         elif value == "{":
             return parse_table()
         elif value == "(":
@@ -1316,7 +1354,10 @@ k_char_escapes = {
 def parse_string_literal(str):
     if str.startswith("["):
         start = str.index("[", 1) + 1
-        return str[start:-start]
+        end = -start
+        if str[start] == '\n':
+            start += 1
+        return str[start:end]
 
     else:
         litparts = []
@@ -1419,7 +1460,13 @@ def lint_code(ctxt, tokens, root, lint_rules):
                 else:
                     used_locals.add(node.var)
 
-    root.traverse_nodes(preprocess_vars)
+        elif node.type == NodeType.sublang:
+            for glob in node.lang.get_defined_globals():
+                if glob not in custom_globals:
+                    custom_globals.add(glob)
+                    vars[glob].append(root.globals[glob])
+
+    root.traverse_nodes(preprocess_vars, extra=True)
 
     # check for issues
 
@@ -1463,6 +1510,10 @@ def lint_code(ctxt, tokens, root, lint_rules):
                             add_error("Identifier '%s' not found - did you mean to use 'local function' to define it?" % node.name, node)
                         else:
                             add_error("Identifier '%s' not found" % node.name, node)
+                            
+        elif node.type == NodeType.sublang:
+            add_lang_error = lambda msg: add_error("%s: %s" % (node.name, msg), node)
+            node.lang.lint(on_error=add_lang_error, builtins=builtin_globals, globals=custom_globals)
 
     def lint_post(node):
         for scope in node.end_scopes:
@@ -1508,8 +1559,13 @@ def obfuscate_tokens(ctxt, root, rules_input):
     char_uses = CounterDictionary()
     def collect_chars(token):
         if token.type != TokenType.ident and not token.fake:
-            for ch in token.value:
-                char_uses[ch] += 1
+            sublang = getattr(token, "sublang", None)
+            if sublang and sublang.get_unminified_chars:
+                for ch in sublang.get_unminified_chars():
+                    char_uses[ch] += 1
+            else:
+                for ch in token.value:
+                    char_uses[ch] += 1
 
     root.traverse_tokens(collect_chars)
 
@@ -1605,7 +1661,7 @@ def obfuscate_tokens(ctxt, root, rules_input):
             elif node.effective_kind == VarKind.local:
                 # should in theory help, but doesn't...
                 #if node.new:
-                #    local_uses[node.var] = 0
+                #    local_uses[node.var] += 0
                 #else:
                 local_uses[node.var] += 1
 
@@ -1613,6 +1669,20 @@ def obfuscate_tokens(ctxt, root, rules_input):
                     i = scopes.index(node.var.scope)
                     for scope in scopes[i:]:
                         scope.used_locals.add(node.var)
+                        
+        elif node.type == NodeType.sublang:
+            # slight dup of compute_effective_kind logic
+
+            for name, count in node.lang.get_global_usages().items():
+                if name not in global_knowns:
+                    if name in all_globals:
+                        global_knowns.add(name)
+                    else:
+                        global_uses[name] += count
+
+            for name, count in node.lang.get_member_usages().items():
+                if name not in member_knowns:
+                    member_uses[name] += count
 
     def collect_idents_post(node):
         for scope in node.end_scopes:
@@ -1727,6 +1797,9 @@ def obfuscate_tokens(ctxt, root, rules_input):
             else:
                 assert len(node.children) == 1 and node.children[0].value == orig_name
                 node.children[0].value = node.name
+                
+        elif node.type == NodeType.sublang:
+            node.lang.rename(globals=global_renames, members=member_renames)
             
     root.traverse_nodes(update_idents, extra=True)
 
@@ -1836,6 +1909,10 @@ def minify_code(source, tokens, root, minify):
 
         if token.value in ("if", "then", "while", "do", "?"):
             vlines[token.vline].add(token.value)
+    
+        sublang = getattr(token, "sublang", None)
+        if sublang and sublang.minify:
+            token.value = format_string_literal(sublang.minify())
 
         if minify_tokens:
             
@@ -1981,7 +2058,7 @@ def process_code(ctxt, source, count=False, lint=False, minify=False, obfuscate=
     need_obfuscate = obfuscate not in (None, False)
 
     ok = False
-    tokens, errors = tokenize(source)
+    tokens, errors = tokenize(source, ctxt)
     if not errors and (need_lint or need_minify):
         root, errors = parse(source, tokens)
         

@@ -118,6 +118,10 @@ def run():
     run_stdout_test("count", "bad.p8", "--count", output="badcount.txt")
     run_test("script", "script.p8", "script.p8", "--script", path_join("test_input", "my_script.py"),
              "--script-args", "my-script-arg", "--my-script-opt", "123")
+    run_stdout_test("sublang.lint", "sublang.p8", "--lint",
+             "--script", path_join("test_input", "sublang.py"), output="sublang.txt", exit_code=1)
+    run_test("sublang", "sublang.p8", "sublang.p8", "--minify",
+             "--script", path_join("test_input", "sublang.py"))
     run_test("unkform1", "unkform1", "unkform1")
     run_test("unkform2", "unkform2.png", "unkform2", "--format", "png", "--input-format", "auto")
 
