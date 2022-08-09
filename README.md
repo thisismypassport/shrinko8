@@ -387,7 +387,9 @@ def postprocess_main(cart, **_):
 ```
 ## Advanced - custom sub-language
 
-For **really** advanced usecases, if you're embedding a custom language inside the strings of your pico-8 code, you can let Shrinko8 know how to lint & minify it:
+For **really** advanced usecases, if you're embedding a custom language inside the strings of your pico-8 code, you can let Shrinko8 know how to lint & minify it.
+
+E.g. this allows renaming identifiers shared by both the pico-8 code and the custom language.
 
 Mark the language with `--[[language::<name>]]` in the code:
 ```lua
