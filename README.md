@@ -391,7 +391,7 @@ For **really** advanced usecases, if you're embedding a custom language inside t
 
 Mark the language with `--[[language::<name>]]` in the code:
 ```lua
-eval(--[[language:evally]][[
+eval(--[[language::evally]][[
     circfill 50 50 20 7
     my_global_var <- pack
     rawset my_global_var .some_member 123
@@ -481,7 +481,7 @@ class MySubLanguage(SubLanguageBase):
     def minify(self, **_):
         return "\n".join(" ".join(stmt) for stmt in self.stmts)
 
-# this is called to get a sub-languge class by name
+# this is called to get a sub-language class by name
 def sublanguage_main(lang, **_):
     if lang == "evally":
         return MySubLanguage
