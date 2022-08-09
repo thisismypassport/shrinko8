@@ -8,6 +8,7 @@ status = 0
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--measure", action="store_true")
+parser.add_argument("--stdout", action="store_true")
 parser.add_argument("--test", action="append")
 parser.add_argument("--no-private", action="store_true")
 opts = parser.parse_args()
@@ -69,6 +70,8 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
         measure("out", outpath)
     else:
         print("\nTest %s succeeded" % name)
+    if opts.stdout:
+        print(stdout.getvalue())
     return True
 
 def run_stdout_test(name, input, *args, private=False, output=None, exit_code=None):

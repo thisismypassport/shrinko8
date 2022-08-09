@@ -1,4 +1,4 @@
-from pico_process import SubLanguageBase, is_ident_char
+from pico_process import SubLanguageBase, is_ident_char, Local, Scope
 from collections import Counter
 
 class MySubLanguage(SubLanguageBase):
@@ -65,8 +65,25 @@ class MySubLanguage(SubLanguageBase):
                     usages[token[1:]] += 1
         return usages
 
-    # called to rename all uses of globals and members
-    def rename(self, globals, members, **_):
+    # only needed if your language supports locals:
+    # called to get all uses of locals in the language's code.
+    # should return a Counter dict similar to above, except the keys are 
+    # Local objects, and their scope (Scope objects) have 2 extra fields:
+    #   used_globals - a set of all used global names in that scope
+    #                  or any of its child scopes
+    #   used_locals - a set of all used locals (Local objects) in that
+    #                 scope or any of its child scopes
+    def get_local_usages(self, **_):
+        # fake test, just to see that the code is accepted
+        # (may be nice to have real test for this?)
+        fake_scope = Scope()
+        fake_local = Local("test", fake_scope)
+        fake_scope.used_globals = self.get_global_usages().keys()
+        fake_scope.used_locals = {fake_local}
+        return {fake_local: 1}
+
+    # called to rename all uses of globals/members/locals
+    def rename(self, globals, members, locals, **_):
         for stmt in self.stmts:
             for i, token in enumerate(stmt):
                 if self.is_global(token) and token in globals:

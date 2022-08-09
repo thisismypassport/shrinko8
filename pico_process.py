@@ -116,7 +116,7 @@ class VarBase():
         m.keys_kind = None
 
 class Local(VarBase):
-    def __init__(m, name, scope, implicit):
+    def __init__(m, name, scope, implicit=False):
         super().__init__(name)
         m.scope, m.implicit = scope, implicit
 
@@ -150,6 +150,8 @@ class SubLanguageBase:
     def get_global_usages(m, **_):
         return dict()
     def get_member_usages(m, **_):
+        return dict()
+    def get_local_usages(m, **_):
         return dict()
     def rename(m, **_):
         pass
@@ -1684,6 +1686,10 @@ def obfuscate_tokens(ctxt, root, rules_input):
                 if name not in member_knowns:
                     member_uses[name] += count
 
+            for var, count in node.lang.get_local_usages().items():
+                if not var.implicit:
+                    local_uses[var] += count
+
     def collect_idents_post(node):
         for scope in node.end_scopes:
             assert scopes.pop() == scope
@@ -1799,7 +1805,7 @@ def obfuscate_tokens(ctxt, root, rules_input):
                 node.children[0].value = node.name
                 
         elif node.type == NodeType.sublang:
-            node.lang.rename(globals=global_renames, members=member_renames)
+            node.lang.rename(globals=global_renames, members=member_renames, locals=local_renames)
             
     root.traverse_nodes(update_idents, extra=True)
 
