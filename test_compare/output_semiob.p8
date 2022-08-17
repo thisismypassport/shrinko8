@@ -8,9 +8,9 @@ t(stat(band()))
 
 print"this is included"
 ?"#[disable[[this for now/ever]]]"
-local d={1,2,3}
+local c={1,2,3}
 print(
-#d
+#c
 )
 print(
 #[[
@@ -19,33 +19,33 @@ print(
 )
 
 
-local d = "preserved_key"
-local c = {preserved_key=123}
-?c[d] 
+local c = "preserved_key"
+local a = {preserved_key=123}
+?a[c] 
 
-local d = "preserved_glob"
+local c = "preserved_glob"
 preserved_glob = 123
-?_ENV[d] 
+?_ENV[c] 
 
-local d = {}
-d["whatever"] = 123
-?d.whatever 
-function d.subfunc() end
-function d:subfunc() end
-?d:subfunc()
+local c = {}
+c["whatever"] = 123
+?c.whatever 
+function c.subfunc() end
+function c:subfunc() end
+?c:subfunc()
 
 
-local d = "key"
-local c = {key=123}
-?c[d]
+local c = "key"
+local a = {key=123}
+?a[c]
 
-local d = split "key1,key2,key3"
-local c = {key1=123,key2=234,key3=345}
-?c[d[2]]
+local c = split "key1,key2,key3"
+local a = {key1=123,key2=234,key3=345}
+?a[c[2]]
 
-local d = "l"
-l = 123
-?_ENV[d]
+local c = "e"
+e = 123
+?_ENV[c]
 
 
 do
@@ -59,17 +59,17 @@ function some_future_pico8_api() end
 some_future_pico8_api(1,2,3)
 
 
-local l = {preserved1=1, preserved2=2}
-l.preserved1 += 1
-?l["preserved1"]
-l = setmetatable( {preserved3=3}, o)
-?l["preserved3"]
-
-e = {preserved1=1, preserved2=2}
+local e = {preserved1=1, preserved2=2}
 e.preserved1 += 1
 ?e["preserved1"]
 e = setmetatable( {preserved3=3}, o)
 ?e["preserved3"]
+
+l = {preserved1=1, preserved2=2}
+l.preserved1 += 1
+?l["preserved1"]
+l = setmetatable( {preserved3=3}, o)
+?l["preserved3"]
 
 do
   local _ENV = {assert=assert, add=add}
@@ -81,8 +81,8 @@ for _ENV in all{{x=1,y=5}, {x=2,y=6}} do
 end
 
 
-local e = {key1=1,key2=2, other=3}
-e.key1 = e. other
+local l = {key1=1,key2=2, other=3}
+l.key1 = l. other
 
 
 circfill, rectfill = circfill, rectfill
@@ -94,22 +94,28 @@ while (1==0);
 while (1==0) sin=cos cos=sin
 if (1 == 2);
 if (1 == 2) sin=cos cos=sin
-local e = {1}, {1,2,3,4}
+local l = {1}, {1,2,3,4}
+
+
+local l = 1 ~= 2
+local l = 1, 1.2345, 4660, 4660.33777, -1, -1.2345, -4660.33777, 32776, 0xf000.f, -39322, -65535.99999
+local l = "hi", "hello", '"hi"', "'hello'", "\"hi\"", "\'hi\'", "", "", "a\nb", "\\", "\0\1\2\3", "\1\2\3\4", "\\\\\\\\", "\n\n\n\n", "\1\2\3]]"
+local l = [[]], [[hi]], [['hi']], [["'hi'"]], [[""''hi''""]], [[♥♥♥♥]]
 
 
 ?1 or 1 or 2 and 3 == 4 >= 4 | 5 ^^ 6 << 1 >>< 1 .. 2 .. 3 - -1^4^1 / 1 & 7
 ?((~(((((((tonum(((3 or 4) and 5) ~= 2) | 1) ^^ 2) & 3) >> 1) .. 1) - (1 + 3)) * 3)) ^ 2) ^ 1
-local e = ({})[1], (function()end)()
-local l, o = sin(1,2), cos((cos()))
-local d, c = (cos((cos())))
-local e = {ord=ord, pal=pal}
-local r = ord"123", pal{1,2}, e:ord("ord"), e:pal({1,2}), sin(1)
-local e = {ord"1",[2]=3,x=4,(ord"1")}
-r += 1
-l, o = sin(1,2), cos((cos()))
-d, c = (cos((cos())))
+local l = ({})[1], (function()end)()
+local e, o = sin(1,2), cos((cos()))
+local c, a = (cos((cos())))
+local l = {ord=ord, pal=pal}
+local d = ord"123", pal{1,2}, l:ord("ord"), l:pal({1,2}), sin(1)
+local l = {ord"1",[2]=3,x=4,(ord"1")}
+d += 1
+e, o = sin(1,2), cos((cos()))
+c, a = (cos((cos())))
 function n() return 1, 2, ord"1", (ord"1") end
 if 1 == 2 then elseif 1 == 2 then else end
 while 1 == 2 do end
 repeat until 1 == 1
-for e in (pairs{}) do end
+for l in (pairs{}) do end

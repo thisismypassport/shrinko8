@@ -69,10 +69,11 @@ class MySubLanguage(SubLanguageBase):
     # called to get all uses of locals in the language's code.
     # should return a Counter dict similar to above, except the keys are 
     # Local objects, and their scope (Scope objects) have 2 extra fields:
-    #   used_globals - a set of all used global names in that scope
-    #                  or any of its child scopes
-    #   used_locals - a set of all used locals (Local objects) in that
-    #                 scope or any of its child scopes
+    #   used_globals - a set of all global names used in that scope
+    #                  or in any of its child scopes
+    #   used_locals - a set of all locals (Local objects) that are both:
+    #                 a) delcared in that scope or its parent scopes
+    #                 b) used in that scope or any of its child scopes
     def get_local_usages(self, **_):
         # fake test, just to see that the code is accepted
         # (may be nice to have real test for this?)

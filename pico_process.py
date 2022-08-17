@@ -1821,7 +1821,7 @@ def from_fixnum(value):
 
 # essentially only returns decvalue right now, given mostly non-fract. inputs
 # TODO: test with fract-ish inputs to see what's best to do.
-def format_fixnum(value, minus=False):
+def format_fixnum(value, allow_minus=False):
     intvalue = value >> 16
     dotvalue = value & 0xffff
 
@@ -1856,7 +1856,7 @@ def format_fixnum(value, minus=False):
 
     minvalue = hexvalue if len(hexvalue) < len(decvalue) else decvalue
 
-    if value & 0x80000000 and value != 0x80000000:
+    if allow_minus and value & 0x80000000 and value != 0x80000000:
         negvalue = "-" + format_fixnum(-value & 0xffffffff)
         if len(negvalue) < len(minvalue):
             minvalue = negvalue
@@ -1967,7 +1967,7 @@ def minify_code(source, tokens, root, minify):
                 token.value = "~="
 
             if token.type == TokenType.string and token.value.startswith("'") and '"' not in token.value:
-                token.value = '"' + token.value[1:-1] + '"'
+                token.value = '"' + token.value[1:-1] + '"' # could format/parse string literal? is it worth it?
 
             if token.type == TokenType.number:
                 token.value = format_fixnum(parse_fixnum(token.value))
