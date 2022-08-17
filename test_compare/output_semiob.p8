@@ -101,6 +101,7 @@ local l = 1 ~= 2
 local l = 1, 1.2345, 4660, 4660.33777, -1, -1.2345, -4660.33777, 32776, 0xf000.f, -39322, -65535.99999
 local l = "hi", "hello", '"hi"', "'hello'", "\"hi\"", "\'hi\'", "", "", "a\nb", "\\", "\0\1\2\3", "\1\2\3\4", "\\\\\\\\", "\n\n\n\n", "\1\2\3]]"
 local l = [[]], [[hi]], [['hi']], [["'hi'"]], [[""''hi''""]], [[♥♥♥♥]]
+local l = -256, -256*4, 65280^4, -65280, ~65280
 
 
 ?1 or 1 or 2 and 3 == 4 >= 4 | 5 ^^ 6 << 1 >>< 1 .. 2 .. 3 - -1^4^1 / 1 & 7
@@ -109,9 +110,9 @@ local l = ({})[1], (function()end)()
 local e, o = sin(1,2), cos((cos()))
 local c, a = (cos((cos())))
 local l = {ord=ord, pal=pal}
-local d = ord"123", pal{1,2}, l:ord("ord"), l:pal({1,2}), sin(1)
+local f = ord"123", pal{1,2}, l:ord("ord"), l:pal({1,2}), sin(1)
 local l = {ord"1",[2]=3,x=4,(ord"1")}
-d += 1
+f += 1
 e, o = sin(1,2), cos((cos()))
 c, a = (cos((cos())))
 function n() return 1, 2, ord"1", (ord"1") end

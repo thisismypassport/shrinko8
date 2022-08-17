@@ -1970,7 +1970,15 @@ def minify_code(source, tokens, root, minify):
                 token.value = '"' + token.value[1:-1] + '"' # could format/parse string literal? is it worth it?
 
             if token.type == TokenType.number:
-                token.value = format_fixnum(parse_fixnum(token.value))
+                outer_prec = get_precedence(token.parent.parent) if token.parent.type == NodeType.const else None
+                allow_minus = outer_prec is None or outer_prec < k_unary_ops_prec
+                token.value = format_fixnum(parse_fixnum(token.value), allow_minus=allow_minus)
+                if token.value.startswith("-"):
+                    # insert synthetic minus token, so that output_tokens's tokenize won't get confused
+                    token.value = token.value[1:]
+                    minus_token = Token.synthetic(TokenType.punct, "-", token, prepend=True)
+                    token.parent.children.insert(0, minus_token)
+                    tokens.insert(tokens.index(token), minus_token)
 
     root.traverse_tokens(fixup_tokens)
 
