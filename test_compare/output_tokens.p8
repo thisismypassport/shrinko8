@@ -14,8 +14,7 @@ print(
 #include
 )
 print(
-#[[
-#include notaninclude
+#[[#include notaninclude
 ]]
 )
 
@@ -100,8 +99,10 @@ local tbls = {1}, {1,2,3,4}
 -- token replacement
 local nothing = 1 ~= 2
 local nums = 1, 1.2345, 4660, 4660.33777, -1, -1.2345, -4660.33777, 32776, 0xf000.f, -39322, -65535.99999
-local strs = "hi", "hello", '"hi"', "'hello'", "\"hi\"", "\'hi\'", "", "", "a\nb", "\\", "\0\1\2\3", "\1\2\3\4", "\\\\\\\\", "\n\n\n\n", "\1\2\3]]"
-local strs2 = [[]], [[hi]], [['hi']], [["'hi'"]], [[""''hi''""]], [[♥♥♥♥]]
+local strs = "hi", "hello", '"hi"', "'hello'", '"hi"', "'hi'", "", "", "a\nb", "\\", "\0¹²³⁴⁵⁶", "¹²³⁴⁵⁶⁷", "\\\\\\\\\\\\", "\n\n\n\n\n\n", "¹²³⁴⁵⁶]]"
+local strs2 = [[]], [[hi]], [['hi']], [["'hi'"]], [["""""'''''hi'''''"""""]], [[♥♥♥♥]], [[]], [[
+
+]]
 local numbug = -256, -256*4, 65280^4, -65280, ~65280
 
 -- paren removal

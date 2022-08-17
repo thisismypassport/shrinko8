@@ -2,8 +2,7 @@ __lua__
 ?"hello ᶜ7there♥ら"
 t(stat(band()))print"this is included"
 ?"#[disable[[this for now/ever]]]"
-local f={1,2,3}print(#f)print(#[[
-#include notaninclude
+local f={1,2,3}print(#f)print(#[[#include notaninclude
 ]])local f="preserved_key"local d={preserved_key=123}
 ?d[f]
 local f="preserved_glob"preserved_glob=123
@@ -31,7 +30,9 @@ while(1==0);
 while(1==0)sin=cos cos=sin
 if(1==2);
 if(1==2)sin=cos cos=sin
-local l={1},{1,2,3,4}local l=1~=2local l=1,1.2345,4660,4660.33777,-1,-1.2345,-4660.33777,32776,0xf000.f,-39322,-65535.99999local l="hi","hello",'"hi"',"'hello'","\"hi\"","\'hi\'","","","a\nb","\\","\0\1\2\3","\1\2\3\4","\\\\\\\\","\n\n\n\n","\1\2\3]]"local l=[[]],[[hi]],[['hi']],[["'hi'"]],[[""''hi''""]],[[♥♥♥♥]]local l=-256,-256*4,65280^4,-65280,~65280
+local l={1},{1,2,3,4}local l=1~=2local l=1,1.2345,4660,4660.33777,-1,-1.2345,-4660.33777,32776,0xf000.f,-39322,-65535.99999local l="hi","hello",'"hi"',"'hello'",'"hi"',"'hi'","","","a\nb","\\","\0¹²³⁴⁵⁶","¹²³⁴⁵⁶⁷","\\\\\\\\\\\\","\n\n\n\n\n\n","¹²³⁴⁵⁶]]"local l=[[]],[[hi]],[['hi']],[["'hi'"]],[["""""'''''hi'''''"""""]],[[♥♥♥♥]],[[]],[[
+
+]]local l=-256,-256*4,65280^4,-65280,~65280
 ?1or 1or 2and 3==4>=4|5^^6<<1>><1 ..2 ..3- -1^4^1/1&7
 ?((~(((((((tonum(((3or 4)and 5)~=2)|1)^^2)&3)>>1)..1)-(1+3))*3))^2)^1
 local l=({})[1],(function()end)()local e,o=sin(1,2),cos((cos()))local n,c=(cos((cos())))local l={i=ord,r=pal}local f=ord"123",pal{1,2},l:i("ord"),l:r({1,2}),sin(1)local l={ord"1",[2]=3,l=4,(ord"1")}f+=1e,o=sin(1,2),cos((cos()))n,c=(cos((cos())))function a()return 1,2,ord"1",(ord"1")end if 1==2then elseif 1==2then else end while 1==2do end repeat until 1==1for l in(pairs{})do end
