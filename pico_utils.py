@@ -172,7 +172,7 @@ def parse_p8scii(str):
 
         start = pos + length
             
-def bytes_to_string_contents(bytes):
+def bytes_to_string_contents(bytes): # TODO: just use format_string_literal... 
     data = []
 
     esc_map = {

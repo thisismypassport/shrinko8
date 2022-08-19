@@ -10,3 +10,5 @@ eval--[[language::evally]][[
 print(g_another_glob)
 print(g_another_glob.some_member)
 eval--[[language::empty]]""
+function splitkeys() end
+splitkeys--[[language::splitkeys]]"key1=1,key2=2,0.5=13,val,key2=22,if=bad"

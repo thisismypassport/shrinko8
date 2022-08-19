@@ -403,6 +403,9 @@ k_language_prefix = "language::"
 def is_ident_char(ch):
     return '0' <= ch <= '9' or 'a' <= ch <= 'z' or 'A' <= ch <= 'Z' or ch == '_' or ch >= chr(0x80)
 
+def is_identifier(str):
+    return all(is_ident_char(ch) for ch in str) and not str[:1].isdigit() and str not in keywords
+
 def tokenize(source, ctxt=None):
     text = source.text
     idx = 0
@@ -934,17 +937,24 @@ def parse(source, tokens):
         
         return Node(NodeType.call, tokens, func=expr, args=args)
 
-    def add_const_extra_children(node):
-        token = node.token
+    def parse_const(token):
+        node = Node(NodeType.const, [token], token=token)
+
         if getattr(token, "var_kind", None):
             node.extra_names = token.value[1:-1].split(",")
             for i, value in enumerate(node.extra_names):
-                subtoken = Token.synthetic(TokenType.ident, value, token)
-                subtoken.var_kind = token.var_kind
-                node.add_extra_child(parse_var(token=subtoken, member=True))
+                if is_identifier(value):
+                    subtoken = Token.synthetic(TokenType.ident, value, token)
+                    subtoken.var_kind = token.var_kind
+                    node.add_extra_child(parse_var(token=subtoken, member=True))
+                else:
+                    subtoken = Token.synthetic(TokenType.string, value, token)
+                    node.add_extra_child(parse_const(subtoken))
+
         if hasattr(token, "sublang"):
             sublang_token = Token.synthetic(TokenType.string, "", token)
             node.add_extra_child(Node(NodeType.sublang, (sublang_token,), name=token.sublang_name, lang=token.sublang))
+
         return node
 
     def parse_core_expr():
@@ -953,7 +963,7 @@ def parse(source, tokens):
         if value == None:
             add_error("unexpected end of input", fail=True)
         elif value in ("nil", "true", "false") or token.type in (TokenType.number, TokenType.string):
-            return add_const_extra_children(Node(NodeType.const, [token], token=token))
+            return parse_const(token)
         elif value == "{":
             return parse_table()
         elif value == "(":
@@ -1464,7 +1474,7 @@ def lint_code(ctxt, tokens, root, lint_rules):
 
         elif node.type == NodeType.sublang:
             for glob in node.lang.get_defined_globals():
-                if glob not in custom_globals:
+                if glob not in custom_globals and is_identifier(glob):
                     custom_globals.add(glob)
                     vars[glob].append(root.globals[glob])
 
@@ -1676,14 +1686,14 @@ def obfuscate_tokens(ctxt, root, rules_input):
             # slight dup of compute_effective_kind logic
 
             for name, count in node.lang.get_global_usages().items():
-                if name not in global_knowns:
+                if name not in global_knowns and is_identifier(name):
                     if name in all_globals:
                         global_knowns.add(name)
                     else:
                         global_uses[name] += count
 
             for name, count in node.lang.get_member_usages().items():
-                if name not in member_knowns:
+                if name not in member_knowns and is_identifier(name):
                     member_uses[name] += count
 
             for var, count in node.lang.get_local_usages().items():

@@ -1,4 +1,4 @@
-from pico_process import SubLanguageBase, is_ident_char, Local, Scope
+from pico_process import SubLanguageBase, is_identifier, Local, Scope
 from collections import Counter
 
 class MySubLanguage(SubLanguageBase):
@@ -14,7 +14,7 @@ class MySubLanguage(SubLanguageBase):
 
     def is_global(self, token):
         # is the token a global in our language? e.g. sin / rectfill / g_my_global
-        return all(is_ident_char(ch) for ch in token) and not token[:1].isdigit()
+        return is_identifier(token)
 
     def is_member(self, token):
         # is the token a member in our language? e.g. .my_member / .x
@@ -96,9 +96,31 @@ class MySubLanguage(SubLanguageBase):
     def minify(self, **_):
         return "\n".join(" ".join(stmt) for stmt in self.stmts)
 
+class SplitKeysSubLang(SubLanguageBase):
+    # parses the string
+    def __init__(self, str, **_):
+        self.data = [item.split("=") for item in str.split(",")]
+
+    # counts usage of keys
+    # (returned keys are ignored if they're not identifiers)
+    def get_member_usages(self, **_):
+        return Counter(item[0] for item in self.data if len(item) > 1)
+
+    # renames the keys
+    def rename(self, members, **_):
+        for item in self.data:
+            if len(item) > 1:
+                item[0] = members.get(item[0], item[0])
+
+    # formats back to string
+    def minify(self, **_):
+        return ",".join("=".join(item) for item in self.data)
+
 # this is called to get a sub-languge class by name
 def sublanguage_main(lang, **_):
     if lang == "evally":
         return MySubLanguage
+    elif lang == "splitkeys":
+        return SplitKeysSubLang
     elif lang == "empty":
         return SubLanguageBase

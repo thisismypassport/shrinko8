@@ -1,7 +1,7 @@
 pico-8 cartridge // http://www.pico-8.com
 version 36
 __lua__
-u=123function f()end f[[circfill 50 50 20 7
+f=123function e()end e[[circfill 50 50 20 7
 n <- pack
-rawset n f u
-rawset n u c]]print(n)print(n.f)f""
+rawset n e f
+rawset n i d]]print(n)print(n.e)e""function i()end i"d=1,f=2,0.5=13,val,f=22,if=bad"

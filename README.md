@@ -75,8 +75,6 @@ glob = 123
 ?_ENV[my_key] -- 123
 ```
 
-For more advanced usecases, see the [below section](#advanced---controlling-renaming-of-identifiers).
-
 ### Preserving identifiers across the entire cart
 
 You can instruct the minifier to preserve certain identifiers across the entire cart:
@@ -402,11 +400,14 @@ eval(--[[language::evally]][[
 ```
 
 In the python script, provide a class that handles the language via sublanguage_main:
+(This is a complete example of what sublanguages can do, you can find a simpler example [below](#Example---simple-sub-language-for-table-parsing)
 ```python
-from pico_process import SubLanguageBase, is_ident_char
+from pico_process import SubLanguageBase, is_identifier
 from collections import Counter
 
 class MySubLanguage(SubLanguageBase):
+    # NOTE: all members are optional.
+
     # called to parse the sub-language from a string
     # (strings consist of raw pico-8 chars ('\0' to '\xff') - not real unicode)
     def __init__(self, str, on_error, **_):
@@ -419,7 +420,7 @@ class MySubLanguage(SubLanguageBase):
 
     def is_global(self, token):
         # is the token a global in our language? e.g. sin / rectfill / g_my_global
-        return all(is_ident_char(ch) for ch in token) and not token[:1].isdigit()
+        return is_identifier(token)
 
     def is_member(self, token):
         # is the token a member in our language? e.g. .my_member / .x
@@ -470,7 +471,10 @@ class MySubLanguage(SubLanguageBase):
                     usages[token[1:]] += 1
         return usages
 
-    # called to rename all uses of globals and members
+    # for very advanced languages only, see test_input/sublang.py for details
+    # def get_local_usages(self, **_):
+
+    # called to rename all uses of globals/members/etc
     def rename(self, globals, members, **_):
         for stmt in self.stmts:
             for i, token in enumerate(stmt):
@@ -487,4 +491,53 @@ class MySubLanguage(SubLanguageBase):
 def sublanguage_main(lang, **_):
     if lang == "evally":
         return MySubLanguage
+```
+
+### Example - simple sub-language for table parsing
+
+Often it's useful in pico-8 to define a simple sub-language to parse something like this:
+
+`"key1=val1,key2=val2,val3,val4"`
+
+To:
+
+`{key1="val1",key2="val2","val3","val4"}
+
+Here, to minify properly, the keys (key1/key2) should be renamed as members, while the values should be left alone.
+
+The custom python script:
+```python
+from pico_process import SubLanguageBase, is_identifier
+from collections import Counter
+
+class SplitKeysSubLang(SubLanguageBase):
+    # parses the string
+    def __init__(self, str, **_):
+        self.data = [item.split("=") for item in str.split(",")]
+
+    # counts usage of keys
+    # (returned keys are ignored if they're not identifiers)
+    def get_member_usages(self, **_):
+        return Counter(item[0] for item in self.data if len(item) > 1)
+
+    # renames the keys
+    def rename(self, members, **_):
+        for item in self.data:
+            if len(item) > 1:
+                item[0] = members.get(item[0], item[0])
+
+    # formats back to string
+    def minify(self, **_):
+        return ",".join("=".join(item) for item in self.data)
+
+def sublanguage_main(lang, **_):
+    if lang == "splitkeys":
+        return SplitKeysSubLang
+```
+
+In the code:
+```lua
+local table = splitkeys(--[[language::splitkeys]]"key1=val1,key2=val2,val3,val4")
+?table.key1 -- "val1"
+?table[1] -- "val3"
 ```

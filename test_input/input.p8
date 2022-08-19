@@ -39,7 +39,7 @@ local my_key = --[[member]]"key"
 local my_obj = {key=123}
 ?my_obj[my_key]
 
-local my_keys = split --[[member]]"key1,key2,key3"
+local my_keys = split --[[member]]"key1,key2,key3,123"
 local my_obj = {key1=123,key2=234,key3=345}
 ?my_obj[my_keys[2]]
 

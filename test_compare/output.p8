@@ -13,7 +13,7 @@ function f.subfunc()end function f:subfunc()end
 ?f:subfunc()
 local f="o"local d={o=123}
 ?d[f]
-local f=split"c,a,f"local d={c=123,a=234,f=345}
+local f=split"c,a,f,123"local d={c=123,a=234,f=345}
 ?d[f[2]]
 local f="n"n=123
 ?_ENV[f]

@@ -38,7 +38,7 @@ local c = "key"
 local a = {key=123}
 ?a[c]
 
-local c = split "key1,key2,key3"
+local c = split "key1,key2,key3,123"
 local a = {key1=123,key2=234,key3=345}
 ?a[c[2]]
 
