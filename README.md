@@ -400,6 +400,7 @@ eval(--[[language::evally]][[
 ```
 
 In the python script, provide a class that handles the language via sublanguage_main:
+
 (This is a complete example of what sublanguages can do, you can find a simpler example [below](#Example---simple-sub-language-for-table-parsing)
 ```python
 from pico_process import SubLanguageBase, is_identifier
@@ -501,7 +502,7 @@ Often it's useful in pico-8 to define a simple sub-language to parse something l
 
 To:
 
-`{key1="val1",key2="val2","val3","val4"}
+`{key1="val1",key2="val2","val3","val4"}`
 
 Here, to minify properly, the keys (key1/key2) should be renamed as members, while the values should be left alone.
 
