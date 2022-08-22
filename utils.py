@@ -508,6 +508,17 @@ class classproperty(object):
     
     # must be read-only, sadly
 
+class staticproperty(object):
+    """Method decorator that turns it into a read-only static property"""
+
+    def __init__(m, func):
+        m.getter = func
+        
+    def __get__(m, _, cls):
+        return m.getter()
+    
+    # must be read-only, sadly
+
 class writeonly_property(object):
     """Method decorator that turns it into a write-only property"""
 
@@ -1839,21 +1850,44 @@ class SegmentedIO(io.RawIOBase):
             
         return offset
     
+class IOWrapper:
+    def __init__(m, stream):
+        m.stream = stream
+    def __enter__(m):
+        return m.stream
+    def __exit__(m, *_):
+        pass
+
+class StdPath(str):
+    """A path that refers to the standard streams"""
+
 def file_open(path):
     """Open a binary file for reading"""
-    return open(path, "rb")
+    if isinstance(path, StdPath):
+        return IOWrapper(sys.stdin.buffer)
+    else:
+        return open(path, "rb")
 
 def file_open_text(path, encoding = "utf-8", errors = None, newline = None):
     """Open a text file for reading"""
-    return open(path, "r", encoding=encoding, errors=errors, newline=newline)
+    if isinstance(path, StdPath):
+        return IOWrapper(sys.stdin)
+    else:
+        return open(path, "r", encoding=encoding, errors=errors, newline=newline)
 
 def file_create(path):
     """Create or replace a binary file for writing"""
-    return open(path, "wb")
+    if isinstance(path, StdPath):
+        return IOWrapper(sys.stdout.buffer)
+    else:
+        return open(path, "wb")
 
 def file_create_text(path, encoding = "utf-8", errors = None, newline = "\n"):
     """Create or replace a text file for writing"""
-    return open(path, "w", encoding=encoding, errors=errors, newline=newline)
+    if isinstance(path, StdPath):
+        return IOWrapper(sys.stdout)
+    else:
+        return open(path, "w", encoding=encoding, errors=errors, newline=newline)
 
 def file_read(path, offset = 0, size = None):
     """Read all data from a binary file (or optionally, a subset of data)"""

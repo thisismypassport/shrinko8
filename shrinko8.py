@@ -9,11 +9,9 @@ def CommaSep(val):
 
 extend_arg = "extend" if sys.version_info >= (3,8) else None
 
-supported_formats = ["p8", "png", "lua", "rom", "code"]
-
 parser = argparse.ArgumentParser()
 # input/output
-parser.add_argument("input", help="input file, can be in p8/png/lua/code format")
+parser.add_argument("input", help="input file, can be in any format")
 parser.add_argument("output", help="output file", nargs='?')
 # lint
 parser.add_argument("-l", "--lint", action="store_true", help="enable erroring on lint errors")
@@ -45,6 +43,11 @@ parser.add_argument("--fast-compression", action="store_true", help="force fast 
 parser.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
 parser.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
 args = parser.parse_args()
+
+if args.input == "-":
+    args.input = StdPath("-")
+if args.output == "-":
+    args.output = StdPath("-")
 
 def fail(msg):
     print(msg)
@@ -127,7 +130,7 @@ if args.output:
     write_cart(args.output, cart, args.format, print_sizes=args.count, 
                force_compress=args.count or args.force_compression,
                fast_compress=args.fast_compression)
-    if args.format in (CartFormat.png, CartFormat.rom):
+    if args.format not in CartFormat._src_values:
         args.count = False # handled above
 
 if args.count:

@@ -596,7 +596,7 @@ def tokenize(source, ctxt=None):
         while True:
             ch = take()
             if ch in ('\n', ''):
-                add_error("Unterminated_string")
+                add_error("Unterminated string")
                 break
             elif ch == '\\':
                 if accept('z'): # skip line breaks

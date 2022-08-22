@@ -11,6 +11,7 @@ parser.add_argument("--measure", action="store_true")
 parser.add_argument("--stdout", action="store_true")
 parser.add_argument("--test", action="append")
 parser.add_argument("--no-private", action="store_true")
+parser.add_argument("--quiet", action="store_true")
 opts = parser.parse_args()
 
 def fail_test():
@@ -68,7 +69,7 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
         print("\nMeasuring %s" % name)
         measure("in", inpath, input=True)
         measure("out", outpath)
-    else:
+    elif not opts.quiet:
         print("\nTest %s succeeded" % name)
     if opts.stdout:
         print(stdout.getvalue())
@@ -93,7 +94,7 @@ def run_stdout_test(name, input, *args, private=False, output=None, exit_code=No
         print(stdout.getvalue())
         fail_test()
         return False
-    else:
+    elif not opts.quiet:
         print("\nTest %s succeeded" % name)
     return True
 
@@ -108,14 +109,18 @@ def run():
              "--preserve", "*.*,preserved_glob",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename")
     run_test("test", "test.p8", "test.p8", "--minify")
-    run_test("p82png", "test.p8", "testcvt.png")
+    run_test("p82png", "testcvt.p8", "testcvt.png")
     run_test("test_png", "test.png", "test.png", "--minify")
     run_test("png2p8", "test.png", "testcvt.p8")
-    if run_test("compress", "test.p8", "testtmp.png", "--force-compression", to_temp=True):
+    if run_test("compress", "testcvt.p8", "testtmp.png", "--force-compression", to_temp=True):
         run_test("compress_check", "testtmp.png", "test_post_compress.p8", from_temp=True)
     run_test("lua2p8", "included.lua", "testlua.p8")
     run_test("rom2p8", "test.rom", "test.rom.p8")
-    run_test("p82rom", "test.p8", "test.p8.rom")
+    run_test("p82rom", "testcvt.p8", "test.p8.rom")
+    run_test("clip2p8", "test.clip", "test.clip.p8")
+    run_test("p82clip", "testcvt.p8", "testcvt.clip")
+    run_test("url2p8", "test.url", "test.url.p8")
+    run_test("p82url", "testcvt.p8", "testcvt.url")
     run_test("genend", "genend.p8.png", "genend.p8")
     run_stdout_test("lint", "bad.p8", "--lint", output="bad.txt", exit_code=1)
     run_stdout_test("count", "bad.p8", "--count", output="badcount.txt")

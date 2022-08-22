@@ -1,17 +1,18 @@
 from utils import *
 from sdl2_utils import Surface, BlendMode
 from pico_defs import *
-import hashlib
+import hashlib, base64
 
 k_latest_version_id = 36
 k_latest_version_hex = 0x00020402 # v0.2.4c
 k_default_platform = 'w' # also 'l', 'x'
 
 class CartFormat(Enum):
-    values = ("auto", "p8", "png", "lua", "rom", "code")
+    values = ("auto", "p8", "png", "lua", "rom", "clip", "url", "code")
 
     _output_values = tuple(value for value in values if value != "auto")
     _ext_values = tuple(value for value in _output_values if value != "code")
+    _src_values = ("p8", "lua", "code")
 
 class CodeMapping(Tuple):
     fields = ("idx", "src_name", "src_code", "src_idx", "src_line")
@@ -152,7 +153,7 @@ def read_code_from_rom(r, print_sizes=False, **_):
 
     else:
         r.addpos(-4)
-        code = [chr(c) for c in r.zbytes()]
+        code = [chr(c) for c in r.zbytes(k_code_size)]
 
     if print_sizes:
         print_code_size(len(code), "input ")    
@@ -296,7 +297,7 @@ def print_code_size(size, prefix=""):
 def print_compressed_size(size, prefix=""):
     print_size(prefix + "compressed:", size, k_code_size)
 
-def write_code(w, code, print_sizes=False, force_compress=False, fail_on_error=True, fast_compress=False, **_):
+def write_code_to_rom(w, code, print_sizes=False, force_compress=False, fail_on_error=True, fast_compress=False, **_):
     k_new = True
     min_c = 3
     
@@ -504,14 +505,14 @@ def write_code(w, code, print_sizes=False, force_compress=False, fail_on_error=T
         w.bytes(bytes(ord(c) for c in code))
 
 def write_code_sizes(code, **opts):
-    write_code(BinaryWriter(BytesIO()), code, print_sizes=True, force_compress=True, fail_on_error=False, **opts)
+    write_code_to_rom(BinaryWriter(BytesIO()), code, print_sizes=True, force_compress=True, fail_on_error=False, **opts)
 
 def write_cart_to_rom(cart, with_trailer=False, **opts):
     io = BytesIO(bytearray(k_cart_size + (k_trailer_size if with_trailer else 0)))
 
     with BinaryWriter(io, big_end = True) as w:
         w.bytes(cart.rom.get_block(0, k_rom_size))        
-        write_code(w, cart.code, **opts)
+        write_code_to_rom(w, cart.code, **opts)
 
         if with_trailer:
             w.setpos(k_cart_size)
@@ -810,7 +811,97 @@ def write_cart_to_source(cart, **_):
         lines += metalines
 
     return "\n".join(lines)
-        
+
+def iter_rect(width, height):
+    for y in range(height):
+        for x in range(width):
+            yield x, y
+
+k_base64_chars = string.ascii_uppercase + string.ascii_lowercase + string.digits + "_-"
+k_base64_alt_chars = k_base64_chars[62:].encode()
+k_base64_char_map = {ch: i for i, ch in enumerate(k_base64_chars)}
+
+def print_url_size(size, prefix=""):
+    print_size(prefix + "url:", size, 2000)
+
+def read_cart_from_url(url, print_sizes=False, **opts):
+    if print_sizes:
+        print_url_size(len(url), "input ")
+
+    params = re.search("\?c=([^&]*)\&g=([^&]*)", url)
+    if not params:
+        raise Exception("Invalid url")
+
+    cart = Cart()            
+    code, gfx = params.groups()
+
+    codebuf = base64.b64decode(code, k_base64_alt_chars, validate=True).ljust(k_code_size, b'\0')
+    with BinaryReader(BytesIO(codebuf), big_end = True) as r:
+        cart.code = read_code_from_rom(r, **opts)
+
+    i = 0
+    rect = iter_rect(128, 128)
+    while i < len(gfx):
+        val = k_base64_char_map[gfx[i]]
+        i += 1
+
+        color = val & 0xf
+        count = (val >> 4) + 1
+        if count == 4:
+            count += k_base64_char_map[gfx[i]]
+            i += 1
+
+        for _ in range(count):
+            x, y = next(rect)
+            cart.rom.set4(mem_tile_addr(x, y), color)
+
+    return cart
+
+k_url_prefix = "https://www.pico-8-edu.com"
+
+def write_cart_to_url(cart, url_prefix=k_url_prefix, force_compress=False, print_sizes=False, **opts):
+    io = BytesIO()
+    with BinaryWriter(io, big_end = True) as w:
+        write_code_to_rom(w, cart.code, force_compress=True, **opts)
+
+        if len(io.getvalue()) > len(cart.code):
+            io = BytesIO(bytes(ord(c) for c in cart.code))
+
+        code = base64.b64encode(io.getvalue(), k_base64_alt_chars)
+
+    rect = iter_rect(128, 128)
+    gfx = []
+    x, y = next(rect)
+    done = False
+    while not done:
+        color = cart.rom.get4(mem_tile_addr(x, y))
+        total_count = 1
+        for x, y in rect:
+            next_color = cart.rom.get4(mem_tile_addr(x, y))
+            if next_color == color:
+                total_count += 1
+            else:
+                break
+        else:
+            done = True
+            if color == 0:
+                total_count = 0 if gfx else 1
+
+        while total_count > 0:
+            count = min(total_count, 63 + 4)
+            total_count -= count
+
+            val = (min(count - 1, 3) << 4) | color
+            gfx.append(k_base64_chars[val])
+
+            if count >= 4:
+                gfx.append(k_base64_chars[count - 4])
+
+    url = "%s/?c=%s&g=%s" % (url_prefix, code.decode(), "".join(gfx))
+    if print_sizes:
+        print_url_size(len(url))
+    return url
+
 def read_cart_from_export(data, name, **opts):
     data = data.decode()
     cartnames_raw = re.search("var\s+_cartname\s*=\s*\[(.*?)\]", data, re.S)
@@ -834,6 +925,19 @@ def read_cart_from_export(data, name, **opts):
     
     return read_cart_from_rom(cartdata, path=name, **opts)
 
+def read_cart_from_clip(clip, **opts):
+    clip = clip.strip()
+    prefix, suffix = "[cart]", "[/cart]"
+    if clip.startswith(prefix) and clip.endswith(suffix):
+        data = bytes.fromhex(clip[len(prefix):-len(suffix)])
+        return read_cart_from_image(data, **opts)
+    else:
+        raise Exception("Invalid clipboard tag")
+
+def write_cart_to_clip(cart, **opts):
+    data = write_cart_to_image(cart, **opts)
+    return "[cart]%s[/cart]" % data.hex()
+
 def read_cart_autodetect(path, **opts):
     try:
         text = file_read_text(path)
@@ -842,12 +946,13 @@ def read_cart_autodetect(path, **opts):
         if text.startswith("pico-8 cartridge") or text.startswith("__lua__"):
             return read_cart_from_source(text, path=path, **opts)
             
-        # cart block?
-        block = text.strip()
-        prefix, suffix = "[cart]", "[/cart]"
-        if block.startswith(prefix) and block.endswith(suffix):
-            block = bytes.fromhex(block[len(prefix):-len(suffix)])
-            return read_cart_from_image(block, path=path, **opts)
+        # clip?
+        if text.startswith("[cart]"):
+            return read_cart_from_clip(text, path=path, **opts)
+
+        # url?
+        if text.startswith(k_url_prefix):
+            return read_cart_from_url(text, path=path, **opts)
 
         # plain text?
         return read_cart_from_source(text, raw=True, path=path, **opts)
@@ -862,6 +967,10 @@ def read_cart(path, format=None, **opts):
         return read_cart_from_image(file_read(path), path=path, **opts)
     elif format == CartFormat.rom:
         return read_cart_from_rom(file_read(path), path=path, **opts)
+    elif format == CartFormat.clip:
+        return read_cart_from_clip(file_read_text(path), path=path, **opts)
+    elif format == CartFormat.url:
+        return read_cart_from_url(file_read_text(path), path=path, **opts)
     elif format == CartFormat.lua:
         return read_cart_from_source(file_read_text(path), raw=True, path=path, **opts)
     elif format in (None, CartFormat.auto):
@@ -990,6 +1099,10 @@ def write_cart(path, cart, format, **opts):
         file_write(path, write_cart_to_image(cart, **opts))
     elif format == CartFormat.rom:
         file_write(path, write_cart_to_rom(cart, **opts))
+    elif format == CartFormat.clip:
+        file_write_text(path, write_cart_to_clip(cart, **opts))
+    elif format == CartFormat.url:
+        file_write_text(path, write_cart_to_url(cart, **opts))
     elif format == CartFormat.lua:
         file_write_text(path, from_pico_chars(cart.code))
     elif format == CartFormat.code:
