@@ -308,6 +308,8 @@ This tool supports multiple cart formats, and allows converting between them:
 * png - Pico-8 cart exported into a png
 * rom - Pico-8 cart exported into a rom
 * lua - raw lua code, with no headers
+* clip - Pico-8 clipboard format (i.e. [cart]...[/cart])
+* url - Pico-8 education version url (code & gfx only)
 * auto - try to determine automatically from content
 
 E.g:
