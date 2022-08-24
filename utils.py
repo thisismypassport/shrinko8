@@ -1871,6 +1871,7 @@ def file_open(path):
 def file_open_text(path, encoding = "utf-8", errors = None, newline = None):
     """Open a text file for reading"""
     if isinstance(path, StdPath):
+        sys.stdin.reconfigure(encoding=encoding, errors=errors, newline=newline)
         return IOWrapper(sys.stdin)
     else:
         return open(path, "r", encoding=encoding, errors=errors, newline=newline)
@@ -1885,6 +1886,7 @@ def file_create(path):
 def file_create_text(path, encoding = "utf-8", errors = None, newline = "\n"):
     """Create or replace a text file for writing"""
     if isinstance(path, StdPath):
+        sys.stdout.reconfigure(encoding=encoding, errors=errors, newline=newline)
         return IOWrapper(sys.stdout)
     else:
         return open(path, "w", encoding=encoding, errors=errors, newline=newline)

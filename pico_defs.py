@@ -139,6 +139,13 @@ k_charset_map = {ch[0]: i for i, ch in enumerate(k_charset) if ch != None}
 
 k_variant_char = '\uFE0F'
 
+k_unicap_chars = ['𝘢','𝘣','𝘤','𝘥','𝘦','𝘧','𝘨','𝘩','𝘪','𝘫','𝘬','𝘭','𝘮','𝘯','𝘰','𝘱','𝘲','𝘳','𝘴','𝘵','𝘶','𝘷','𝘸','𝘹','𝘺','𝘻']
+
+k_charset_map.update((ch, i) for i, ch in enumerate(k_unicap_chars, start=ord('A')))
+
+k_unicap_charset = k_charset[:ord('A')] + k_unicap_chars + k_charset[ord('Z')+1:]
+assert len(k_unicap_charset) == 0x100
+
 def to_pico_chars(text):
     result = []
     for ch in text:
@@ -152,5 +159,6 @@ def to_pico_chars(text):
             raise Exception("invalid char: %s (%s)" % (ch, ord(ch)))
     return "".join(result)
 
-def from_pico_chars(text):
-    return "".join(k_charset[ord(ch)] for ch in text)
+def from_pico_chars(text, unicaps=False):
+    charset = k_unicap_charset if unicaps else k_charset
+    return "".join(charset[ord(ch)] for ch in text)

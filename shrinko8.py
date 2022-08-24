@@ -38,6 +38,7 @@ parser.add_argument("--script-args", nargs=argparse.REMAINDER, help="send argume
 # format conversion
 parser.add_argument("-f", "--format", type=CartFormat, help="output format {%s}" % ",".join(CartFormat._output_values))
 parser.add_argument("--input-format", type=CartFormat, help="input format {%s}" % ",".join(CartFormat._values))
+parser.add_argument("-u", "--unicode-caps", action="store_true", help="write capitals as italicized unicode characters (better for copy/paste)")
 # misc (semi-undocumented)
 parser.add_argument("--fast-compression", action="store_true", help="force fast but poor compression (when creating pngs)")
 parser.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
@@ -128,6 +129,7 @@ if postproc_cb:
 
 if args.output:
     write_cart(args.output, cart, args.format, print_sizes=args.count, 
+               unicode_caps=args.unicode_caps,
                force_compress=args.count or args.force_compression,
                fast_compress=args.fast_compression)
     if args.format not in CartFormat._src_values:

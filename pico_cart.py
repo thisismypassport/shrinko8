@@ -739,7 +739,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
     cart.code, cart.code_map = preprocess_code(cart.name, path, "".join(code), code_line, preprocessor=preprocessor)
     return cart
 
-def write_cart_to_source(cart, **_):
+def write_cart_to_source(cart, unicode_caps=False, **_):
     lines = ["pico-8 cartridge // http://www.pico-8.com"]
     lines.append("version %d" % cart.version_id)
 
@@ -767,7 +767,7 @@ def write_cart_to_source(cart, **_):
                 break
     
     lines.append("__lua__")
-    lines.append(from_pico_chars(cart.code))
+    lines.append(from_pico_chars(cart.code, unicaps=unicode_caps))
 
     lines.append("__gfx__")
     for y in range(128):
@@ -811,6 +811,12 @@ def write_cart_to_source(cart, **_):
         lines += metalines
 
     return "\n".join(lines)
+
+def write_cart_to_raw_source(cart, with_header=False, unicode_caps=False, **_):
+    source = from_pico_chars(cart.code, unicaps=unicode_caps)
+    if with_header:
+        source = "__lua__\n" + source
+    return source
 
 def iter_rect(width, height):
     for y in range(height):
@@ -1124,9 +1130,9 @@ def write_cart(path, cart, format, **opts):
     elif format == CartFormat.url:
         file_write_text(path, write_cart_to_url(cart, **opts))
     elif format == CartFormat.lua:
-        file_write_text(path, from_pico_chars(cart.code))
+        file_write_text(path, write_cart_to_raw_source(cart, **opts))
     elif format == CartFormat.code:
-        file_write_text(path, "__lua__\n" + from_pico_chars(cart.code))
+        file_write_text(path, write_cart_to_raw_source(cart, with_header=True, **opts))
     else:
         fail("invalid write format: %s" % format)
 
