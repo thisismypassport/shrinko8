@@ -828,32 +828,47 @@ def read_cart_from_url(url, print_sizes=False, **opts):
     if print_sizes:
         print_url_size(len(url), "input ")
 
-    params = re.search("\?c=([^&]*)\&g=([^&]*)", url)
-    if not params:
-        raise Exception("Invalid url")
+    if "?" not in url:
+        raise Exception("Invalid url - no '?'")
 
-    cart = Cart()            
-    code, gfx = params.groups()
+    code, gfx = None, None
+    
+    url_params = url.split("?", 1)[1]
+    for url_param in url_params.split("&"):
+        if "=" not in url_param:
+            raise Exception("Invalid url param: %s" % url_param)
+        
+        key, value = url_param.split("=", 1)
+        if key == "c":
+            code = value
+        elif key == "g":
+            gfx = value
+        else:
+            raise Exception("Unknown url param: %s" % key)
 
-    codebuf = base64.b64decode(code, k_base64_alt_chars, validate=True).ljust(k_code_size, b'\0')
-    with BinaryReader(BytesIO(codebuf), big_end = True) as r:
-        cart.code = read_code_from_rom(r, **opts)
+    cart = Cart()
 
-    i = 0
-    rect = iter_rect(128, 128)
-    while i < len(gfx):
-        val = k_base64_char_map[gfx[i]]
-        i += 1
+    if code:
+        codebuf = base64.b64decode(code, k_base64_alt_chars, validate=True).ljust(k_code_size, b'\0')
+        with BinaryReader(BytesIO(codebuf), big_end = True) as r:
+            cart.code = read_code_from_rom(r, **opts)
 
-        color = val & 0xf
-        count = (val >> 4) + 1
-        if count == 4:
-            count += k_base64_char_map[gfx[i]]
+    if gfx:
+        i = 0
+        rect = iter_rect(128, 128)
+        while i < len(gfx):
+            val = k_base64_char_map[gfx[i]]
             i += 1
 
-        for _ in range(count):
-            x, y = next(rect)
-            cart.rom.set4(mem_tile_addr(x, y), color)
+            color = val & 0xf
+            count = (val >> 4) + 1
+            if count == 4:
+                count += k_base64_char_map[gfx[i]]
+                i += 1
+
+            for _ in range(count):
+                x, y = next(rect)
+                cart.rom.set4(mem_tile_addr(x, y), color)
 
     return cart
 
@@ -885,7 +900,7 @@ def write_cart_to_url(cart, url_prefix=k_url_prefix, force_compress=False, print
         else:
             done = True
             if color == 0:
-                total_count = 0 if gfx else 1
+                total_count = 0
 
         while total_count > 0:
             count = min(total_count, 63 + 4)
@@ -897,7 +912,11 @@ def write_cart_to_url(cart, url_prefix=k_url_prefix, force_compress=False, print
             if count >= 4:
                 gfx.append(k_base64_chars[count - 4])
 
-    url = "%s/?c=%s&g=%s" % (url_prefix, code.decode(), "".join(gfx))
+    url = url_prefix
+    url += "/?c=" + code.decode()
+    if gfx:
+        url += "&g=" + "".join(gfx)
+    
     if print_sizes:
         print_url_size(len(url))
     return url
@@ -926,7 +945,6 @@ def read_cart_from_export(data, name, **opts):
     return read_cart_from_rom(cartdata, path=name, **opts)
 
 def read_cart_from_clip(clip, **opts):
-    clip = clip.strip()
     prefix, suffix = "[cart]", "[/cart]"
     if clip.startswith(prefix) and clip.endswith(suffix):
         data = bytes.fromhex(clip[len(prefix):-len(suffix)])
@@ -946,13 +964,15 @@ def read_cart_autodetect(path, **opts):
         if text.startswith("pico-8 cartridge") or text.startswith("__lua__"):
             return read_cart_from_source(text, path=path, **opts)
             
+        rtext = text.rstrip()
+
         # clip?
-        if text.startswith("[cart]"):
-            return read_cart_from_clip(text, path=path, **opts)
+        if rtext.startswith("[cart]"):
+            return read_cart_from_clip(rtext, path=path, **opts)
 
         # url?
-        if text.startswith(k_url_prefix):
-            return read_cart_from_url(text, path=path, **opts)
+        if rtext.startswith(k_url_prefix):
+            return read_cart_from_url(rtext, path=path, **opts)
 
         # plain text?
         return read_cart_from_source(text, raw=True, path=path, **opts)
@@ -968,9 +988,9 @@ def read_cart(path, format=None, **opts):
     elif format == CartFormat.rom:
         return read_cart_from_rom(file_read(path), path=path, **opts)
     elif format == CartFormat.clip:
-        return read_cart_from_clip(file_read_text(path), path=path, **opts)
+        return read_cart_from_clip(file_read_text(path).rstrip(), path=path, **opts)
     elif format == CartFormat.url:
-        return read_cart_from_url(file_read_text(path), path=path, **opts)
+        return read_cart_from_url(file_read_text(path).rstrip(), path=path, **opts)
     elif format == CartFormat.lua:
         return read_cart_from_source(file_read_text(path), raw=True, path=path, **opts)
     elif format in (None, CartFormat.auto):

@@ -731,7 +731,7 @@ k_unary_ops_prec = 11
 k_binary_op_precs = {
     "or": 1, "and": 2,
     "!=": 3, "~=": 3, "==": 3, "<": 3, "<=": 3, ">": 3, ">=": 3,
-    "|": 4, "^^": 5, "&": 6,
+    "|": 4, "^^": 5, "~": 5, "&": 6,
     "<<": 7, ">>": 7, ">>>": 7, ">><": 7, "<<>": 7,
     "..": 8,
     "+": 9, "-": 9,
@@ -1993,6 +1993,10 @@ def minify_code(source, tokens, root, minify):
 
             if token.value == "!=":
                 token.value = "~="
+                
+            # TODO: enable this in a few days
+            #if token.value == "^^":
+            #    token.value = "~"
 
             if token.type == TokenType.string:
                 token.value = format_string_literal(parse_string_literal(token.value), long=token.value.startswith('['))
