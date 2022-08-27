@@ -544,3 +544,5 @@ local table = splitkeys(--[[language::splitkeys]]"key1=val1,key2=val2,val3,val4"
 ?table.key1 -- "val1"
 ?table[1] -- "val3"
 ```
+
+To run, use `--script <path>` as before.
