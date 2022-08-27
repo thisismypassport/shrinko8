@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from utils import *
 from pico_process import PicoContext, process_code, CartSource, CustomPreprocessor
-from pico_cart import CartFormat, read_cart, write_cart, write_code_sizes
+from pico_cart import CartFormat, read_cart, write_cart, write_code_sizes, download_cart_from_bbs
 import argparse, importlib.util
 
 def CommaSep(val):
@@ -11,8 +11,9 @@ extend_arg = "extend" if sys.version_info >= (3,8) else None
 
 parser = argparse.ArgumentParser()
 # input/output
-parser.add_argument("input", help="input file, can be in any format")
-parser.add_argument("output", help="output file", nargs='?')
+parser.add_argument("input", help="input file, can be in any format. ('-' for stdin)")
+parser.add_argument("output", help="output file. ('-' for stdout)", nargs='?')
+parser.add_argument("--bbs", action="store_true", help="interpret input file as a bbs cart id, e.g. '#...'")
 # lint
 parser.add_argument("-l", "--lint", action="store_true", help="enable erroring on lint errors")
 parser.add_argument("--no-lint-unused", action="store_true", help="don't print lint errors on unused variables")
@@ -37,9 +38,10 @@ parser.add_argument("-s", "--script", help="manipulate the cart via a custom pyt
 parser.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
 # format conversion
 parser.add_argument("-f", "--format", type=CartFormat, help="output format {%s}" % ",".join(CartFormat._output_values))
-parser.add_argument("--input-format", type=CartFormat, help="input format {%s}" % ",".join(CartFormat._values))
+parser.add_argument("-F", "--input-format", type=CartFormat, help="input format {%s}" % ",".join(CartFormat._values))
 parser.add_argument("-u", "--unicode-caps", action="store_true", help="write capitals as italicized unicode characters (better for copy/paste)")
 # misc (semi-undocumented)
+parser.add_argument("--version", action="store_true", help="print version of cart")
 parser.add_argument("--fast-compression", action="store_true", help="force fast but poor compression (when creating pngs)")
 parser.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
 parser.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
@@ -50,11 +52,15 @@ if args.input == "-":
 if args.output == "-":
     args.output = StdPath("-")
 
+if args.bbs:
+    args.input = DataPath(args.input, download_cart_from_bbs(args.input))
+    args.input_format = CartFormat.png
+
 def fail(msg):
     print(msg)
     sys.exit(1)
 
-if not args.lint and not args.count and not args.output and not args.input_count:
+if not args.lint and not args.count and not args.output and not args.input_count and not args.version:
     fail("No operation (--lint/--count) or output file specified")
 if args.format and not args.output:
     fail("Output should be specified under --format")
@@ -137,6 +143,9 @@ if args.output:
 
 if args.count:
     write_code_sizes(cart.code, fast_compress=args.fast_compression)
+if args.version:
+    hex = cart.version_hex
+    print("version: %d, %d.%d.%d, %c" % (cart.version_id, hex>>16, (hex>>8)&0xff, hex&0xff, cart.platform))
 
 if errors:
     sys.exit(2)

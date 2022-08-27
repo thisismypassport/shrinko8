@@ -14,6 +14,8 @@ parser.add_argument("--no-private", action="store_true")
 parser.add_argument("--quiet", action="store_true")
 opts = parser.parse_args()
 
+os.environ["PICO8_PLATFORM_CHAR"] = 'w' # for tests consistency
+
 def fail_test():
     global status
     status = 1

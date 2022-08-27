@@ -21,6 +21,10 @@ def add_traceback_hook(hook):
 _my_excepthook.hooks = []
 sys.excepthook = _my_excepthook
 
+def eprint(*args, **kwargs):
+    """like print, but prints to stderr"""
+    print(*args, file=sys.stderr, **kwargs)
+
 def context_manager(method_name = "close"):
     """Adds __enter__/__exit__ support for a class, using a specified method_name as the 'close' method"""
     
@@ -1858,36 +1862,63 @@ class IOWrapper:
     def __exit__(m, *_):
         pass
 
-class StdPath(str):
+class CustomPath(str):
+    pass
+
+class StdPath(CustomPath):
     """A path that refers to the standard streams"""
+
+class DataPath(CustomPath):
+    """A path that refers to some data"""
+
+    def __new__(cls, value, data):
+        path = str.__new__(cls, value)
+        path.data = data
+        return path
 
 def file_open(path):
     """Open a binary file for reading"""
-    if isinstance(path, StdPath):
-        return IOWrapper(sys.stdin.buffer)
+    if isinstance(path, CustomPath):
+        if isinstance(path, StdPath):
+            return IOWrapper(sys.stdin.buffer)
+        elif isinstance(path, DataPath):
+            return BytesIO(path.data)
+        else:
+            raise FileNotFoundError(type(path))
     else:
         return open(path, "rb")
 
 def file_open_text(path, encoding = "utf-8", errors = None, newline = None):
     """Open a text file for reading"""
-    if isinstance(path, StdPath):
-        sys.stdin.reconfigure(encoding=encoding, errors=errors, newline=newline)
-        return IOWrapper(sys.stdin)
+    if isinstance(path, CustomPath):
+        if isinstance(path, StdPath):
+            sys.stdin.reconfigure(encoding=encoding, errors=errors, newline=newline)
+            return IOWrapper(sys.stdin)
+        elif isinstance(path, DataPath):
+            return StringIO(path.data.decode(encoding, errors), newline=newline)
+        else:
+            raise FileNotFoundError(type(path))
     else:
         return open(path, "r", encoding=encoding, errors=errors, newline=newline)
 
 def file_create(path):
     """Create or replace a binary file for writing"""
-    if isinstance(path, StdPath):
-        return IOWrapper(sys.stdout.buffer)
+    if isinstance(path, CustomPath):
+        if isinstance(path, StdPath):
+            return IOWrapper(sys.stdout.buffer)
+        else:
+            raise FileNotFoundError(type(path))
     else:
         return open(path, "wb")
 
 def file_create_text(path, encoding = "utf-8", errors = None, newline = "\n"):
     """Create or replace a text file for writing"""
-    if isinstance(path, StdPath):
-        sys.stdout.reconfigure(encoding=encoding, errors=errors, newline=newline)
-        return IOWrapper(sys.stdout)
+    if isinstance(path, CustomPath):
+        if isinstance(path, StdPath):
+            sys.stdout.reconfigure(encoding=encoding, errors=errors, newline=newline)
+            return IOWrapper(sys.stdout)
+        else:
+            raise FileNotFoundError(type(path))
     else:
         return open(path, "w", encoding=encoding, errors=errors, newline=newline)
 

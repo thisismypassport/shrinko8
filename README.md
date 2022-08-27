@@ -89,6 +89,8 @@ You can also choose to preserve *all* table members, which allows freely accessi
 
 `python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --preserve '*.*'`
 
+Note: If you're using windows' cmd, you need to omit the single quotes around `*.*`.
+
 ## Advanced - Controlling renaming of identifiers
 
 The `--[[global]]` and `--[[member]]` hints can also be used on identifiers to change the way they're renamed.
