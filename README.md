@@ -89,7 +89,7 @@ You can also choose to preserve *all* table members, which allows freely accessi
 
 `python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --preserve '*.*'`
 
-Note: If you're using windows' cmd, you need to omit the single quotes around `*.*`.
+Note: If you're using windows' cmd, you need to omit the single quotes, e.g. use `--preserve *.*` instead.
 
 ## Advanced - Controlling renaming of identifiers
 
