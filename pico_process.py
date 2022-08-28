@@ -623,10 +623,6 @@ def tokenize(source, ctxt=None):
             if ch == "\n":
                 vline += 1
 
-        elif ch == '-' and accept('-'): # comment
-            if not tokenize_long_comment():
-                tokenize_line_comment()
-
         elif '0' <= ch <= '9' or (ch == '.' and '0' <= peek() <= '9'): # number
             tokenize_number(-1)
 
@@ -638,6 +634,13 @@ def tokenize(source, ctxt=None):
 
         elif ch == '[' and accept_one_of('=', '['): # long string
             tokenize_long_string(-2)
+
+        elif ch == '-' and accept('-'): # comment
+            if not tokenize_long_comment():
+                tokenize_line_comment()
+
+        elif ch == '/' and accept('/'): # c-style comment
+            tokenize_line_comment()
 
         elif ch in "+-*/\\%&|^<>=~#()[]{};,?@$.:": # punctuation
             orig_idx = idx - 1
@@ -2058,7 +2061,7 @@ def minify_code(source, tokens, root, minify):
                 i = 0
                 pre_i, post_i = 0, 0
                 while True:
-                    next_i = wspace.find("--", i)
+                    next_i = wspace.find("--", i) # in theory should support //
                     if next_i < 0:
                         post_i = i
                         break

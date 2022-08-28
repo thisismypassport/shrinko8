@@ -4,6 +4,7 @@ __lua__
 -- this tests a good deal of syntax
 
 -- assert(false)
+// assert(false)
 --[[
     assert(false)
 ]] x=1
