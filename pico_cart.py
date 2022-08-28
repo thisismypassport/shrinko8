@@ -3,33 +3,33 @@ from sdl2_utils import Surface, BlendMode
 from pico_defs import *
 import hashlib, base64
 
-k_version_hexes = {
-    29: 0x020100,
-    30: 0x020200,
-    31: 0x020201,
-    32: 0x020202,
-    33: 0x020300,
-    34: 0x020400,
-    35: 0x020401,
-    36: 0x020402,
+k_version_tuples = {
+    29: (0,2,1,0),
+    30: (0,2,2,0),
+    31: (0,2,2,1),
+    32: (0,2,2,2),
+    33: (0,2,3,0),
+    34: (0,2,4,0),
+    35: (0,2,4,1),
+    36: (0,2,4,2),
 }
 
-k_latest_version_id = 36
+k_latest_version_id = maybe_int(os.getenv("PICO8_VERSION_ID"), 36)
 k_default_platform = os.getenv("PICO8_PLATFORM_CHAR", 'w' if os.name == 'nt' else 'x' if sys.platform == 'darwin' else 'l')
 
-def get_version_hex(id):
-    hex = k_version_hexes.get(id)
-    if hex is None:
+def get_version_tuple(id):
+    version = k_version_tuples.get(id)
+    if version is None:
         if id >= 29:
             eprint("warning - unknown version id %d, giving wrong version number" % id)
-            hex = k_version_hexes.get(k_latest_version_id, 0) # better than nothing?
+            version = k_version_tuples.get(k_latest_version_id, (0,0,0,0)) # better than nothing?
         elif id >= 19:
-            hex = 0x020000
+            version = (0,2,0,0)
         elif id >= 8:
-            hex = 0x010500 + (id << 8) # 0x10d00 .. 0x011700
+            version = (0,1,5+id,0) # 13 .. 23
         else:
-            hex = 0
-    return hex
+            version = (0,0,0,0)
+    return version
 
 class CartFormat(Enum):
     values = ("auto", "p8", "png", "lua", "rom", "clip", "url", "code")
@@ -44,7 +44,7 @@ class CodeMapping(Tuple):
 class Cart:
     def __init__(m):
         m.version_id = k_latest_version_id
-        m.version_hex = get_version_hex(k_latest_version_id)
+        m.version_tuple = get_version_tuple(k_latest_version_id)
         m.platform = k_default_platform
         m.rom = Memory(k_rom_size)
         m.name = ""
@@ -195,10 +195,9 @@ def read_cart_from_rom(buffer, path=None, **opts):
         r.setpos(k_cart_size)
         if r.pos() < r.len():
             cart.version_id = r.u8()
-            cart.version_hex = r.u8() << 16
-            cart.version_hex |= r.u16() << 8
+            version = r.u8(), r.u8(), r.u8()
             cart.platform = chr(r.u8())
-            cart.version_hex |= r.u8()
+            cart.version_tuple = (*version, r.u8())
             hash = r.bytes(20)
 
             if hash != bytes(20) and hash != hashlib.sha1(buffer[:k_cart_size]).digest():
@@ -541,10 +540,11 @@ def write_cart_to_rom(cart, with_trailer=False, **opts):
         if with_trailer:
             w.setpos(k_cart_size)
             w.u8(cart.version_id)
-            w.u8(cart.version_hex >> 24)
-            w.u16((cart.version_hex >> 8) & 0xffff)
+            w.u8(cart.version_tuple[0])
+            w.u8(cart.version_tuple[1])
+            w.u8(cart.version_tuple[2])
             w.u8(ord(cart.platform))
-            w.u8(cart.version_hex & 0xff)
+            w.u8(cart.version_tuple[3])
             w.bytes(hashlib.sha1(io.getvalue()[:k_cart_size]).digest())
 
         return io.getvalue()
@@ -758,7 +758,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
             
         elif header == None and clean.startswith("version "):
             cart.version_id = int(clean.split()[1])
-            cart.version_hex = get_version_hex(cart.version_id)
+            cart.version_tuple = get_version_tuple(cart.version_id)
             
     cart.name = path_basename(path)
     cart.code, cart.code_map = preprocess_code(cart.name, path, "".join(code), code_line, preprocessor=preprocessor)

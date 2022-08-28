@@ -62,7 +62,7 @@ if args.bbs:
     args.input_format = CartFormat.png
 
 def fail(msg):
-    print(msg)
+    eprint(msg)
     sys.exit(1)
 
 if not args.lint and not args.count and not args.output and not args.input_count and not args.version:
@@ -149,8 +149,7 @@ if args.output:
 if args.count:
     write_code_sizes(cart.code, fast_compress=args.fast_compression)
 if args.version:
-    hex = cart.version_hex
-    print("version: %d, %d.%d.%d, %c" % (cart.version_id, hex>>16, (hex>>8)&0xff, hex&0xff, cart.platform))
+    print("version: %d, v%d.%d.%d:%d, %c" % (cart.version_id, *cart.version_tuple, cart.platform))
 
 if errors:
     sys.exit(2)
