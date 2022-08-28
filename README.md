@@ -330,6 +330,10 @@ You can combine conversion with other operations:
 
 `python shrinko8.py path-to-input.p8 path-to-output.rom --count --lint --minify`
 
+Specifying the format is also useful when using the standard input/output (via `-`), e.g.:
+
+`python shrinko8.py path-to-input.p8 - --minify --format lua` (This prints minified lua to stdout)
+
 # Custom Python Script
 
 For advanced usecases, you can create a python script that will be called to preprocess or postprocess the cart before/after the other steps.

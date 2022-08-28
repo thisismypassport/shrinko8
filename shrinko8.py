@@ -10,41 +10,46 @@ def CommaSep(val):
 extend_arg = "extend" if sys.version_info >= (3,8) else None
 
 parser = argparse.ArgumentParser()
-# input/output
 parser.add_argument("input", help="input file, can be in any format. ('-' for stdin)")
 parser.add_argument("output", help="output file. ('-' for stdout)", nargs='?')
-parser.add_argument("--bbs", action="store_true", help="interpret input file as a bbs cart id, e.g. '#...'")
-# lint
-parser.add_argument("-l", "--lint", action="store_true", help="enable erroring on lint errors")
-parser.add_argument("--no-lint-unused", action="store_true", help="don't print lint errors on unused variables")
-parser.add_argument("--no-lint-duplicate", action="store_true", help="don't print lint errors on duplicate variables")
-parser.add_argument("--no-lint-undefined", action="store_true", help="don't print lint errors on undefined variables")
-parser.add_argument("--no-lint-fail", action="store_true", help="don't fail immediately on lint errors")
-# minify
-parser.add_argument("-m", "--minify", action="store_true", help="enable minification")
-parser.add_argument("-p", "--preserve", type=CommaSep, action=extend_arg, help="preserve specific identifiers in minification, e.g. 'global1,global2,*.member2,table3.*'")
-parser.add_argument("--no-preserve", type=CommaSep, action=extend_arg, help="do not preserve specific built-in identifiers in minification, e.g. 'circfill,rectfill'")
-parser.add_argument("--no-minify-rename", action="store_true", help="disable variable renaming in minification")
-parser.add_argument("--no-minify-spaces", action="store_true", help="disable space removal in minification")
-parser.add_argument("--no-minify-lines", action="store_true", help="disable line removal in minification")
-parser.add_argument("--no-minify-comments", action="store_true", help="disable comment removal in minification (requires --no-minify-spaces)")
-parser.add_argument("--no-minify-tokens", action="store_true", help="disable token removal in minification")
-parser.add_argument("--rename-map", help="log renaming of identifiers (from minify step) to this file")
-# count
-parser.add_argument("-c", "--count", action="store_true", help="enable printing token count, character count & compressed size")
-parser.add_argument("--input-count", action="store_true", help="enable printing input character count & compressed size, for now just for png format")
-# script
-parser.add_argument("-s", "--script", help="manipulate the cart via a custom python script - see README for api details")
-parser.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
-# format conversion
+
 parser.add_argument("-f", "--format", type=CartFormat, help="output format {%s}" % ",".join(CartFormat._output_values))
 parser.add_argument("-F", "--input-format", type=CartFormat, help="input format {%s}" % ",".join(CartFormat._values))
 parser.add_argument("-u", "--unicode-caps", action="store_true", help="write capitals as italicized unicode characters (better for copy/paste)")
-# misc (semi-undocumented)
-parser.add_argument("--version", action="store_true", help="print version of cart")
-parser.add_argument("--fast-compression", action="store_true", help="force fast but poor compression (when creating pngs)")
-parser.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
-parser.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
+
+pgroup = parser.add_argument_group("minify options")
+pgroup.add_argument("-m", "--minify", action="store_true", help="enable minification")
+pgroup.add_argument("-p", "--preserve", type=CommaSep, action=extend_arg, help="preserve specific identifiers in minification, e.g. 'global1,global2,*.member2,table3.*'")
+pgroup.add_argument("--no-preserve", type=CommaSep, action=extend_arg, help="do not preserve specific built-in identifiers in minification, e.g. 'circfill,rectfill'")
+pgroup.add_argument("--no-minify-rename", action="store_true", help="disable variable renaming in minification")
+pgroup.add_argument("--no-minify-spaces", action="store_true", help="disable space removal in minification")
+pgroup.add_argument("--no-minify-lines", action="store_true", help="disable line removal in minification")
+pgroup.add_argument("--no-minify-comments", action="store_true", help="disable comment removal in minification (requires --no-minify-spaces)")
+pgroup.add_argument("--no-minify-tokens", action="store_true", help="disable token removal in minification")
+pgroup.add_argument("--rename-map", help="log renaming of identifiers (from minify step) to this file")
+
+pgroup = parser.add_argument_group("lint options")
+pgroup.add_argument("-l", "--lint", action="store_true", help="enable erroring on lint errors")
+pgroup.add_argument("--no-lint-unused", action="store_true", help="don't print lint errors on unused variables")
+pgroup.add_argument("--no-lint-duplicate", action="store_true", help="don't print lint errors on duplicate variables")
+pgroup.add_argument("--no-lint-undefined", action="store_true", help="don't print lint errors on undefined variables")
+pgroup.add_argument("--no-lint-fail", action="store_true", help="don't fail immediately on lint errors")
+
+pgroup = parser.add_argument_group("count options")
+pgroup.add_argument("-c", "--count", action="store_true", help="enable printing token count, character count & compressed size")
+pgroup.add_argument("--input-count", action="store_true", help="enable printing input character count & compressed size, for now just for png format")
+
+pgroup = parser.add_argument_group("script options")
+pgroup.add_argument("-s", "--script", help="manipulate the cart via a custom python script - see README for api details")
+pgroup.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
+
+pgroup = parser.add_argument_group("misc. options (semi-undocumented)")
+pgroup.add_argument("--version", action="store_true", help="print version of cart")
+pgroup.add_argument("--bbs", action="store_true", help="interpret input file as a bbs cart id, e.g. '#...'")
+pgroup.add_argument("--fast-compression", action="store_true", help="force fast but poor compression (when creating pngs)")
+pgroup.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
+pgroup.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
+
 args = parser.parse_args()
 
 if args.input == "-":
