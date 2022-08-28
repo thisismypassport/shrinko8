@@ -668,7 +668,7 @@ def count_tokens(tokens):
                 break
             continue
 
-        if token.value in (",", ".", ":", ";", "::", ")", "]", "}", "end", "local"):
+        if token.value in (",", ".", ":", ";", "::", ")", "]", "}", "end", "local", None):
             continue
 
         if token.value in ("-", "~") and i+1 < len(tokens) and tokens[i+1].type == TokenType.number and \
@@ -2092,13 +2092,12 @@ def minify_code(source, tokens, root, minify):
 
         output_wspace(source.text[prev_token.endidx:])
 
-    return "".join(output)
+    return "".join(output), tokens
 
 def print_token_count(num_tokens, prefix=""):
     print_size(prefix + "tokens:", num_tokens, 8192)
 
-def process_code(ctxt, source, count=False, lint=False, minify=False, obfuscate=False, fail=True):
-    need_count = count not in (None, False)
+def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, obfuscate=False, fail=True):
     need_lint = lint not in (None, False)
     need_minify = minify not in (None, False)
     need_obfuscate = obfuscate not in (None, False)
@@ -2110,9 +2109,9 @@ def process_code(ctxt, source, count=False, lint=False, minify=False, obfuscate=
         
     if not errors:
         ok = True
-        if need_count:
-            num_tokens = count_tokens(tokens)
-            print_token_count(num_tokens)
+
+        if input_count:
+            print_token_count(count_tokens(tokens), "input ")
 
         if need_lint:
             errors = lint_code(ctxt, tokens, root, lint)
@@ -2121,7 +2120,10 @@ def process_code(ctxt, source, count=False, lint=False, minify=False, obfuscate=
             if need_obfuscate:
                 obfuscate_tokens(ctxt, root, obfuscate)
 
-            source.text = minify_code(source, tokens, root, minify)
+            source.text, tokens = minify_code(source, tokens, root, minify)
+
+        if count:
+            print_token_count(count_tokens(tokens))
 
     if fail and errors:
         raise Exception("\n".join(map(str, errors)))

@@ -34,9 +34,10 @@ def get_version_tuple(id):
 class CartFormat(Enum):
     values = ("auto", "p8", "png", "lua", "rom", "clip", "url", "code")
 
-    _output_values = tuple(value for value in values if value != "auto")
-    _ext_values = tuple(value for value in _output_values if value != "code")
-    _src_values = ("p8", "lua", "code")
+    _input_names = tuple(values)
+    _output_names = tuple(value for value in _input_names if value != "auto")
+    _ext_names = tuple(value for value in _output_names if value != "code")
+    _src_names = ("p8", "lua", "code")
 
 class CodeMapping(Tuple):
     fields = ("idx", "src_name", "src_code", "src_idx", "src_line")
@@ -179,9 +180,6 @@ def read_code_from_rom(r, print_sizes=False, **_):
         r.addpos(-4)
         code = [chr(c) for c in r.zbytes(k_code_size)]
 
-    if print_sizes:
-        print_code_size(len(code), "input ")    
-    
     return "".join(code)
 
 def read_cart_from_rom(buffer, path=None, **opts):
@@ -324,9 +322,6 @@ def write_code_to_rom(w, code, print_sizes=False, force_compress=False, fail_on_
     k_new = True
     min_c = 3
     
-    if print_sizes:
-        print_code_size(len(code))
-
     if len(code) >= k_code_size or force_compress: # (>= due to null)
         start_pos = w.pos()
         w.bytes(k_new_compressed_code_header if k_new else k_compressed_code_header)
@@ -527,8 +522,11 @@ def write_code_to_rom(w, code, print_sizes=False, force_compress=False, fail_on_
     else:
         w.bytes(bytes(ord(c) for c in code))
 
-def write_code_sizes(code, **opts):
-    write_code_to_rom(BinaryWriter(BytesIO()), code, print_sizes=True, force_compress=True, fail_on_error=False, **opts)
+def write_code_size(cart, input=False):
+    print_code_size(len(cart.code), prefix="input " if input else "")
+
+def write_compressed_size(cart, **opts):
+    write_code_to_rom(BinaryWriter(BytesIO()), cart.code, print_sizes=True, force_compress=True, fail_on_error=False, **opts)
 
 def write_cart_to_rom(cart, with_trailer=False, **opts):
     io = BytesIO(bytearray(k_cart_size + (k_trailer_size if with_trailer else 0)))

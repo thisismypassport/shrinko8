@@ -516,7 +516,7 @@ Here, to minify properly, the keys (key1/key2) should be renamed as members, whi
 
 The custom python script:
 ```python
-from pico_process import SubLanguageBase, is_identifier
+from pico_process import SubLanguageBase
 from collections import Counter
 
 class SplitKeysSubLang(SubLanguageBase):
