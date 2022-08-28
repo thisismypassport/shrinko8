@@ -621,7 +621,7 @@ def write_cart_to_image(cart, res_path=None, screenshot_path=None, title=None, *
             with file_open(path_join(res_path, "font.png")) as font_f:
                 font_surf = Surface.load(font_f)
                 x, y = 0, 0
-                for ch in to_pico_chars(title):
+                for ch in title:
                     chi = ord(ch)
                     chrect = Rect(chi % 16 * 8, chi // 16 * 6, 8 if chi >= 0x80 else 4, 6)
                     if ch == '\n' or x + chrect.w > 124:
