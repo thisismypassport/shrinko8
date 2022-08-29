@@ -303,6 +303,8 @@ You can combine counting with other operations, in which case the counts are of 
 
 `python shrinko8.py path-to-input.p8 path-to-output.p8 --lint --count --minify`
 
+In such cases, you can also use `--input-count` to count the number of tokens, characters, and compressed bytes (if applicable) of the input cart.
+
 # Format Conversion
 
 This tool supports multiple cart formats, and allows converting between them:
