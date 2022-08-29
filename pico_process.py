@@ -1538,36 +1538,40 @@ def lint_code(ctxt, tokens, root, lint_rules):
     root.traverse_nodes(lint_pre, lint_post, extra=True)
     return errors
 
-def obfuscate_tokens(ctxt, root, rules_input):
+def obfuscate_tokens(ctxt, root, obfuscate):
     all_globals = ctxt.globals.copy()
     global_knowns = global_callbacks.copy()
     member_knowns = member_strings.copy()
     known_tables = set()
     preserve_members = False
+    members_as_globals = False
 
-    if isinstance(rules_input, dict):
-        for key, value in rules_input.items():
-            if value == False:
-                if key == "*.*":
-                    preserve_members = True
-                elif key.endswith(".*"):
-                    known_tables.add(key[:-2])
-                elif key.startswith("*."):
-                    member_knowns.add(key[2:])
+    if isinstance(obfuscate, dict):
+        members_as_globals = obfuscate.get("members=globals", False)
+        rules_input = obfuscate.get("rules")
+        if rules_input:
+            for key, value in rules_input.items():
+                if value == False:
+                    if key == "*.*":
+                        preserve_members = True
+                    elif key.endswith(".*"):
+                        known_tables.add(key[:-2])
+                    elif key.startswith("*."):
+                        member_knowns.add(key[2:])
+                    else:
+                        global_knowns.add(key)
+                elif value == True:
+                    if key == "*.*":
+                        preserve_members = False
+                    elif key.endswith(".*"):
+                        known_tables.discard(key[:-2])
+                    elif key.startswith("*."):
+                        member_knowns.discard(key[2:])
+                    else:
+                        all_globals.discard(key)
+                        global_knowns.discard(key)
                 else:
-                    global_knowns.add(key)
-            elif value == True:
-                if key == "*.*":
-                    preserve_members = False
-                elif key.endswith(".*"):
-                    known_tables.discard(key[:-2])
-                elif key.startswith("*."):
-                    member_knowns.discard(key[2:])
-                else:
-                    all_globals.discard(key)
-                    global_knowns.discard(key)
-            else:
-                fail(value)
+                    fail(value)
 
     # collect char histogram
 
@@ -1634,6 +1638,9 @@ def obfuscate_tokens(ctxt, root, rules_input):
                 return None
             elif table_name == "_ENV":
                 return compute_effective_kind(node, VarKind.global_, explicit=True)
+            
+            if members_as_globals:
+                kind = VarKind.global_
 
         elif kind == VarKind.global_:
             if not explicit:
@@ -1996,8 +2003,8 @@ def minify_code(source, tokens, root, minify):
 
             if token.value == "!=":
                 token.value = "~="
-                
-            # TODO: enable this in a few days
+             
+            #TODO: enable this in a few weeks.
             #if token.value == "^^":
             #    token.value = "~"
 

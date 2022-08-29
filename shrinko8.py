@@ -19,13 +19,14 @@ parser.add_argument("-u", "--unicode-caps", action="store_true", help="write cap
 
 pgroup = parser.add_argument_group("minify options")
 pgroup.add_argument("-m", "--minify", action="store_true", help="enable minification")
-pgroup.add_argument("-p", "--preserve", type=CommaSep, action=extend_arg, help="preserve specific identifiers in minification, e.g. 'global1,global2,*.member2,table3.*'")
-pgroup.add_argument("--no-preserve", type=CommaSep, action=extend_arg, help="do not preserve specific built-in identifiers in minification, e.g. 'circfill,rectfill'")
+pgroup.add_argument("-p", "--preserve", type=CommaSep, action=extend_arg, help='preserve specific identifiers in minification, e.g. "global1,global2,*.member2,table3.*"')
+pgroup.add_argument("--no-preserve", type=CommaSep, action=extend_arg, help='do not preserve specific built-in identifiers in minification, e.g. "circfill,rectfill"')
 pgroup.add_argument("--no-minify-rename", action="store_true", help="disable variable renaming in minification")
 pgroup.add_argument("--no-minify-spaces", action="store_true", help="disable space removal in minification")
 pgroup.add_argument("--no-minify-lines", action="store_true", help="disable line removal in minification")
 pgroup.add_argument("--no-minify-comments", action="store_true", help="disable comment removal in minification (requires --no-minify-spaces)")
 pgroup.add_argument("--no-minify-tokens", action="store_true", help="disable token removal in minification")
+pgroup.add_argument("--rename-members-as-globals", action="store_true", help="rename globals and members the same way")
 pgroup.add_argument("--rename-map", help="log renaming of identifiers (from minify step) to this file")
 
 pgroup = parser.add_argument_group("lint options")
@@ -49,6 +50,10 @@ pgroup.add_argument("--bbs", action="store_true", help="interpret input file as 
 pgroup.add_argument("--fast-compression", action="store_true", help="force fast but poor compression (when creating pngs)")
 pgroup.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
 pgroup.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
+
+if len(sys.argv) <= 1: # help is better than usage
+    parser.print_help(sys.stderr)
+    sys.exit(1)
 
 args = parser.parse_args()
 
@@ -100,12 +105,17 @@ if args.minify:
     }
 
 args.obfuscate = bool(args.minify) and not args.no_minify_rename
-if args.obfuscate and (args.preserve or args.no_preserve):
-    args.obfuscate = {}
-    if args.preserve:
-        args.obfuscate.update({k: False for k in args.preserve})
-    if args.no_preserve:
-        args.obfuscate.update({k: True for k in args.no_preserve})
+if args.obfuscate:
+    args.obfuscate = {
+        "members=globals": args.rename_members_as_globals,
+    }
+    if args.preserve or args.no_preserve:
+        rules = {}
+        if args.preserve:
+            rules.update({k: False for k in args.preserve})
+        if args.no_preserve:
+            rules.update({k: True for k in args.no_preserve})
+        args.obfuscate["rules"] = rules
 
 preproc_cb, postproc_cb, sublang_cb = None, None, None
 if args.script:

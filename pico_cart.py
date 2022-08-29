@@ -12,9 +12,10 @@ k_version_tuples = {
     34: (0,2,4,0),
     35: (0,2,4,1),
     36: (0,2,4,2),
+    37: (0,2,5,0),
 }
 
-k_latest_version_id = maybe_int(os.getenv("PICO8_VERSION_ID"), 36)
+k_latest_version_id = maybe_int(os.getenv("PICO8_VERSION_ID"), 36) # TODO - move to 37? later?
 k_default_platform = os.getenv("PICO8_PLATFORM_CHAR", 'w' if os.name == 'nt' else 'x' if sys.platform == 'darwin' else 'l')
 
 def get_version_tuple(id):

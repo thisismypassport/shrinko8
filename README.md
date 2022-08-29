@@ -79,7 +79,7 @@ glob = 123
 
 You can instruct the minifier to preserve certain identifiers across the entire cart:
 
-`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --preserve 'my_global_1,my_global_2,*.my_member,my_env.*'`
+`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --preserve "my_global_1,my_global_2,*.my_member,my_env.*"`
 
 * my_global_1 and my_global_2 will not be renamed when used as globals
 * my_member will not be renamed when used as a table member
@@ -87,11 +87,23 @@ You can instruct the minifier to preserve certain identifiers across the entire 
 
 You can also choose to preserve *all* table members, which allows freely accessing all tables through strings or through identifiers, if you prefer:
 
-`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --preserve '*.*'`
+`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --preserve "*.*"`
 
-Note: If you're using windows' cmd, you need to omit the single quotes, e.g. use `--preserve *.*` instead.
+## Advanced renaming requirements
 
-## Advanced - Controlling renaming of identifiers
+While the above is enough for simpler carts, there are some advanced usecases with more complex requirements:
+
+* If you have a string in some special format that you're parsing into a table (like "key=val,key2=val2"), you can use [this custom python script](#example---simple-sub-language-for-table-parsing) - or a variant thereof - to allow the keys within the string to be renamed.
+
+* If you have certain tables whose keys you don't want to rename - e.g. because the keys are built at runtime by concatenating strings, or because the tables are serialized to a savefile - you can [preserve all keys in a table](#advanced---controlling-renaming-of-all-keys-of-a-table).
+
+* If you're making your tables inherit _ENV (allowing you to bind the table to _ENV and access both table members and globals without a '.'), you can use `--rename-members-as-globals` in order to rename table members and globals the same way.
+
+* If you're doing other unusual things with _ENV, you may need to [specify how specific identifiers should be renamed](#advanced---controlling-renaming-of-identifiers) to get correct behaviour.
+
+In all these cases, you can start by disabling all renaming (`--no-minify-rename`) or all member renaming (`--preserve "*.*"`) to get things to work and then look into the more complicated solutions to increase compression rate.
+
+### Advanced - Controlling renaming of identifiers
 
 The `--[[global]]` and `--[[member]]` hints can also be used on identifiers to change the way they're renamed.
 
@@ -109,7 +121,7 @@ end
 
 Note that this affects only a specific usage of an identifier. If you want to rename all usages of a global, `--preserve` is the recommended approach.
 
-## Advanced - Controlling renaming of all keys of a table
+### Advanced - Controlling renaming of all keys of a table
 
 Additionally, you can use `--[[preserve-keys]]`, `--[[global-keys]]` and `--[[member-keys]]` to affect how *all* keys of a table are renamed.
 
@@ -133,11 +145,11 @@ for --[[member-keys]]_ENV in all({{x=1,y=5}, {x=2,y=6}}) do
 end
 ```
 
-## Advanced - Renaming Built-in Pico-8 functions
+### Advanced - Renaming Built-in Pico-8 functions
 
 For cases like tweet-carts where you want really few characters, you can minify the names of built-in pico-8 functions while still using their original name as follows:
 
-`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --no-preserve 'circfill,rectfill'`
+`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --no-preserve "circfill,rectfill"`
 
 ```lua
 circfill, rectfill = --[[preserve]]circfill, --[[preserve]]rectfill
@@ -158,6 +170,12 @@ You can disable parts of the minification process via additional command-line op
 * `--no-minify-lines` : Disable removal of line breaks
 * `--no-minify-comments` : Disable removal of comments (requires `--no-minify-spaces`)
 * `--no-minify-tokens` : Disable removal and alteration of tokens (not including identifier renaming)
+
+You can configure how identifier renaming is done:
+
+* `--rename-members-as-globals` : Rename members (table keys) and globals the same way, useful when tables inherit from _ENV.
+* `--preserve` : Described [here](#preserving-identifiers-across-the-entire-cart)
+* `--no-preserve` : Described [here](#advanced---renaming-built-in-pico-8-functions)
 
 You can also generate a file telling you how the identifiers were renamed: (This can be useful for debugging and more) 
 
