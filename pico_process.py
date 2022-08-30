@@ -244,7 +244,7 @@ class TokenType(Enum):
 class Token(TokenNodeBase):
     def __init__(m, type, value, source=None, idx=None, endidx=None, vline=None):
         super().__init__()
-        m.type, m.value, m.source, m.idx, m.endidx, m.vline = type, value, source, idx, endidx, vline
+        m.type, m.value, m.source, m.idx, m.endidx, m.vline, m.modified = type, value, source, idx, endidx, vline, False
 
     @classmethod
     def dummy(m, source, idx=None):
@@ -1823,6 +1823,7 @@ def obfuscate_tokens(ctxt, root, obfuscate):
             else:
                 assert len(node.children) == 1 and node.children[0].value == orig_name
                 node.children[0].value = node.name
+                node.children[0].modified = True
                 
         elif node.type == NodeType.sublang:
             node.lang.rename(globals=global_renames, members=member_renames, locals=local_renames)
@@ -2042,7 +2043,8 @@ def minify_code(source, tokens, root, minify):
             if token.value is None:
                 return
 
-            if prev_token.endidx < token.idx and prev_token.value:
+            # (modified tokens may require whitespace not previously required - e.g. 0b/0x)
+            if (prev_token.endidx < token.idx or prev_token.modified or token.modified) and prev_token.value:
 
                 # note: always adding \n before if/while wins a few bytes on my code (though similar tactics for other keywords and spaces don't work?)
                 if prev_token.vline != token.vline and (not minify_lines or has_shorthands(prev_token.vline) or has_shorthands(token.vline)):
