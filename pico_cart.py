@@ -13,6 +13,7 @@ k_version_tuples = {
     35: (0,2,4,1),
     36: (0,2,4,2),
     37: (0,2,5,0),
+    38: (0,2,5,2),
 }
 
 k_latest_version_id = maybe_int(os.getenv("PICO8_VERSION_ID"), 36) # TODO - move to 37? later?
