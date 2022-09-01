@@ -158,7 +158,7 @@ class SubLanguageBase:
     minify = None
 
 class PicoContext:
-    def __init__(m, deprecated=True, undocumented=True, patterns=True, srcmap=None, extra_globals=set(), sublang_getter=None):
+    def __init__(m, deprecated=True, undocumented=True, patterns=True, srcmap=None, extra_globals=None, sublang_getter=None):
         funcs = set(main_globals)
         if deprecated:
             funcs |= deprecated_globals
@@ -166,7 +166,8 @@ class PicoContext:
             funcs |= undocumented_globals
         if patterns:
             funcs |= pattern_globals
-        funcs |= extra_globals
+        if extra_globals:
+            funcs |= set(extra_globals)
 
         m.globals = funcs
 
@@ -1677,8 +1678,6 @@ def obfuscate_tokens(ctxt, root, obfuscate):
 
             elif node.effective_kind == VarKind.global_:
                 global_uses[node.name] += 1
-                for scope in scopes:
-                    scope.used_globals.add(node.name)
 
             elif node.effective_kind == VarKind.local:
                 # should in theory help, but doesn't...
@@ -1686,7 +1685,13 @@ def obfuscate_tokens(ctxt, root, obfuscate):
                 #    local_uses[node.var] += 0
                 #else:
                 local_uses[node.var] += 1
+                    
+            # add to the scope based on real kind, to avoid conflicts (e.g. between builtins and globals)
+            if node.kind == VarKind.global_:
+                for scope in scopes:
+                    scope.used_globals.add(node.name)
 
+            elif node.kind == VarKind.local:
                 if node.var.scope in scopes:
                     i = scopes.index(node.var.scope)
                     for scope in scopes[i:]:
@@ -1770,11 +1775,13 @@ def obfuscate_tokens(ctxt, root, obfuscate):
     remaining_local_uses = list(sorted(local_uses, key=lambda k: local_uses[k], reverse=True))
     while remaining_local_uses:
         ident = local_ident_stream()
-        ident_global = rev_global_renames.get(ident, ident)
+        ident_global = rev_global_renames.get(ident)
+        if not ident_global and ident in global_knowns:
+            ident_global = ident
         ident_locals = []
         
         for i, var in enumerate(remaining_local_uses):
-            if ident_global in var.scope.used_globals or ident_global in var.scope.used_locals:
+            if ident_global in var.scope.used_globals:
                 continue
             
             for _, ident_local in ident_locals:

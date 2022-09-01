@@ -9,9 +9,9 @@ status = 0
 parser = argparse.ArgumentParser()
 parser.add_argument("--measure", action="store_true")
 parser.add_argument("--stdout", action="store_true")
-parser.add_argument("--test", action="append")
+parser.add_argument("-t", "--test", action="append")
 parser.add_argument("--no-private", action="store_true")
-parser.add_argument("--quiet", action="store_true")
+parser.add_argument("-q", "--quiet", action="store_true")
 opts = parser.parse_args()
 
 # for test consistency:
@@ -136,6 +136,8 @@ def run():
              "--script", path_join("test_input", "sublang.py"))
     run_test("unkform1", "unkform1", "unkform1")
     run_test("unkform2", "unkform2.png", "unkform2", "--format", "png", "--input-format", "auto")
+    run_test("mini", "mini.p8", "mini.p8", "--minify", "--no-minify-lines",
+             "--builtin", "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z")
 
 if __name__ == "__main__":
     os.makedirs("test_output", exist_ok=True)

@@ -45,6 +45,7 @@ pgroup.add_argument("-s", "--script", help="manipulate the cart via a custom pyt
 pgroup.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
 
 pgroup = parser.add_argument_group("misc. options (semi-undocumented)")
+pgroup.add_argument("--builtin", type=CommaSep, action=extend_arg, help="treat identifier as a pico-8 builtin (for minify, lint, etc.)")
 pgroup.add_argument("--version", action="store_true", help="print version of cart")
 pgroup.add_argument("--bbs", action="store_true", help="interpret input file as a bbs cart id, e.g. '#...'")
 pgroup.add_argument("--fast-compression", action="store_true", help="force fast but poor compression (when creating pngs)")
@@ -133,7 +134,7 @@ src = CartSource(cart)
 if args.input_count:
     write_code_size(cart, input=True)
     
-ctxt = PicoContext(srcmap=args.rename_map, sublang_getter=sublang_cb)
+ctxt = PicoContext(extra_globals=args.builtin, srcmap=args.rename_map, sublang_getter=sublang_cb)
 if preproc_cb:
     preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args, res_path=None) # (res_path is obsolete)
 
