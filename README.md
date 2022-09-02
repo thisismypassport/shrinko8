@@ -37,7 +37,7 @@ If you want to create a png cart, change the output extension to .png:
 
 `python shrinko8.py path-to-input.p8 path-to-output.png --minify`
 
-This tool compresses code a bit better than Pico-8.
+Shrinko8 compresses code a bit better than Pico-8.
 
 ## Automatic renaming of identifiers
 
@@ -325,7 +325,7 @@ In such cases, you can also use `--input-count` to count the number of tokens, c
 
 # Format Conversion
 
-This tool supports multiple cart formats, and allows converting between them:
+Shrinko8 supports multiple cart formats, and allows converting between them:
 * p8 - Pico-8 cart source
 * png - Pico-8 cart exported into a png
 * rom - Pico-8 cart exported into a rom

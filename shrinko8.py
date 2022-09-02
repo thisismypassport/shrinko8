@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 from utils import *
 from pico_process import PicoContext, process_code, CartSource, CustomPreprocessor
-from pico_cart import CartFormat, read_cart, write_cart, write_code_size, write_compressed_size, download_cart_from_bbs
+from pico_compress import write_code_size, write_compressed_size
+from pico_cart import CartFormat, read_cart, write_cart, download_cart_from_bbs
 import argparse, importlib.util
 
 def CommaSep(val):

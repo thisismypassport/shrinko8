@@ -162,3 +162,33 @@ def to_pico_chars(text):
 def from_pico_chars(text, unicaps=False):
     charset = k_unicap_charset if unicaps else k_charset
     return "".join(charset[ord(ch)] for ch in text)
+
+k_version_tuples = {
+    29: (0,2,1,0),
+    30: (0,2,2,0),
+    31: (0,2,2,1),
+    32: (0,2,2,2),
+    33: (0,2,3,0),
+    34: (0,2,4,0),
+    35: (0,2,4,1),
+    36: (0,2,4,2),
+    37: (0,2,5,0),
+    38: (0,2,5,2),
+}
+
+k_default_version_id = maybe_int(os.getenv("PICO8_VERSION_ID"), 36) # TODO - update as newer versions get more common
+k_default_platform = os.getenv("PICO8_PLATFORM_CHAR", 'w' if os.name == 'nt' else 'x' if sys.platform == 'darwin' else 'l')
+
+def get_version_tuple(id):
+    version = k_version_tuples.get(id)
+    if version is None:
+        if id >= 29:
+            eprint("warning - unknown version id %d, giving wrong version number" % id)
+            version = k_version_tuples.get(k_default_version_id, (0,0,0,0)) # better than nothing?
+        elif id >= 19:
+            version = (0,2,0,0)
+        elif id >= 8:
+            version = (0,1,5+id,0) # 13 .. 23
+        else:
+            version = (0,0,0,0)
+    return version
