@@ -329,6 +329,7 @@ Shrinko8 supports multiple cart formats, and allows converting between them:
 * p8 - Pico-8 cart source
 * png - Pico-8 cart exported into a png
 * rom - Pico-8 cart exported into a rom
+* tiny-rom - Pico-8 cart exported into a tiny rom (code only)
 * lua - raw lua code, with no headers
 * clip - Pico-8 clipboard format (i.e. [cart]...[/cart])
 * url - Pico-8 education version url (code & gfx only)

@@ -8,14 +8,20 @@ import argparse, importlib.util
 def CommaSep(val):
     return val.split(",")
 
+def CartFormatFromStr(val):
+    return CartFormat(val.replace("-", "_").replace(" ", "_"))
+
+def CartFormatList(list):
+    return ",".join(str.replace("_", "-") for str in list)
+
 extend_arg = "extend" if sys.version_info >= (3,8) else None
 
 parser = argparse.ArgumentParser()
 parser.add_argument("input", help="input file, can be in any format. ('-' for stdin)")
 parser.add_argument("output", help="output file. ('-' for stdout)", nargs='?')
 
-parser.add_argument("-f", "--format", type=CartFormat, help="output format {%s}" % ",".join(CartFormat._output_names))
-parser.add_argument("-F", "--input-format", type=CartFormat, help="input format {%s}" % ",".join(CartFormat._input_names))
+parser.add_argument("-f", "--format", type=CartFormatFromStr, help="output format {%s}" % CartFormatList(CartFormat._output_names))
+parser.add_argument("-F", "--input-format", type=CartFormatFromStr, help="input format {%s}" % CartFormatList(CartFormat._input_names))
 parser.add_argument("-u", "--unicode-caps", action="store_true", help="write capitals as italicized unicode characters (better for copy/paste)")
 
 pgroup = parser.add_argument_group("minify options")

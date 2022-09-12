@@ -754,14 +754,14 @@ class BinaryReader(BinaryBase):
     def s64(m):
         return m.s64be() if m.big_end else m.s64le()
 
-    def bytes(m, size):
+    def bytes(m, size, allow_eof=False):
         result = m.f.read(size)
-        if len(result) != size:
+        if len(result) != size and not allow_eof:
             raise struct.error("end of file")
         return result
-    def bytearray(m, size):
+    def bytearray(m, size, allow_eof=False):
         result = bytearray(size)
-        if m.f.readinto(result) != size:
+        if m.f.readinto(result) != size and not allow_eof:
             raise struct.error("end of file")
         return result
     
@@ -783,19 +783,25 @@ class BinaryReader(BinaryBase):
     def f64(m):
         return m.f64be() if m.big_end else m.f64le()
 
-    def zbytes(m, len = None, count = 1):
+    def zbytes(m, len = None, count = 1, allow_eof = False):
         zero = b"\0" * count
         if len is None:
             # TODO: optimize if seeking supported?
             result = b""
             while True:
-                char = m.bytes(count)
-                if char == zero:
+                char = m.bytes(count, allow_eof)
+                if allow_eof and len(char) < count:
+                    if char:
+                        raise struct.error("end of file inside char")
+                    break
+                elif char == zero:
                     break
                 else:
                     result += char
         else:
-            result = m.bytes(len * count)
+            result = m.bytes(len * count, allow_eof)
+            if allow_eof and count > 1 and len(result) % count:
+                raise struct.error("end of file inside char")
             # TODO: any better way? (can't search/split if count > 1)
             for i in range(0, len, count):
                 if result[i:i+count] == zero:

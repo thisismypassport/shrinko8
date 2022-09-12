@@ -38,7 +38,7 @@ def update_mtf(mtf, idx, ch):
 
 def read_code_from_rom(r, print_sizes=False, **_):
     start_pos = r.pos()
-    header = r.bytes(4)
+    header = r.bytes(4, allow_eof=True)
 
     if header == k_new_compressed_code_header:
         unc_size = r.u16()
@@ -121,7 +121,7 @@ def read_code_from_rom(r, print_sizes=False, **_):
 
     else:
         r.addpos(-4)
-        code = [chr(c) for c in r.zbytes(k_code_size)]
+        code = [chr(c) for c in r.zbytes(k_code_size, allow_eof=True)]
 
     return "".join(code)
 

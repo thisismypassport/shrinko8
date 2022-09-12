@@ -5,11 +5,11 @@ from pico_compress import write_code_to_rom, read_code_from_rom, print_size
 import hashlib, base64
 
 class CartFormat(Enum):
-    values = ("auto", "p8", "png", "lua", "rom", "clip", "url", "code")
+    values = ("auto", "p8", "png", "lua", "rom", "tiny_rom", "clip", "url", "code")
 
     _input_names = tuple(values)
     _output_names = tuple(value for value in _input_names if value != "auto")
-    _ext_names = tuple(value for value in _output_names if value != "code")
+    _ext_names = tuple(value for value in _output_names if value not in ("tiny_rom", "code"))
     _src_names = ("p8", "lua", "code")
 
 class CodeMapping(Tuple):
@@ -48,24 +48,28 @@ class Cart:
         if title != m.get_title():
             m.set_title(title)
 
-def read_cart_from_rom(buffer, path=None, **opts):
+def read_cart_from_rom(buffer, path=None, allow_tiny=False, **opts):
     cart = Cart()
+    cart.name = path_basename(path)
     
     with BinaryReader(BytesIO(buffer), big_end = True) as r:
-        cart.name = path_basename(path)
-        cart.rom.replace(r.bytes(k_rom_size))
-        cart.code = read_code_from_rom(r, **opts)
+        if r.len() < k_cart_size and allow_tiny: # tiny rom, code only
+            cart.code = read_code_from_rom(r, **opts)
+        
+        else:
+            cart.rom.replace(r.bytes(k_rom_size))
+            cart.code = read_code_from_rom(r, **opts)
 
-        r.setpos(k_cart_size)
-        if r.pos() < r.len():
-            cart.version_id = r.u8()
-            version = r.u8(), r.u8(), r.u8()
-            cart.platform = chr(r.u8())
-            cart.version_tuple = (*version, r.u8())
-            hash = r.bytes(20)
+            r.setpos(k_cart_size)
+            if r.pos() < r.len():
+                cart.version_id = r.u8()
+                version = r.u8(), r.u8(), r.u8()
+                cart.platform = chr(r.u8())
+                cart.version_tuple = (*version, r.u8())
+                hash = r.bytes(20)
 
-            if hash != bytes(20) and hash != hashlib.sha1(buffer[:k_cart_size]).digest():
-                raise Exception("corrupted cart (wrong hash)")
+                if hash != bytes(20) and hash != hashlib.sha1(buffer[:k_cart_size]).digest():
+                    raise Exception("corrupted cart (wrong hash)")
 
     return cart
 
@@ -85,6 +89,17 @@ def write_cart_to_rom(cart, with_trailer=False, **opts):
             w.u8(ord(cart.platform))
             w.u8(cart.version_tuple[3])
             w.bytes(hashlib.sha1(io.getvalue()[:k_cart_size]).digest())
+
+        return io.getvalue()
+
+def write_cart_to_tiny_rom(cart, force_compress=False, **opts):
+    io = BytesIO()
+
+    with BinaryWriter(io, big_end = True) as w:
+        write_code_to_rom(w, cart.code, force_compress=True, **opts)
+
+        if len(io.getvalue()) > len(cart.code):
+            io = BytesIO(bytes(ord(c) for c in cart.code))
 
         return io.getvalue()
 
@@ -445,14 +460,8 @@ def read_cart_from_url(url, print_sizes=False, **opts):
 k_url_prefix = "https://www.pico-8-edu.com"
 
 def write_cart_to_url(cart, url_prefix=k_url_prefix, force_compress=False, print_sizes=False, **opts):
-    io = BytesIO()
-    with BinaryWriter(io, big_end = True) as w:
-        write_code_to_rom(w, cart.code, force_compress=True, **opts)
-
-        if len(io.getvalue()) > len(cart.code):
-            io = BytesIO(bytes(ord(c) for c in cart.code))
-
-        code = base64.b64encode(io.getvalue(), k_base64_alt_chars)
+    raw_code = write_cart_to_tiny_rom(cart, **opts)        
+    code = base64.b64encode(raw_code, k_base64_alt_chars)
 
     rect = iter_rect(128, 128)
     gfx = []
@@ -555,8 +564,8 @@ def read_cart(path, format=None, **opts):
         return read_cart_from_source(file_read_text(path), path=path, **opts)
     elif format == CartFormat.png:
         return read_cart_from_image(file_read(path), path=path, **opts)
-    elif format == CartFormat.rom:
-        return read_cart_from_rom(file_read(path), path=path, **opts)
+    elif format in (CartFormat.rom, CartFormat.tiny_rom):
+        return read_cart_from_rom(file_read(path), path=path, allow_tiny=True, **opts)
     elif format == CartFormat.clip:
         return read_cart_from_clip(file_read_text(path).rstrip(), path=path, **opts)
     elif format == CartFormat.url:
@@ -689,6 +698,8 @@ def write_cart(path, cart, format, **opts):
         file_write(path, write_cart_to_image(cart, **opts))
     elif format == CartFormat.rom:
         file_write(path, write_cart_to_rom(cart, **opts))
+    elif format == CartFormat.tiny_rom:
+        file_write(path, write_cart_to_tiny_rom(cart, **opts))
     elif format == CartFormat.clip:
         file_write_text(path, write_cart_to_clip(cart, **opts))
     elif format == CartFormat.url:
