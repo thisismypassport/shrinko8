@@ -1,7 +1,7 @@
 from utils import *
 from sdl2_utils import Surface, BlendMode
 from pico_defs import *
-from pico_compress import write_code_to_rom, read_code_from_rom, print_size
+from pico_compress import compress_code, uncompress_code, get_compressed_size, print_size
 import hashlib, base64
 
 class CartFormat(Enum):
@@ -24,6 +24,7 @@ class Cart:
         m.name = ""
         m.code = ""
         m.code_map = ()
+        m.code_rom = None
         m.screenshot = None
         m.meta = defaultdict(list)
 
@@ -48,17 +49,27 @@ class Cart:
         if title != m.get_title():
             m.set_title(title)
 
+def read_code_from_rom(r, keep_compression=False, **opts):
+    code_rom = None
+    if keep_compression:
+        start_pos = r.pos()
+        code_rom = Memory(k_code_size)
+        code_rom.set_block(0, r.bytes(k_code_size, allow_eof=True))
+        r.setpos(start_pos)
+
+    return uncompress_code(r, **opts), code_rom
+
 def read_cart_from_rom(buffer, path=None, allow_tiny=False, **opts):
     cart = Cart()
     cart.name = path_basename(path)
     
     with BinaryReader(BytesIO(buffer), big_end = True) as r:
         if r.len() < k_cart_size and allow_tiny: # tiny rom, code only
-            cart.code = read_code_from_rom(r, **opts)
+            cart.code, cart.code_rom = read_code_from_rom(r, **opts)
         
         else:
             cart.rom.replace(r.bytes(k_rom_size))
-            cart.code = read_code_from_rom(r, **opts)
+            cart.code, cart.code_rom = read_code_from_rom(r, **opts)
 
             r.setpos(k_cart_size)
             if r.pos() < r.len():
@@ -73,12 +84,16 @@ def read_cart_from_rom(buffer, path=None, allow_tiny=False, **opts):
 
     return cart
 
-def write_cart_to_rom(cart, with_trailer=False, **opts):
+def write_cart_to_rom(cart, with_trailer=False, keep_compression=False, **opts):
     io = BytesIO(bytearray(k_cart_size + (k_trailer_size if with_trailer else 0)))
 
     with BinaryWriter(io, big_end = True) as w:
-        w.bytes(cart.rom.get_block(0, k_rom_size))        
-        write_code_to_rom(w, cart.code, **opts)
+        w.bytes(cart.rom)
+
+        if keep_compression and cart.code_rom != None:
+            w.bytes(cart.code_rom)
+        else:
+            compress_code(w, cart.code, **opts)
 
         if with_trailer:
             w.setpos(k_cart_size)
@@ -92,14 +107,20 @@ def write_cart_to_rom(cart, with_trailer=False, **opts):
 
         return io.getvalue()
 
-def write_cart_to_tiny_rom(cart, force_compress=False, **opts):
+def write_cart_to_tiny_rom(cart, force_compress=False, keep_compression=False, **opts):
     io = BytesIO()
 
     with BinaryWriter(io, big_end = True) as w:
-        write_code_to_rom(w, cart.code, force_compress=True, **opts)
+        if keep_compression and cart.code_rom != None:
+            with BinaryReader(BytesIO(cart.code_rom), big_end = True) as code_r:
+                compressed_size = get_compressed_size(code_r)
+            
+            w.bytes(cart.code_rom.get_block(0, compressed_size))
+        else:
+            compress_code(w, cart.code, force_compress=True, **opts)
 
-        if len(io.getvalue()) > len(cart.code):
-            io = BytesIO(bytes(ord(c) for c in cart.code))
+            if len(io.getvalue()) > len(cart.code):
+                io = BytesIO(bytes(ord(c) for c in cart.code))
 
         return io.getvalue()
 
@@ -208,7 +229,7 @@ def write_cart_to_image(cart, res_path=None, screenshot_path=None, title=None, *
         return f.getvalue()
 
 k_meta_prefix = "meta:"
-        
+
 def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
     cart = Cart()
     
@@ -436,7 +457,7 @@ def read_cart_from_url(url, print_sizes=False, **opts):
     if code:
         codebuf = base64.b64decode(code, k_base64_alt_chars, validate=True).ljust(k_code_size, b'\0')
         with BinaryReader(BytesIO(codebuf), big_end = True) as r:
-            cart.code = read_code_from_rom(r, **opts)
+            cart.code, cart.code_rom = read_code_from_rom(r, **opts)
 
     if gfx:
         i = 0

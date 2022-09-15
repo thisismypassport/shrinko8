@@ -55,6 +55,7 @@ pgroup = parser.add_argument_group("misc. options (semi-undocumented)")
 pgroup.add_argument("--builtin", type=CommaSep, action=extend_arg, help="treat identifier as a pico-8 builtin (for minify, lint, etc.)")
 pgroup.add_argument("--version", action="store_true", help="print version of cart")
 pgroup.add_argument("--bbs", action="store_true", help="interpret input file as a bbs cart id, e.g. '#...'")
+pgroup.add_argument("--keep-compression", action="store_true", help="keep existing compression, instead of re-compressing")
 pgroup.add_argument("--fast-compression", action="store_true", help="force fast but poor compression (when creating pngs)")
 pgroup.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
 pgroup.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
@@ -84,6 +85,8 @@ if args.format and not args.output:
     fail("Output should be specified under --format")
 if args.minify and not args.output and not args.count:
     fail("Output (or --count) should be specified under --minify")
+if args.minify and args.keep_compression:
+    fail("Can't modify code and keep compression")
     
 if not args.format and args.output:
     ext = path_extension(args.output)[1:].lower()
@@ -135,7 +138,8 @@ if args.script:
     sublang_cb = getattr(script_mod, "sublanguage_main", None)
 
 preprocessor = CustomPreprocessor() if args.custom_preprocessor else None
-cart = read_cart(args.input, args.input_format, print_sizes=args.input_count, preprocessor=preprocessor)
+cart = read_cart(args.input, args.input_format, print_sizes=args.input_count, 
+                 keep_compression=args.keep_compression, preprocessor=preprocessor)
 src = CartSource(cart)
 
 if args.input_count:
@@ -169,7 +173,7 @@ if args.output:
     write_cart(args.output, cart, args.format, print_sizes=args.count, 
                unicode_caps=args.unicode_caps,
                force_compress=args.count or args.force_compression,
-               fast_compress=args.fast_compression)
+               fast_compress=args.fast_compression, keep_compression=args.keep_compression)
 
 if args.version:
     print("version: %d, v%d.%d.%d:%d, %c" % (cart.version_id, *cart.version_tuple, cart.platform))

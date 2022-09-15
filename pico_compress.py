@@ -16,7 +16,7 @@ def write_code_size(cart, input=False):
     print_code_size(len(cart.code), prefix="input " if input else "")
 
 def write_compressed_size(cart, **opts):
-    write_code_to_rom(BinaryWriter(BytesIO()), cart.code, print_sizes=True, force_compress=True, fail_on_error=False, **opts)
+    compress_code(BinaryWriter(BytesIO()), cart.code, print_sizes=True, force_compress=True, fail_on_error=False, **opts)
 
 k_code_table = [
     None, '\n', ' ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', # 00
@@ -36,7 +36,7 @@ def update_mtf(mtf, idx, ch):
         mtf[ii] = mtf[ii - 1]
     mtf[0] = ch
 
-def read_code_from_rom(r, print_sizes=False, **_):
+def uncompress_code(r, print_sizes=False, **_):
     start_pos = r.pos()
     header = r.bytes(4, allow_eof=True)
 
@@ -120,10 +120,36 @@ def read_code_from_rom(r, print_sizes=False, **_):
         assert len(code) in (unc_size, unc_size - 1) # extra null at the end dropped?
 
     else:
-        r.addpos(-4)
+        r.addpos(-len(header))
         code = [chr(c) for c in r.zbytes(k_code_size, allow_eof=True)]
 
     return "".join(code)
+
+def get_compressed_size(r):
+    start_pos = r.pos()
+    header = r.bytes(4, allow_eof=True)
+
+    if header == k_new_compressed_code_header:
+        r.u16()
+        return r.u16() # compressed size
+
+    elif header == k_compressed_code_header:
+        r.u16()
+        r.u16()
+        
+        while True:
+            ch = r.u8()
+            if ch == 0:
+                if r.u8() == 0:
+                    break
+            elif ch > 0x3b:
+                r.u8()
+
+        return r.pos() - start_pos
+
+    else:
+        r.addpos(-len(header))
+        return len(r.zbytes(k_code_size))
 
 class Lz77Tuple(Tuple):
     fields = ("off", "cnt")
@@ -229,7 +255,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
                 min_matches[code[j:j+min_c]].append(j)
         prev_i = i
 
-def write_code_to_rom(w, code, print_sizes=False, force_compress=False, fail_on_error=True, fast_compress=False, **_):
+def compress_code(w, code, print_sizes=False, force_compress=False, fail_on_error=True, fast_compress=False, **_):
     k_new = True
     min_c = 3
     
