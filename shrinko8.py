@@ -58,6 +58,7 @@ pgroup.add_argument("--bbs", action="store_true", help="interpret input file as 
 pgroup.add_argument("--keep-compression", action="store_true", help="keep existing compression, instead of re-compressing")
 pgroup.add_argument("--fast-compression", action="store_true", help="force fast but poor compression (when creating pngs)")
 pgroup.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
+pgroup.add_argument("--old-compression", action="store_true", help="compress with the old pre-v0.2.0 compression scheme")
 pgroup.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
 
 if len(sys.argv) <= 1: # help is better than usage
@@ -171,7 +172,7 @@ if args.count:
 
 if args.output:
     write_cart(args.output, cart, args.format, print_sizes=args.count, 
-               unicode_caps=args.unicode_caps,
+               unicode_caps=args.unicode_caps, old_compress=args.old_compression,
                force_compress=args.count or args.force_compression,
                fast_compress=args.fast_compression, keep_compression=args.keep_compression)
 

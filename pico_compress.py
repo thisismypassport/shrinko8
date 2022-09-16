@@ -255,18 +255,18 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
                 min_matches[code[j:j+min_c]].append(j)
         prev_i = i
 
-def compress_code(w, code, print_sizes=False, force_compress=False, fail_on_error=True, fast_compress=False, **_):
-    k_new = True
+def compress_code(w, code, print_sizes=False, force_compress=False, fail_on_error=True, fast_compress=False, old_compress=False, **_):
+    is_new = not old_compress
     min_c = 3
     
     if len(code) >= k_code_size or force_compress: # (>= due to null)
         start_pos = w.pos()
-        w.bytes(k_new_compressed_code_header if k_new else k_compressed_code_header)
+        w.bytes(k_new_compressed_code_header if is_new else k_compressed_code_header)
         w.u16(len(code) & 0xffff)
         len_pos = w.pos()
         w.u16(0) # revised below
                 
-        if k_new:
+        if is_new:
             bw = BinaryBitWriter(w.f)
             mtf = [chr(i) for i in range(0x100)]
 
@@ -452,7 +452,7 @@ def compress_code(w, code, print_sizes=False, force_compress=False, fail_on_erro
             assert len(code) < 0x10000, "cart has too many characters!"
             assert w.pos() <= k_cart_size, "cart takes too much compressed space!"
         
-        if k_new:   
+        if is_new:   
             w.setpos(len_pos)
             w.u16(size)
             
