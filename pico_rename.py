@@ -17,7 +17,7 @@ member_strings = {
     "__pairs", "__ipairs", "__metatable", "__gc", "__mode",
 }
 
-def obfuscate_tokens(ctxt, root, obfuscate):
+def rename_tokens(ctxt, root, rename):
     all_globals = ctxt.globals.copy()
     global_knowns = global_callbacks.copy()
     member_knowns = member_strings.copy()
@@ -25,9 +25,9 @@ def obfuscate_tokens(ctxt, root, obfuscate):
     preserve_members = False
     members_as_globals = False
 
-    if isinstance(obfuscate, dict):
-        members_as_globals = obfuscate.get("members=globals", False)
-        rules_input = obfuscate.get("rules")
+    if isinstance(rename, dict):
+        members_as_globals = rename.get("members=globals", False)
+        rules_input = rename.get("rules")
         if rules_input:
             for key, value in rules_input.items():
                 if value == False:

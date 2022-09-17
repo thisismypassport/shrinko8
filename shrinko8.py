@@ -116,9 +116,9 @@ if args.minify:
         "tokens": not args.no_minify_tokens,
     }
 
-args.obfuscate = bool(args.minify) and not args.no_minify_rename
-if args.obfuscate:
-    args.obfuscate = {
+args.rename = bool(args.minify) and not args.no_minify_rename
+if args.rename:
+    args.rename = {
         "members=globals": args.rename_members_as_globals,
     }
     if args.preserve or args.no_preserve:
@@ -127,7 +127,7 @@ if args.obfuscate:
             rules.update({k: False for k in args.preserve})
         if args.no_preserve:
             rules.update({k: True for k in args.no_preserve})
-        args.obfuscate["rules"] = rules
+        args.rename["rules"] = rules
 
 preproc_cb, postproc_cb, sublang_cb = None, None, None
 if args.script:
@@ -151,7 +151,7 @@ if preproc_cb:
     preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args, res_path=None) # (res_path is obsolete)
 
 ok, errors = process_code(ctxt, src, input_count=args.input_count, count=args.count,
-                          lint=args.lint, minify=args.minify, obfuscate=args.obfuscate, fail=False)
+                          lint=args.lint, minify=args.minify, rename=args.rename, fail=False)
 if errors:
     print("Lint errors:" if ok else "Compilation errors:")
     for error in errors:

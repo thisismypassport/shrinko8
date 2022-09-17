@@ -133,10 +133,10 @@ class Error:
 def print_token_count(num_tokens, prefix=""):
     print_size(prefix + "tokens:", num_tokens, 8192)
 
-def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, obfuscate=False, fail=True):
+def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, rename=False, fail=True):
     need_lint = lint not in (None, False)
     need_minify = minify not in (None, False)
-    need_obfuscate = obfuscate not in (None, False)
+    need_rename = rename not in (None, False)
 
     ok = False
     tokens, errors = tokenize(source, ctxt)
@@ -153,8 +153,8 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
             errors = lint_code(ctxt, tokens, root, lint)
         
         if need_minify:
-            if need_obfuscate:
-                obfuscate_tokens(ctxt, root, obfuscate)
+            if need_rename:
+                rename_tokens(ctxt, root, rename)
 
             source.text, tokens = minify_code(source, tokens, root, minify)
 
@@ -177,7 +177,7 @@ from pico_tokenize import tokenize, count_tokens
 from pico_parse import parse
 from pico_lint import lint_code
 from pico_minify import minify_code
-from pico_obfuscate import obfuscate_tokens
+from pico_rename import rename_tokens
 
 # re-export some things for examples/etc.
 from pico_tokenize import is_identifier, is_ident_char, CustomPreprocessor
