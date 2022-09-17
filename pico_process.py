@@ -176,7 +176,8 @@ def echo_code(code, echo):
 from pico_tokenize import tokenize, count_tokens
 from pico_parse import parse
 from pico_lint import lint_code
-from pico_minify import minify_code, obfuscate_tokens
+from pico_minify import minify_code
+from pico_obfuscate import obfuscate_tokens
 
 # re-export some things for examples/etc.
 from pico_tokenize import is_identifier, is_ident_char, CustomPreprocessor
