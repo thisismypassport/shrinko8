@@ -847,8 +847,8 @@ class BinaryReader(BinaryBase):
     def nbytes(m):
         return m.bytes(m.nat())
 
-    def align(m, size):
-        misalign = m.pos() % size
+    def align(m, size, start = 0):
+        misalign = (m.pos() - start) % size
         if misalign:
             m.addpos(size - misalign)
 
@@ -873,6 +873,10 @@ class BinaryBitReader(BinaryBase):
     @property
     def bit_position(m):
         return (m.pos() - 1) * 8 + m._bit
+
+    def byte_align(m):
+        if m._bit < 8:
+            m._bit = 8
 
     def _bits_le(m, n, advance):
         bit, byte = m._bit, m._byte
@@ -1073,8 +1077,8 @@ class BinaryWriter(BinaryBase):
         m.nat(len(v))
         m.bytes(v)
 
-    def align(m, size, value = 0):
-        misalign = m.pos() % size
+    def align(m, size, start = 0, value = 0):
+        misalign = (m.pos() - start) % size
         if misalign:
             for _ in range(size - misalign):
                 m.u8(value)
@@ -1094,6 +1098,9 @@ class BinaryBitWriter(BinaryBase):
     @property
     def bit_position(m):
         return m.pos() * 8 + m._bit
+
+    def byte_align(m):
+        m.flush()
 
     def bits_le(m, n, v):
         source_bit = 0
@@ -1576,8 +1583,18 @@ class Rect(Tuple):
     def __contains__(m, p):
         if isinstance(p, Point):
             return p >= m.pos and p < m.pos2
+        elif isinstance(p, Rect):
+            return p.pos >= m.pos and p.pos2 <= m.pos2
         else:
             raise Exception("Not implemented")
+
+    def overlaps(m, p):
+        assert isinstance(p, Rect)
+        return p.pos < m.pos2 and p.pos2 > m.pos
+
+    def __and__(m, p):
+        assert isinstance(p, Rect)
+        return Rect.from_coords(max(m.x, p.x), max(m.y, p.y), max(min(m.x2, p.x2), 0), max(min(m.y2, p.y2), 0))
 
     def __add__(m, other):
         assert isinstance(other, Point)

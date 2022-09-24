@@ -603,6 +603,8 @@ def read_included_cart(orig_path, inc_name, out_i, outparts, outmappings, prepro
     if not path_exists(inc_path):
         raise Exception("cannot open included cart at: %s" % inc_path)
 
+    preprocessor.pre_include(inc_path)
+
     inc_cart = read_cart(inc_path, preprocessor=preprocessor)
     if inc_cart.code_map:
         for map in inc_cart.code_map:
@@ -618,6 +620,9 @@ class PicoPreprocessor:
     strict = True
 
     def start(path, code):
+        pass
+
+    def pre_include(path):
         pass
 
     def handle(path, code, i, start_i, out_i, outparts, outmappings):

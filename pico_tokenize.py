@@ -106,18 +106,23 @@ class Token(TokenNodeBase):
         return m.type in (TokenType.lint, TokenType.comment)
 
 class CustomPreprocessor:
-    def __init__(m, defines=None, pp_handler=None, strict=True):
+    def __init__(m, defines=None, pp_handler=None, strict=True, watcher=None):
         m.defines = defines.copy() if defines else {}
         m.pp_handler = pp_handler
         m.ppstack = []
         m.active = True
         m.strict = strict
+        m.watcher = watcher
         
     def get_active(m):
         return m.ppstack[-1] if m.ppstack else True
         
     def start(m, path, code):
         pass
+
+    def pre_include(m, path):
+        if m.watcher:
+            m.watcher.add(path)
 
     def handle(m, path, code, i, start_i, out_i, outparts, outmappings):
         end_i = code.find("\n", i)
