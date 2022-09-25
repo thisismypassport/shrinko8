@@ -28,7 +28,7 @@ def run_code(*args, exit_code=None):
     try:
         with patch.object(sys, "argv", ["dontcare", *args]):
             with patch.object(sys, "stdout", stdout):
-                exec(code, {"__file__": code_file})
+                exec(code, {"__file__": code_file, "__name__": "__main__"})
     except SystemExit as e:
         actual_code = e.code
     except Exception:

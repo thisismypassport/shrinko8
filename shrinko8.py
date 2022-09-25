@@ -14,6 +14,9 @@ def CartFormatFromStr(val):
 def CartFormatList(list):
     return ",".join(str.replace("_", "-") for str in list)
 
+def ParsableCountHandler(prefix, name, size, limit):
+    print("count:%s:%s:%d:%d" % (prefix, name, size, limit))
+
 extend_arg = "extend" if sys.version_info >= (3,8) else None
 
 parser = argparse.ArgumentParser()
@@ -46,6 +49,7 @@ pgroup.add_argument("--no-lint-fail", action="store_true", help="don't fail imme
 pgroup = parser.add_argument_group("count options")
 pgroup.add_argument("-c", "--count", action="store_true", help="enable printing token count, character count & compressed size")
 pgroup.add_argument("--input-count", action="store_true", help="enable printing input token count, character count & compressed size")
+pgroup.add_argument("--parsable-count", action="store_true", help="output counts in a stable, parsable format")
 
 pgroup = parser.add_argument_group("script options")
 pgroup.add_argument("-s", "--script", help="manipulate the cart via a custom python script - see README for api details")
@@ -61,123 +65,133 @@ pgroup.add_argument("--force-compression", action="store_true", help="force code
 pgroup.add_argument("--old-compression", action="store_true", help="compress with the old pre-v0.2.0 compression scheme")
 pgroup.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
 
-if len(sys.argv) <= 1: # help is better than usage
-    parser.print_help(sys.stderr)
-    sys.exit(1)
-
-args = parser.parse_args()
-
-if args.input == "-":
-    args.input = StdPath("-")
-if args.output == "-":
-    args.output = StdPath("-")
-
-if args.bbs:
-    args.input = DataPath(args.input, download_cart_from_bbs(args.input))
-    args.input_format = CartFormat.png
-
-def fail(msg):
-    eprint(msg)
-    sys.exit(1)
-
-if not args.lint and not args.count and not args.output and not args.input_count and not args.version:
-    fail("No operation (--lint/--count) or output file specified")
-if args.format and not args.output:
-    fail("Output should be specified under --format")
-if args.minify and not args.output and not args.count:
-    fail("Output (or --count) should be specified under --minify")
-if args.minify and args.keep_compression:
-    fail("Can't modify code and keep compression")
-    
-if not args.format and args.output:
-    ext = path_extension(args.output)[1:].lower()
-    if ext in CartFormat._ext_names:
-        args.format = CartFormat(ext)
-    else:
-        args.format = CartFormat.p8
-
-if not args.input_format and args.input:
-    ext = path_extension(args.input)[1:].lower()
-    if ext in CartFormat._ext_names:
-        args.input_format = CartFormat(ext)
-
-if args.lint:
-    args.lint = {
-        "unused": not args.no_lint_unused,
-        "duplicate": not args.no_lint_duplicate,
-        "undefined": not args.no_lint_undefined,
-    }
-
-if args.minify:
-    args.minify = {
-        "lines": not args.no_minify_lines,
-        "wspace": not args.no_minify_spaces,
-        "comments": not args.no_minify_comments,
-        "tokens": not args.no_minify_tokens,
-    }
-
-args.rename = bool(args.minify) and not args.no_minify_rename
-if args.rename:
-    args.rename = {
-        "members=globals": args.rename_members_as_globals,
-    }
-    if args.preserve or args.no_preserve:
-        rules = {}
-        if args.preserve:
-            rules.update({k: False for k in args.preserve})
-        if args.no_preserve:
-            rules.update({k: True for k in args.no_preserve})
-        args.rename["rules"] = rules
-
-preproc_cb, postproc_cb, sublang_cb = None, None, None
-if args.script:
-    script_spec = importlib.util.spec_from_file_location(path_basename_no_extension(args.script), args.script)
-    script_mod = importlib.util.module_from_spec(script_spec)
-    script_spec.loader.exec_module(script_mod)
-    preproc_cb = getattr(script_mod, "preprocess_main", None)
-    postproc_cb = getattr(script_mod, "postprocess_main", None)
-    sublang_cb = getattr(script_mod, "sublanguage_main", None)
-
-preprocessor = CustomPreprocessor() if args.custom_preprocessor else None
-cart = read_cart(args.input, args.input_format, print_sizes=args.input_count, 
-                 keep_compression=args.keep_compression, preprocessor=preprocessor)
-src = CartSource(cart)
-
-if args.input_count:
-    write_code_size(cart, input=True)
-    
-ctxt = PicoContext(extra_globals=args.builtin, srcmap=args.rename_map, sublang_getter=sublang_cb)
-if preproc_cb:
-    preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args, res_path=None) # (res_path is obsolete)
-
-ok, errors = process_code(ctxt, src, input_count=args.input_count, count=args.count,
-                          lint=args.lint, minify=args.minify, rename=args.rename, fail=False)
-if errors:
-    print("Lint errors:" if ok else "Compilation errors:")
-    for error in errors:
-        print(error)
-    if not ok or not args.no_lint_fail:
+def main(raw_args):
+    if not raw_args: # help is better than usage
+        parser.print_help(sys.stderr)
         sys.exit(1)
 
-if args.rename_map:
-    file_write_text(args.rename_map, "\n".join(ctxt.srcmap))
-    
-if postproc_cb:
-    postproc_cb(cart=cart, args=args, res_path=None) # (res_path is obsolete)
+    args = parser.parse_args(raw_args)
 
-if args.count:
-    write_code_size(cart)
-    if not (args.output and str(args.format) not in CartFormat._src_names): # else, will be done in write_cart
-        write_compressed_size(cart, fast_compress=args.fast_compression)
+    if args.input == "-":
+        args.input = StdPath("-")
+    if args.output == "-":
+        args.output = StdPath("-")
 
-if args.output:
-    write_cart(args.output, cart, args.format, print_sizes=args.count, 
-               unicode_caps=args.unicode_caps, old_compress=args.old_compression,
-               force_compress=args.count or args.force_compression,
-               fast_compress=args.fast_compression, keep_compression=args.keep_compression)
+    if args.bbs:
+        args.input = DataPath(args.input, download_cart_from_bbs(args.input))
+        args.input_format = CartFormat.png
 
-if args.version:
-    print("version: %d, v%d.%d.%d:%d, %c" % (cart.version_id, *cart.version_tuple, cart.platform))
+    def fail(msg):
+        eprint(msg)
+        sys.exit(1)
 
-if errors:
-    sys.exit(2)
+    if not args.lint and not args.count and not args.output and not args.input_count and not args.version:
+        fail("No operation (--lint/--count) or output file specified")
+    if args.format and not args.output:
+        fail("Output should be specified under --format")
+    if args.minify and not args.output and not args.count:
+        fail("Output (or --count) should be specified under --minify")
+    if args.minify and args.keep_compression:
+        fail("Can't modify code and keep compression")
+        
+    if not args.format and args.output:
+        ext = path_extension(args.output)[1:].lower()
+        if ext in CartFormat._ext_names:
+            args.format = CartFormat(ext)
+        else:
+            args.format = CartFormat.p8
+
+    if not args.input_format and args.input:
+        ext = path_extension(args.input)[1:].lower()
+        if ext in CartFormat._ext_names:
+            args.input_format = CartFormat(ext)
+
+    if args.lint:
+        args.lint = {
+            "unused": not args.no_lint_unused,
+            "duplicate": not args.no_lint_duplicate,
+            "undefined": not args.no_lint_undefined,
+        }
+
+    if args.minify:
+        args.minify = {
+            "lines": not args.no_minify_lines,
+            "wspace": not args.no_minify_spaces,
+            "comments": not args.no_minify_comments,
+            "tokens": not args.no_minify_tokens,
+        }
+
+    args.rename = bool(args.minify) and not args.no_minify_rename
+    if args.rename:
+        args.rename = {
+            "members=globals": args.rename_members_as_globals,
+        }
+        if args.preserve or args.no_preserve:
+            rules = {}
+            if args.preserve:
+                rules.update({k: False for k in args.preserve})
+            if args.no_preserve:
+                rules.update({k: True for k in args.no_preserve})
+            args.rename["rules"] = rules
+
+    preproc_cb, postproc_cb, sublang_cb = None, None, None
+    if args.script:
+        script_spec = importlib.util.spec_from_file_location(path_basename_no_extension(args.script), args.script)
+        script_mod = importlib.util.module_from_spec(script_spec)
+        script_spec.loader.exec_module(script_mod)
+        preproc_cb = getattr(script_mod, "preprocess_main", None)
+        postproc_cb = getattr(script_mod, "postprocess_main", None)
+        sublang_cb = getattr(script_mod, "sublanguage_main", None)
+
+    base_count_handler = ParsableCountHandler if args.parsable_count else True
+    if args.input_count:
+        args.input_count = base_count_handler
+    if args.count:
+        args.count = base_count_handler
+
+    preprocessor = CustomPreprocessor() if args.custom_preprocessor else None
+    cart = read_cart(args.input, args.input_format, size_handler=args.input_count, 
+                    keep_compression=args.keep_compression, preprocessor=preprocessor)
+    src = CartSource(cart)
+
+    if args.input_count:
+        write_code_size(cart, handler=args.input_count, input=True)
+        
+    ctxt = PicoContext(extra_globals=args.builtin, srcmap=args.rename_map, sublang_getter=sublang_cb)
+    if preproc_cb:
+        preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args, res_path=None) # (res_path is obsolete)
+
+    ok, errors = process_code(ctxt, src, input_count=args.input_count, count=args.count,
+                              lint=args.lint, minify=args.minify, rename=args.rename, fail=False)
+    if errors:
+        print("Lint errors:" if ok else "Compilation errors:")
+        for error in errors:
+            print(error)
+        if not ok or not args.no_lint_fail:
+            sys.exit(1)
+
+    if args.rename_map:
+        file_write_text(args.rename_map, "\n".join(ctxt.srcmap))
+        
+    if postproc_cb:
+        postproc_cb(cart=cart, args=args, res_path=None) # (res_path is obsolete)
+
+    if args.count:
+        write_code_size(cart, handler=args.count)
+        if not (args.output and str(args.format) not in CartFormat._src_names): # else, will be done in write_cart
+            write_compressed_size(cart, handler=args.count, fast_compress=args.fast_compression)
+
+    if args.output:
+        write_cart(args.output, cart, args.format, size_handler=args.count, 
+                unicode_caps=args.unicode_caps, old_compress=args.old_compression,
+                force_compress=args.count or args.force_compression,
+                fast_compress=args.fast_compression, keep_compression=args.keep_compression)
+
+    if args.version:
+        print("version: %d, v%d.%d.%d:%d, %c" % (cart.version_id, *cart.version_tuple, cart.platform))
+
+    if errors:
+        sys.exit(2)
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

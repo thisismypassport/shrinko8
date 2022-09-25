@@ -168,7 +168,7 @@ def read_cart_from_image(data, **opts):
     cart.screenshot = screenshot
     return cart
     
-def write_cart_to_image(cart, res_path=None, screenshot_path=None, title=None, **opts):
+def write_cart_to_image(cart, screenshot_path=None, title=None, res_path=None, **opts):
     output = write_cart_to_rom(cart, with_trailer=True, **opts)
 
     if res_path is None:
@@ -427,12 +427,12 @@ k_base64_chars = string.ascii_uppercase + string.ascii_lowercase + string.digits
 k_base64_alt_chars = k_base64_chars[62:].encode()
 k_base64_char_map = {ch: i for i, ch in enumerate(k_base64_chars)}
 
-def print_url_size(size, prefix=""):
-    print_size(prefix + "url:", size, 2000)
+def print_url_size(size, **kwargs):
+    print_size("url", size, 2000, **kwargs)
 
-def read_cart_from_url(url, print_sizes=False, **opts):
-    if print_sizes:
-        print_url_size(len(url), "input ")
+def read_cart_from_url(url, size_handler=None, **opts):
+    if size_handler:
+        print_url_size(len(url), prefix="input", handler=size_handler)
 
     if "?" not in url:
         raise Exception("Invalid url - no '?'")
@@ -480,7 +480,7 @@ def read_cart_from_url(url, print_sizes=False, **opts):
 
 k_url_prefix = "https://www.pico-8-edu.com"
 
-def write_cart_to_url(cart, url_prefix=k_url_prefix, force_compress=False, print_sizes=False, **opts):
+def write_cart_to_url(cart, url_prefix=k_url_prefix, force_compress=False, size_handler=None, **opts):
     raw_code = write_cart_to_tiny_rom(cart, **opts)        
     code = base64.b64encode(raw_code, k_base64_alt_chars)
 
@@ -517,8 +517,8 @@ def write_cart_to_url(cart, url_prefix=k_url_prefix, force_compress=False, print
     if gfx:
         url += "&g=" + "".join(gfx)
     
-    if print_sizes:
-        print_url_size(len(url))
+    if size_handler:
+        print_url_size(len(url), handler=size_handler)
     return url
 
 def read_cart_from_export(data, name, **opts):
@@ -598,48 +598,47 @@ def read_cart(path, format=None, **opts):
     else:
         fail("invalid read format: %s" % format)
 
-def read_included_cart(orig_path, inc_name, out_i, outparts, outmappings, preprocessor):
-    inc_path = path_join(path_dirname(orig_path), inc_name)
-    if not path_exists(inc_path):
-        raise Exception("cannot open included cart at: %s" % inc_path)
-
-    preprocessor.pre_include(inc_path)
-
-    inc_cart = read_cart(inc_path, preprocessor=preprocessor)
-    if inc_cart.code_map:
-        for map in inc_cart.code_map:
-            outmappings.append(CodeMapping(out_i + map.idx, map.src_name, map.src_code, map.src_idx, map.src_line))
-    else:
-        outmappings.append(CodeMapping(out_i, inc_name, inc_cart.code, 0, 0))
-    outparts.append(inc_cart.code)
-
-    return out_i + len(inc_cart.code)
-
-@staticclass
 class PicoPreprocessor:
-    strict = True
-
-    def start(path, code):
+    def __init__(m, strict=True, include_handler=None):
+        m.strict = strict
+        m.include_handler = include_handler
+        
+    def start(m, path, code):
         pass
 
-    def pre_include(path):
-        pass
+    def read_included_cart(m, orig_path, inc_name, out_i, outparts, outmappings):
+        inc_path = path_join(path_dirname(orig_path), inc_name)
+        if not path_exists(inc_path):
+            raise Exception("cannot open included cart at: %s" % inc_path)
 
-    def handle(path, code, i, start_i, out_i, outparts, outmappings):
+        inc_cart = m.include_handler(inc_path) if m.include_handler else None
+        if inc_cart is None:
+            inc_cart = read_cart(inc_path, preprocessor=m)
+
+        if inc_cart.code_map:
+            for map in inc_cart.code_map:
+                outmappings.append(CodeMapping(out_i + map.idx, map.src_name, map.src_code, map.src_idx, map.src_line))
+        else:
+            outmappings.append(CodeMapping(out_i, inc_name, inc_cart.code, 0, 0))
+        outparts.append(inc_cart.code)
+
+        return out_i + len(inc_cart.code)
+
+    def handle(m, path, code, i, start_i, out_i, outparts, outmappings):
         end_i = code.find("\n", i)
         end_i = end_i if end_i >= 0 else len(code)
 
         args = code[i:end_i].split(maxsplit=1)
         if len(args) == 2 and args[0] == "#include":
-            out_i = read_included_cart(path, args[1], out_i, outparts, outmappings, PicoPreprocessor)
+            out_i = m.read_included_cart(path, args[1], out_i, outparts, outmappings)
             return True, end_i, end_i, out_i
         else:
             return True, i + 1, start_i, out_i
 
-    def handle_inline(path, code, i, start_i, out_i, outparts, outmappings):
+    def handle_inline(m, path, code, i, start_i, out_i, outparts, outmappings):
         return True, i + 1, start_i, out_i
         
-    def finish(path, code):
+    def finish(m, path, code):
         pass
 
 k_long_brackets_re = re.compile(r"\[(=*)\[(.*?)\]\1\]", re.S)
@@ -652,7 +651,7 @@ def preprocess_code(name, path, code, start_line=0, preprocessor=None):
     active = True
     
     if preprocessor is None:
-        preprocessor = PicoPreprocessor
+        preprocessor = PicoPreprocessor()
     preprocessor.start(path, code)
 
     def skip_long_brackets():

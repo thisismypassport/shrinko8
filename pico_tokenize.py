@@ -1,5 +1,5 @@
 from utils import *
-from pico_cart import read_included_cart, k_long_brackets_re, k_wspace
+from pico_cart import k_long_brackets_re, k_wspace, PicoPreprocessor
 
 keywords = {
     "and", "break", "do", "else", "elseif", "end", "false", 
@@ -105,24 +105,19 @@ class Token(TokenNodeBase):
     def fake(m):
         return m.type in (TokenType.lint, TokenType.comment)
 
-class CustomPreprocessor:
-    def __init__(m, defines=None, pp_handler=None, strict=True, watcher=None):
+class CustomPreprocessor(PicoPreprocessor):
+    def __init__(m, defines=None, pp_handler=None, **kwargs):
+        super().__init__(**kwargs)
         m.defines = defines.copy() if defines else {}
         m.pp_handler = pp_handler
         m.ppstack = []
         m.active = True
-        m.strict = strict
-        m.watcher = watcher
         
     def get_active(m):
         return m.ppstack[-1] if m.ppstack else True
         
     def start(m, path, code):
         pass
-
-    def pre_include(m, path):
-        if m.watcher:
-            m.watcher.add(path)
 
     def handle(m, path, code, i, start_i, out_i, outparts, outmappings):
         end_i = code.find("\n", i)
@@ -137,7 +132,7 @@ class CustomPreprocessor:
 
         if op == "#include" and len(args) == 2:
             if m.active:
-                out_i = read_included_cart(path, args[1], out_i, outparts, outmappings, m)
+                out_i = m.read_included_cart(path, args[1], out_i, outparts, outmappings)
 
         elif op == "#define" and len(args) >= 2:
             if m.active:

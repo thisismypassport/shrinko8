@@ -1,22 +1,28 @@
 from utils import *
 from pico_defs import *
 
-def print_size(name, size, limit):
-    percent = size / limit * 100
-    fmt = "%.2f%%" if percent >= 95 else "%.0f%%"
-    print(name, size, fmt % percent)
+def print_size(name, size, limit, prefix=None, handler=None):
+    if handler and handler != True:
+        handler(prefix, name, size, limit)
+    else:
+        percent = size / limit * 100
+        fmt = "%.2f%%" if percent >= 95 else "%.0f%%"
+        if prefix:
+            name = "%s %s" % (prefix, name)
+        name += ":"
+        print(name, size, fmt % percent)
 
-def print_code_size(size, prefix=""):
-    print_size(prefix + "chars:", size, 0xffff)
+def print_code_size(size, **kwargs):
+    print_size("chars", size, 0xffff, **kwargs)
 
-def print_compressed_size(size, prefix=""):
-    print_size(prefix + "compressed:", size, k_code_size)
+def print_compressed_size(size, **kwargs):
+    print_size("compressed", size, k_code_size, **kwargs)
 
-def write_code_size(cart, input=False):
-    print_code_size(len(cart.code), prefix="input " if input else "")
+def write_code_size(cart, handler=None, input=False):
+    print_code_size(len(cart.code), prefix="input" if input else None, handler=handler)
 
-def write_compressed_size(cart, **opts):
-    compress_code(BinaryWriter(BytesIO()), cart.code, print_sizes=True, force_compress=True, fail_on_error=False, **opts)
+def write_compressed_size(cart, handler=True, **opts):
+    compress_code(BinaryWriter(BytesIO()), cart.code, size_handler=handler, force_compress=True, fail_on_error=False, **opts)
 
 k_code_table = [
     None, '\n', ' ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', # 00
@@ -36,7 +42,7 @@ def update_mtf(mtf, idx, ch):
         mtf[ii] = mtf[ii - 1]
     mtf[0] = ch
 
-def uncompress_code(r, print_sizes=False, **_):
+def uncompress_code(r, size_handler=None, **_):
     start_pos = r.pos()
     header = r.bytes(4, allow_eof=True)
 
@@ -44,8 +50,8 @@ def uncompress_code(r, print_sizes=False, **_):
         unc_size = r.u16()
         com_size = r.u16()
 
-        if print_sizes:
-            print_compressed_size(com_size, "input ")
+        if size_handler:
+            print_compressed_size(com_size, prefix="input", handler=size_handler)
         
         mtf = [chr(i) for i in range(0x100)]
         br = BinaryBitReader(r.f)
@@ -114,8 +120,8 @@ def uncompress_code(r, print_sizes=False, **_):
                 for _ in range(count):
                     code.append(code[-offset])
 
-        if print_sizes:
-            print_compressed_size(r.pos() - start_pos, "input ")
+        if size_handler:
+            print_compressed_size(r.pos() - start_pos, prefix="input", handler=size_handler)
 
         assert len(code) in (unc_size, unc_size - 1) # extra null at the end dropped?
 
@@ -255,7 +261,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
                 min_matches[code[j:j+min_c]].append(j)
         prev_i = i
 
-def compress_code(w, code, print_sizes=False, force_compress=False, fail_on_error=True, fast_compress=False, old_compress=False, **_):
+def compress_code(w, code, size_handler=None, force_compress=False, fail_on_error=True, fast_compress=False, old_compress=False, **_):
     is_new = not old_compress
     min_c = 3
     
@@ -445,8 +451,8 @@ def compress_code(w, code, print_sizes=False, force_compress=False, fail_on_erro
                     write_literal(item)
 
         size = w.pos() - start_pos
-        if print_sizes:
-            print_compressed_size(size)
+        if size_handler:
+            print_compressed_size(size, handler=size_handler)
         
         if fail_on_error:
             assert len(code) < 0x10000, "cart has too many characters!"

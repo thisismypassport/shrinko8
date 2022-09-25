@@ -105,7 +105,7 @@ class SubLanguageBase:
     minify = None
 
 class PicoContext:
-    def __init__(m, deprecated=True, undocumented=True, patterns=True, srcmap=None, extra_globals=None, sublang_getter=None):
+    def __init__(m, deprecated=True, undocumented=True, patterns=True, srcmap=False, extra_globals=None, sublang_getter=None):
         funcs = set(main_globals)
         if deprecated:
             funcs |= deprecated_globals
@@ -130,8 +130,8 @@ class Error:
         name, line, col = token.source.get_name_line_col(token.idx) if token.source else ("???", 0, 0)
         return "%s(%s:%s) - %s" % (name, line + 1, col + 1, m.msg)
 
-def print_token_count(num_tokens, prefix=""):
-    print_size(prefix + "tokens:", num_tokens, 8192)
+def print_token_count(num_tokens, **kwargs):
+    print_size("tokens", num_tokens, 8192, **kwargs)
 
 def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, rename=False, fail=True):
     need_lint = lint not in (None, False)
@@ -147,7 +147,7 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
         ok = True
 
         if input_count:
-            print_token_count(count_tokens(tokens), "input ")
+            print_token_count(count_tokens(tokens), prefix="input", handler=input_count)
 
         if need_lint:
             errors = lint_code(ctxt, tokens, root, lint)
@@ -159,13 +159,13 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
             source.text, tokens = minify_code(source, tokens, root, minify)
 
         if count:
-            print_token_count(count_tokens(tokens))
+            print_token_count(count_tokens(tokens), handler=count)
 
     if fail and errors:
         raise Exception("\n".join(map(str, errors)))
     return ok, errors
 
-def echo_code(code, echo):
+def echo_code(code, echo=True):
     code = from_pico_chars(code)
     if echo == True:
         for line in code.splitlines():
