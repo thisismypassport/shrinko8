@@ -68,7 +68,7 @@ pgroup.add_argument("--custom-preprocessor", action="store_true", help="enable a
 def main(raw_args):
     if not raw_args: # help is better than usage
         parser.print_help(sys.stderr)
-        sys.exit(1)
+        return 1
 
     args = parser.parse_args(raw_args)
 
@@ -83,16 +83,16 @@ def main(raw_args):
 
     def fail(msg):
         eprint(msg)
-        sys.exit(1)
+        return 1
 
     if not args.lint and not args.count and not args.output and not args.input_count and not args.version:
-        fail("No operation (--lint/--count) or output file specified")
+        return fail("No operation (--lint/--count) or output file specified")
     if args.format and not args.output:
-        fail("Output should be specified under --format")
+        return fail("Output should be specified under --format")
     if args.minify and not args.output and not args.count:
-        fail("Output (or --count) should be specified under --minify")
+        return fail("Output (or --count) should be specified under --minify")
     if args.minify and args.keep_compression:
-        fail("Can't modify code and keep compression")
+        return fail("Can't modify code and keep compression")
         
     if not args.format and args.output:
         ext = path_extension(args.output)[1:].lower()
@@ -191,7 +191,7 @@ def main(raw_args):
         print("version: %d, v%d.%d.%d:%d, %c" % (cart.version_id, *cart.version_tuple, cart.platform))
 
     if errors:
-        sys.exit(2)
+        return 2
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    sys.exit(main(sys.argv[1:]))

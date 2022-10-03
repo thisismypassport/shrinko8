@@ -1960,10 +1960,10 @@ def file_read_text(path, encoding = "utf-8", errors = None, newline = None):
     with file_open_text(path, encoding, errors, newline) as f:
         return f.read()
 
-def file_read_json(path, cls = None):
+def file_read_json(path, **json_kwargs):
     """Read data from a json file"""
     with file_open_text(path) as f:
-        return json.load(f, cls=cls)
+        return json.load(f, **json_kwargs)
 
 def file_write(path, value):
     """Create or replace a binary file, writing 'value' into it"""
@@ -1975,10 +1975,10 @@ def file_write_text(path, value, encoding = "utf-8", errors = None, newline = "\
     with file_create_text(path, encoding, errors, newline) as f:
         f.write(value)
 
-def file_write_json(path, value, cls = None):
+def file_write_json(path, value, **json_kwargs):
     """Create or replace a json file, writing 'data' into it"""
     with file_create_text(path) as f:
-        json.dump(value, f)
+        json.dump(value, f, **json_kwargs)
 
 def try_file_read(path, defval = None):
     """Try reading all data from a binary file, or return 'defval' on any error"""
@@ -1994,10 +1994,10 @@ def try_file_read_text(path, defval = None, encoding = "utf-8", errors = None, n
     except Exception:
         return defval
 
-def try_file_read_json(path, defval = None, cls = None):
+def try_file_read_json(path, defval = None, **json_kwargs):
     """Try reading data from a json file, or return 'defval' on any error"""
     try:
-        return file_read_json(path, cls=cls)
+        return file_read_json(path, **json_kwargs)
     except Exception:
         return defval
 
@@ -2017,10 +2017,10 @@ def try_file_write_text(path, value, encoding = "utf-8", errors = None, newline 
     except Exception:
         return False
 
-def try_file_write_json(path, value, cls = None):
+def try_file_write_json(path, value, **json_kwargs):
     """Try creating or replacing a json file, writing 'value' into it. Return if succeeded"""
     try:
-        file_write_json(path, value, cls=cls)
+        file_write_json(path, value, **json_kwargs)
         return True
     except Exception:
         return False

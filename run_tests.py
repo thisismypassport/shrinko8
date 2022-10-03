@@ -1,9 +1,7 @@
 from utils import *
 from unittest.mock import patch
-import argparse
+import argparse, subprocess
 
-code_file = "shrinko8.py"
-code = file_read_text(code_file)
 status = 0
 
 parser = argparse.ArgumentParser()
@@ -12,29 +10,48 @@ parser.add_argument("--stdout", action="store_true")
 parser.add_argument("-t", "--test", action="append")
 parser.add_argument("--no-private", action="store_true")
 parser.add_argument("-q", "--quiet", action="store_true")
+parser.add_argument("-x", "--exe", action="store_true")
 opts = parser.parse_args()
 
 # for test consistency:
 os.environ["PICO8_PLATFORM_CHAR"] = 'w'
 os.environ["PICO8_VERSION_ID"] = '36'
 
+if opts.exe:
+    g_exe_path = "dist/shrinko8/shrinko8.exe"
+else:
+    g_code_file = "shrinko8.py"
+    g_code = file_read_text(g_code_file)
+
 def fail_test():
     global status
     status = 1
 
 def run_code(*args, exit_code=None):
-    stdout = StringIO()
     actual_code = None
+
     try:
-        with patch.object(sys, "argv", ["dontcare", *args]):
-            with patch.object(sys, "stdout", stdout):
-                exec(code, {"__file__": code_file, "__name__": "__main__"})
-    except SystemExit as e:
-        actual_code = e.code
+        if opts.exe:
+            try:
+                stdout = subprocess.check_output([g_exe_path, *args], encoding="utf8")
+            except subprocess.CalledProcessError as e:
+                actual_code = e.returncode
+                stdout = e.stdout
+        else:
+            stdout_io = StringIO()
+            try:
+                with patch.object(sys, "argv", ["dontcare", *args]):
+                    with patch.object(sys, "stdout", stdout_io):
+                        exec(g_code, {"__file__": g_code_file, "__name__": "__main__"})
+            except SystemExit as e:
+                actual_code = e.code
+            
+            stdout = stdout_io.getvalue()
+
     except Exception:
         traceback.print_exc()
         return False, stdout
-        
+            
     if exit_code == actual_code:
         return True, stdout
     else:
@@ -45,7 +62,7 @@ def measure(kind, path, input=False):
     print("Measuring %s..." % kind)
     if path_exists(path):
         _, stdout = run_code(path, "--input-count" if input else "--count")
-        print(stdout.getvalue(), end="")
+        print(stdout, end="")
     else:
         print("MISSING!")
 
@@ -64,7 +81,7 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
 
     if not success:
         print("\nERROR - test %s failed" % name)
-        print(stdout.getvalue())
+        print(stdout)
         measure("new", outpath)
         measure("old", cmppath)
         fail_test()
@@ -76,7 +93,7 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
     elif not opts.quiet:
         print("\nTest %s succeeded" % name)
     if opts.stdout:
-        print(stdout.getvalue())
+        print(stdout)
     return True
 
 def run_stdout_test(name, input, *args, private=False, output=None, exit_code=None):
@@ -89,13 +106,13 @@ def run_stdout_test(name, input, *args, private=False, output=None, exit_code=No
     cmppath = path_join(prefix + "test_compare", output)
 
     success, stdout = run_code(inpath, *args, exit_code=exit_code)
-    file_write_text(outpath, stdout.getvalue())
+    file_write_text(outpath, stdout)
     if success:
-        success = stdout.getvalue() == try_file_read_text(cmppath)
+        success = stdout == try_file_read_text(cmppath)
 
     if not success:
         print("\nERROR - test %s failed" % name)
-        print(stdout.getvalue())
+        print(stdout)
         fail_test()
         return False
     elif not opts.quiet:

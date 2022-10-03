@@ -4,3 +4,5 @@ test_output
 test_temp
 private_*
 orig
+dist
+build
