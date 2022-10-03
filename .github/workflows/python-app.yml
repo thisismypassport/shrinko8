@@ -33,13 +33,3 @@ jobs:
       run: |
         python run_tests.py
         
-    - name: Package Application
-      uses: JackMcKew/pyinstaller-action-windows@main
-      with:
-        path: .
-        spec: shrinko8.spec
-        
-    - uses: actions/upload-artifact@v3
-      with:
-        name: shrinko8.exe
-        path: dist/windows
