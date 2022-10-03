@@ -9,11 +9,13 @@ The supported tools are:
 * [Format Conversion](#format-conversion) - Convert between p8 and png files. Achieves slightly better code compression than Pico-8's.
 * [Custom Python Script](#custom-python-script) - Run a custom python script to preprocess or postprocess your cart
 
-Requires [Python](https://www.python.org/) 3.7 or above to run. (Or you can download a Windows Executable [here](https://github.com/thisismypassport/shrinko8/releases))
+[You can download a recent Windows Executable here.](https://github.com/thisismypassport/shrinko8/releases)
+
+Otherwise, requires [Python](https://www.python.org/) 3.7 or above to run.
 
 Reading/Writing PNGs additionally requires the Pillow module (`python -m pip install pillow` to install)
 
-[Download the latest version here.](https://github.com/thisismypassport/shrinko8/archive/refs/heads/main.zip)
+[Download the latest version of the source here.](https://github.com/thisismypassport/shrinko8/archive/refs/heads/main.zip)
 
 # Minification
 
