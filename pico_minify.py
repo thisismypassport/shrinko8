@@ -115,7 +115,7 @@ def minify_code(source, tokens, root, minify):
         minify_tokens = minify.get("tokens", True)
         minify_comments = minify.get("comments", True)
 
-    vlines = defaultdict(set)
+    shorthand_vlines = set()
 
     def remove_parens(token):
         token.value = None
@@ -124,11 +124,13 @@ def minify_code(source, tokens, root, minify):
         end_token.value = None
 
     def fixup_tokens(token):
-        # update vline data
+        # find shorthands
 
-        if token.value in ("if", "then", "while", "do", "?"):
-            vlines[token.vline].add(token.value)
+        if token.value == "?" or (token.value in ("if", "while") and getattr(token.parent, "short", False)):
+            shorthand_vlines.add(token.vline)
     
+        # minify sublangs
+
         sublang = getattr(token, "sublang", None)
         if sublang and sublang.minify:
             token.value = format_string_literal(sublang.minify(), long=token.value.startswith('['))
@@ -179,7 +181,7 @@ def minify_code(source, tokens, root, minify):
             if token.value == "!=":
                 token.value = "~="
              
-            #TODO: enable this in a few weeks.
+            #TODO: enable this in a few weeks. (but re-verify it helps first?)
             #if token.value == "^^":
             #    token.value = "~"
 
@@ -207,10 +209,6 @@ def minify_code(source, tokens, root, minify):
             if token.type == TokenType.comment:
                 output.append("--%s\n" % token.value)
 
-        def has_shorthands(vline):
-            data = vlines[vline]
-            return ("if" in data and "then" not in data) or ("while" in data and "do" not in data) or ("?" in data)
-
         prev_token = Token.dummy(None)
         def output_tokens(token):
             nonlocal prev_token
@@ -220,8 +218,10 @@ def minify_code(source, tokens, root, minify):
             # (modified tokens may require whitespace not previously required - e.g. 0b/0x)
             if (prev_token.endidx < token.idx or prev_token.modified or token.modified) and prev_token.value:
 
-                # note: always adding \n before if/while wins a few bytes on my code (though similar tactics for other keywords and spaces don't work?)
-                if prev_token.vline != token.vline and (not minify_lines or has_shorthands(prev_token.vline) or has_shorthands(token.vline)):
+                # TODO: always adding \n before if/while won a few bytes on my code - check if this is consistent & helpful.
+
+                # TODO: starting from 0.2.5d we could probably be more adventurous with shorthands... (except '?')
+                if prev_token.vline != token.vline and (not minify_lines or prev_token.vline in shorthand_vlines or token.vline in shorthand_vlines):
                     output.append("\n")
                     
                 else:

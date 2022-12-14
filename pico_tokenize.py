@@ -340,7 +340,7 @@ def tokenize(source, ctxt=None):
 
         process_comment(orig_idx, text[orig_idx:idx], isblock=False)
 
-    def tokenize_long_brackets(off):
+    def tokenize_long_brackets(off, recursive=False):
         nonlocal idx
         idx += off
         orig_idx = idx
@@ -352,20 +352,24 @@ def tokenize(source, ctxt=None):
 
             if accept('['):
                 start_i = idx
-                end_i = text.find("]%s]" % pad, idx)
-                if end_i >= 0:
-                    idx = end_i + len(pad) + 2
-                else:
-                    idx = len(text)
-                    add_error("Unterminated long brackets", orig_idx - idx)
 
-                return True, orig_idx, start_i, end_i
+                while True:
+                    ch = take()
+                    if ch == '[' and recursive and text[idx:idx+len(pad)] == pad and peek(len(pad)) == '[':
+                        tokenize_long_brackets(-1, recursive=True)
+                    elif ch == ']' and text[idx:idx+len(pad)] == pad and peek(len(pad)) == ']':
+                        end_i = idx - 1
+                        idx += len(pad) + 1
+                        return True, orig_idx, start_i, end_i
+                    elif ch == '':
+                        add_error("Unterminated long brackets", orig_idx - idx)
+                        return True, orig_idx, start_i, idx
                 
         return False, orig_idx, None, None
 
     def tokenize_long_comment():
         nonlocal idx
-        ok, orig_idx, start, end = tokenize_long_brackets(0)
+        ok, orig_idx, start, end = tokenize_long_brackets(0, recursive=True)
         if ok:
             process_comment(orig_idx, text[start:end], isblock=True)
         else:
@@ -422,7 +426,7 @@ def tokenize(source, ctxt=None):
         while True:
             ch = take()
             if ch in ('\n', ''):
-                add_error("Unterminated string")
+                add_error("Unterminated string", orig_idx - idx)
                 break
             elif ch == '\\':
                 if accept('z'): # skip line breaks

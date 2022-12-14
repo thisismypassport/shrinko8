@@ -29,6 +29,7 @@ def fail_test():
 
 def run_code(*args, exit_code=None):
     actual_code = None
+    stdout = None
 
     try:
         if opts.exe:
