@@ -127,8 +127,9 @@ def run():
     run_test("semiobfuscate", "input.p8", "output_semiob.p8", "--minify", "--format", "code", 
              "--preserve", "*.*,preserved_glob",
              "--no-minify-spaces", "--no-minify-lines")
-    run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify", "--format", "code", 
-             "--preserve", "*.*,preserved_glob",
+    run_test("minrename", "input.p8", "output_minrename.p8", "--minify", "--format", "code", 
+             "--preserve", "*,*.*")
+    run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify", "--format", "code",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename")
     run_test("test", "test.p8", "test.p8", "--minify")
     run_test("p82png", "testcvt.p8", "testcvt.png")
@@ -166,9 +167,10 @@ if __name__ == "__main__":
     if not opts.no_private:
         try:
             from private_run_tests import run as private_run
-            private_run()
         except ImportError:
             pass
+        else:
+            private_run()
     
     print("\nAll passed" if status == 0 else "\nSome FAILED!")
     sys.exit(status)

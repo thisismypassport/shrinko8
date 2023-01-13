@@ -91,6 +91,10 @@ You can also choose to preserve *all* table members, which allows freely accessi
 
 `python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --preserve "*.*"`
 
+Further, you can choose to preserve *all* globals and table members, which additionally allows you to freely access _ENV through strings.
+
+`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --preserve "*,*.*"`
+
 ## Advanced renaming requirements
 
 While the above is enough for simpler carts, there are some advanced usecases with more complex requirements:
@@ -103,7 +107,7 @@ While the above is enough for simpler carts, there are some advanced usecases wi
 
 * If you're doing other unusual things with _ENV, you may need to [specify how specific identifiers should be renamed](#advanced---controlling-renaming-of-identifiers) to get correct behaviour.
 
-In all these cases, you can start by disabling all renaming (`--no-minify-rename`) or all member renaming (`--preserve "*.*"`) to get things to work and then look into the more complicated solutions to increase compression rate.
+In all these cases, you can start by disabling all member renaming (`--preserve "*.*"`) or all global and member renaming (`--preserve "*,*.*"`) to get things to work and then look into the more complicated solutions to increase compression rate, if needed.
 
 ### Advanced - Controlling renaming of identifiers
 

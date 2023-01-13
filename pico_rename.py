@@ -22,6 +22,7 @@ def rename_tokens(ctxt, root, rename):
     global_knowns = global_callbacks.copy()
     member_knowns = member_strings.copy()
     known_tables = set()
+    preserve_globals = False
     preserve_members = False
     members_as_globals = False
 
@@ -31,7 +32,9 @@ def rename_tokens(ctxt, root, rename):
         if rules_input:
             for key, value in rules_input.items():
                 if value == False:
-                    if key == "*.*":
+                    if key == "*":
+                        preserve_globals = True
+                    elif key == "*.*":
                         preserve_members = True
                     elif key.endswith(".*"):
                         known_tables.add(key[:-2])
@@ -40,7 +43,9 @@ def rename_tokens(ctxt, root, rename):
                     else:
                         global_knowns.add(key)
                 elif value == True:
-                    if key == "*.*":
+                    if key == "*":
+                        preserve_globals = False
+                    elif key == "*.*":
                         preserve_members = False
                     elif key.endswith(".*"):
                         known_tables.discard(key[:-2])
@@ -127,7 +132,9 @@ def rename_tokens(ctxt, root, rename):
                 if env_var and env_var.keys_kind != None:
                     return compute_effective_kind(node, env_var.keys_kind, explicit=True)
 
-            if node.name in global_knowns:
+            if preserve_globals:
+                return None
+            elif node.name in global_knowns:
                 return None
             elif node.name in all_globals:
                 global_knowns.add(node.name)
