@@ -5,12 +5,13 @@ from pico_compress import compress_code, uncompress_code, get_compressed_size, p
 import hashlib, base64
 
 class CartFormat(Enum):
-    values = ("auto", "p8", "png", "lua", "rom", "tiny_rom", "clip", "url", "code")
+    values = ("auto", "p8", "png", "lua", "rom", "tiny_rom", "clip", "url", "code", "js", "pod")
 
-    _input_names = tuple(values)
-    _output_names = tuple(value for value in _input_names if value != "auto")
-    _ext_names = tuple(value for value in _output_names if value not in ("tiny_rom", "code"))
+    _input_names = values
+    _output_names = tuple(value for value in values if value not in ("auto", "js", "pod"))
+    _ext_names = tuple(value for value in values if value not in ("auto", "tiny_rom", "code"))
     _src_names = ("p8", "lua", "code")
+    _pack_names = ("js", "pod")
 
 class CodeMapping(Tuple):
     fields = ("idx", "src_name", "src_code", "src_idx", "src_line")
@@ -521,29 +522,6 @@ def write_cart_to_url(cart, url_prefix=k_url_prefix, force_compress=False, size_
         print_url_size(len(url), handler=size_handler)
     return url
 
-def read_cart_from_export(data, name, **opts):
-    data = data.decode()
-    cartnames_raw = re.search("var\s+_cartname\s*=\s*\[(.*?)\]", data, re.S)
-    assert cartnames_raw
-    
-    cartnames = {}
-    for i, cartname in enumerate(cartnames_raw.group(1).split(",")):
-        cartname = cartname.strip()[1:-1]
-        cartnames[cartname] = i
-    
-    cartpos = cartnames.get(name, cartnames.get(path_basename(name)))
-    assert cartpos is not None
-    
-    cartdata_raw = re.search("var\s+_cartdat\s*=\s*\[(.*?)\]", data, re.S)
-    assert cartdata_raw
-    
-    cartsize = k_cart_size
-    cartdata = bytearray(k_rom_size)
-    for i, b in enumerate(cartdata_raw.group(1).split(",")[cartpos*cartsize : (cartpos+1)*cartsize]):
-        cartdata[i] = int(b.strip())
-    
-    return read_cart_from_rom(cartdata, path=name, **opts)
-
 def read_cart_from_clip(clip, **opts):
     prefix, suffix = "[cart]", "[/cart]"
     if clip.startswith(prefix) and clip.endswith(suffix):
@@ -593,10 +571,12 @@ def read_cart(path, format=None, **opts):
         return read_cart_from_url(file_read_text(path).rstrip(), path=path, **opts)
     elif format == CartFormat.lua:
         return read_cart_from_source(file_read_text(path), raw=True, path=path, **opts)
+    elif format in (CartFormat.js, CartFormat.pod):
+        return read_cart_package(path, format).read_cart(**opts)
     elif format in (None, CartFormat.auto):
         return read_cart_autodetect(path, **opts)
     else:
-        fail("invalid read format: %s" % format)
+        fail("invalid format for reading: %s" % format)
 
 class PicoPreprocessor:
     def __init__(m, strict=True, include_handler=None):
@@ -734,15 +714,91 @@ def write_cart(path, cart, format, **opts):
     elif format == CartFormat.code:
         file_write_text(path, write_cart_to_raw_source(cart, with_header=True, **opts))
     else:
-        fail("invalid write format: %s" % format)
+        fail("invalid format for writing: %s" % format)
 
-def download_cart_from_bbs(id):
+def get_bbs_cart_url(id):
     if not id.startswith("#"):
         fail("invalid bbs id - # prefix expected")
 
     from urllib.parse import urlencode
     params = {"lid": id[1:], "cat": 7}
 
-    from urllib.request import urlopen
-    with urlopen("https://www.lexaloffle.com/bbs/get_cart.php?%s" % urlencode(params)) as response:
-        return response.read()
+    return "https://www.lexaloffle.com/bbs/get_cart.php?%s" % urlencode(params)
+
+class CartPackage:
+    def __init__(m, reader, carts, default_name):
+        m.carts = carts # name -> <obj>
+        m.default_name = default_name
+        m.reader = reader # (<obj>, **opts) -> cart
+
+    def list(m):
+        return sorted(m.carts.keys())
+
+    def read_cart(m, cart_name=None, **opts):
+        if cart_name is None:
+            cart_name = m.default_name
+        if cart_name not in m.carts:
+            fail("cart %s not found in package" % cart_name)
+        return m.reader(m.carts[cart_name], path=cart_name, **opts)
+
+def read_js_package(text):
+    cartnames_raw = re.search("var\s+_cartname\s*=\s*\[(.*?)\]", text, re.S)
+    if not cartnames_raw:
+        fail("can't find _cartname var in js")
+
+    carts = {}
+    default_name = None
+    for i, cartname in enumerate(cartnames_raw.group(1).split(",")):
+        cartname = cartname.strip()[1:-1] # may fail if using special chars...
+        carts[cartname] = i
+        if default_name is None:
+            default_name = cartname
+
+    cartdata_raw = re.search("var\s+_cartdat\s*=\s*\[(.*?)\]", text, re.S)
+    if not cartdata_raw:
+        fail("can't find _cartdat var in js")
+    
+    cartdata = bytearray(k_cart_size * len(carts))
+    for i, b in enumerate(cartdata_raw.group(1).split(",")):
+        cartdata[i] = int(b.strip())
+
+    def reader(cartidx, **opts):
+        return read_cart_from_rom(cartdata[k_cart_size * cartidx : k_cart_size * (cartidx + 1)], **opts)
+
+    return CartPackage(reader, carts, default_name)
+
+def read_pod_package(r):
+    with r:
+        assert r.str(4) == "CPOD"
+        assert r.u32() == 0x44 # size of header?
+        assert r.u32() == 1 # ???
+        r.addpos(0x20) # junk/name?
+        count = r.u32()
+        r.addpos(0x1c)
+
+        carts = {}
+        default_name = None
+        for i in range(count):
+            assert r.str(4) == "CFIL"
+            assert r.u32() == 0 # ???
+            size = r.u32()
+            name = r.zstr(0x40)
+            data = r.bytes(size)
+
+            if name: # there are 3 unnamed files - 2 sub-pods with custom-format bitmaps and 1 template(?) cart
+                carts[name] = data
+                if default_name is None:
+                    default_name = name
+
+    def reader(data, **opts):
+        return read_cart_from_rom(data, **opts)
+
+    return CartPackage(reader, carts, default_name)
+
+def read_cart_package(path, format):
+    if format == CartFormat.js:
+        return read_js_package(file_read_text(path))
+    if format == CartFormat.pod:
+        return read_pod_package(BinaryReader(path))
+    else:
+        fail("invalid format for listing: %s" % format)

@@ -2,7 +2,7 @@
 from utils import *
 from pico_process import PicoContext, process_code, CartSource, CustomPreprocessor
 from pico_compress import write_code_size, write_compressed_size
-from pico_cart import CartFormat, read_cart, write_cart, download_cart_from_bbs
+from pico_cart import CartFormat, read_cart, write_cart, read_cart_package, get_bbs_cart_url
 import argparse, importlib.util
 
 def CommaSep(val):
@@ -22,10 +22,6 @@ extend_arg = "extend" if sys.version_info >= (3,8) else None
 parser = argparse.ArgumentParser()
 parser.add_argument("input", help="input file, can be in any format. ('-' for stdin)")
 parser.add_argument("output", help="output file. ('-' for stdout)", nargs='?')
-
-parser.add_argument("-f", "--format", type=CartFormatFromStr, help="output format {%s}" % CartFormatList(CartFormat._output_names))
-parser.add_argument("-F", "--input-format", type=CartFormatFromStr, help="input format {%s}" % CartFormatList(CartFormat._input_names))
-parser.add_argument("-u", "--unicode-caps", action="store_true", help="write capitals as italicized unicode characters (better for copy/paste)")
 
 pgroup = parser.add_argument_group("minify options")
 pgroup.add_argument("-m", "--minify", action="store_true", help="enable minification")
@@ -55,10 +51,18 @@ pgroup = parser.add_argument_group("script options")
 pgroup.add_argument("-s", "--script", help="manipulate the cart via a custom python script - see README for api details")
 pgroup.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
 
+pgroup = parser.add_argument_group("format options")
+parser.add_argument("-f", "--format", type=CartFormatFromStr, help="output format {%s}" % CartFormatList(CartFormat._output_names))
+parser.add_argument("-F", "--input-format", type=CartFormatFromStr, help="input format {%s}" % CartFormatList(CartFormat._input_names))
+parser.add_argument("-u", "--unicode-caps", action="store_true", help="write capitals as italicized unicode characters (better for copy/paste)")
+parser.add_argument("--list", action="store_true", help="list all cart names inside a cart package (%s)" % CartFormatList(CartFormat._pack_names))
+parser.add_argument("--cart", help="name of cart to extract from cart package (%s)" % CartFormatList(CartFormat._pack_names))
+
 pgroup = parser.add_argument_group("misc. options (semi-undocumented)")
 pgroup.add_argument("--builtin", type=CommaSep, action=extend_arg, help="treat identifier as a pico-8 builtin (for minify, lint, etc.)")
 pgroup.add_argument("--version", action="store_true", help="print version of cart")
-pgroup.add_argument("--bbs", action="store_true", help="interpret input file as a bbs cart id, e.g. '#...'")
+pgroup.add_argument("--bbs", action="store_true", help="interpret input as a bbs cart id, e.g. '#...' and download it from the bbs")
+pgroup.add_argument("--url", action="store_true", help="interpret input as a URL, and download it from the internet")
 pgroup.add_argument("--keep-compression", action="store_true", help="keep existing compression, instead of re-compressing")
 pgroup.add_argument("--fast-compression", action="store_true", help="force fast but poor compression (when creating pngs)")
 pgroup.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
@@ -77,15 +81,17 @@ def main(raw_args):
     if args.output == "-":
         args.output = StdPath("-")
 
-    if args.bbs:
-        args.input = DataPath(args.input, download_cart_from_bbs(args.input))
+    if args.url:
+        args.input = URLPath(args.input)
+    elif args.bbs:
+        args.input = URLPath(get_bbs_cart_url(args.input))
         args.input_format = CartFormat.png
 
     def fail(msg):
         eprint(msg)
         return 1
 
-    if not args.lint and not args.count and not args.output and not args.input_count and not args.version:
+    if not args.lint and not args.count and not args.output and not args.input_count and not args.version and not args.list:
         return fail("No operation (--lint/--count) or output file specified")
     if args.format and not args.output:
         return fail("Output should be specified under --format")
@@ -93,6 +99,8 @@ def main(raw_args):
         return fail("Output (or --count) should be specified under --minify")
     if args.minify and args.keep_compression:
         return fail("Can't modify code and keep compression")
+    if args.list and (args.output or args.lint or args.count):
+        return fail("--list can't be combined with most other options")
         
     if not args.format and args.output:
         ext = path_extension(args.output)[1:].lower()
@@ -149,9 +157,14 @@ def main(raw_args):
     if args.count:
         args.count = base_count_handler
 
+    if args.list:
+        for entry in read_cart_package(args.input, args.input_format).list():
+            print(entry)
+        return 0
+
     preprocessor = CustomPreprocessor() if args.custom_preprocessor else None
-    cart = read_cart(args.input, args.input_format, size_handler=args.input_count, 
-                    keep_compression=args.keep_compression, preprocessor=preprocessor)
+    cart = read_cart(args.input, args.input_format, size_handler=args.input_count, cart_name=args.cart,
+                     keep_compression=args.keep_compression, preprocessor=preprocessor)
     src = CartSource(cart)
 
     if args.input_count:
@@ -168,7 +181,7 @@ def main(raw_args):
         for error in errors:
             print(error)
         if not ok or not args.no_lint_fail:
-            sys.exit(1)
+            return 1
 
     if args.rename_map:
         file_write_text(args.rename_map, "\n".join(ctxt.srcmap))

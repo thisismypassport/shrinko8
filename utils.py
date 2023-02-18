@@ -707,7 +707,7 @@ class BinaryReader(BinaryBase):
     def __init__(m, path, big_end = False, enc = "utf-8", wenc = "utf-16"):
         m.big_end, m.enc, m.wenc = big_end, enc, wenc
         
-        if isinstance(path, str):
+        if isinstance(path, (str, CustomPath)):
             m.f = file_open(path)
         else:
             m.f = path
@@ -969,7 +969,7 @@ class BinaryWriter(BinaryBase):
     def __init__(m, path, big_end = False, enc = "utf-8", wenc = "utf-16"):
         m.big_end, m.enc, m.wenc = big_end, enc, wenc
         
-        if isinstance(path, str):
+        if isinstance(path, (str, CustomPath)):
             m.f = file_create(path)
         else:
             m.f = path
@@ -1886,10 +1886,33 @@ class IOWrapper:
         pass
 
 class CustomPath(str):
-    pass
+    """A path that refers to some custom-obtained data"""
+
+    def open(m):
+        raise FileNotFoundError(type(m))
+    def open_text(m, encoding, errors, newline):
+        raise FileNotFoundError(type(m))
+    def create(m):
+        raise FileNotFoundError(type(m))
+    def create_text(m, encoding, errors, newline):
+        raise FileNotFoundError(type(m))
 
 class StdPath(CustomPath):
     """A path that refers to the standard streams"""
+
+    def open(m):
+        return IOWrapper(sys.stdin.buffer)
+
+    def open_text(m, encoding, errors, newline):
+        sys.stdin.reconfigure(encoding=encoding, errors=errors, newline=newline)
+        return IOWrapper(sys.stdin)
+
+    def create(m):
+        return IOWrapper(sys.stdout.buffer)
+
+    def create_text(m, encoding, errors, newline):
+        sys.stdout.reconfigure(encoding=encoding, errors=errors, newline=newline)
+        return IOWrapper(sys.stdout)
 
 class DataPath(CustomPath):
     """A path that refers to some data"""
@@ -1899,49 +1922,47 @@ class DataPath(CustomPath):
         path.data = data
         return path
 
+    def open(m):
+        return BytesIO(m.data)
+
+    def open_text(m, encoding, errors, newline):
+        return StringIO(m.data.decode(encoding, errors), newline=newline)
+
+class URLPath(CustomPath):
+    """A path that's actually a URL"""
+
+    def open(m):
+        from urllib.request import urlopen
+        return urlopen(m)
+
+    def open_text(m, encoding, errors, newline):
+        return io.TextIOWrapper(m.open(), encoding, errors, newline)
+
 def file_open(path):
     """Open a binary file for reading"""
     if isinstance(path, CustomPath):
-        if isinstance(path, StdPath):
-            return IOWrapper(sys.stdin.buffer)
-        elif isinstance(path, DataPath):
-            return BytesIO(path.data)
-        else:
-            raise FileNotFoundError(type(path))
+        return path.open()
     else:
         return open(path, "rb")
 
 def file_open_text(path, encoding = "utf-8", errors = None, newline = None):
     """Open a text file for reading"""
     if isinstance(path, CustomPath):
-        if isinstance(path, StdPath):
-            sys.stdin.reconfigure(encoding=encoding, errors=errors, newline=newline)
-            return IOWrapper(sys.stdin)
-        elif isinstance(path, DataPath):
-            return StringIO(path.data.decode(encoding, errors), newline=newline)
-        else:
-            raise FileNotFoundError(type(path))
+        return path.open_text(encoding, errors, newline)
     else:
         return open(path, "r", encoding=encoding, errors=errors, newline=newline)
 
 def file_create(path):
     """Create or replace a binary file for writing"""
     if isinstance(path, CustomPath):
-        if isinstance(path, StdPath):
-            return IOWrapper(sys.stdout.buffer)
-        else:
-            raise FileNotFoundError(type(path))
+        return path.create()
     else:
         return open(path, "wb")
 
 def file_create_text(path, encoding = "utf-8", errors = None, newline = "\n"):
     """Create or replace a text file for writing"""
     if isinstance(path, CustomPath):
-        if isinstance(path, StdPath):
-            sys.stdout.reconfigure(encoding=encoding, errors=errors, newline=newline)
-            return IOWrapper(sys.stdout)
-        else:
-            raise FileNotFoundError(type(path))
+        return path.create_text(encoding, errors, newline)
     else:
         return open(path, "w", encoding=encoding, errors=errors, newline=newline)
 

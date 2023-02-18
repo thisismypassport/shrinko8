@@ -361,6 +361,16 @@ Specifying the format is also useful when using the standard input/output (via `
 
 `python shrinko8.py path-to-input.p8 - --minify --format lua` (This prints minified lua to stdout)
 
+## Reading exported formats
+
+Shrinko8 can also read (but only read) exported carts:
+* js - Pico-8 carts exported to html+js - supply the js file as input to shrinko8.
+* pod - Pico-8 carts exported as (any) executables - supply the pod file as input to shrinko8.
+
+If the export contains more than one cart, you can use:
+* `--list` to list the names of the carts in the export
+* `--cart <name>` to select which cart to read from the export (default: the 'first' cart)
+
 # Custom Python Script
 
 For advanced usecases, you can create a python script that will be called to preprocess or postprocess the cart before/after the other steps.
