@@ -179,7 +179,7 @@ k_version_tuples = {
     41: (0,2,5,6),
 }
 
-k_default_version_id = maybe_int(os.getenv("PICO8_VERSION_ID"), 39) # TODO - update as newer versions get more common
+k_default_version_id = maybe_int(os.getenv("PICO8_VERSION_ID"), 38) # TODO - update as newer versions get more common
 k_default_platform = os.getenv("PICO8_PLATFORM_CHAR", 'w' if os.name == 'nt' else 'x' if sys.platform == 'darwin' else 'l')
 
 def get_version_tuple(id):
