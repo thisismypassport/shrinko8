@@ -1,6 +1,6 @@
 __lua__
 ?"hello ᶜ7there♥ら"
-t(stat(band()))print"this is included"
+t(stat(band()))t()x=0 b=0 b=0print"this is included"
 ?"#[disable[[this for now/ever]]]"
 local l={1,2,3}print(#l)print(#[[#include notaninclude
 ]])local l="preserved_key"local e={preserved_key=123}
@@ -17,7 +17,7 @@ local l=split"key1,key2,key3,123"local e={key1=123,key2=234,key3=345}
 ?e[l[2]]
 local l="glob"glob=123
 ?_ENV[l]
-do local _ENV={assert=assert}assert(true)end for _ENV in all{{x=1},{x=2}}do x+=1end function some_future_pico8_api()end some_future_pico8_api(1,2,3)local l={preserved1=1,preserved2=2}l.preserved1+=1
+local l="key1:key2#~~key3,","!key1_still$key2█ア+123-key123\nif\nif◝"do local _ENV={assert=assert}assert(true)end for _ENV in all{{x=1},{x=2}}do x+=1end function some_future_pico8_api()end some_future_pico8_api(1,2,3)local l={preserved1=1,preserved2=2}l.preserved1+=1
 ?l["preserved1"]
 l=setmetatable({preserved3=3},my_meta)
 ?l["preserved3"]
@@ -35,4 +35,4 @@ local l={1},{1,2,3,4}local l=1~=2local l=1,1.2345,4660,4660.33777,-1,-1.2345,-46
 ]]local l=-256,-256*4,65280^4,-65280,~65280
 ?1or 1or 2and 3==4>=4|5^^6<<1>><1 ..2 ..3- -1^4^1/1&7
 ?((~(((((((tonum(((3or 4)and 5)~=2)|1)^^2)&3)>>1)..1)-(1+3))*3))^2)^1
-local l=({})[1],(function()end)()local e,o=sin(1,2),cos((cos()))local n,c=(cos((cos())))local l={ord=ord,pal=pal}local a=ord"123",pal{1,2},l:ord("ord"),l:pal({1,2}),sin(1)local l={ord"1",[2]=3,x=4,(ord"1")}a+=1e,o=sin(1,2),cos((cos()))n,c=(cos((cos())))function xxx()return 1,2,ord"1",(ord"1")end if 1==2then elseif 1==2then else end while 1==2do end repeat until 1==1for l in(pairs{})do end
+local l=({})[1],(function()end)()local e,o=sin(1,2),cos((cos()))local n,c=(cos((cos())))local l={ord=ord,pal=pal}local f=ord"123",pal{1,2},l:ord("ord"),l:pal({1,2}),sin(1)local l={ord"1",[2]=3,x=4,(ord"1")}f+=1e,o=sin(1,2),cos((cos()))n,c=(cos((cos())))function xxx()return 1,2,ord"1",(ord"1")end if 1==2then elseif 1==2then else end while 1==2do end repeat until 1==1for l in(pairs{})do end print("test"..@16 .."str")

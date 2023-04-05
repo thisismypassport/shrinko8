@@ -1,5 +1,6 @@
 from utils import *
-from pico_tokenize import TokenNodeBase, Token, TokenType, is_identifier, k_wspace
+from pico_tokenize import TokenNodeBase, Token, TokenType
+from pico_tokenize import is_identifier, parse_string_literal, k_identifier_split_re
 
 class VarKind(Enum):
     values = ("local", "global_", "member")
@@ -295,7 +296,7 @@ def parse(source, tokens):
         node = Node(NodeType.const, [token], token=token)
 
         if getattr(token, "var_kind", None):
-            node.extra_names = token.value[1:-1].split(",")
+            node.extra_names = k_identifier_split_re.split(parse_string_literal(token.value))
             for i, value in enumerate(node.extra_names):
                 if is_identifier(value):
                     subtoken = Token.synthetic(TokenType.ident, value, token)

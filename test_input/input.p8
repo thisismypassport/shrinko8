@@ -5,6 +5,17 @@ __lua__
 -- various globals
 t(stat(band()))
 
+-- comment removal
+
+t()
+
+--[[
+  (also, testing comment removal)
+]]
+
+x=0--[[]]b=0--
+b=0
+
 -- include
 #include included.lua
 ?"#[disable[[this for now/ever]]]"
@@ -46,6 +57,8 @@ local my_obj = {key1=123,key2=234,key3=345}
 local my_key = --[[global]]"glob"
 glob = 123
 ?_ENV[my_key]
+
+local custom_splits = --[[member]]"key1:key2#~~key3,", --[[member]]"!key1_still$key2\x80\xcc+123-key123\nif\nif\xff"
 
 -- member/global/preserve on identifier
 do
@@ -123,3 +136,4 @@ if (1 == 2) then elseif (1 == 2) then else end
 while (1 == 2) do end
 repeat until (1 == 1);
 for a in (pairs({})) do end
+print("test"..(@16).."str")

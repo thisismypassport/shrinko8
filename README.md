@@ -65,7 +65,7 @@ local my_obj = {key=123} -- here, key is an identifier
 ?my_obj[my_key] -- success, result is 123 after minification
 ```
 
-You can also use this with multiple keys split by comma:
+You can also use this with multiple keys split by comma (or other characters):
 ```lua
 local my_keys = split --[[member]]"key1,key2,key3"
 ```

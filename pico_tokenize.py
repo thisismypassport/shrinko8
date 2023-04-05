@@ -230,7 +230,9 @@ def is_ident_char(ch):
     return '0' <= ch <= '9' or 'a' <= ch <= 'z' or 'A' <= ch <= 'Z' or ch == '_' or ch >= chr(0x80)
 
 def is_identifier(str):
-    return all(is_ident_char(ch) for ch in str) and not str[:1].isdigit() and str not in keywords
+    return str and all(is_ident_char(ch) for ch in str) and not str[:1].isdigit() and str not in keywords
+    
+k_identifier_split_re = re.compile(r"([0-9A-Za-z_\x80-\xff]+)")
 
 def tokenize(source, ctxt=None):
     text = source.text

@@ -6,11 +6,20 @@ __lua__
 t(stat(band()))
 
 
+
+t()
+
+
+
+c=0 e=0
+e=0
+
+
 print"this is included"
 ?"#[disable[[this for now/ever]]]"
-local c={1,2,3}
+local e={1,2,3}
 print(
-#c
+#e
 )
 print(
 #[[#include notaninclude
@@ -18,33 +27,35 @@ print(
 )
 
 
-local c = "preserved_key"
+local e = "preserved_key"
 local a = {preserved_key=123}
-?a[c] 
+?a[e] 
 
-local c = "preserved_glob"
+local e = "preserved_glob"
 preserved_glob = 123
-?_ENV[c] 
+?_ENV[e] 
 
-local c = {}
-c["whatever"] = 123
-?c.whatever 
-function c.subfunc() end
-function c:subfunc() end
-?c:subfunc()
+local e = {}
+e["whatever"] = 123
+?e.whatever 
+function e.subfunc() end
+function e:subfunc() end
+?e:subfunc()
 
 
-local c = "key"
+local e = "key"
 local a = {key=123}
-?a[c]
+?a[e]
 
-local c = split "key1,key2,key3,123"
+local e = split "key1,key2,key3,123"
 local a = {key1=123,key2=234,key3=345}
-?a[c[2]]
+?a[e[2]]
 
-local c = "e"
-e = 123
-?_ENV[c]
+local e = "o"
+o = 123
+?_ENV[e]
+
+local e = "key1:key2#~~key3,", "!key1_still$key2█ア+123-key123\nif\nif◝"
 
 
 do
@@ -61,13 +72,13 @@ some_future_pico8_api(1,2,3)
 local e = {preserved1=1, preserved2=2}
 e.preserved1 += 1
 ?e["preserved1"]
-e = setmetatable( {preserved3=3}, o)
+e = setmetatable( {preserved3=3}, n)
 ?e["preserved3"]
 
 l = {preserved1=1, preserved2=2}
 l.preserved1 += 1
 ?l["preserved1"]
-l = setmetatable( {preserved3=3}, o)
+l = setmetatable( {preserved3=3}, n)
 ?l["preserved3"]
 
 do
@@ -109,15 +120,16 @@ local l = -256, -256*4, 65280^4, -65280, ~65280
 ?((~(((((((tonum(((3 or 4) and 5) ~= 2) | 1) ^^ 2) & 3) >> 1) .. 1) - (1 + 3)) * 3)) ^ 2) ^ 1
 local l = ({})[1], (function()end)()
 local e, o = sin(1,2), cos((cos()))
-local c, a = (cos((cos())))
+local n, c = (cos((cos())))
 local l = {ord=ord, pal=pal}
-local f = ord"123", pal{1,2}, l:ord("ord"), l:pal({1,2}), sin(1)
+local a = ord"123", pal{1,2}, l:ord("ord"), l:pal({1,2}), sin(1)
 local l = {ord"1",[2]=3,x=4,(ord"1")}
-f += 1
+a += 1
 e, o = sin(1,2), cos((cos()))
-c, a = (cos((cos())))
-function n() return 1, 2, ord"1", (ord"1") end
+n, c = (cos((cos())))
+function f() return 1, 2, ord"1", (ord"1") end
 if 1 == 2 then elseif 1 == 2 then else end
 while 1 == 2 do end
 repeat until 1 == 1
 for l in (pairs{}) do end
+print("test"..@16 .."str")

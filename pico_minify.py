@@ -203,6 +203,15 @@ def minify_code(source, tokens, root, minify):
 
     output = []
 
+    def need_whitespace_between(prev_token, token):
+        combined = prev_token.value + token.value
+        ct, ce = tokenize(PicoSource(None, combined))
+        return ce or len(ct) != 2 or (ct[0].type, ct[0].value, ct[1].type, ct[1].value) != (prev_token.type, prev_token.value, token.type, token.value)
+
+    def need_linebreak_between(prev_token, token):
+        # TODO: starting from 0.2.5d we could probably be more adventurous with shorthands... (except '?')
+        return prev_token.vline != token.vline and (not minify_lines or prev_token.vline in shorthand_vlines or token.vline in shorthand_vlines)
+
     if minify_wspace:
         # add keep: comments (for simplicity, at start)
         for token in tokens:
@@ -217,18 +226,12 @@ def minify_code(source, tokens, root, minify):
 
             # (modified tokens may require whitespace not previously required - e.g. 0b/0x)
             if (prev_token.endidx < token.idx or prev_token.modified or token.modified) and prev_token.value:
-
                 # TODO: always adding \n before if/while won a few bytes on my code - check if this is consistent & helpful.
 
-                # TODO: starting from 0.2.5d we could probably be more adventurous with shorthands... (except '?')
-                if prev_token.vline != token.vline and (not minify_lines or prev_token.vline in shorthand_vlines or token.vline in shorthand_vlines):
-                    output.append("\n")
-                    
-                else:
-                    combined = prev_token.value + token.value
-                    ct, ce = tokenize(PicoSource(None, combined))
-                    if ce or len(ct) != 2 or (ct[0].type, ct[0].value, ct[1].type, ct[1].value) != (prev_token.type, prev_token.value, token.type, token.value):
-                        output.append(" ")
+                if need_linebreak_between(prev_token, token):
+                    output.append("\n")                    
+                elif need_whitespace_between(prev_token, token):
+                    output.append(" ")
 
             output.append(token.value)
             prev_token = token
@@ -238,26 +241,20 @@ def minify_code(source, tokens, root, minify):
     else:
         # just remove the comments (if needed), with minimal impact on visible whitespace
         prev_token = Token.dummy(None)
+        prev_welded_token = None
 
         def output_wspace(wspace):
-            if minify_comments:
-                i = 0
-                pre_i, post_i = 0, 0
-                while True:
-                    next_i = wspace.find("--", i) # in theory should support //
-                    if next_i < 0:
-                        post_i = i
-                        break
-                    
-                    if pre_i == 0:
-                        pre_i = next_i
+            if minify_comments and not wspace.isspace():
+                start_i, end_i = 0, len(wspace)
 
-                    # TODO: --[[]]/etc comments...
-                    i = wspace.find("\n", next_i)
-                    i = i if i >= 0 else len(wspace)
+                while start_i < len(wspace) and wspace[start_i].isspace():
+                    start_i += 1
 
-                result = wspace[:pre_i] + wspace[post_i:]
-                if post_i > 0 and not result:
+                while end_i > 0 and wspace[end_i - 1].isspace():
+                    end_i -= 1
+
+                result = wspace[:start_i] + wspace[end_i:]
+                if wspace and not result:
                     result = " "
                 output.append(result)
             else:
@@ -267,12 +264,20 @@ def minify_code(source, tokens, root, minify):
             if token.type == TokenType.lint:
                 continue
 
-            output_wspace(source.text[prev_token.endidx:token.idx])
+            if prev_token.endidx != token.idx:
+                output_wspace(source.text[prev_token.endidx:token.idx])
+                prev_welded_token = None
+            
+            # extra whitespace may be needed due to modified or deleted tokens
+            if prev_welded_token and token.value and (prev_welded_token.modified or token.modified or prev_welded_token != prev_token):
+                if need_whitespace_between(prev_welded_token, token):
+                    output.append(" ")
 
             if token.type == TokenType.comment:
                 output.append("--%s\n" % token.value)
             elif token.value != None:
                 output.append(token.value)
+                prev_welded_token = token
                 
             prev_token = token
 

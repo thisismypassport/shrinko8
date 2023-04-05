@@ -2,6 +2,7 @@ from utils import *
 from pico_defs import from_pico_chars
 from pico_tokenize import TokenType, is_identifier, keywords
 from pico_parse import VarKind, NodeType, Local
+from pico_minify import format_string_literal
 
 global_callbacks = {
     "_init", "_draw", "_update", "_update60",
@@ -311,7 +312,7 @@ def rename_tokens(ctxt, root, rename):
             if node.parent.type == NodeType.const: # const string interpreted as identifier case
                 assert len(node.parent.children) == 1 and node.parent.extra_names[node.extra_i] == orig_name
                 node.parent.extra_names[node.extra_i] = node.name
-                node.parent.children[0].value = '"%s"' % ",".join(node.parent.extra_names)
+                node.parent.children[0].value = format_string_literal("".join(node.parent.extra_names))
             else:
                 assert len(node.children) == 1 and node.children[0].value == orig_name
                 node.children[0].value = node.name
