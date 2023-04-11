@@ -133,10 +133,13 @@ class Error:
 def print_token_count(num_tokens, **kwargs):
     print_size("tokens", num_tokens, 8192, **kwargs)
 
-def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, rename=False, fail=True):
+def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, rename=False, fail=True, want_count=True):
     need_lint = lint not in (None, False)
     need_minify = minify not in (None, False)
     need_rename = rename not in (None, False)
+
+    if not need_lint and not need_minify and not (want_count and (count or input_count)):
+        return True, ()
 
     ok = False
     tokens, errors = tokenize(source, ctxt)

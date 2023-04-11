@@ -46,6 +46,8 @@ pgroup = parser.add_argument_group("count options")
 pgroup.add_argument("-c", "--count", action="store_true", help="enable printing token count, character count & compressed size")
 pgroup.add_argument("--input-count", action="store_true", help="enable printing input token count, character count & compressed size")
 pgroup.add_argument("--parsable-count", action="store_true", help="output counts in a stable, parsable format")
+pgroup.add_argument("--no-count-compress", action="store_true", help="do not compress the cart just to print the compressed size")
+pgroup.add_argument("--no-count-tokenize", action="store_true", help="do not tokenize the cart just to print the token count")
 
 pgroup = parser.add_argument_group("script options")
 pgroup.add_argument("-s", "--script", help="manipulate the cart via a custom python script - see README for api details")
@@ -175,7 +177,8 @@ def main(raw_args):
         preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args, res_path=None) # (res_path is obsolete)
 
     ok, errors = process_code(ctxt, src, input_count=args.input_count, count=args.count,
-                              lint=args.lint, minify=args.minify, rename=args.rename, fail=False)
+                              lint=args.lint, minify=args.minify, rename=args.rename,
+                              fail=False, want_count=not args.no_count_tokenize)
     if errors:
         print("Lint errors:" if ok else "Compilation errors:")
         for error in errors:
@@ -191,7 +194,7 @@ def main(raw_args):
 
     if args.count:
         write_code_size(cart, handler=args.count)
-        if not (args.output and str(args.format) not in CartFormat._src_names): # else, will be done in write_cart
+        if not (args.output and str(args.format) not in CartFormat._src_names) and not args.no_count_compress: # else, will be done in write_cart
             write_compressed_size(cart, handler=args.count, fast_compress=args.fast_compression)
 
     if args.output:

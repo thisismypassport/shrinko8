@@ -329,6 +329,8 @@ You can combine counting with other operations, in which case the counts are of 
 
 In such cases, you can also use `--input-count` to count the number of tokens, characters, and compressed bytes (if applicable) of the input cart.
 
+If you're not interested in the number of tokens or in the compressed size, you can use `--no-count-tokenize` or `--no-count-compress` to avoid tokenizing or compressing the cart just to get the count. (You will still see the count if the tokenize/compress had to be done anyway, though)
+
 # Format Conversion
 
 Shrinko8 supports multiple cart formats, and allows converting between them:

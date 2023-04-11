@@ -268,7 +268,7 @@ def compress_code(w, code, size_handler=None, force_compress=False, fail_on_erro
     if len(code) >= k_code_size or force_compress: # (>= due to null)
         start_pos = w.pos()
         w.bytes(k_new_compressed_code_header if is_new else k_compressed_code_header)
-        w.u16(len(code) & 0xffff)
+        w.u16(len(code) & 0xffff) # only throw under fail_on_error below
         len_pos = w.pos()
         w.u16(0) # revised below
                 
@@ -460,7 +460,7 @@ def compress_code(w, code, size_handler=None, force_compress=False, fail_on_erro
         
         if is_new:   
             w.setpos(len_pos)
-            w.u16(size)
+            w.u16(size & 0xffff) # only throw under fail_on_error above
             
     else:
         w.bytes(bytes(ord(c) for c in code))
