@@ -63,11 +63,11 @@ def read_code_from_rom(r, keep_compression=False, **opts):
 def read_cart_from_rom(buffer, path=None, allow_tiny=False, **opts):
     cart = Cart()
     cart.name = path_basename(path)
-    
+
     with BinaryReader(BytesIO(buffer), big_end = True) as r:
         if r.len() < k_cart_size and allow_tiny: # tiny rom, code only
             cart.code, cart.code_rom = read_code_from_rom(r, **opts)
-        
+
         else:
             cart.rom.replace(r.bytes(k_rom_size))
             cart.code, cart.code_rom = read_code_from_rom(r, **opts)
@@ -115,7 +115,7 @@ def write_cart_to_tiny_rom(cart, force_compress=False, keep_compression=False, *
         if keep_compression and cart.code_rom != None:
             with BinaryReader(BytesIO(cart.code_rom), big_end = True) as code_r:
                 compressed_size = get_compressed_size(code_r)
-            
+
             w.bytes(cart.code_rom.get_block(0, compressed_size))
         else:
             compress_code(w, cart.code, force_compress=True, **opts)
@@ -168,13 +168,13 @@ def read_cart_from_image(data, **opts):
     cart = read_cart_from_rom(data, **opts)
     cart.screenshot = screenshot
     return cart
-    
+
 def write_cart_to_image(cart, screenshot_path=None, title=None, res_path=None, **opts):
     output = write_cart_to_rom(cart, with_trailer=True, **opts)
 
     if res_path is None:
         res_path = path_dirname(path_resolve(__file__))
-    
+
     with file_open(path_join(res_path, "template.png")) as template_f:
         image = load_cart_image(template_f)
         width, height = image.size
@@ -192,7 +192,7 @@ def write_cart_to_image(cart, screenshot_path=None, title=None, res_path=None, *
                     screenshot_surf.set_at((x, y), k_palette[cart.screenshot[x, y]])
             screenshot_surf.unlock()
             image.draw(screenshot_surf, k_screenshot_offset, k_screenshot_rect)
-        
+
         if title is None:
             title = "\n".join(cart.get_title())
         if title:
@@ -211,7 +211,7 @@ def write_cart_to_image(cart, screenshot_path=None, title=None, res_path=None, *
                             continue
                     image.draw(font_surf, k_title_offset + Point(x, y), chrect)
                     x += chrect.w
-        
+
         image.lock()
         for y in range(height):
             for x in range(width):
@@ -233,37 +233,37 @@ k_meta_prefix = "meta:"
 
 def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
     cart = Cart()
-    
+
     def nybbles(line):
         for b in line:
             yield int(b, 16)
-    
+
     def nybble_groups(line, n):
         for i in range(0, len(line), n):
             yield nybbles(line[i:i+n])
-    
+
     def bytes(line):
         for i in range(0, len(line), 2):
             yield int(line[i] + line[i + 1], 16)
-    
+
     def ext_nybbles(line):
         for b in line:
             if 'v' >= b.lower() >= 'g':
                 yield ord(b.lower()) - ord('g') + 16
             else:
                 yield int(b, 16)
-    
+
     header = "lua" if raw else None
     code = []
     code_line = 0
     y = 0
     for line_i, line in enumerate(data.split("\n")): # not splitlines, that eats a trailing empty line
         clean = line.strip()
-            
+
         if line.startswith("__") and clean.endswith("__") and not raw: # may end with whitespace
             header = clean[2:-2]
             y = 0
-            
+
         elif header == "lua":
             if y == 0:
                 code_line = line_i
@@ -271,7 +271,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
                 code.append("\n")
             code.append(to_pico_chars(line))
             y += 1
-            
+
         elif header == "gfx" and clean:
             assert len(clean) == 0x80
             x = 0
@@ -279,7 +279,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
                 cart.rom.set4(mem_tile_addr(x, y), b)
                 x += 1
             y += 1
-                
+
         elif header == "map" and clean:
             assert len(clean) == 0x100
             x = 0
@@ -287,7 +287,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
                 cart.rom.set8(mem_map_addr(x, y), b)
                 x += 1
             y += 1
-                
+
         elif header == "gff" and clean:
             assert len(clean) == 0x100
             x = 0
@@ -295,7 +295,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
                 cart.rom.set8(mem_flag_addr(x, y), b)
                 x += 1
             y += 1
-            
+
         elif header == "sfx" and clean:
             assert len(clean) == 0xa8
             x = 0
@@ -304,17 +304,17 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
                 x += 1
             x = 0
             for bph, bpl, bw, bv, be in nybble_groups(clean[8:], 5):
-                value = bpl | ((bph & 0x3) << 4) | ((bw & 0x7) << 6) | ((bv & 0x7) << 9) | ((be & 0x7) << 12) | ((bw & 0x8) << 12) 
+                value = bpl | ((bph & 0x3) << 4) | ((bw & 0x7) << 6) | ((bv & 0x7) << 9) | ((be & 0x7) << 12) | ((bw & 0x8) << 12)
                 cart.rom.set16(mem_sfx_addr(y, x), value)
                 x += 1
             y += 1
-            
+
         elif header == "music" and clean:
             assert len(clean) == 0xb and clean[2] == ' '
             x = 0
             flags = next(bytes(clean[:2]))
             for b in bytes(clean[3:]):
-                value = b | (((flags >> x) & 1) << 7) 
+                value = b | (((flags >> x) & 1) << 7)
                 cart.rom.set8(mem_music_addr(y, x), value)
                 x += 1
             y += 1
@@ -331,11 +331,11 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
 
         elif header and header.startswith(k_meta_prefix):
             cart.meta[header[len(k_meta_prefix):]].append(line.rstrip('\n'))
-            
+
         elif header == None and clean.startswith("version "):
             cart.version_id = int(clean.split()[1])
             cart.version_tuple = get_version_tuple(cart.version_id)
-            
+
     cart.name = path_basename(path)
     cart.code, cart.code_map = preprocess_code(cart.name, path, "".join(code), code_line, preprocessor=preprocessor)
     return cart
@@ -346,10 +346,10 @@ def write_cart_to_source(cart, unicode_caps=False, **_):
 
     def nybbles(data):
         return "".join('%01x' % b for b in data)
-    
+
     def nybble_groups(data):
         return "".join([nybbles(group) for group in data])
-    
+
     def bytes(data):
         return "".join('%02x' % b for b in data)
 
@@ -366,7 +366,7 @@ def write_cart_to_source(cart, unicode_caps=False, **_):
                 lines.pop()
             else:
                 break
-    
+
     lines.append("__lua__")
     lines.append(from_pico_chars(cart.code, unicaps=unicode_caps))
 
@@ -383,7 +383,7 @@ def write_cart_to_source(cart, unicode_caps=False, **_):
     lines.append("__gff__")
     for y in range(2):
         lines.append(bytes(cart.rom.get8(mem_flag_addr(x, y)) for x in range(128)))
-    remove_empty_section_lines() 
+    remove_empty_section_lines()
 
     lines.append("__sfx__")
     for y in range(64):
@@ -400,13 +400,13 @@ def write_cart_to_source(cart, unicode_caps=False, **_):
         ids = bytes(ch & 0x7f for ch in chans)
         lines.append(flags + " " + ids)
     remove_empty_section_lines(num_spaces=1)
-    
+
     if cart.screenshot:
         lines.append("__label__")
         for y in range(128):
             lines.append(ext_nybbles(cart.screenshot[x, y] for x in range(128)))
         remove_empty_section_lines()
-    
+
     for meta, metalines in cart.meta.items():
         lines.append("__%s__" % (k_meta_prefix + meta))
         lines += metalines
@@ -439,12 +439,12 @@ def read_cart_from_url(url, size_handler=None, **opts):
         raise Exception("Invalid url - no '?'")
 
     code, gfx = None, None
-    
+
     url_params = url.split("?", 1)[1]
     for url_param in url_params.split("&"):
         if "=" not in url_param:
             raise Exception("Invalid url param: %s" % url_param)
-        
+
         key, value = url_param.split("=", 1)
         if key == "c":
             code = value
@@ -482,7 +482,7 @@ def read_cart_from_url(url, size_handler=None, **opts):
 k_url_prefix = "https://www.pico-8-edu.com"
 
 def write_cart_to_url(cart, url_prefix=k_url_prefix, force_compress=False, size_handler=None, **opts):
-    raw_code = write_cart_to_tiny_rom(cart, **opts)        
+    raw_code = write_cart_to_tiny_rom(cart, **opts)
     code = base64.b64encode(raw_code, k_base64_alt_chars)
 
     rect = iter_rect(128, 128)
@@ -517,7 +517,7 @@ def write_cart_to_url(cart, url_prefix=k_url_prefix, force_compress=False, size_
     url += "/?c=" + code.decode()
     if gfx:
         url += "&g=" + "".join(gfx)
-    
+
     if size_handler:
         print_url_size(len(url), handler=size_handler)
     return url
@@ -541,7 +541,7 @@ def read_cart_autodetect(path, **opts):
         # cart?
         if text.startswith("pico-8 cartridge") or text.startswith("__lua__"):
             return read_cart_from_source(text, path=path, **opts)
-            
+
         rtext = text.rstrip()
 
         # clip?
@@ -554,7 +554,7 @@ def read_cart_autodetect(path, **opts):
 
         # plain text?
         return read_cart_from_source(text, raw=True, path=path, **opts)
-        
+
     except UnicodeDecodeError: # required to happen for pngs
         return read_cart(path, CartFormat.png, **opts)
 
@@ -582,7 +582,7 @@ class PicoPreprocessor:
     def __init__(m, strict=True, include_handler=None):
         m.strict = strict
         m.include_handler = include_handler
-        
+
     def start(m, path, code):
         pass
 
@@ -617,7 +617,7 @@ class PicoPreprocessor:
 
     def handle_inline(m, path, code, i, start_i, out_i, outparts, outmappings):
         return True, i + 1, start_i, out_i
-        
+
     def finish(m, path, code):
         pass
 
@@ -629,7 +629,7 @@ def preprocess_code(name, path, code, start_line=0, preprocessor=None):
     outmappings = []
     i = start_i = out_i = 0
     active = True
-    
+
     if preprocessor is None:
         preprocessor = PicoPreprocessor()
     preprocessor.start(path, code)
@@ -757,7 +757,7 @@ def read_js_package(text):
     cartdata_raw = re.search("var\s+_cartdat\s*=\s*\[(.*?)\]", text, re.S)
     if not cartdata_raw:
         fail("can't find _cartdat var in js")
-    
+
     cartdata = bytearray(k_cart_size * len(carts))
     for i, b in enumerate(cartdata_raw.group(1).split(",")):
         cartdata[i] = int(b.strip())

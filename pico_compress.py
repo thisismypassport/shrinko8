@@ -52,10 +52,10 @@ def uncompress_code(r, size_handler=None, **_):
 
         if size_handler:
             print_compressed_size(com_size, prefix="input", handler=size_handler)
-        
+
         mtf = [chr(i) for i in range(0x100)]
         br = BinaryBitReader(r.f)
-        
+
         code = []
         while len(code) < unc_size:
             #last_bit_pos = br.bit_position
@@ -64,13 +64,13 @@ def uncompress_code(r, size_handler=None, **_):
                 while br.bit():
                     extra += 1
                 idx = br.bits(4 + extra) + make_mask(4, extra)
-                
+
                 #print(len(code), ord(mtf[idx]), br.bit_position - last_bit_pos)
                 code.append(mtf[idx])
-                
+
                 update_mtf(mtf, idx, code[-1])
             else:
-                offlen = (5 if br.bit() else 10) if br.bit() else 15                
+                offlen = (5 if br.bit() else 10) if br.bit() else 15
                 offset = br.bits(offlen) + 1
 
                 if offset == 1 and offlen != 5:
@@ -82,7 +82,7 @@ def uncompress_code(r, size_handler=None, **_):
                         else:
                             break
                     #print("******", br.bit_position - last_bit_pos)
-                
+
                 else:
                     count = 3
                     while True:
@@ -90,11 +90,11 @@ def uncompress_code(r, size_handler=None, **_):
                         count += part
                         if part != 7:
                             break
-                    
+
                     #print(len(code), "%s:%s" % (offset - 1, count - 3), br.bit_position - last_bit_pos)
                     for _ in range(count):
                         code.append(code[-offset])
-        
+
         assert r.pos() == start_pos + com_size
         assert len(code) == unc_size
 
@@ -142,7 +142,7 @@ def get_compressed_size(r):
     elif header == k_compressed_code_header:
         r.u16()
         r.u16()
-        
+
         while True:
             ch = r.u8()
             if ch == 0:
@@ -189,7 +189,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
 
             if c > best_c and c >= min_c or c == best_c and j > best_j:
                 best_c, best_j = c, j
-        
+
         return best_c, best_j
 
     def mktuple(i, j, count):
@@ -255,7 +255,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
         else:
             yield i, code[i]
             i += 1
-            
+
         if not (e(fast_c) and best_c >= fast_c):
             for j in range(prev_i, i):
                 min_matches[code[j:j+min_c]].append(j)
@@ -264,14 +264,14 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
 def compress_code(w, code, size_handler=None, force_compress=False, fail_on_error=True, fast_compress=False, old_compress=False, **_):
     is_new = not old_compress
     min_c = 3
-    
+
     if len(code) >= k_code_size or force_compress: # (>= due to null)
         start_pos = w.pos()
         w.bytes(k_new_compressed_code_header if is_new else k_compressed_code_header)
         w.u16(len(code) & 0xffff) # only throw under fail_on_error below
         len_pos = w.pos()
         w.u16(0) # revised below
-                
+
         if is_new:
             bw = BinaryBitWriter(w.f)
             mtf = [chr(i) for i in range(0x100)]
@@ -298,7 +298,7 @@ def compress_code(w, code, size_handler=None, force_compress=False, fail_on_erro
                     else:
                         if mtfcopy is None:
                             mtfcopy = mtf[:]
-                            
+
                         ch_i = mtfcopy.index(item)
 
                         cost = mtf_cost(ch_i)
@@ -350,23 +350,23 @@ def compress_code(w, code, size_handler=None, force_compress=False, fail_on_erro
                         cost = mtf_cost(ch_i) - 8
                         if cost > 0:
                             cost -= 2 # hueristic due to mtf generally paying it forward (also makes entering litblock much harder)
-                        add_last_cost(i, cost)                        
+                        add_last_cost(i, cost)
 
                 for i in range(last_cost_len): # flush litblock
                     add_last_cost(len(code) + i, 0)
 
                 return litblock_idxs
-                    
+
             def write_match(offset_val, count_val):
                 bw.bit(0)
-                
+
                 offset_bits = max(round_up(count_significant_bits(offset_val), 5), 5)
                 assert offset_bits in (5, 10, 15)
                 bw.bit(offset_bits < 15)
                 if offset_bits < 15:
                     bw.bit(offset_bits < 10)
                 bw.bits(offset_bits, offset_val)
-                
+
                 while count_val >= 7:
                     bw.bits(3, 7)
                     count_val -= 7
@@ -375,17 +375,17 @@ def compress_code(w, code, size_handler=None, force_compress=False, fail_on_erro
             def write_literal(ch):
                 bw.bit(1)
                 ch_i = mtf.index(ch)
-                
-                i_val = ch_i 
+
+                i_val = ch_i
                 i_bits = 4
                 while i_val >= (1 << i_bits):
                     bw.bit(1)
                     i_val -= 1 << i_bits
                     i_bits += 1
-                    
+
                 bw.bit(0)
                 bw.bits(i_bits, i_val)
-                                
+
                 update_mtf(mtf, ch_i, ch)
 
             if fast_compress:
@@ -424,7 +424,7 @@ def compress_code(w, code, size_handler=None, force_compress=False, fail_on_erro
                     else:
                         write_literal(item)
                         #print(i, ord(item), bw.bit_position - last_bit_pos)
-                    
+
             bw.flush()
 
         else:
@@ -436,10 +436,10 @@ def compress_code(w, code, size_handler=None, force_compress=False, fail_on_erro
 
             def write_literal(ch):
                 ch_i = k_inv_code_table.get(ch, 0)
-                
+
                 if ch_i > 0:
                     w.u8(ch_i)
-                
+
                 else:
                     w.u8(0)
                     w.u8(ord(ch))
@@ -453,14 +453,14 @@ def compress_code(w, code, size_handler=None, force_compress=False, fail_on_erro
         size = w.pos() - start_pos
         if size_handler:
             print_compressed_size(size, handler=size_handler)
-        
+
         if fail_on_error:
             assert len(code) < 0x10000, "cart has too many characters!"
             assert w.pos() <= k_cart_size, "cart takes too much compressed space!"
-        
-        if is_new:   
+
+        if is_new:
             w.setpos(len_pos)
             w.u16(size & 0xffff) # only throw under fail_on_error above
-            
+
     else:
         w.bytes(bytes(ord(c) for c in code))

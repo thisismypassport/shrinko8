@@ -10,10 +10,10 @@ def _my_excepthook(type, value, tb):
     obj = traceback.TracebackException(type, value, tb)
     for hook in _my_excepthook.hooks:
         hook(obj)
-        
+
     for line in obj.format():
-        print(line, file=sys.stderr, end="")    
-        
+        print(line, file=sys.stderr, end="")
+
 def add_traceback_hook(hook):
     """adds a hook to be called before printing a traceback, so that the hook can edit it freely"""
     _my_excepthook.hooks.append(hook)
@@ -27,15 +27,15 @@ def eprint(*args, **kwargs):
 
 def context_manager(method_name = "close"):
     """Adds __enter__/__exit__ support for a class, using a specified method_name as the 'close' method"""
-    
+
     def decorator(cls):
         method = getattr(cls, method_name)
-        
+
         def __enter__(m):
             return m
         def __exit__(m, t, v, s):
             method(m)
-        
+
         cls.__enter__ = __enter__
         cls.__exit__ = __exit__
         return cls
@@ -46,7 +46,7 @@ def exec_def(name, src):
     namespace = {}
     exec(src, namespace)
     return namespace[name]
-    
+
 def exec_opt_defs(src, *names):
     """execute 'src' and extract the definition(s) named in 'names' from it, if available"""
     namespace = {}
@@ -55,7 +55,7 @@ def exec_opt_defs(src, *names):
 
 class Dynamic(object):
     """An anonymous dynamic class with keyword-args-style initialization"""
-    
+
     def __init__(__m_, **__kw_):
         __m_.__dict__ = __kw_
 
@@ -66,38 +66,38 @@ class Dynamic(object):
 
 class DefaultDynamic(Dynamic):
     """Like Dynamic, but accessing an unknown key gives None"""
-    
+
     def __getattr__(m, name):
         return None
 
-class EnumMetaclass(type):    
+class EnumMetaclass(type):
     def __new__(meta, cls_name, cls_bases, cls_dict):
         if not cls_bases or Enum not in cls_bases:
             return super().__new__(meta, cls_name, cls_bases, cls_dict)
-        
+
         # collect
-        cls_bases = tuple(base for base in cls_bases if base != Enum)        
+        cls_bases = tuple(base for base in cls_bases if base != Enum)
         enum_bases = tuple(base for base in cls_bases if base.__class__ == EnumMetaclass)
-        
+
         values = cls_dict.get("values")
         if isinstance(values, str):
             values = (values,)
         if values is None:
             raise Exception("Enum has no 'values'")
-                
+
         if not isinstance(values, dict):
             if enum_bases:
                 raise Exception("Enum with bases must use explicit values") # TODO
             values = {name: i for i, name in enumerate(values)}
-            
+
         name_value_map = values
-                
+
         full_name_value_map = name_value_map.copy() if enum_bases else name_value_map
         for base in enum_bases:
             full_name_value_map.update(base._values)
-            
+
         full_value_name_map = {v:k for k,v in full_name_value_map.items()}
-        
+
         # dict
         def __init__(m, value):
             if value in full_value_name_map:
@@ -106,29 +106,29 @@ class EnumMetaclass(type):
                 m.value = full_name_value_map[value]
             else:
                 raise ValueError("%s not value of %s" % (value, cls_name))
-    
+
         def __eq__(m, other):
             if m.__class__ != other.__class__:
                 return NotImplemented
             return m.value == other.value
-            
+
         def __lt__(m, other):
             if not isinstance(m, other.__class__) and not isinstance(other, m.__class__):
                 return NotImplemented
             return m.value < other.value
-    
+
         def __str__(m):
             return full_value_name_map[m.value]
-    
+
         def __repr__(m):
             return "%s.%s" % (cls_name, full_value_name_map[m.value])
-    
+
         def __int__(m):
             return m.value
-    
+
         def __hash__(m):
             return hash(m.value)
-    
+
         enum_dict = {}
         enum_dict["__init__"] = __init__
         enum_dict["__eq__"] = __eq__
@@ -139,7 +139,7 @@ class EnumMetaclass(type):
         enum_dict["__hash__"] = __hash__
         enum_dict["__slots__"] = ("value",)
         enum_dict["_values"] = full_name_value_map
-        
+
         for k, v in cls_dict.items():
             if k == "values":
                 pass
@@ -149,12 +149,12 @@ class EnumMetaclass(type):
                 raise Exception(f"Cannot set {k} in Enum (but can override in inherited classes)")
             else:
                 enum_dict[k] = v
-                
+
         enum_class = super().__new__(meta, cls_name, cls_bases, enum_dict)
-    
+
         for k, v in name_value_map.items():
             setattr(enum_class, k, enum_class(v))
-    
+
         enum_class = total_ordering(enum_class)
         return enum_class
 
@@ -168,31 +168,31 @@ class BitmaskMetaclass(type):
     def __new__(meta, cls_name, cls_bases, cls_dict):
         if not cls_bases or Bitmask not in cls_bases:
             return super().__new__(meta, cls_name, cls_bases, cls_dict)
-        
+
         # collect
         cls_bases = tuple(base for base in cls_bases if base != Bitmask)
         bitmask_bases = tuple(base for base in cls_bases if base.__class__ == BitmaskMetaclass)
-        
+
         fields = cls_dict.get("fields")
         if fields is None:
             raise Exception("Bitmask has no 'fields'")
-        
+
         if not isinstance(fields, dict):
             if bitmask_bases:
                 raise Exception("Bitmask with bases must use explicit values") # TODO
             if isinstance(fields, str):
                 fields = (fields,)
             fields = {name: 1 << i for i, name in enumerate(fields)}
-            
+
         name_mask_map = fields
-        
+
         full_name_mask_map = name_mask_map.copy() if bitmask_bases else name_mask_map
         for base in bitmask_bases:
             full_name_mask_map.update(base._fields)
-    
+
         full_mask_name_map = {v:k for k,v in full_name_mask_map.items()}
         full_mask = reduce(lambda x,y:x|y, full_mask_name_map.keys(), 0)
-        
+
         # dict
         def __init__(m, value = None):
             if value is None:
@@ -201,90 +201,90 @@ class BitmaskMetaclass(type):
                 m.value = value
             else:
                 raise ValueError("%s not value of %s" % (value, cls_name))
-    
+
         def __eq__(m, other):
             if m.__class__ != other.__class__:
                 return NotImplemented
             return m.value == other.value
-        
+
         def __hash__(m):
             return hash(m.value)
-    
+
         def __repr__(m):
             if m.value:
                 values = []
                 for mask, name in full_mask_name_map.items():
                     if m.value & mask:
                         values.append("%s.%s" % (cls_name, name))
-    
+
                 return " | ".join(values)
             else:
                 return "%s(0)" % cls_name
-    
+
         def __int__(m):
             return m.value
-    
+
         def __bool__(m):
             return m.value != 0
-    
+
         def __and__(m, other):
             if m.__class__ != other.__class__:
                 return NotImplemented
             return m.__class__(m.value & other.value)
-        
+
         def __or__(m, other):
             if m.__class__ != other.__class__:
                 return NotImplemented
             return m.__class__(m.value | other.value)
-        
+
         def __xor__(m, other):
             if m.__class__ != other.__class__:
                 return NotImplemented
             return m.__class__(m.value ^ other.value)
-    
+
         class no_bits_property:
             def __init__(m, mask):
                 m.mask = mask
-                
+
             def __get__(m, obj, cls):
                 if obj is None:
                     return cls(m.mask)
                 else:
                     raise AttributeError()
-                
+
             def __set__(m, obj, value):
                 raise AttributeError()
-    
+
         class bit_property:
             def __init__(m, mask):
                 m.mask = mask
-            
+
             def __get__(m, obj, cls):
                 if obj is None:
                     return cls(m.mask)
                 else:
                     return bool(obj.value & m.mask)
-    
+
             def __set__(m, obj, value):
                 if value:
                     obj.value |= m.mask
                 else:
                     obj.value &= ~m.mask
-                    
+
         class bitfield_property:
             def __init__(m, mask):
                 m.mask = mask
                 m.shift = count_trailing_zero_bits(mask)
-            
+
             def __get__(m, obj, cls):
                 if obj is None:
                     return cls(m.mask)
                 else:
                     return (obj.value & m.mask) >> m.shift
-    
+
             def __set__(m, obj, value):
                 obj.value = (obj.value & ~m.mask) | ((value << m.shift) & m.mask)
-                    
+
         bitmask_dict = {}
         bitmask_dict["__init__"] = __init__
         bitmask_dict["__eq__"] = __eq__
@@ -298,7 +298,7 @@ class BitmaskMetaclass(type):
         bitmask_dict["__xor__"] = __xor__
         bitmask_dict["__slots__"] = ("value",)
         bitmask_dict["_fields"] = full_name_mask_map
-    
+
         for name, mask in name_mask_map.items():
             if mask == 0:
                 bitmask_dict[name] = no_bits_property(mask)
@@ -306,7 +306,7 @@ class BitmaskMetaclass(type):
                 bitmask_dict[name] = bit_property(mask)
             else:
                 bitmask_dict[name] = bitfield_property(mask)
-    
+
         for k, v in cls_dict.items():
             if k == "fields":
                 pass
@@ -316,7 +316,7 @@ class BitmaskMetaclass(type):
                 raise Exception(f"Cannot set {k} in Bitmask (but can override in inherited classes)")
             else:
                 bitmask_dict[k] = v
-                
+
         return super().__new__(meta, cls_name, cls_bases, bitmask_dict)
 
 class Bitmask(metaclass=BitmaskMetaclass):
@@ -326,29 +326,29 @@ class Bitmask(metaclass=BitmaskMetaclass):
     Bitmasks can also be manipulated via: & | ^
     Inherited classes behave like regular classes unless they have Bitmask as a direct baseclass.
     """
-    
+
 class TupleMetaclass(type):
     def __new__(meta, cls_name, cls_bases, cls_dict):
         if not cls_bases or Tuple not in cls_bases:
             return super().__new__(meta, cls_name, cls_bases, cls_dict)
-        
+
         # collect
         cls_bases = tuple(base for base in cls_bases if base != Tuple)
         tuple_bases = tuple(base for base in cls_bases if base.__class__ == TupleMetaclass)
         cls_bases = (tuple,) + cls_bases
-        
+
         fields = cls_dict.get("fields")
         if isinstance(fields, str):
             fields = (fields,)
         if fields is None:
             raise Exception("Tuple has no 'fields'")
-               
+
         defaults = cls_dict.get("defaults") or ()
         if isinstance(defaults, str):
             defaults = (defaults,)
         if len(defaults) > len(fields):
             raise Exception("Tuple has too many 'defaults'")
-                
+
         if tuple_bases:
             if defaults:
                 raise Exception("Cannot use defaults with bases")
@@ -356,7 +356,7 @@ class TupleMetaclass(type):
         else:
             all_fields = fields
 
-        # dict                    
+        # dict
         new_def = "def __new__(__cls, %s):\n" % ", ".join(all_fields)
         new_def += "    return tuple.__new__(__cls, (%s))\n" % (", ".join(all_fields) + ("," if len(all_fields) == 1 else ""))
         __new__ = exec_def("__new__", new_def)
@@ -364,15 +364,15 @@ class TupleMetaclass(type):
 
         def __reduce_ex__(m, proto):
             return (m.__new__, (m.__class__, *m))
-        
+
         @recursive_repr()
         def __repr__(m):
             contents = ", ".join(f"{f}={repr(getattr(m, f))}" for f in m._fields)
             return f"{cls_name}({contents})"
-        
+
         def _replace(m, **changes):
             return m.__class__(*map(changes.pop, m._fields, m))
-    
+
         tuple_dict = {}
         tuple_dict["__new__"] = __new__
         tuple_dict["__reduce_ex__"] = __reduce_ex__
@@ -380,11 +380,11 @@ class TupleMetaclass(type):
         tuple_dict["__slots__"] = () # fields come from tuple
         tuple_dict["_replace"] = _replace
         tuple_dict["_fields"] = all_fields
-        
+
         start = len(all_fields) - len(fields)
         for i, field in enumerate(fields):
             tuple_dict[field] = property(operator.itemgetter(start + i))
-        
+
         for k, v in cls_dict.items():
             if k == "fields" or k == "defaults":
                 pass
@@ -394,9 +394,9 @@ class TupleMetaclass(type):
                 raise Exception(f"Cannot set {k} in Tuple (but can override in inherited classes)")
             else:
                 tuple_dict[k] = v
-        
+
         return super().__new__(meta, cls_name, cls_bases, tuple_dict)
-    
+
 class Tuple(metaclass=TupleMetaclass):
     """If a class has Tuple as a baseclass, it's transformed into a named tuple.
     The class should have a 'fields' attribute with a list of field names.
@@ -404,36 +404,36 @@ class Tuple(metaclass=TupleMetaclass):
     The tuple behaves similarly to collections.namedtuple
     Inherited classes behave like regular classes unless they have Tuple as a direct baseclass.
     """
-        
+
 class StructMetaclass(type):
     def __new__(meta, cls_name, cls_bases, cls_dict):
         if not cls_bases or Struct not in cls_bases:
             return super().__new__(meta, cls_name, cls_bases, cls_dict)
-        
+
         # collect
         cls_bases = tuple(base for base in cls_bases if base != Struct)
         struct_bases = tuple(base for base in cls_bases if base.__class__ == StructMetaclass)
-        
+
         fields = cls_dict.get("fields")
         if isinstance(fields, str):
             fields = (fields,)
         if fields is None:
             raise Exception("Struct has no 'fields'")
-               
+
         defaults = cls_dict.get("defaults") or ()
         if isinstance(defaults, str):
             defaults = (defaults,)
         if len(defaults) > len(fields):
             raise Exception("Struct has too many 'defaults'")
-               
+
         if struct_bases:
             if defaults:
                 raise Exception("Cannot use defaults with bases")
             all_fields = sum((base._fields for base in struct_bases), ()) + fields
         else:
             all_fields = fields
-        
-        # dict                    
+
+        # dict
         init_def = "def __init__(__m, %s):\n" % ", ".join(all_fields)
         for field in all_fields:
             init_def += "    __m.%s = %s\n" % (field, field)
@@ -441,20 +441,20 @@ class StructMetaclass(type):
             init_def += "    pass"
         __init__ = exec_def("__init__", init_def)
         __init__.__defaults__ = defaults
-        
+
         @recursive_repr()
         def __repr__(m):
             contents = ", ".join(f"{f}={repr(getattr(m, f))}" for f in m._fields)
             return f"{cls_name}({contents})"
-        
+
         # note - equality is by-identity (unless option to control is added?)
-    
+
         struct_dict = {}
         struct_dict["__init__"] = __init__
         struct_dict["__repr__"] = __repr__
         struct_dict["__slots__"] = fields
         struct_dict["_fields"] = all_fields
-        
+
         for k, v in cls_dict.items():
             if k == "fields" or k == "defaults":
                 pass
@@ -464,7 +464,7 @@ class StructMetaclass(type):
                 raise Exception(f"Cannot set {k} in Struct (but can override in inherited classes)")
             else:
                 struct_dict[k] = v
-        
+
         return super().__new__(meta, cls_name, cls_bases, struct_dict)
 
 class Struct(metaclass=StructMetaclass):
@@ -480,7 +480,7 @@ def SymbolClass(name):
     class cls(object):
         __slots__ = 'value'
         cache = {}
-    
+
         def __new__(cls, value):
             ident = cls.cache.get(value)
             if ident is None:
@@ -488,14 +488,14 @@ def SymbolClass(name):
                 ident.value = value
                 cls.cache[value] = ident
             return ident
-    
+
         def __str__(m):
             return str(m.value)
         def __bytes__(m):
             return bytes(m.value)
         def __repr__(m):
             return "`%s" % m.value
-        
+
     cls.__name__ = name
     return cls
 
@@ -506,10 +506,10 @@ class classproperty(object):
 
     def __init__(m, func):
         m.getter = func
-        
+
     def __get__(m, _, cls):
         return m.getter(cls)
-    
+
     # must be read-only, sadly
 
 class staticproperty(object):
@@ -517,10 +517,10 @@ class staticproperty(object):
 
     def __init__(m, func):
         m.getter = func
-        
+
     def __get__(m, _, cls):
         return m.getter()
-    
+
     # must be read-only, sadly
 
 class writeonly_property(object):
@@ -528,7 +528,7 @@ class writeonly_property(object):
 
     def __init__(m, func):
         m.func = func
-        
+
     def __set__(m, obj, value):
         return m.func(obj, value)
 
@@ -545,7 +545,7 @@ class lazy_property(object):
             value = m.func(obj)
             obj.__dict__[m.func.__name__] = value # won't be called again for this obj
             return value
-        
+
 class post_property_set(object):
     """Method decorator that creates a field-backed read-write property that calls the
     decorated method when set, with the old and new values"""
@@ -564,10 +564,10 @@ class post_property_set(object):
             return None
 
     def __set__(m, obj, value):
-        old_value = m.__get__(obj)    
+        old_value = m.__get__(obj)
         setattr(obj, m.attr, value)
         m.post_func(obj, old_value, value)
-            
+
 class post_property_change(post_property_set):
     """Method decorator that creates a field-backed read-write property that calls the
     decorated method when changed (going by == equality), with the old and new values"""
@@ -575,11 +575,11 @@ class post_property_change(post_property_set):
     def __set__(m, obj, value):
         old_value = m.__get__(obj)
         changed = old_value != value
-            
+
         if changed:
             setattr(obj, m.attr, value)
             m.post_func(obj, old_value, value)
-                
+
 def staticclass(cls):
     """Class decorator that turns all methods into static methods"""
     for name, value in getattrs(cls):
@@ -613,7 +613,7 @@ def u16(n):
 def u32(n):
     return n & 0xffffffff
 def u64(n):
-    return n & 0xffffffffffffffff 
+    return n & 0xffffffffffffffff
 
 def s8(n):
     return (n & 0x7f) - (n & 0x80)
@@ -690,7 +690,7 @@ class BinaryBase(object):
 
     def flush(m):
         m.f.flush()
-    
+
     @property
     def length(m):
         return m.len()
@@ -706,7 +706,7 @@ class BinaryReader(BinaryBase):
 
     def __init__(m, path, big_end = False, enc = "utf-8", wenc = "utf-16"):
         m.big_end, m.enc, m.wenc = big_end, enc, wenc
-        
+
         if isinstance(path, (str, CustomPath)):
             m.f = file_open(path)
         else:
@@ -764,7 +764,7 @@ class BinaryReader(BinaryBase):
         if m.f.readinto(result) != size and not allow_eof:
             raise struct.error("end of file")
         return result
-    
+
     def str(m, len, enc=None):
         return m.bytes(len).decode(enc or m.enc)
     def wstr(m, len, enc=None):
@@ -808,18 +808,18 @@ class BinaryReader(BinaryBase):
                     result = result[:i]
                     break
         return result
-        
+
     def zstr(m, len = None, enc=None):
         return m.zbytes(len).decode(enc or m.enc)
     def wzstr(m, len = None, enc=None):
         return m.zbytes(len, 2).decode(enc or m.wenc)
-    
+
     def struct(m, struct):
         return struct.unpack(m.f.read(struct.size))
-    
+
     def list(m, func, len):
         return [func() for _ in range(len)]
-    
+
     def bool(m):
         return m.u8() != 0
 
@@ -833,14 +833,14 @@ class BinaryReader(BinaryBase):
             more = (val >> 7)
             shift += 7
         return nat
-    
+
     def int(m):
         nat = m.nat()
         if nat & 1:
             return -(nat - 1) >> 1
         else:
             return nat >> 1
-            
+
     def float(m):
         return m.f64() # python's float
 
@@ -881,7 +881,7 @@ class BinaryBitReader(BinaryBase):
     def _bits_le(m, n, advance):
         bit, byte = m._bit, m._byte
         read_count = 0
-        
+
         value = 0
         target_bit = 0
         while n > 0:
@@ -896,7 +896,7 @@ class BinaryBitReader(BinaryBase):
             value |= part << target_bit
             target_bit += count
             n -= count
-            
+
         if advance:
             m._bit, m._byte = bit, byte
         else:
@@ -906,7 +906,7 @@ class BinaryBitReader(BinaryBase):
     def _bits_be(m, n, advance):
         bit, byte = m._bit, m._byte
         read_count = 0
-        
+
         value = 0
         while n > 0:
             if bit >= 8:
@@ -919,7 +919,7 @@ class BinaryBitReader(BinaryBase):
             bit += count
             value = (value << count) | part
             n -= count
-            
+
         if advance:
             m._bit, m._byte = bit, byte
         else:
@@ -949,7 +949,7 @@ class BinaryBitReader(BinaryBase):
 
     def peek_bit(m):
         return m.peek_bits(1) != 0
-    
+
     def advance_bits(m, n):
         bit, byte = m._bit, m._byte
         while n > 0:
@@ -960,7 +960,7 @@ class BinaryBitReader(BinaryBase):
             count = min(n, 8 - bit)
             bit += count
             n -= count
-            
+
         m._bit, m._byte = bit, byte
 
 class BinaryWriter(BinaryBase):
@@ -968,7 +968,7 @@ class BinaryWriter(BinaryBase):
 
     def __init__(m, path, big_end = False, enc = "utf-8", wenc = "utf-16"):
         m.big_end, m.enc, m.wenc = big_end, enc, wenc
-        
+
         if isinstance(path, (str, CustomPath)):
             m.f = file_create(path)
         else:
@@ -1023,19 +1023,19 @@ class BinaryWriter(BinaryBase):
 
     def bytes(m, v):
         m.f.write(v)
-        
+
     def str(m, v, enc=None):
         m.bytes(v.encode(enc or m.enc))
     def wstr(m, v, enc=None):
         m.bytes(v.encode(enc or m.wenc))
-            
+
     def zbytes(m, v, len=None, count=1):
         m.bytes(v)
         if len is None:
             m.bytes(b"\0" * count)
         else:
             raise NotImplementedError() # yet
-        
+
     def zstr(m, v, len=None, enc=None):
         m.zbytes(v.encode(enc or m.enc), len)
     def wzstr(m, v, len=None, enc=None):
@@ -1047,7 +1047,7 @@ class BinaryWriter(BinaryBase):
     def list(m, func, value):
         for v in value:
             func(v)
-            
+
     def fill(m, v, len):
         for i in range(len):
             m.u8(v)
@@ -1060,16 +1060,16 @@ class BinaryWriter(BinaryBase):
             v >>= 7
             more = v != 0
             m.u8(part | (more << 7))
-            
+
     def bool(m, v):
         m.u8(1 if v else 0)
-    
+
     def int(m, v):
         if v >= 0:
             m.nat(v << 1)
         else:
             m.nat((-v << 1) + 1)
-            
+
     def float(m, v):
         m.f64(v) # python's float
 
@@ -1082,7 +1082,7 @@ class BinaryWriter(BinaryBase):
         if misalign:
             for _ in range(size - misalign):
                 m.u8(value)
-                
+
 class BinaryBitWriter(BinaryBase):
     """Wraps a stream, allowing to easily write bits to it"""
 
@@ -1136,11 +1136,11 @@ class BinaryBitWriter(BinaryBase):
 
     def bit(m, v):
         m.bits(1, v)
-    
+
     def close(m):
         m.flush()
         super().close()
-        
+
     def flush(m):
         if m._bit > 0:
             m._u8(m._byte)
@@ -1154,66 +1154,66 @@ class BinaryBuffer:
             m.buf = src
         else:
             m.buf = bytearray(src)
-            
+
     def __len__(m):
         return len(m.buf)
-    
+
     def r_u8(m, addr):
         return m.buf[addr]
     def w_u8(m, addr, val):
         m.buf[addr] = val
-    
+
     def r_u16(m, addr):
         return u16.struct_le.unpack_from(m.buf, addr)[0]
     def w_u16(m, addr, val):
         u16.struct_le.pack_into(m.buf, addr, val)
-        
+
     def r_u32(m, addr):
         return u32.struct_le.unpack_from(m.buf, addr)[0]
     def w_u32(m, addr, val):
         u32.struct_le.pack_into(m.buf, addr, val)
-        
+
     def r_u64(m, addr):
         return u64.struct_le.unpack_from(m.buf, addr)[0]
     def w_u64(m, addr, val):
         u64.struct_le.pack_into(m.buf, addr, val)
-       
+
     def r_s8(m, addr):
         return s8.struct_le.unpack_from(m.buf, addr)[0]
     def w_s8(m, addr, val):
         s8.struct_le.pack_into(m.buf, addr, val)
-         
+
     def r_s16(m, addr):
         return s16.struct_le.unpack_from(m.buf, addr)[0]
     def w_s16(m, addr, val):
         s16.struct_le.pack_into(m.buf, addr, val)
-        
+
     def r_s32(m, addr):
         return s32.struct_le.unpack_from(m.buf, addr)[0]
     def w_s32(m, addr, val):
         s32.struct_le.pack_into(m.buf, addr, val)
-        
+
     def r_s64(m, addr):
         return s64.struct_le.unpack_from(m.buf, addr)[0]
     def w_s64(m, addr, val):
         s64.struct_le.pack_into(m.buf, addr, val)
-        
+
     def r_f32(m, addr):
         return f32.struct_le.unpack_from(m.buf, addr)[0]
     def w_f32(m, addr, val):
         f32.struct_le.pack_into(m.buf, addr, val)
-        
+
     def r_f64(m, addr):
         return f64.struct_le.unpack_from(m.buf, addr)[0]
     def w_f64(m, addr, val):
         f64.struct_le.pack_into(m.buf, addr, val)
-        
+
     def r_bytes(m, addr, count):
         return m.buf[addr:addr+count]
-        
+
     def r_zbytes(m, addr, count = 1):
         zero = b"\0" * count
-        
+
         result = b""
         while True:
             char = m.r_bytes(addr, count)
@@ -1223,19 +1223,19 @@ class BinaryBuffer:
                 result += char
                 addr += count
         return result
-        
+
     def r_zstr(m, addr, enc="utf-8"):
         return m.r_zbytes(addr).decode(enc)
     def r_wzstr(m, addr, enc="utf-16"):
         return m.r_zbytes(addr, 2).decode(enc)
-    
+
     def w_bytes(m, addr, val):
         m.buf[addr:addr+len(val)] = val
-    
+
     def w_zbytes(m, addr, val, count=1):
         m.w_bytes(addr, val)
         m.w_bytes(addr + len(val), b"\0" * count)
-        
+
     def w_zstr(m, addr, val, enc="utf-8"):
         m.w_zbytes(addr, val.encode(enc))
     def w_wzstr(m, addr, val, enc='utf-16'):
@@ -1245,7 +1245,7 @@ class BinaryBuffer:
         return struct.unpack_from(m.buf, addr)
     def w_struct(m, addr, struct, val):
         struct.pack_into(m.buf, addr, *val)
-        
+
     def w_from(m, addr, src, src_addr, count):
         m.buf[addr:addr+count] = src.r_bytes(src_addr, count)
     def w_fill(m, addr, value, count):
@@ -1311,7 +1311,7 @@ def str_remove_suffix(str, suffix):
         return str[:-len(suffix)]
     else:
         return str
-    
+
 def str_before_first(str, match, s=None, e=None):
     """Return 'str' before the first 'match'"""
     i = str.find(match, s, e)
@@ -1341,7 +1341,7 @@ def str_split_last(str, match, s=None, e=None):
     """Return 'str' before and after the last 'match'"""
     i = str.rfind(match, s, e)
     return (str[s:i], str[i+len(match):e]) if i >= 0 else ("", str[s:e])
-    
+
 def str_replace_batch(val, batch):
     """Return a string based on 'val' that contains replacements defined in 'batch'.
     'batch' is a dict or list of pairs, with each pair being:
@@ -1350,7 +1350,7 @@ def str_replace_batch(val, batch):
       ((re, str), str or callable) - regex replacement without pre-compilation"""
     if isinstance(batch, dict):
         batch = batch.items()
-        
+
     for k, v in batch:
         if isinstance(k, str):
             if callable(v):
@@ -1364,7 +1364,7 @@ def str_replace_batch(val, batch):
             assert k[0] == re
             val = re.sub(k[1], v, val)
     return val
-    
+
 str_replace_by_dict = str_replace_batch # compat.
 
 def list_split_by(list, size):
@@ -1407,7 +1407,7 @@ def list_set(list, i, val, defval = None):
     assert i >= 0
     while i >= len(list):
         list.append(defval)
-    list[i] = val 
+    list[i] = val
 
 str_get = list_get
 str_rget = list_rget
@@ -1450,7 +1450,7 @@ class Point(Tuple):
             return Point(m.x * other.x, m.y * other.y)
         else:
             return Point(m.x * other, m.y * other)
-        
+
     def __rmul__(m, other):
         return Point(other * m.x, other * m.y)
 
@@ -1459,28 +1459,28 @@ class Point(Tuple):
             return Point(m.x / other.x, m.y / other.y)
         else:
             return Point(m.x / other, m.y / other)
-        
+
     def __rtruediv__(m, other):
         return Point(other / m.x, other / m.y)
-        
+
     __div__ = __truediv__
     __rdiv__ = __rtruediv__
-    
+
     def __floordiv__(m, other):
         if isinstance(other, Point):
             return Point(m.x // other.x, m.y // other.y)
         else:
             return Point(m.x // other, m.y // other)
-    
+
     def __rfloordiv__(m, other):
         return Point(other // m.x, other // m.y)
-    
+
     def __mod__(m, other):
         if isinstance(other, Point):
             return Point(m.x % other.x, m.y % other.y)
         else:
             return Point(m.x % other, m.y % other)
-        
+
     def __rmod__(m, other):
         return Point(other % m.x, other % m.y)
 
@@ -1492,7 +1492,7 @@ class Point(Tuple):
 
     def __nonzero__(m):
         return m.x or m.y
-    
+
     def __bool__(m):
         return bool(m.__nonzero__())
 
@@ -1517,33 +1517,33 @@ class Point(Tuple):
 
     def set_y(m, y):
         return Point(m.x, y)
-    
+
     def int(m):
         return Point(int(m.x), int(m.y))
-    
+
     def float(m):
         return Point(float(m.x), float(m.y))
-    
+
     @classmethod
     def repeat(cls, value):
         return cls(value, value)
-    
+
     @property
     def norm_squared(m):
         return m.x * m.x + m.y * m.y
-    
+
     @property
     def norm(m):
         return math.sqrt(m.norm_squared)
-    
+
     @staticmethod
     def distance_squared(m, o):
         return (m - o).norm_squared
-    
+
     @staticmethod
     def distance(m, o):
         return (m - o).norm
-    
+
 Point.zero = Point(0, 0)
 
 class Rect(Tuple):
@@ -1569,14 +1569,14 @@ class Rect(Tuple):
     @property
     def pos2(m):
         return Point(m.x2, m.y2)
-    
+
     @property
     def center(m):
         return m.pos + m.size / 2
 
     def __nonzero__(m):
         return m.w > 0 and m.h > 0
-    
+
     def __bool__(m):
         return bool(m.__nonzero__())
 
@@ -1615,9 +1615,9 @@ class Rect(Tuple):
     @classmethod
     def from_coords(cls, x, y, x2, y2):
         return cls(x, y, x2 - x, y2 - y)
-    
+
 Rect.zero = Rect(0, 0, 0, 0)
-    
+
 class ProjectedDictBase(dict):
     """A dict baseclass where keys are projected via _project before compared"""
     @classmethod
@@ -1643,7 +1643,7 @@ class ProjectedDictBase(dict):
         return super().get(m.__class__._project(key), *args, **kwargs)
     def setdefault(m, key, *args, **kwargs):
         return super().setdefault(m.__class__._project(key), *args, **kwargs)
-    
+
     def update(m, E=None, **F):
         if E:
             if hasattr(E, "items"):
@@ -1652,22 +1652,22 @@ class ProjectedDictBase(dict):
             else:
                 for k, v in E:
                     m[k] = v
-        
+
         if F:
             for k, v in F.items():
                 m[k] = v
-            
+
 class CaseInsensitiveDict(ProjectedDictBase):
     """A dict where key comparison is case-insensitive"""
     @classmethod
     def _project(cls, key):
         return key.lower()
-    
+
 class defaultlist(list):
     """A list allowing read/write of arbitrary indices, filling unused indices via 'defgetter'()"""
     def __init__(m, defgetter):
         m.defgetter = defgetter
-        
+
     def _fill(m, i):
         if isinstance(i, slice):
             while i.stop > len(m):
@@ -1675,15 +1675,15 @@ class defaultlist(list):
         else:
             while i >= len(m):
                 m.append(m.defgetter())
-            
+
     def __getitem__(m, i):
         m._fill(i)
         return list.__getitem__(m, i)
-        
+
     def __setitem__(m, i, val):
         m._fill(i)
         list.__setitem__(m, i, val)
-        
+
 class MultidimArray(object):
     """A multi-dimensional array of a fixed size"""
     def __init__(m, size, defval=None):
@@ -1693,7 +1693,7 @@ class MultidimArray(object):
 
     def copy(m):
         return deepcopy(m)
-        
+
     def _getindex(m, indices):
         array_index = 0
         for i in range(m.dim):
@@ -1701,25 +1701,25 @@ class MultidimArray(object):
             if not (0 <= index < size):
                 raise IndexError(indices)
             if i > 0:
-                array_index *= size 
+                array_index *= size
             array_index += index
         return array_index
-                
+
     def __getitem__(m, indices):
         return m.array[m._getindex(indices)]
-    
+
     def __setitem__(m, indices, value):
         m.array[m._getindex(indices)] = value
-        
+
     def indices(m):
         indices = [0] * m.dim
         while True:
             yield indices
-            
+
             for i in reversed(range(m.dim)):
                 indices[i] += 1
                 if indices[i] >= m.size[i]:
-                    indices[i] = 0                    
+                    indices[i] = 0
                 else:
                     break
             else:
@@ -1730,16 +1730,16 @@ class HeapQueue:
     def __init__(m, iterable=None):
         m.list = list(iterable) if e(iterable) else []
         heapq.heapify(m.list)
-        
+
     def add(m, v):
         heapq.heappush(m.list, v)
-    
+
     def peekleft(m):
         return m.list[0]
-    
+
     def popleft(m):
         return heapq.heappop(m.list)
-    
+
     def __len__(m):
         return len(m.list)
 
@@ -1749,15 +1749,15 @@ class HeapQueue:
 class PartialIO(io.RawIOBase):
     """Exposes a region of an existing stream as a stream"""
     def __init__(m, io, offset, length=None):
-        length = length if e(length) else io.length - offset 
+        length = length if e(length) else io.length - offset
         m.io = io
         m.position = 0
         m.offset = offset
         m.length = length
-        
+
     def flush(m):
         return m.io.flush()
-          
+
     def seek(m, position, whence=io.SEEK_SET):
         if whence == io.SEEK_SET:
             m.position = position
@@ -1770,22 +1770,22 @@ class PartialIO(io.RawIOBase):
     def readinto(m, target):
         size = len(target)
         view = memoryview(target)
-        
-        size = max(min(size, m.length - m.position), 0)        
+
+        size = max(min(size, m.length - m.position), 0)
         m.io.seek(m.offset + m.position)
         count = m.io.readinto(view[:size])
-        
+
         m.position += count
         return count
-        
+
     def write(m, data):
         size = len(data)
         view = memoryview(data)
-        
-        size = max(min(size, m.length - m.position), 0)        
+
+        size = max(min(size, m.length - m.position), 0)
         m.io.seek(m.offset + m.position)
         count = m.io.write(view[:size])
-        
+
         m.position += count
         return count
 
@@ -1793,21 +1793,21 @@ class SegmentedIO(io.RawIOBase):
     """A stream that combines several existing streams"""
     class Segment(Tuple):
         fields = ("start", "file", "offset", "size")
-    
+
     def __init__(m):
         m.segments = []
         m.last_segment = None
         m.position = 0
         m.length = 0
-        
+
     def add(m, file, offset, size):
         m.segments.append(m.Segment(m.length, file, offset, size))
         m.length += size
-            
+
     def flush(m):
         for segment in m.segments:
             segment.file.flush()
-            
+
     def seek(m, position, whence=io.SEEK_SET):
         if whence == io.SEEK_SET:
             m.position = position
@@ -1816,67 +1816,67 @@ class SegmentedIO(io.RawIOBase):
         elif whence == io.SEEK_END:
             m.position = m.length + position
         return m.position
-            
+
     def _find(m, offset):
         segment = m.last_segment
         if segment and segment.start <= offset < segment.start + segment.size:
             return segment, offset - segment.start
-        
+
         for segment in m.segments:
             if segment.start <= offset < segment.start + segment.size:
                 m.last_segment = segment
                 return segment, offset - segment.start
-                
+
         return None, 0
-    
+
     def readinto(m, target):
         offset = 0
         size = len(target)
         view = memoryview(target)
-        
+
         while offset < size:
             segment, offset_in_seg = m._find(m.position)
             if segment is None:
                 break
-            
+
             segment.file.seek(segment.offset + offset_in_seg)
             seg_count = min(segment.size - offset_in_seg, size - offset)
             seg_count = segment.file.readinto(view[offset : offset + seg_count])
             if seg_count is None:
                 return offset if offset else None
-            
+
             if seg_count == 0:
                 break
-            
+
             offset += seg_count
             m.position += seg_count
-            
+
         return offset
-        
+
     def write(m, data):
         offset = 0
         size = len(data)
         view = memoryview(data)
-        
+
         while offset < size:
             segment, offset_in_seg = m._find(m.position)
             if segment is None:
                 break
-            
+
             segment.file.seek(segment.offset + offset_in_seg)
             seg_count = min(segment.size - offset_in_seg, size - offset)
             seg_count = segment.file.write(view[offset : offset + seg_count])
             if seg_count is None:
                 return offset if offset else None
-            
+
             if seg_count == 0:
                 break
-            
+
             offset += seg_count
             m.position += seg_count
-            
+
         return offset
-    
+
 class IOWrapper:
     def __init__(m, stream):
         m.stream = stream
@@ -1975,7 +1975,7 @@ def file_read(path, offset = 0, size = None):
             return f.read(size)
         else:
             return f.read()
-        
+
 def file_read_text(path, encoding = "utf-8", errors = None, newline = None):
     """Read all text from a text file"""
     with file_open_text(path, encoding, errors, newline) as f:
@@ -1990,7 +1990,7 @@ def file_write(path, value):
     """Create or replace a binary file, writing 'value' into it"""
     with file_create(path) as f:
         f.write(value)
-        
+
 def file_write_text(path, value, encoding = "utf-8", errors = None, newline = "\n"):
     """Create or replace a text file, writing 'value' into it"""
     with file_create_text(path, encoding, errors, newline) as f:
@@ -2113,7 +2113,7 @@ def dir_ensure_exists(path):
         os.makedirs(path)
     except FileExistsError:
         pass
-    
+
 dir_create_if_needed = dir_ensure_exists # old name
 
 def dir_names(path):
@@ -2126,7 +2126,7 @@ def dir_paths(path):
 
 dir_get_current = os.getcwd
 dir_set_current = os.chdir
-    
+
 def filename_fixup(filename):
     """Fixup a filename to be valid"""
     return "".join([ch if ch not in r"\/:*?<>|" else "_" for ch in filename])
@@ -2146,7 +2146,7 @@ def maybe_int(value, defval=None, base=10):
         return int(value, base)
     except ValueError:
         return defval
-    
+
 def maybe_float(value, defval=None, base=10):
     """Try converting 'value' to a float, return 'defval' on failure"""
     if value is None:
@@ -2193,7 +2193,7 @@ def count_trailing_zero_bits(a):
 def make_mask(pos, size):
     """Create a mask with 'size' ones at bit 'pos'"""
     return ((1 << size) - 1) << pos
-    
+
 def is_pow2(a):
     """Return if 'a' is a power of 2"""
     return a > 0 and (a & (a - 1)) == 0
@@ -2260,9 +2260,9 @@ def debug(*msg):
     """Print a message only if debugging is enabled"""
     if debug.enabled:
         print(*msg)
-    
+
 debug.enabled = False
-    
+
 def warn_assert(cond, msg):
     """Warn if 'cond' is false"""
     if not cond:
@@ -2284,11 +2284,11 @@ def trace(*args):
     """Print with traceback"""
     print(*args)
     traceback.print_stack()
-    
+
 def byte(x):
     """Return bytes from a single byte"""
     return bytes((x,))
-    
+
 def measure_execution_time(func):
     """Decorator to measure execution time of a function"""
     def decorator(*args, **kwargs):
@@ -2298,4 +2298,3 @@ def measure_execution_time(func):
         print("%s took %f seconds" % (func, end - start))
         return result
     return decorator
-    

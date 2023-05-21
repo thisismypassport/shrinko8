@@ -24,7 +24,7 @@ def format_fixnum(value, allow_minus=False):
     if dotvalue:
         hexvalue = "0x" if hexvalue == "0x0" else hexvalue
         hexvalue += (".%04x" % dotvalue).rstrip('0')
-        
+
     def str_add_1(str):
         if not str:
             return "1"
@@ -34,7 +34,7 @@ def format_fixnum(value, allow_minus=False):
             return str_add_1(str[:-1]) + "0"
         else:
             return str[:-1] + chr(ord(str[-1]) + 1)
-    
+
     numvalue = value / (1 << 16)
     decvalue = "%.10f" % numvalue
     while "." in decvalue:
@@ -105,7 +105,7 @@ def is_right_assoc(node):
 
 def is_vararg_expr(node):
     return node.type in (NodeType.call, NodeType.varargs)
-    
+
 def minify_code(source, tokens, root, minify):
 
     minify_lines = minify_wspace = minify_tokens = minify_comments = True
@@ -128,7 +128,7 @@ def minify_code(source, tokens, root, minify):
 
         if token.value == "?" or (token.value in ("if", "while") and getattr(token.parent, "short", False)):
             shorthand_vlines.add(token.vline)
-    
+
         # minify sublangs
 
         sublang = getattr(token, "sublang", None)
@@ -136,7 +136,7 @@ def minify_code(source, tokens, root, minify):
             token.value = format_string_literal(sublang.minify(), long=token.value.startswith('['))
 
         if minify_tokens:
-            
+
             # remove unneeded tokens
 
             if token.value == ";" and token.parent.type == NodeType.block and token.next_token().value != "(":
@@ -161,10 +161,10 @@ def minify_code(source, tokens, root, minify):
                     return remove_parens(token)
                 if outer.type in (NodeType.group, NodeType.table_member, NodeType.table_index, NodeType.op_assign):
                     return remove_parens(token)
-                if outer.type in (NodeType.call, NodeType.print) and (token.parent in outer.args[:-1] or 
+                if outer.type in (NodeType.call, NodeType.print) and (token.parent in outer.args[:-1] or
                         (outer.args and token.parent == outer.args[-1] and not is_vararg_expr(inner))):
                     return remove_parens(token)
-                if outer.type in (NodeType.assign, NodeType.local) and (token.parent in outer.sources[:-1] or 
+                if outer.type in (NodeType.assign, NodeType.local) and (token.parent in outer.sources[:-1] or
                         (outer.sources and token.parent == outer.sources[-1] and (not is_vararg_expr(inner) or len(outer.targets) <= len(outer.sources)))):
                     return remove_parens(token)
                 if outer.type in (NodeType.return_, NodeType.table) and (token.parent in outer.items[:-1] or
@@ -180,7 +180,7 @@ def minify_code(source, tokens, root, minify):
 
             if token.value == "!=":
                 token.value = "~="
-             
+
             #TODO: enable this in a few weeks. (but re-verify it helps first?)
             #if token.value == "^^":
             #    token.value = "~"
@@ -229,7 +229,7 @@ def minify_code(source, tokens, root, minify):
                 # TODO: always adding \n before if/while won a few bytes on my code - check if this is consistent & helpful.
 
                 if need_linebreak_between(prev_token, token):
-                    output.append("\n")                    
+                    output.append("\n")
                 elif need_whitespace_between(prev_token, token):
                     output.append(" ")
 
@@ -267,7 +267,7 @@ def minify_code(source, tokens, root, minify):
             if prev_token.endidx != token.idx:
                 output_wspace(source.text[prev_token.endidx:token.idx])
                 prev_welded_token = None
-            
+
             # extra whitespace may be needed due to modified or deleted tokens
             if prev_welded_token and token.value and (prev_welded_token.modified or token.modified or prev_welded_token != prev_token):
                 if need_whitespace_between(prev_welded_token, token):
@@ -278,7 +278,7 @@ def minify_code(source, tokens, root, minify):
             elif token.value != None:
                 output.append(token.value)
                 prev_welded_token = token
-                
+
             prev_token = token
 
         output_wspace(source.text[prev_token.endidx:])

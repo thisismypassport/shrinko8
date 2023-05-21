@@ -4,7 +4,7 @@ from pico_tokenize import is_identifier, parse_string_literal, k_identifier_spli
 
 class VarKind(Enum):
     values = ("local", "global_", "member")
-    
+
 class VarBase():
     def __init__(m, name):
         m.name = name
@@ -73,7 +73,7 @@ class Node(TokenNodeBase):
             elif not m.scopespec[0]:
                 return m.scopespec[1]
         return ()
-    
+
 class ParseError(Exception):
     pass
 
@@ -109,19 +109,19 @@ def parse(source, tokens):
     globals = LazyDict(lambda key: Global(key))
 
     tokens = [t for t in tokens if not t.fake]
-    
+
     scope.add(Local("_ENV", scope, True))
-   
+
     def peek(off=0):
         i = idx + off
         return tokens[i] if 0 <= i < len(tokens) else Token.dummy(source)
-    
+
     def take():
         nonlocal idx
         token = peek()
         idx += 1
         return token
-    
+
     def accept(value, tokens=None):
         nonlocal idx
         if peek().value == value:
@@ -173,13 +173,13 @@ def parse(source, tokens):
             var.keys_kind = token.keys_kind
 
         return Node(NodeType.var, [token], name=name, kind=kind, var_kind=var_kind, var=var, new=bool(newscope), parent_scope=scope)
-    
+
     def parse_function(stmt=False, local=False):
         nonlocal scope, funcdepth
         tokens = [peek(-1)]
         self_param = None
         func_kind = getattr(tokens[0], "func_kind", None)
-        
+
         target, name = None, None
         funcscope = Scope(scope, depth + 1, funcdepth + 1)
 
@@ -244,7 +244,7 @@ def parse(source, tokens):
     def parse_table():
         tokens = [peek(-1)]
         keys_kind = getattr(tokens[0], "keys_kind", None)
-        
+
         items = []
         while not accept("}", tokens):
             if accept("["):
@@ -260,10 +260,10 @@ def parse(source, tokens):
                 eq = require("=")
                 value = parse_expr()
                 items.append(Node(NodeType.table_member, [key, eq, value], key=key, value=value))
-                
+
             else:
                 items.append(parse_expr())
-                
+
             tokens.append(items[-1])
 
             if accept("}", tokens):
@@ -289,7 +289,7 @@ def parse(source, tokens):
                 if accept(")", tokens):
                     break
                 require(",", tokens)
-        
+
         return Node(NodeType.call, tokens, func=expr, args=args)
 
     def parse_const(token):
@@ -408,7 +408,7 @@ def parse(source, tokens):
 
             else:
                 require("end", tokens)
-                
+
         elif peek(-1).value == ")":
             vline = peek(-1).vline
             then = parse_block(vline=vline)
@@ -424,7 +424,7 @@ def parse(source, tokens):
 
         else:
             add_error("then or shorthand required", fail=True)
-            
+
         return Node(type, tokens, cond=cond, then=then, else_=else_, short=short)
 
     def parse_while():
@@ -458,7 +458,7 @@ def parse(source, tokens):
         cond = parse_expr()
         tokens.append(cond)
         return Node(NodeType.until, tokens, cond=cond)
-        
+
     def parse_for():
         nonlocal scope
         tokens = [peek(-1)]
@@ -532,7 +532,7 @@ def parse(source, tokens):
             sources = []
             if accept("=", tokens):
                 sources = parse_list(tokens, parse_expr)
-                
+
             for target in targets:
                 newscope.add(target.var)
             scope = newscope
@@ -621,7 +621,7 @@ def parse(source, tokens):
 
             if peek().value in k_block_ends:
                 break
-            
+
             stmt = parse_stmt(vline)
             if stmt:
                 stmts.append(stmt)
@@ -637,7 +637,7 @@ def parse(source, tokens):
         while scope != oldscope:
             scopes.append(scope)
             scope = scope.parent
-        
+
         return Node(NodeType.block, tokens, stmts=stmts, scopespec=(False, scopes))
 
     def parse_root():

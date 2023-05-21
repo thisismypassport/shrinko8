@@ -19,7 +19,7 @@ class MySubLanguage(SubLanguageBase):
     def is_member(self, token):
         # is the token a member in our language? e.g. .my_member / .x
         return token.startswith(".") and self.is_global(token[1:])
-        
+
     # for --lint:
 
     # called to get globals defined within the sub-language's code
@@ -55,7 +55,7 @@ class MySubLanguage(SubLanguageBase):
                 if self.is_global(token):
                     usages[token] += 1
         return usages
-        
+
     # called to get all uses of members (table keys) in the language's code
     def get_member_usages(self, **_):
         usages = Counter()
@@ -67,7 +67,7 @@ class MySubLanguage(SubLanguageBase):
 
     # only needed if your language supports locals:
     # called to get all uses of locals in the language's code.
-    # should return a Counter dict similar to above, except the keys are 
+    # should return a Counter dict similar to above, except the keys are
     # Local objects, and their scope (Scope objects) have 2 extra fields:
     #   used_globals - a set of all global names used in that scope
     #                  or in any of its child scopes

@@ -74,12 +74,12 @@ def rename_tokens(ctxt, root, rename):
     root.traverse_tokens(collect_chars)
 
     k_identifier_chars = string.ascii_letters + string.digits + "_"
-    
+
     ident_chars = []
     for ch in sorted(char_uses, key=lambda k: char_uses[k], reverse=True):
         if ch in k_identifier_chars:
             ident_chars.append(ch)
-    
+
     for ch in k_identifier_chars:
         if ch not in ident_chars:
             ident_chars.append(ch)
@@ -96,7 +96,7 @@ def rename_tokens(ctxt, root, rename):
     def compute_effective_kind(node, kind, explicit):
         if kind == VarKind.member:
             table_name = None
-            
+
             if node.parent.type == NodeType.member and node.parent.key == node and node.parent.child.type == NodeType.var:
                 var_node = node.parent.child
                 table_name = var_node.name
@@ -114,7 +114,7 @@ def rename_tokens(ctxt, root, rename):
                     target_node = list_get(table_node.parent.targets, assign_i)
                     if target_node and target_node.type == NodeType.var and target_node.var and target_node.var.keys_kind != None:
                         return compute_effective_kind(node, target_node.var.keys_kind, explicit=True)
-            
+
             if preserve_members:
                 return None
             elif node.name in member_knowns:
@@ -123,7 +123,7 @@ def rename_tokens(ctxt, root, rename):
                 return None
             elif table_name == "_ENV":
                 return compute_effective_kind(node, VarKind.global_, explicit=True)
-            
+
             if members_as_globals:
                 kind = VarKind.global_
 
@@ -155,10 +155,10 @@ def rename_tokens(ctxt, root, rename):
             scope.used_globals = set()
             scope.used_locals = set()
             scopes.append(scope)
-            
+
         if node.type == NodeType.var:
             node.effective_kind = compute_effective_kind(node, default(node.var_kind, node.kind), explicit=e(node.var_kind))
-            
+
             if node.effective_kind == VarKind.member:
                 member_uses[node.name] += 1
 
@@ -171,7 +171,7 @@ def rename_tokens(ctxt, root, rename):
                 #    local_uses[node.var] += 0
                 #else:
                 local_uses[node.var] += 1
-                    
+
             # add to the scope based on real kind, to avoid conflicts (e.g. between builtins and globals)
             if node.kind == VarKind.global_:
                 for scope in scopes:
@@ -182,7 +182,7 @@ def rename_tokens(ctxt, root, rename):
                     i = scopes.index(node.var.scope)
                     for scope in scopes[i:]:
                         scope.used_locals.add(node.var)
-                        
+
         elif node.type == NodeType.sublang:
             # slight dup of compute_effective_kind logic
 
@@ -254,7 +254,7 @@ def rename_tokens(ctxt, root, rename):
     member_renames = assign_idents(member_uses, member_knowns)
     global_renames = assign_idents(global_uses, global_knowns)
     rev_global_renames = {v: k for k, v in global_renames.items()}
-    
+
     local_ident_stream = create_ident_stream()
     local_renames = {}
 
@@ -265,11 +265,11 @@ def rename_tokens(ctxt, root, rename):
         if not ident_global and ident in global_knowns:
             ident_global = ident
         ident_locals = []
-        
+
         for i, var in enumerate(remaining_local_uses):
             if ident_global in var.scope.used_globals:
                 continue
-            
+
             for _, ident_local in ident_locals:
                 if ident_local in var.scope.used_locals:
                     break
@@ -317,8 +317,8 @@ def rename_tokens(ctxt, root, rename):
                 assert len(node.children) == 1 and node.children[0].value == orig_name
                 node.children[0].value = node.name
                 node.children[0].modified = True
-                
+
         elif node.type == NodeType.sublang:
             node.lang.rename(globals=global_renames, members=member_renames, locals=local_renames)
-            
+
     root.traverse_nodes(update_idents, extra=True)

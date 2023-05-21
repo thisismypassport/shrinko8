@@ -103,7 +103,7 @@ def main(raw_args):
         return fail("Can't modify code and keep compression")
     if args.list and (args.output or args.lint or args.count):
         return fail("--list can't be combined with most other options")
-        
+
     if not args.format and args.output:
         ext = path_extension(args.output)[1:].lower()
         if ext in CartFormat._ext_names:
@@ -171,7 +171,7 @@ def main(raw_args):
 
     if args.input_count:
         write_code_size(cart, handler=args.input_count, input=True)
-        
+
     ctxt = PicoContext(extra_globals=args.builtin, srcmap=args.rename_map, sublang_getter=sublang_cb)
     if preproc_cb:
         preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args, res_path=None) # (res_path is obsolete)
@@ -188,7 +188,7 @@ def main(raw_args):
 
     if args.rename_map:
         file_write_text(args.rename_map, "\n".join(ctxt.srcmap))
-        
+
     if postproc_cb:
         postproc_cb(cart=cart, args=args, res_path=None) # (res_path is obsolete)
 
@@ -198,7 +198,7 @@ def main(raw_args):
             write_compressed_size(cart, handler=args.count, fast_compress=args.fast_compression)
 
     if args.output:
-        write_cart(args.output, cart, args.format, size_handler=args.count, 
+        write_cart(args.output, cart, args.format, size_handler=args.count,
                 unicode_caps=args.unicode_caps, old_compress=args.old_compression,
                 force_compress=args.count or args.force_compression,
                 fast_compress=args.fast_compression, keep_compression=args.keep_compression)

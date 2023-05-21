@@ -35,7 +35,7 @@ def lint_code(ctxt, tokens, root, lint_rules):
     def is_function_target(node):
         return node.parent.type == NodeType.function and node == node.parent.target
 
-    def preprocess_vars(node):        
+    def preprocess_vars(node):
         if node.type == NodeType.var:
             if node.kind == VarKind.global_ and node.name not in custom_globals:
                 assign = False
@@ -82,13 +82,13 @@ def lint_code(ctxt, tokens, root, lint_rules):
                         add_error("Local '%s' has the same name as a local declared in a parent scope" % node.name, node)
                     else:
                         add_error("Local '%s' has the same name as a local declared in the same scope" % node.name, node)
-                
+
                 vars[node.name].append(node.var)
 
                 if lint_unused and node.var not in used_locals and not node.name.startswith("_"):
                     if node.var in assigned_locals:
                         add_error("Local '%s' is only ever assigned to, never used" % node.name, node)
-                    elif not (node.parent.type == NodeType.function and node in node.parent.params and 
+                    elif not (node.parent.type == NodeType.function and node in node.parent.params and
                               (node != node.parent.params[-1] or node not in node.parent.children)): # don't warn for non-last or implicit params
                         add_error("Local '%s' isn't used" % node.name, node)
 
@@ -106,7 +106,7 @@ def lint_code(ctxt, tokens, root, lint_rules):
                             add_error("Identifier '%s' not found - did you mean to use 'local function' to define it?" % node.name, node)
                         else:
                             add_error("Identifier '%s' not found" % node.name, node)
-                            
+
         elif node.type == NodeType.sublang:
             add_lang_error = lambda msg: add_error("%s: %s" % (node.name, msg), node)
             node.lang.lint(on_error=add_lang_error, builtins=builtin_globals, globals=custom_globals)
