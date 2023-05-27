@@ -159,6 +159,7 @@ def run():
     run_test("mini", "mini.p8", "mini.p8", "--minify", "--no-minify-lines",
              "--builtin", "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z")
     run_test("tinyrom", "tiny.rom", "tiny.lua")
+    run_test("title", "title.p8", "title.p8.png")
 
 if __name__ == "__main__":
     os.makedirs("test_output", exist_ok=True)
