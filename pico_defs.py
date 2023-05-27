@@ -16,22 +16,22 @@ class Memory(bytearray):
 
     def set8(m, i, v):
         m[i] = v
-        
+
     def get_block(m, start, size):
         return m[start:start+size]
-        
+
     def set_block(m, start, src):
         m[start:start+len(src)] = src
 
     def copy8(m, dest, src, size, src_memory = None):
         m.set_block(dest, (src_memory or m).get_block(src, size))
-        
+
     def fill8(m, dest, value, size):
         m.set_block(dest, bytearray((value,)) * size)
-        
+
     def get16(m, i):
         return m.get8(i) | (m.get8(i + 1) << 8)
-    
+
     def set16(m, i, v):
         m.set8(i, v & 0xff)
         m.set8(i + 1, (v >> 8) & 0xff)
@@ -42,7 +42,7 @@ class Memory(bytearray):
     def set32(m, i, v):
         m.set16(i, v & 0xffff)
         m.set16(i + 2, (v >> 16) & 0xffff)
-        
+
     def get8_bits(m, i, shift, mask):
         return (m.get8(i) >> shift) & mask
 
@@ -59,7 +59,7 @@ class Memory(bytearray):
 
 def mem_tile_addr(x, y):
     return y * 0x40 + (x >> 1), (x & 1)
-    
+
 def mem_map_addr(x, y):
     if y >= 0x20: y -= 0x40  # in effect
     return 0x2000 + y * 0x80 + x
@@ -69,10 +69,10 @@ def mem_flag_addr(x, y):
 
 def mem_music_addr(music, ch):
     return 0x3100 + music * 0x4 + ch
-    
+
 def mem_sfx_addr(sound, note):
     return 0x3200 + sound * 0x44 + note * 0x2
-    
+
 def mem_sfx_info_addr(sound, i):
     return mem_sfx_addr(sound, 0x20) + i
 

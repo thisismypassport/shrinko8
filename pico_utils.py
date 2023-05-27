@@ -171,8 +171,8 @@ def parse_p8scii(str):
             yield start, Dynamic(type=cch)
 
         start = pos + length
-            
-def bytes_to_string_contents(bytes): # TODO: just use format_string_literal... 
+
+def bytes_to_string_contents(bytes): # TODO: just use format_string_literal...
     data = []
 
     esc_map = {
@@ -191,4 +191,3 @@ def bytes_to_string_contents(bytes): # TODO: just use format_string_literal...
         data.append(ch)
 
     return "".join(data)
-    

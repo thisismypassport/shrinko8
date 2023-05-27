@@ -46,13 +46,13 @@ def run_code(*args, exit_code=None):
                         exec(g_code, {"__file__": g_code_file, "__name__": "__main__"})
             except SystemExit as e:
                 actual_code = e.code
-            
+
             stdout = stdout_io.getvalue()
 
     except Exception:
         traceback.print_exc()
         return False, stdout
-            
+
     if exit_code == actual_code:
         return True, stdout
     else:
@@ -121,13 +121,13 @@ def run_stdout_test(name, input, *args, private=False, output=None, exit_code=No
     return True
 
 def run():
-    run_test("minify", "input.p8", "output.p8", "--minify", "--format", "code", 
+    run_test("minify", "input.p8", "output.p8", "--minify", "--format", "code",
              "--preserve", "*.preserved_key,preserved_glob,preserving_obj.*",
              "--no-preserve", "circfill,rectfill")
-    run_test("semiobfuscate", "input.p8", "output_semiob.p8", "--minify", "--format", "code", 
+    run_test("semiobfuscate", "input.p8", "output_semiob.p8", "--minify", "--format", "code",
              "--preserve", "*.*,preserved_glob",
              "--no-minify-spaces", "--no-minify-lines")
-    run_test("minrename", "input.p8", "output_minrename.p8", "--minify", "--format", "code", 
+    run_test("minrename", "input.p8", "output_minrename.p8", "--minify", "--format", "code",
              "--preserve", "*,*.*")
     run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify", "--format", "code",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename")
@@ -171,6 +171,6 @@ if __name__ == "__main__":
             pass
         else:
             private_run()
-    
+
     print("\nAll passed" if status == 0 else "\nSome FAILED!")
     sys.exit(status)

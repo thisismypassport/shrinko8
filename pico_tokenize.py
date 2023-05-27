@@ -2,8 +2,8 @@ from utils import *
 from pico_cart import k_long_brackets_re, k_wspace, PicoPreprocessor
 
 keywords = {
-    "and", "break", "do", "else", "elseif", "end", "false", 
-    "for", "function", "goto", "if", "in", "local", "nil", 
+    "and", "break", "do", "else", "elseif", "end", "false",
+    "for", "function", "goto", "if", "in", "local", "nil",
     "not", "or", "repeat", "return", "then", "true", "until",
     "while"
 }
@@ -19,7 +19,7 @@ k_language_prefix = "language::"
 class TokenNodeBase:
     def __init__(m):
         m.parent, m.children = None, ()
-    
+
     def find_parent(m, type):
         parent = m.parent
         while parent and parent.type != type:
@@ -112,10 +112,10 @@ class CustomPreprocessor(PicoPreprocessor):
         m.pp_handler = pp_handler
         m.ppstack = []
         m.active = True
-        
+
     def get_active(m):
         return m.ppstack[-1] if m.ppstack else True
-        
+
     def start(m, path, code):
         pass
 
@@ -127,7 +127,7 @@ class CustomPreprocessor(PicoPreprocessor):
         end_i = end_i if end_i >= 0 else len(code)
         line = code[i:end_i].replace("\\\n", "")
         args = line.split()
-        
+
         op = args[0] if args else ""
 
         if op == "#include" and len(args) == 2:
@@ -165,7 +165,7 @@ class CustomPreprocessor(PicoPreprocessor):
 
         # (do not keep empty lines, unlike PicoPreprocessor)
         return m.active, end_i + 1, end_i + 1, out_i
-        
+
     def handle_inline(m, path, code, i, start_i, out_i, outparts, outmappings):
         if not m.active:
             return False, i + 1, start_i, out_i
@@ -225,13 +225,13 @@ class CustomPreprocessor(PicoPreprocessor):
     def finish(m, path, code):
         if m.ppstack:
             raise Exception("Unterminated preprocessor ifs")
-    
+
 def is_ident_char(ch):
     return '0' <= ch <= '9' or 'a' <= ch <= 'z' or 'A' <= ch <= 'Z' or ch == '_' or ch >= chr(0x80)
 
 def is_identifier(str):
     return str and all(is_ident_char(ch) for ch in str) and not str[:1].isdigit() and str not in keywords
-    
+
 k_identifier_split_re = re.compile(r"([0-9A-Za-z_\x80-\xff]+)")
 
 def tokenize(source, ctxt=None):
@@ -362,7 +362,7 @@ def tokenize(source, ctxt=None):
                     add_error("Unterminated long brackets", orig_idx - idx)
 
                 return True, orig_idx, start_i, end_i
-                
+
         return False, orig_idx, None, None
 
     def tokenize_long_comment():
@@ -406,10 +406,10 @@ def tokenize(source, ctxt=None):
         nonlocal idx
         idx += off
         orig_idx = idx
-        
+
         while is_ident_char(peek()):
             idx += 1
-            
+
         if text[orig_idx:idx] in keywords:
             add_token(TokenType.keyword, orig_idx)
         else:
@@ -488,7 +488,7 @@ def tokenize(source, ctxt=None):
 
         else:
             add_error("invalid character")
-        
+
     return tokens, errors
 
 def count_tokens(tokens):
@@ -542,9 +542,9 @@ def parse_fixnum(str):
             dotvalue = (dotvalue * base) + digits.index(str[0])
             dotdigits += 1
             str = str[1:]
-        
+
         value += dotvalue / (base ** dotdigits)
-    
+
     assert not str
     if neg:
         value = -value
@@ -609,7 +609,7 @@ def parse_string_literal(str):
 
             else:
                 raise Exception("Invalid escape: %s" % esc)
-                
+
         return "".join(litparts)
 
 from pico_parse import Node, VarKind

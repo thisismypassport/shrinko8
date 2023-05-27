@@ -25,7 +25,7 @@ main_globals = {
 deprecated_globals = {
     "band", "bnot", "bor", "bxor",
     "lshr", "rotl", "rotr", "shl", "shr",
-    "mapdraw", 
+    "mapdraw",
 }
 
 undocumented_globals = {
@@ -46,7 +46,7 @@ def get_line_col(text, idx): # (0-based)
             break
         line += 1
         start = end + 1
-    
+
     return line, idx - start
 
 class PicoSource: # keep this light - created for temp. tokenizations
@@ -54,9 +54,9 @@ class PicoSource: # keep this light - created for temp. tokenizations
 
     def __init__(m, name, text):
         m.name, m.text = name, text
-        
+
     def get_name_line_col(m, idx): # (0-based)
-        line, col = get_line_col(m.text, idx)        
+        line, col = get_line_col(m.text, idx)
         return m.name, line, col
 
 class CartSource(PicoSource):
@@ -71,13 +71,13 @@ class CartSource(PicoSource):
                 name = mapping.src_name
                 line, col = get_line_col(mapping.src_code, mapping.src_idx + (idx - mapping.idx))
                 return name, line + mapping.src_line, col
-        
+
         return super().get_name_line_col(idx)
 
     @property
     def name(m):
         return m.cart.name
-        
+
     @property
     def text(m):
         return m.cart.code
@@ -90,7 +90,7 @@ class SubLanguageBase:
     def __init__(m, str, **_):
         pass
     def get_defined_globals(m, **_):
-        return () 
+        return ()
     def lint(m, **_):
         pass
     get_unminified_chars = None
@@ -145,7 +145,7 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
     tokens, errors = tokenize(source, ctxt)
     if not errors and (need_lint or need_minify):
         root, errors = parse(source, tokens)
-        
+
     if not errors:
         ok = True
 
@@ -154,7 +154,7 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
 
         if need_lint:
             errors = lint_code(ctxt, tokens, root, lint)
-        
+
         if need_minify:
             if need_rename:
                 rename_tokens(ctxt, root, rename)
@@ -174,7 +174,7 @@ def echo_code(code, echo=True):
         for line in code.splitlines():
             print(line)
     else:
-        file_write_text(echo, code)    
+        file_write_text(echo, code)
 
 from pico_tokenize import tokenize, count_tokens
 from pico_parse import parse
