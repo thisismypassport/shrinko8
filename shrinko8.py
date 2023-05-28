@@ -52,6 +52,9 @@ pgroup.add_argument("--parsable-count", action="store_true", help="output counts
 pgroup.add_argument("--no-count-compress", action="store_true", help="do not compress the cart just to print the compressed size")
 pgroup.add_argument("--no-count-tokenize", action="store_true", help="do not tokenize the cart just to print the token count")
 
+pgroup = parser.add_argument_group("annotate options")
+pgroup.add_argument("-a", "--annotate", action="store_true", help="enable annotating source during output")
+
 pgroup = parser.add_argument_group("script options")
 pgroup.add_argument("-s", "--script", help="manipulate the cart via a custom python script - see README for api details")
 pgroup.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
@@ -195,7 +198,8 @@ def main_inner(raw_args):
     ok, errors = process_code(ctxt, src, input_count=args.input_count, count=args.count,
                               lint=args.lint, minify=args.minify, rename=args.rename,
                               unminify=args.unminify,
-                              fail=False, want_count=not args.no_count_tokenize)
+                              fail=False, want_count=not args.no_count_tokenize,
+                              annotate=args.annotate)
     if errors:
         print("Lint errors:" if ok else "Compilation errors:")
         for error in errors:
