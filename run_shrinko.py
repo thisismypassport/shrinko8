@@ -195,6 +195,9 @@ def create_main(lang):
         pgroup.add_argument("--no-count-tokenize", action="store_true",
                             help="do not tokenize the cart just to print the token count" if is_pico8 else argparse.SUPPRESS)
 
+        pgroup = parser.add_argument_group("annotate options")
+        pgroup.add_argument("-a", "--annotate", action="store_true", help="enable annotating each function in the source with its token & char counts")
+
         pgroup = parser.add_argument_group("unminify options")
         pgroup.add_argument("-U", "--unminify", action="store_true", help="enable unminification of the cart")
         pgroup.add_argument("--unminify-indent", type=Indent, help="indentation when unminifying - either 'tabs' or a number of spaces (default: 2)", default="2")
@@ -633,7 +636,8 @@ def create_main(lang):
                                         input_count=is_pico8 and args.input_count,
                                         count=is_pico8 and args.count,
                                         lint=args.lint, minify=args.minify, rename=args.rename,
-                                        unminify=args.unminify, stop_on_lint=not args.no_lint_fail,
+                                        unminify=args.unminify, annotate=args.annotate,
+                                        stop_on_lint=not args.no_lint_fail,
                                         count_is_optional=args.no_count_tokenize,
                                         preproc=preproc_syntax_call if args.preproc_syntax_cb else None)
                 if errors:

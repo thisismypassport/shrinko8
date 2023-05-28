@@ -325,17 +325,18 @@ def process_placeholder(ctxt, token, errors):
     eprint(f"placeholder '{ph_name}' is not recognized")
 
 def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, rename=False, unminify=False, 
-                 stop_on_lint=True, count_is_optional=False, preproc=None):
+                 annotate=False, stop_on_lint=True, count_is_optional=False, preproc=None):
     need_lint, lint = fixup_process_args(lint)
     need_minify, minify = fixup_process_args(minify)
     need_rename, rename = fixup_process_args(rename)
     need_unminify, unminify = fixup_process_args(unminify)
+    need_annotate, annotate = fixup_process_args(annotate)
 
-    if not need_lint and not need_minify and not need_unminify and not ((count or input_count) and not count_is_optional) and not preproc:
+    if not need_lint and not need_minify and not need_unminify and not need_annotate and not ((count or input_count) and not count_is_optional) and not preproc:
         return True, ()
     
-    need_parse = need_lint or need_minify or need_unminify or preproc
-    need_all_comments = need_unminify or (need_minify and output_needs_comments(minify))
+    need_parse = need_lint or need_minify or need_unminify or need_annotate or preproc
+    need_all_comments = need_unminify or need_annotate or (need_minify and output_needs_comments(minify))
 
     errors = ()
     root = create_super_root() if source.is_super else None
@@ -387,6 +388,10 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
                 new_tokens = root.get_tokens() if need_parse else tokens
                 print_token_count(count_tokens(new_tokens), handler=count)
 
+            if need_annotate:
+                for subsrc in source:
+                    annotate_code(ctxt, subsrc, get_sub_root(root, subsrc), annotate)
+
     return True, errors
 
 def simplify_code(ctxt, root, minify, errors):
@@ -418,6 +423,7 @@ from pico_parse import parse, create_super_root, get_sub_root
 from pico_lint import lint_code
 from pico_minify import minify_code, Focus
 from pico_unminify import unminify_code
+from pico_annotate import annotate_code
 from pico_constfold import fold_consts
 from pico_output import output_code, output_needs_comments
 from pico_rename import rename_tokens
