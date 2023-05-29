@@ -1,5 +1,5 @@
 __lua__
-
+print=printh 
 ?"hello ᶜ7there♥ら"
 
 
@@ -131,5 +131,5 @@ function f() return 1, 2, ord"1", (ord"1") end
 if 1 == 2 then elseif 1 == 2 then else end
 while 1 == 2 do end
 repeat until 1 == 1
-for l in (pairs{}) do end
+for l in (all{}) do end
 print("test"..@16 .."str")

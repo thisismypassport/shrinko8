@@ -1,4 +1,6 @@
 __lua__
+print=printh -- note: most of this test is NOT covered in print/printh - check output as well (as always)
+
 -- special characters
 ?"hello ᶜ7there♥ら"
 
@@ -134,5 +136,5 @@ function xxx() return 1, 2, ord"1", (ord"1") end
 if 1 == 2 then elseif 1 == 2 then else end
 while 1 == 2 do end
 repeat until 1 == 1
-for a in (pairs{}) do end
+for a in (all{}) do end
 print("test"..@16 .."str")

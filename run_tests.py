@@ -5,12 +5,13 @@ import argparse, subprocess
 status = 0
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--measure", action="store_true")
-parser.add_argument("--stdout", action="store_true")
-parser.add_argument("-t", "--test", action="append")
-parser.add_argument("--no-private", action="store_true")
-parser.add_argument("-q", "--quiet", action="store_true")
-parser.add_argument("-x", "--exe", action="store_true")
+parser.add_argument("--measure", action="store_true", help="print the input/output counts for successful tests")
+parser.add_argument("--stdout", action="store_true", help="print the stdout of shrinko8 while running the tests")
+parser.add_argument("-t", "--test", action="append", help="specify a specific test to run")
+parser.add_argument("--no-private", action="store_true", help="do not run private tests, if they exist")
+parser.add_argument("-q", "--quiet", action="store_true", help="do not print test successes")
+parser.add_argument("-x", "--exe", action="store_true", help="test a packaged exe instead of the python script")
+parser.add_argument("--pico8", action="append", help="specify a pico8 exe to test the results with")
 opts = parser.parse_args()
 
 # for test consistency:
@@ -29,7 +30,7 @@ def fail_test():
 
 def run_code(*args, exit_code=None):
     actual_code = None
-    stdout = None
+    stdout = ""
 
     try:
         if opts.exe:
@@ -59,6 +60,21 @@ def run_code(*args, exit_code=None):
         print("Exit with unexpected code %s" % actual_code)
         return False, stdout
 
+def run_pico8(p8_exe, cart_path, expected_printh):
+    try:
+        stdout = subprocess.check_output([p8_exe, "-x", cart_path], encoding="utf8", stderr=subprocess.STDOUT, timeout=5.0)
+    except subprocess.SubprocessError as e:
+        return False, e.stdout
+    
+    actual_printh_lines = []
+    for line in stdout.splitlines():
+        if line.startswith("INFO:"):
+            actual_printh_lines.append(str_after_first(line, ':').strip())
+
+    assert expected_printh # we don't check for errors, so we must rely on a final printh!
+    success = "\n".join(actual_printh_lines) == expected_printh
+    return success, stdout
+
 def measure(kind, path, input=False):
     print("Measuring %s..." % kind)
     if path_exists(path):
@@ -67,7 +83,7 @@ def measure(kind, path, input=False):
     else:
         print("MISSING!")
 
-def run_test(name, input, output, *args, private=False, from_temp=False, to_temp=False):
+def run_test(name, input, output, *args, private=False, from_temp=False, to_temp=False, pico8_printh=None):
     if opts.test and name not in opts.test:
         return None
 
@@ -76,9 +92,26 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
     outpath = path_join(prefix + ("test_temp" if to_temp else "test_output"), output)
     cmppath = path_join(prefix + "test_compare", output)
 
-    success, stdout = run_code(inpath, outpath, *args)
-    if success and not to_temp:
-        success = try_file_read(outpath) == try_file_read(cmppath)
+    run_success, run_stdout = run_code(inpath, outpath, *args)
+    success = run_success
+    stdouts = [run_stdout]
+
+    if run_success and not to_temp:
+        if try_file_read(outpath) != try_file_read(cmppath):
+            stdouts.append("ERROR: File difference: %s, %s" % (outpath, cmppath))
+            success = False
+
+    if run_success and pico8_printh != None:
+        if pico8_printh == True:
+            pico8_printh = file_read_text(path_join(prefix + "test_compare", output + ".printh"))
+        for pico8_exe in opts.pico8:
+            p8_success, p8_stdout = run_pico8(pico8_exe, outpath, expected_printh=pico8_printh)
+            if not p8_success:
+                stdouts.append("ERROR: Pico8 run failure with %s" % pico8_exe)
+                stdouts.append(p8_stdout)
+                success = False
+
+    stdout = "\n".join(stdouts)
 
     if not success:
         print("\nERROR - test %s failed" % name)
@@ -121,9 +154,9 @@ def run_stdout_test(name, input, *args, private=False, output=None, exit_code=No
     return True
 
 def run():
-    run_test("minify", "input.p8", "output.p8", "--minify", "--format", "code", 
+    run_test("minify", "input.p8", "output.p8", "--minify",
              "--preserve", "*.preserved_key,preserved_glob,preserving_obj.*",
-             "--no-preserve", "circfill,rectfill")
+             "--no-preserve", "circfill,rectfill", pico8_printh=True)
     run_test("semiobfuscate", "input.p8", "output_semiob.p8", "--minify", "--format", "code", 
              "--preserve", "*.*,preserved_glob",
              "--no-minify-spaces", "--no-minify-lines")
@@ -131,7 +164,7 @@ def run():
              "--preserve", "*,*.*")
     run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify", "--format", "code",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename")
-    run_test("test", "test.p8", "test.p8", "--minify")
+    run_test("test", "test.p8", "test.p8", "--minify", "--rename-members-as-globals", pico8_printh="DONE")
     run_test("p82png", "testcvt.p8", "testcvt.png")
     run_test("test_png", "test.png", "test.png", "--minify")
     run_test("png2p8", "test.png", "testcvt.p8")

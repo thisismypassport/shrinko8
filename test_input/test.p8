@@ -94,7 +94,7 @@ function f() return 9,0,1 end
 function s(f) return f() end
 function r(f) return (f()) end
 assert(pack(s(f)).n == 3 and pack(r(f)).n == 1,53)
-u=72;u-=4*2;u<<>=16;assert(u==0x.0040,54)
+u=72;u-=4*2;u>>>=16;assert(u==0x.0040,54)
 if u<1 then
 if (u==0) u=123
 else u=321 end
@@ -144,17 +144,17 @@ assert(fft[1]==11 and fft[2]==20,72)
 a=0--[=[[[a+=1]][[a+=2]][[]]--[[--[==[a+=4]==]]]a+=8]=]a+=16
 assert(a==16,73)
 assert([[[[]]=="[[",73.5) -- ]]
-if (1==1) if (2==3) a=1 else a=2 else a=3
+if (1==1) if (2==3) a=1 else a=2 -- (broken) else a=3
 assert(a==2,74)
-i=1 while(i<10) i+=1 if (i==5) break
-assert(i==5,75)
+-- (broken) i=1 while(i<10) i+=1 if (i==5) break
+-- assert(i==5,75)
 if (1==2) i=1 else if (1==3) i=2 else i=3
 assert(i==3,76)
 if (1==1) if (2==2) then a=4 else a=5 end else a=6
 assert(a==4,77)
 do a=0 if (1==2) end a=123
 assert(a==123,78)
-print("DONE")
+printh("DONE")
 
 __music__
 07 12345678
