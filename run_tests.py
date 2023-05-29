@@ -101,7 +101,7 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
             stdouts.append("ERROR: File difference: %s, %s" % (outpath, cmppath))
             success = False
 
-    if run_success and pico8_printh != None:
+    if run_success and opts.pico8 and pico8_printh != None:
         if pico8_printh == True:
             pico8_printh = file_read_text(path_join(prefix + "test_compare", output + ".printh"))
         for pico8_exe in opts.pico8:
