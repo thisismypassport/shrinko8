@@ -210,7 +210,7 @@ def minify_code(source, tokens, root, minify):
 
     def need_linebreak_between(prev_token, token):
         # TODO: starting from 0.2.5d we could probably be more adventurous with shorthands... (except '?')
-        return prev_token.vline != token.vline and (not minify_lines or prev_token.vline in shorthand_vlines or token.vline in shorthand_vlines)
+        return prev_token.vline != token.vline and (not minify_lines or prev_token.vline in shorthand_vlines)
 
     if minify_wspace:
         # add keep: comments (for simplicity, at start)
