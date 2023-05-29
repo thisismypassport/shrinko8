@@ -510,8 +510,20 @@ def count_tokens(tokens):
         count += 1
     return count
 
-def to_fixnum(value):
-    return int(value * (1 << 16)) & 0xffffffff
+k_fixnum_mask = 0xffffffff
+
+def num_to_fixnum(value):
+    return int(value * (1 << 16)) & k_fixnum_mask
+
+def fixnum_to_num(value):
+    neg = value & 0x80000000
+    if neg:
+        value = (-value) & k_fixnum_mask
+    if value & 0xffff:
+        value /= (1 << 16)
+    else:
+        value >>= 16 # preserve int-ness
+    return -value if neg else value
 
 def parse_fixnum(str):
     str = str.lower()
@@ -549,7 +561,7 @@ def parse_fixnum(str):
     if neg:
         value = -value
 
-    return to_fixnum(value)
+    return num_to_fixnum(value)
 
 k_char_escapes = {
     '*': '\1', '#': '\2', '-': '\3', '|': '\4', '+': '\5', '^': '\6',

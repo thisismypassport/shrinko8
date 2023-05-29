@@ -4,16 +4,6 @@ from pico_tokenize import parse_string_literal, parse_fixnum
 from pico_parse import NodeType
 from pico_parse import k_unary_ops_prec, k_binary_op_precs, k_right_binary_ops
 
-def from_fixnum(value):
-    neg = value & 0x80000000
-    if neg:
-        value = (-value) & 0xffffffff
-    if value & 0xffff:
-        value /= (1 << 16)
-    else:
-        value >>= 16
-    return -value if neg else value
-
 # essentially only returns decvalue right now, given mostly non-fract. inputs
 # TODO: test with fract-ish inputs to see what's best to do.
 def format_fixnum(value, allow_minus=False):
