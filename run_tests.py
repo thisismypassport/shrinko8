@@ -177,7 +177,7 @@ def run():
     run_test("clip2p8", "test.clip", "test.clip.p8")
     run_test("p82clip", "testcvt.p8", "testcvt.clip")
     run_test("url2p8", "test.url", "test.url.p8")
-    run_test("p82url", "testcvt.p8", "testcvt.url")
+    run_test("p82url", "bad.p8", "bad.url")
     run_test("genend", "genend.p8.png", "genend.p8")
     run_stdout_test("lint", "bad.p8", "--lint", output="bad.txt", exit_code=1)
     run_stdout_test("count", "bad.p8", "--count", output="badcount.txt")

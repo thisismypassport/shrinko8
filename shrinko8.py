@@ -90,7 +90,7 @@ def main(raw_args):
         args.input_format = CartFormat.png
 
     def fail(msg):
-        eprint(msg)
+        eprint("ERROR: " + msg)
         return 1
 
     if not args.lint and not args.count and not args.output and not args.input_count and not args.version and not args.list:
@@ -198,7 +198,7 @@ def main(raw_args):
             write_compressed_size(cart, handler=args.count, fast_compress=args.fast_compression)
 
     if args.output:
-        write_cart(args.output, cart, args.format, size_handler=args.count, 
+        write_cart(args.output, cart, args.format, size_handler=args.count,
                 unicode_caps=args.unicode_caps, old_compress=args.old_compression,
                 force_compress=args.count or args.force_compression,
                 fast_compress=args.fast_compression, keep_compression=args.keep_compression)

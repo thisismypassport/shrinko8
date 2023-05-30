@@ -80,6 +80,8 @@ k_rom_size = 0x4300
 k_cart_size = 0x8000
 k_code_size = k_cart_size - k_rom_size
 k_trailer_size = 0x20
+k_url_size = 2040
+k_url_prefix_size = 4
 
 k_palette = [
     Color(0x00, 0x00, 0x00, 0xff), # black

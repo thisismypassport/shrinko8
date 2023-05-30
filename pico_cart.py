@@ -433,7 +433,7 @@ k_base64_alt_chars = k_base64_chars[62:].encode()
 k_base64_char_map = {ch: i for i, ch in enumerate(k_base64_chars)}
 
 def print_url_size(size, **kwargs):
-    print_size("url", size, 2000, **kwargs)
+    print_size("url", size - k_url_prefix_size, k_url_size, **kwargs)
 
 def read_cart_from_url(url, size_handler=None, **opts):
     if size_handler:
@@ -524,6 +524,8 @@ def write_cart_to_url(cart, url_prefix=k_url_prefix, force_compress=False, size_
     
     if size_handler:
         print_url_size(len(url), handler=size_handler)
+        
+    assert len(url) - k_url_prefix_size <= k_url_size, "url has too many characters!"
     return url
 
 def read_cart_from_clip(clip, **opts):
