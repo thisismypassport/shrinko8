@@ -37,8 +37,14 @@ class Cart:
         if title is None:
             title = []
             for line in m.code.splitlines()[:2]:
-                if line.startswith("--"):
-                    title.append(line[2:].strip())
+                match = re.fullmatch(r"-- ?(.*)\s*",line)
+                if match:
+                    title.append(match.group(1))
+                else:
+                    title.append("")
+            # remove trailing empty lines from the title
+            while len(title)>0 and title[-1]=="":
+                del title[-1]
         return title
 
     def set_title(m, title):
