@@ -65,7 +65,7 @@ def uncompress_code(r, size_handler=None, **_):
                     extra += 1
                 idx = br.bits(4 + extra) + make_mask(4, extra)
                 
-                #print(len(code), ord(mtf[idx]), br.bit_position - last_bit_pos)
+                #print(ord(mtf[idx]), br.bit_position - last_bit_pos)
                 code.append(mtf[idx])
                 
                 update_mtf(mtf, idx, code[-1])
@@ -91,7 +91,7 @@ def uncompress_code(r, size_handler=None, **_):
                         if part != 7:
                             break
                     
-                    #print(len(code), "%s:%s" % (offset - 1, count - 3), br.bit_position - last_bit_pos)
+                    #print("%s:%s" % (offset, count), br.bit_position - last_bit_pos)
                     for _ in range(count):
                         code.append(code[-offset])
         
@@ -201,6 +201,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
     while i < len(code):
         best_c, best_j = find_match(i)
 
+        # is the match worth it at all?
         if best_c >= 0 and measure and best_c <= measure_c:
             lz_cost = measure(i, mktuple(i, best_j, best_c))
             ch_cost = measure(i, *code[i:i+best_c])
@@ -208,33 +209,42 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
                 best_c = -1
 
         if best_c >= 0:
+            # would it be better to find a match after one literal char?
             best_cp1, best_jp1 = find_match(i+1)
+            yield_ch = best_cp1 > best_c            
             if measure and best_cp1 in (best_c, best_c - 1):
                 lz_cost = measure(i, mktuple(i, best_j, best_c), *code[best_j:best_j+(1 + best_cp1 - best_c)])
                 p1_cost = measure(i, code[i], mktuple(i + 1, best_jp1, best_cp1))
+                # could measure the two-lztuples vs char+two-lztuples case - but results were mixed.
                 if p1_cost < lz_cost:
-                    best_c = -1
+                    yield_ch = True
 
-            # this one is too specific...
-            if measure and best_c >= 0:
+            if measure and not yield_ch:
+                # if not, would it be better to find a match after two literal chars?
                 best_cp2, best_jp2 = find_match(i+2)
-                if best_cp2 == best_c:
+                if best_cp2 > best_c:
+                    best_cf2, best_jf2 = find_match(i + best_c)
+                    if 2 + best_cp2 > best_c + best_cf2:
+                        yield_ch = True
+                    elif 2 + best_cp2 == best_c + best_cf2:
+                        lz_cost = measure(i, mktuple(i, best_j, best_c), mktuple(i + best_c, best_jf2, best_cf2))
+                        p2_cost = measure(i, *code[i:i+2], mktuple(i + 2, best_jp2, best_cp2))
+                        if p2_cost < lz_cost:
+                            yield_ch = True
+                elif best_cp2 == best_c:
                     lz_cost = measure(i, mktuple(i, best_j, best_c), *code[best_j:best_j+2])
                     p2_cost = measure(i, *code[i:i+2], mktuple(i + 2, best_jp2, best_cp2))
+                    # could measure the two-lztuple vs two-char+two-lztuples case (probably useless)
                     if p2_cost < lz_cost:
-                        best_c = -1
-                else:
-                    best_cp2 = -1
+                        yield_ch = True
 
-                if best_cp2 > best_cp1:
-                    best_cp1 = best_cp2
-
-            if best_cp1 > best_c:
+            if yield_ch:
                 yield i, code[i]
                 i += 1
                 continue
 
             if measure and max_o_steps:
+                # would it be better to have a shorter yet closer match?
                 for step in max_o_steps:
                     if i - best_j <= step:
                         break
@@ -312,6 +322,7 @@ def compress_code(w, code, size_handler=None, force_compress=False, fail_on_erro
 
                 return count
 
+            # heuristicly find at which indices we should enter/leave literal blocks
             def preprocess_litblock_idxs():
                 premtf = [chr(i) for i in range(0x100)]
                 pre_min_c = 4 # ignore questionable lz77s
@@ -406,7 +417,7 @@ def compress_code(w, code, size_handler=None, force_compress=False, fail_on_erro
                     in_litblock = not in_litblock
                     next_litblock = litblock_idxs.popleft() if litblock_idxs else len(code)
                     if in_litblock:
-                        #print(i, "******", (next_litblock - i) * 8 + 19)
+                        #print("******", (next_litblock - i) * 8 + 19)
                         bw.bit(0); bw.bit(1); bw.bit(0)
                         bw.bits(10, 0)
                     else:
@@ -421,10 +432,10 @@ def compress_code(w, code, size_handler=None, force_compress=False, fail_on_erro
                 else:
                     if isinstance(item, Lz77Tuple):
                         write_match(item.off, item.cnt)
-                        #print(i, "%s:%s" % (item.off, item.cnt), bw.bit_position - last_bit_pos)
+                        #print("%s:%s" % (item.off + 1, item.cnt + min_c), bw.bit_position - last_bit_pos)
                     else:
                         write_literal(item)
-                        #print(i, ord(item), bw.bit_position - last_bit_pos)
+                        #print(ord(item), bw.bit_position - last_bit_pos)
                     
             bw.flush()
 
