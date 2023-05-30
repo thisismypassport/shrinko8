@@ -33,22 +33,20 @@ class Cart:
         return deepcopy(m)
 
     def get_title(m):
-        title = m.meta.get("title")
-        if title is None:
-            title = []
+        title_meta = m.meta.get("title")
+        if title_meta is None:
+            title = ""
             for line in m.code.splitlines()[:2]:
-                match = re.fullmatch(r"-- ?(.*)\s*",line)
+                match = re.fullmatch(r"-- ?(.*)\s*", line)
                 if match:
-                    title.append(match.group(1))
-                else:
-                    title.append("")
-            # remove trailing empty lines from the title
-            while len(title)>0 and title[-1]=="":
-                del title[-1]
-        return title
+                    title += match.group(1)
+                title += "\n"
+            return title.rstrip("\n")
+        else:
+            return "\n".join(title_meta)
 
     def set_title(m, title):
-        m.meta["title"] = title
+        m.meta["title"] = title.splitlines()
 
     def set_code(m, code):
         title = m.get_title()
@@ -200,7 +198,7 @@ def write_cart_to_image(cart, screenshot_path=None, title=None, res_path=None, *
             image.draw(screenshot_surf, k_screenshot_offset, k_screenshot_rect)
         
         if title is None:
-            title = "\n".join(cart.get_title())
+            title = cart.get_title()
         if title:
             with file_open(path_join(res_path, "font.png")) as font_f:
                 font_surf = Surface.load(font_f)
