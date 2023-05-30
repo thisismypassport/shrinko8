@@ -172,23 +172,24 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
 
     def find_match(i, max_o=max_o):
         best_c, best_j = -1, -1
-        for j in min_matches[code[i:i+min_c]]:
-            if e(max_o) and j < i - max_o:
-                continue
+        for j in reversed(min_matches[code[i:i+min_c]]):
+            if max_o != None and j < i - max_o:
+                break
 
             if best_c >= 0:
-                if code[i:i+best_c] == code[j:j+best_c]: # some speed-up, esp. for cpython
+                if code_slice == code[j:j+best_c]: # some speed-up, esp. for cpython
                     c = get_match_length(code, i, code, j, best_c)
                 else:
                     continue
             else:
                 c = get_match_length(code, i, code, j, min_c)
 
-            if e(max_c):
+            if max_c != None:
                 c = min(c, max_c)
 
             if c > best_c and c >= min_c or c == best_c and j > best_j:
                 best_c, best_j = c, j
+                code_slice = code[i:i+best_c]
         
         return best_c, best_j
 
@@ -256,7 +257,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
             yield i, code[i]
             i += 1
             
-        if not (e(fast_c) and best_c >= fast_c):
+        if not (fast_c != None and best_c >= fast_c):
             for j in range(prev_i, i):
                 min_matches[code[j:j+min_c]].append(j)
         prev_i = i
