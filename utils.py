@@ -2273,6 +2273,14 @@ def fail(msg=None):
     """Fail, optionally with message"""
     assert False, msg
 
+class CheckError(Exception):
+    """An error meant to be caught and displayed as-is, like AssertionError but for user errors"""
+
+def check(cond, msg):
+    """If condition doesn't hold, raise CheckError"""
+    if not cond:
+        raise CheckError(msg)
+
 def desc(value):
     """Set a description (desc attr) of the given function"""
     def decorator(f):

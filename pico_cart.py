@@ -525,7 +525,7 @@ def write_cart_to_url(cart, url_prefix=k_url_prefix, force_compress=False, size_
     if size_handler:
         print_url_size(len(url), handler=size_handler)
         
-    assert len(url) - k_url_prefix_size <= k_url_size, "url has too many characters!"
+    check(len(url) - k_url_prefix_size <= k_url_size, "url has too many characters!")
     return url
 
 def read_cart_from_clip(clip, **opts):

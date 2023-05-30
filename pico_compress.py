@@ -467,8 +467,8 @@ def compress_code(w, code, size_handler=None, force_compress=False, fail_on_erro
             print_compressed_size(size, handler=size_handler)
         
         if fail_on_error:
-            assert len(code) < 0x10000, "cart has too many characters!"
-            assert size <= k_code_size, "cart takes too much compressed space!"
+            check(len(code) < 0x10000, "cart has too many characters!")
+            check(size <= k_code_size, "cart takes too much compressed space!")
         
         if is_new:   
             w.setpos(len_pos)
