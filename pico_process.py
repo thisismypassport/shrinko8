@@ -9,7 +9,7 @@ main_globals = {
     "costatus", "count", "cstore", "cursor", "del", "deli",
     "dget", "dset", "extcmd", "fget", "fillp", "flip",
     "flr", "foreach", "fset", "getmetatable", "ipairs", "inext",
-    "line", "load", "map", "max", "memcpy", "memset",
+    "line", "load", "ls", "map", "max", "memcpy", "memset",
     "menuitem", "mget", "mid", "min", "mset", "music",
     "next", "ord", "oval", "ovalfill", "pack", "pairs",
     "pal", "palt", "peek", "peek2", "peek4", "pget",
@@ -31,7 +31,7 @@ deprecated_globals = {
 undocumented_globals = {
     "holdframe", "_set_fps", "_update_buttons",
     "_map_display", "_get_menu_item_selected",
-    "set_draw_slice",
+    "set_draw_slice", "tostring",
 }
 
 pattern_globals = set(chr(ch) for ch in range(0x80, 0x9a))
