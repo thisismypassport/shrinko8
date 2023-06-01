@@ -171,9 +171,8 @@ def minify_code(source, tokens, root, minify):
             if token.value == "!=":
                 token.value = "~="
              
-            #TODO: enable this in a few weeks. (but re-verify it helps first?)
-            #if token.value == "^^":
-            #    token.value = "~"
+            if token.value == "^^":
+                token.value = "~"
 
             if token.type == TokenType.string:
                 token.value = format_string_literal(parse_string_literal(token.value), long=token.value.startswith('['))
