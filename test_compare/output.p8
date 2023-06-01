@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 36
+version 38
 __lua__
 print=printh?"hello ᶜ7there♥ら"
 t(stat(band()))t()a=0n=0n=0print"this is included"?"#[disable[[this for now/ever]]]"

@@ -178,7 +178,7 @@ def main(raw_args):
         write_code_size(cart, handler=args.input_count, input=True)
         
     ctxt = PicoContext(extra_builtins=args.builtin, not_builtins=args.not_builtin, 
-                       srcmap=args.rename_map, sublang_getter=sublang_cb)
+                       srcmap=args.rename_map, sublang_getter=sublang_cb, version=cart.version_id)
     if preproc_cb:
         preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args, res_path=None) # (res_path is obsolete)
 

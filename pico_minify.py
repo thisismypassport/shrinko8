@@ -96,7 +96,7 @@ def is_right_assoc(node):
 def is_vararg_expr(node):
     return node.type in (NodeType.call, NodeType.varargs)
     
-def minify_code(source, tokens, root, minify):
+def minify_code(source, ctxt, tokens, root, minify):
 
     minify_lines = minify_wspace = minify_tokens = minify_comments = True
     if isinstance(minify, dict):
@@ -171,7 +171,7 @@ def minify_code(source, tokens, root, minify):
             if token.value == "!=":
                 token.value = "~="
              
-            if token.value == "^^":
+            if token.value == "^^" and ctxt.version >= 37:
                 token.value = "~"
 
             if token.type == TokenType.string:

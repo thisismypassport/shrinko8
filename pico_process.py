@@ -105,7 +105,8 @@ class SubLanguageBase:
     minify = None
 
 class PicoContext:
-    def __init__(m, deprecated=True, undocumented=True, patterns=True, srcmap=False, extra_builtins=None, not_builtins=None, sublang_getter=None):
+    def __init__(m, deprecated=True, undocumented=True, patterns=True, srcmap=False, extra_builtins=None, not_builtins=None, 
+                 sublang_getter=None, version=sys.maxsize):
         funcs = set(main_builtins)
         if deprecated:
             funcs |= deprecated_builtins
@@ -122,6 +123,7 @@ class PicoContext:
 
         m.srcmap = [] if srcmap else None
         m.sublang_getter = sublang_getter
+        m.version = version
 
 class Error:
     def __init__(m, msg, token):
@@ -161,7 +163,7 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
             if need_rename:
                 rename_tokens(ctxt, root, rename)
 
-            source.text, tokens = minify_code(source, tokens, root, minify)
+            source.text, tokens = minify_code(source, ctxt, tokens, root, minify)
 
         if count:
             print_token_count(count_tokens(tokens), handler=count)

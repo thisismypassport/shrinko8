@@ -17,7 +17,7 @@ opts = parser.parse_args()
 
 # for test consistency:
 os.environ["PICO8_PLATFORM_CHAR"] = 'w'
-os.environ["PICO8_VERSION_ID"] = '36'
+os.environ["PICO8_VERSION_ID"] = '38'
 
 if opts.exe:
     g_exe_path = "dist/shrinko8/shrinko8.exe"
