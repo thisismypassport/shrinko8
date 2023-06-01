@@ -5,7 +5,7 @@ from pico_parse import VarKind, NodeType, Global
 def lint_code(ctxt, tokens, root, lint_rules):
     errors = []
     vars = defaultdict(list)
-    builtin_globals = ctxt.globals
+    builtin_globals = ctxt.builtins
     custom_globals = set()
 
     lint_undefined = lint_unused = lint_duplicate = True

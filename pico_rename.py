@@ -19,12 +19,12 @@ member_strings = {
 }
 
 def rename_tokens(ctxt, root, rename):
-    all_globals = ctxt.globals.copy()
-    global_knowns = global_callbacks.copy()
-    member_knowns = member_strings.copy()
-    known_tables = set()
-    preserve_globals = False
-    preserve_members = False
+    all_builtins = ctxt.builtins.copy()
+    preserved_globals = global_callbacks.copy()
+    preserved_members = member_strings.copy()
+    preserved_tables = set()
+    preserve_all_globals = False
+    preserve_all_members = False
     members_as_globals = False
 
     if isinstance(rename, dict):
@@ -34,27 +34,27 @@ def rename_tokens(ctxt, root, rename):
             for key, value in rules_input.items():
                 if value == False:
                     if key == "*":
-                        preserve_globals = True
+                        preserve_all_globals = True
                     elif key == "*.*":
-                        preserve_members = True
+                        preserve_all_members = True
                     elif key.endswith(".*"):
-                        known_tables.add(key[:-2])
+                        preserved_tables.add(key[:-2])
                     elif key.startswith("*."):
-                        member_knowns.add(key[2:])
+                        preserved_members.add(key[2:])
                     else:
-                        global_knowns.add(key)
+                        preserved_globals.add(key)
                 elif value == True:
                     if key == "*":
-                        preserve_globals = False
+                        preserve_all_globals = False
                     elif key == "*.*":
-                        preserve_members = False
+                        preserve_all_members = False
                     elif key.endswith(".*"):
-                        known_tables.discard(key[:-2])
+                        preserved_tables.discard(key[:-2])
                     elif key.startswith("*."):
-                        member_knowns.discard(key[2:])
+                        preserved_members.discard(key[2:])
                     else:
-                        all_globals.discard(key)
-                        global_knowns.discard(key)
+                        all_builtins.discard(key)
+                        preserved_globals.discard(key)
                 else:
                     fail(value)
 
@@ -115,11 +115,11 @@ def rename_tokens(ctxt, root, rename):
                     if target_node and target_node.type == NodeType.var and target_node.var and target_node.var.keys_kind != None:
                         return compute_effective_kind(node, target_node.var.keys_kind, explicit=True)
             
-            if preserve_members:
+            if preserve_all_members:
                 return None
-            elif node.name in member_knowns:
+            elif node.name in preserved_members:
                 return None
-            elif table_name in known_tables:
+            elif table_name in preserved_tables:
                 return None
             elif table_name == "_ENV":
                 return compute_effective_kind(node, VarKind.global_, explicit=True)
@@ -133,12 +133,12 @@ def rename_tokens(ctxt, root, rename):
                 if env_var and env_var.keys_kind != None:
                     return compute_effective_kind(node, env_var.keys_kind, explicit=True)
 
-            if preserve_globals:
+            if preserve_all_globals:
                 return None
-            elif node.name in global_knowns:
+            elif node.name in preserved_globals:
                 return None
-            elif node.name in all_globals:
-                global_knowns.add(node.name)
+            elif node.name in all_builtins:
+                preserved_globals.add(node.name)
                 return None
 
         elif kind == VarKind.local:
@@ -187,14 +187,14 @@ def rename_tokens(ctxt, root, rename):
             # slight dup of compute_effective_kind logic
 
             for name, count in node.lang.get_global_usages().items():
-                if name not in global_knowns and is_identifier(name):
-                    if name in all_globals:
-                        global_knowns.add(name)
+                if name not in preserved_globals and is_identifier(name):
+                    if name in all_builtins:
+                        preserved_globals.add(name)
                     else:
                         global_uses[name] += count
 
             for name, count in node.lang.get_member_usages().items():
-                if name not in member_knowns and is_identifier(name):
+                if name not in preserved_members and is_identifier(name):
                     member_uses[name] += count
 
             for var, count in node.lang.get_local_usages().items():
@@ -251,8 +251,8 @@ def rename_tokens(ctxt, root, rename):
 
         return rename_map
 
-    member_renames = assign_idents(member_uses, member_knowns)
-    global_renames = assign_idents(global_uses, global_knowns)
+    member_renames = assign_idents(member_uses, preserved_members)
+    global_renames = assign_idents(global_uses, preserved_globals)
     rev_global_renames = {v: k for k, v in global_renames.items()}
     
     local_ident_stream = create_ident_stream()
@@ -262,7 +262,7 @@ def rename_tokens(ctxt, root, rename):
     while remaining_local_uses:
         ident = local_ident_stream()
         ident_global = rev_global_renames.get(ident)
-        if not ident_global and ident in global_knowns:
+        if not ident_global and ident in preserved_globals:
             ident_global = ident
         ident_locals = []
         

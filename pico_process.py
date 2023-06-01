@@ -2,7 +2,7 @@ from utils import *
 from pico_defs import from_pico_chars
 from pico_cart import print_size
 
-main_globals = {
+main_builtins = {
     "abs", "add", "all", "assert", "atan2", "btn", "btnp",
     "camera", "cartdata", "ceil", "chr", "circ", "circfill",
     "clip", "cls", "cocreate", "color", "coresume", "cos",
@@ -22,19 +22,19 @@ main_globals = {
     "unpack", "yield", "t",
 }
 
-deprecated_globals = {
+deprecated_builtins = {
     "band", "bnot", "bor", "bxor",
     "lshr", "rotl", "rotr", "shl", "shr",
     "mapdraw", 
 }
 
-undocumented_globals = {
+undocumented_builtins = {
     "holdframe", "_set_fps", "_update_buttons",
     "_map_display", "_get_menu_item_selected",
     "set_draw_slice", "tostring",
 }
 
-pattern_globals = set(chr(ch) for ch in range(0x80, 0x9a))
+pattern_builtins = set(chr(ch) for ch in range(0x80, 0x9a))
 
 def get_line_col(text, idx): # (0-based)
     start = 0
@@ -105,18 +105,20 @@ class SubLanguageBase:
     minify = None
 
 class PicoContext:
-    def __init__(m, deprecated=True, undocumented=True, patterns=True, srcmap=False, extra_globals=None, sublang_getter=None):
-        funcs = set(main_globals)
+    def __init__(m, deprecated=True, undocumented=True, patterns=True, srcmap=False, extra_builtins=None, not_builtins=None, sublang_getter=None):
+        funcs = set(main_builtins)
         if deprecated:
-            funcs |= deprecated_globals
+            funcs |= deprecated_builtins
         if undocumented:
-            funcs |= undocumented_globals
+            funcs |= undocumented_builtins
         if patterns:
-            funcs |= pattern_globals
-        if extra_globals:
-            funcs |= set(extra_globals)
+            funcs |= pattern_builtins
+        if extra_builtins:
+            funcs |= set(extra_builtins)
+        if not_builtins:
+            funcs -= set(not_builtins)
 
-        m.globals = funcs
+        m.builtins = funcs
 
         m.srcmap = [] if srcmap else None
         m.sublang_getter = sublang_getter

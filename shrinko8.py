@@ -61,7 +61,8 @@ parser.add_argument("--list", action="store_true", help="list all cart names ins
 parser.add_argument("--cart", help="name of cart to extract from cart package (%s)" % CartFormatList(CartFormat._pack_names))
 
 pgroup = parser.add_argument_group("misc. options (semi-undocumented)")
-pgroup.add_argument("--builtin", type=CommaSep, action=extend_arg, help="treat identifier as a pico-8 builtin (for minify, lint, etc.)")
+pgroup.add_argument("--builtin", type=CommaSep, action=extend_arg, help="treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
+pgroup.add_argument("--not-builtin", type=CommaSep, action=extend_arg, help="do not treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
 pgroup.add_argument("--version", action="store_true", help="print version of cart")
 pgroup.add_argument("--bbs", action="store_true", help="interpret input as a bbs cart id, e.g. '#...' and download it from the bbs")
 pgroup.add_argument("--url", action="store_true", help="interpret input as a URL, and download it from the internet")
@@ -176,7 +177,8 @@ def main(raw_args):
     if args.input_count:
         write_code_size(cart, handler=args.input_count, input=True)
         
-    ctxt = PicoContext(extra_globals=args.builtin, srcmap=args.rename_map, sublang_getter=sublang_cb)
+    ctxt = PicoContext(extra_builtins=args.builtin, not_builtins=args.not_builtin, 
+                       srcmap=args.rename_map, sublang_getter=sublang_cb)
     if preproc_cb:
         preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args, res_path=None) # (res_path is obsolete)
 
