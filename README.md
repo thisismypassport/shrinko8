@@ -397,7 +397,7 @@ def preprocess_main(cart, args, **_):
     print("hello from preprocess_main!")
 
     # 'cart' contains 'code' and 'rom' attributes that can be used to read or modify it
-    # 'cart.code' is a pioc8 string where each char is between '\0' and '\0xff'
+    # 'cart.code' is a pioc8 string where each char is between '\0' and '\xff'
     #             use to/from_p8str in pico_defs.py to convert from/to a unicode string
     #             use decode/encode_p8str in pico_defs.py to convert from/to raw bytes
     # 'cart.rom' is a bytearray with some extra APIs like get16/set32/etc (see Memory in pico_defs.py)
