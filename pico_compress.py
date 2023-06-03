@@ -174,7 +174,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
         best_c, best_j = -1, -1
         for j in reversed(min_matches[code[i:i+min_c]]):
             if best_c >= 0:
-                if code_slice == code[j:j+best_c]: # some speed-up, esp. for cpython
+                if best_slice == code[j:j+best_c]: # some speed-up, esp. for cpython
                     c = get_match_length(code, i, code, j, best_c)
                 else:
                     continue
@@ -189,7 +189,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
 
             if c > best_c and c >= min_c or c == best_c and j > best_j:
                 best_c, best_j = c, j
-                code_slice = code[i:i+best_c]
+                best_slice = code[i:i+best_c]
         
         return best_c, best_j
 
@@ -475,4 +475,4 @@ def compress_code(w, code, size_handler=None, force_compress=False, fail_on_erro
             w.u16(size & 0xffff) # only throw under fail_on_error above
             
     else:
-        w.bytes(bytes(ord(c) for c in code))
+        w.bytes(encode_p8str(code))

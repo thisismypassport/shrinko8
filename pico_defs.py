@@ -3,7 +3,7 @@ from sdl2_utils import Color
 
 class Memory(bytearray):
     def copy(m):
-        return Memory(m[:])
+        return Memory(m)
 
     def replace(m, src):
         m[:] = src
@@ -148,7 +148,7 @@ k_charset_map.update((ch, i) for i, ch in enumerate(k_unicap_chars, start=ord('A
 k_unicap_charset = k_charset[:ord('A')] + k_unicap_chars + k_charset[ord('Z')+1:]
 assert len(k_unicap_charset) == 0x100
 
-def to_pico_chars(text):
+def to_p8str(text):
     result = []
     for ch in text:
         if ord(ch) < 0x80:
@@ -161,9 +161,18 @@ def to_pico_chars(text):
             raise Exception("invalid char: %s (%s)" % (ch, ord(ch)))
     return "".join(result)
 
-def from_pico_chars(text, unicaps=False):
+def from_p8str(text, unicaps=False):
     charset = k_unicap_charset if unicaps else k_charset
     return "".join(charset[ord(ch)] for ch in text)
+
+def encode_p8str(text):
+    return bytes(ord(ch) for ch in text)
+
+def decode_p8str(bytes):
+    return "".join(chr(b) for b in bytes)
+
+to_pico_chars = to_p8str # legacy name
+from_pico_chars = from_p8str # legacy name
 
 k_version_tuples = {
     29: (0,2,1,0),

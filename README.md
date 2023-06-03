@@ -397,7 +397,9 @@ def preprocess_main(cart, args, **_):
     print("hello from preprocess_main!")
 
     # 'cart' contains 'code' and 'rom' attributes that can be used to read or modify it
-    # 'cart.code' is just a string
+    # 'cart.code' is a pioc8 string where each char is between '\0' and '\0xff'
+    #             use to/from_p8str in pico_defs.py to convert from/to a unicode string
+    #             use decode/encode_p8str in pico_defs.py to convert from/to raw bytes
     # 'cart.rom' is a bytearray with some extra APIs like get16/set32/etc (see Memory in pico_defs.py)
 
     # copy the spritesheet from another cart
@@ -423,12 +425,23 @@ def preprocess_main(cart, args, **_):
 def postprocess_main(cart, **_):
     print("hello from postprocess_main!")
 
-    # write a new cart with the same code but zeroed spritesheet, in both p8 and png formats
+    # dump the code of the cart to be written
+    from pico_defs import from_p8str
+    with open("out.txt", "w", encoding="utf8") as f:
+        f.write(from_p8str(cart.code)) # from_p8str converts the code to unicode
+
+    # write an extra cart based on the current cart, but with a zeroed spritesheet, in both p8 and png formats
     from pico_cart import write_cart, CartFormat
     new_cart = cart.copy()
     new_cart.rom[0x0000:0x2000] = bytearray(0x2000) # zero it out
     write_cart("new_cart.p8", new_cart, CartFormat.p8)
     write_cart("new_cart.p8.png", new_cart, CartFormat.png)
+
+    # write a new cart with the same rom but custom code, in rom format
+    from pico_cart import Cart, CartFormat, write_cart
+    from pico_defs import to_p8str
+    new_cart = Cart(code=to_p8str("-- rom-only cart 🐱"), rom=cart.rom)
+    write_cart("new_cart2.rom", new_cart, CartFormat.rom)
 ```
 ## Advanced - custom sub-language
 

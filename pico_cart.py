@@ -17,13 +17,13 @@ class CodeMapping(Tuple):
     fields = ("idx", "src_name", "src_code", "src_idx", "src_line")
 
 class Cart:
-    def __init__(m):
+    def __init__(m, code="", rom=None):
         m.version_id = k_default_version_id
         m.version_tuple = get_version_tuple(k_default_version_id)
         m.platform = k_default_platform
-        m.rom = Memory(k_rom_size)
+        m.rom = rom.copy() if rom else Memory(k_rom_size)
         m.name = ""
-        m.code = ""
+        m.code = code
         m.code_map = ()
         m.code_rom = None
         m.screenshot = None
@@ -32,7 +32,8 @@ class Cart:
     def copy(m):
         return deepcopy(m)
 
-    def get_title(m):
+    @property
+    def title(m):
         title_meta = m.meta.get("title")
         if title_meta is None:
             title = ""
@@ -45,14 +46,15 @@ class Cart:
         else:
             return "\n".join(title_meta)
 
-    def set_title(m, title):
-        m.meta["title"] = title.splitlines()
+    @title.setter
+    def title(m, value):
+        m.meta["title"] = value.splitlines()
 
-    def set_code(m, code):
-        title = m.get_title()
+    def set_code_without_title(m, code):
+        old_title = m.title
         m.code = code
-        if title != m.get_title():
-            m.set_title(title)
+        if old_title != m.title:
+            m.title = old_title
 
 def read_code_from_rom(r, keep_compression=False, **opts):
     code_rom = None
@@ -125,7 +127,7 @@ def write_cart_to_tiny_rom(cart, force_compress=False, keep_compression=False, *
             compress_code(w, cart.code, force_compress=True, **opts)
 
             if len(io.getvalue()) > len(cart.code):
-                io = BytesIO(bytes(ord(c) for c in cart.code))
+                io = BytesIO(encode_p8str(cart.code))
 
         return io.getvalue()
 
@@ -198,7 +200,7 @@ def write_cart_to_image(cart, screenshot_path=None, title=None, res_path=None, *
             image.draw(screenshot_surf, k_screenshot_offset, k_screenshot_rect)
         
         if title is None:
-            title = cart.get_title()
+            title = cart.title
         if title:
             with file_open(path_join(res_path, "font.png")) as font_f:
                 font_surf = Surface.load(font_f)
@@ -273,7 +275,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
                 code_line = line_i
             else:
                 code.append("\n")
-            code.append(to_pico_chars(line))
+            code.append(to_p8str(line))
             y += 1
             
         elif header == "gfx" and clean:
@@ -372,7 +374,7 @@ def write_cart_to_source(cart, unicode_caps=False, **_):
                 break
     
     lines.append("__lua__")
-    lines.append(from_pico_chars(cart.code, unicaps=unicode_caps))
+    lines.append(from_p8str(cart.code, unicaps=unicode_caps))
 
     lines.append("__gfx__")
     for y in range(128):
@@ -418,7 +420,7 @@ def write_cart_to_source(cart, unicode_caps=False, **_):
     return "\n".join(lines)
 
 def write_cart_to_raw_source(cart, with_header=False, unicode_caps=False, **_):
-    source = from_pico_chars(cart.code, unicaps=unicode_caps)
+    source = from_p8str(cart.code, unicaps=unicode_caps)
     if with_header:
         source = "__lua__\n" + source
     return source

@@ -1,5 +1,5 @@
 from utils import *
-from pico_defs import from_pico_chars
+from pico_defs import from_p8str
 from pico_tokenize import TokenType, is_identifier, keywords
 from pico_parse import VarKind, NodeType, Local
 from pico_minify import format_string_literal
@@ -289,7 +289,7 @@ def rename_tokens(ctxt, root, rename):
         for old, new in mapping.items():
             old_name = old.name if isinstance(old, Local) else old
 
-            ctxt.srcmap.append("%s %s <- %s" % (kind, from_pico_chars(new), old_name))
+            ctxt.srcmap.append("%s %s <- %s" % (kind, from_p8str(new), old_name))
 
     if e(ctxt.srcmap):
         update_srcmap(member_renames, "member")

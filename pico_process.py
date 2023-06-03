@@ -1,5 +1,5 @@
 from utils import *
-from pico_defs import from_pico_chars
+from pico_defs import from_p8str
 from pico_cart import print_size
 
 main_builtins = {
@@ -84,7 +84,7 @@ class CartSource(PicoSource):
 
     @text.setter
     def text(m, val):
-        m.cart.set_code(val)
+        m.cart.set_code_without_title(val)
 
 class SubLanguageBase:
     def __init__(m, str, **_):
@@ -173,7 +173,7 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
     return ok, errors
 
 def echo_code(code, echo=True):
-    code = from_pico_chars(code)
+    code = from_p8str(code)
     if echo == True:
         for line in code.splitlines():
             print(line)

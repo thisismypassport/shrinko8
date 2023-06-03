@@ -2,10 +2,6 @@
 def preprocess_main(cart, args, **_):
     print("hello from preprocess_main!")
 
-    # 'cart' contains 'code' and 'rom' attributes that can be used to read or modify it
-    # 'cart.code' is just a string
-    # 'cart.rom' is a bytearray with some extra APIs like get16/set32/etc (see Memory in pico_defs.py)
-
     # copy the spritesheet from another cart
     from pico_cart import read_cart
     other_cart = read_cart("test_input/test.p8") # can be used to read p8 or png carts
@@ -26,13 +22,43 @@ def preprocess_main(cart, args, **_):
     print("Received args:", opts.arg, opts.my_script_opt)
     assert(opts.arg == "my-script-arg" and opts.my_script_opt == 123)
 
+# for testing purposes
+def assert_cart_equals(cart1, cart2):
+    assert(cart1.code == cart2.code)
+    assert(cart1.rom == cart2.rom)
+
 # this is called before your cart is written, after it was fully processed
 def postprocess_main(cart, **_):
     print("hello from postprocess_main!")
 
-    # write a new cart with the same code but zeroed spritesheet, in both p8 and png formats
+    # dump the code of the cart to be written
+    from pico_defs import from_p8str, encode_p8str
+    with open("test_output/out.txt", "w", encoding="utf8") as f:
+        f.write(from_p8str(cart.code)) # from_p8str converts the code to unicode 
+    with open("test_output/rawout.txt", "wb") as f:
+        f.write(encode_p8str(cart.code)) # encode_p8str encodes the code to bytes
+
+    # write an extra cart based on the current cart, but with a zeroed spritesheet, in both p8 and png formats
     from pico_cart import write_cart, CartFormat
     new_cart = cart.copy()
     new_cart.rom[0x0000:0x2000] = bytearray(0x2000) # zero it out
     write_cart("test_output/new_cart.p8", new_cart, CartFormat.p8)
     write_cart("test_output/new_cart.p8.png", new_cart, CartFormat.png)
+
+    from pico_cart import read_cart
+    assert_cart_equals(read_cart("test_output/new_cart.p8"), new_cart)
+    assert_cart_equals(read_cart("test_output/new_cart.p8.png"), new_cart)
+
+    # write a new cart with the same rom but custom code, in rom format
+    from pico_cart import Cart, CartFormat, write_cart
+    from pico_defs import to_p8str, decode_p8str
+    new_cart = Cart(code=to_p8str("-- rom-only cart 🐱"), rom=cart.rom)
+    write_cart("test_output/new_cart2.rom", new_cart, CartFormat.rom)
+
+    from pico_cart import read_cart
+    assert_cart_equals(read_cart("test_output/new_cart2.rom", CartFormat.rom), new_cart)
+
+    test_str = "-- ¹²³ rom-only cart ▶ 🐱 ⬅️ ♪♪♪"
+    assert(from_p8str(to_p8str(test_str)) == test_str)
+    test_p8str = to_p8str(test_str)
+    assert(decode_p8str(encode_p8str(test_p8str)) == test_p8str)
