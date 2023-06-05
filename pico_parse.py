@@ -42,6 +42,10 @@ class NodeType(Enum):
               "sublang") # special
 
 class Node(TokenNodeBase):
+    """A pico8 syntax tree node, spanning 'source'.text['idx':'endidx']. Its 'type' is a NodeType
+    Its 'children' is a list of the Tokens and Nodes that comprise it (for traversal purposes),
+    while each node type has additional properties specifying the relevant children (search for the NodeType below to find out which)."""
+
     def __init__(m, type, children, **kwargs):
         super().__init__()
 

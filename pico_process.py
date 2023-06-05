@@ -50,6 +50,7 @@ def get_line_col(text, idx): # (0-based)
     return line, idx - start
 
 class PicoSource: # keep this light - created for temp. tokenizations
+    """A pico8 source file - e.g. either the main one or an included file"""
     __slots__ = ("name", "text")
 
     def __init__(m, name, text):
@@ -60,6 +61,7 @@ class PicoSource: # keep this light - created for temp. tokenizations
         return m.name, line, col
 
 class CartSource(PicoSource):
+    """The source of a pico8 cart, maps indexes in the preprocessed code to individual source files"""
     def __init__(m, cart):
         m.cart = cart
         m.mappings = cart.code_map
@@ -87,6 +89,8 @@ class CartSource(PicoSource):
         m.cart.set_code_without_title(val)
 
 class SubLanguageBase:
+    """Base class of a custom 'sub-language' (a language embedded in a pico8 string, see README for more info),
+    defining how to minify/lint/etc itself"""
     def __init__(m, str, **_):
         pass
     def get_defined_globals(m, **_):
@@ -105,6 +109,7 @@ class SubLanguageBase:
     minify = None
 
 class PicoContext:
+    """Defines information for how pico8 code is to be processed, e.g. the supported builtins and the supported pico8 version"""
     def __init__(m, deprecated=True, undocumented=True, patterns=True, srcmap=False, extra_builtins=None, not_builtins=None, 
                  sublang_getter=None, version=sys.maxsize):
         funcs = set(main_builtins)
@@ -126,6 +131,7 @@ class PicoContext:
         m.version = version
 
 class Error:
+    """An error (or warning) to be reported together with where in the source it occured"""
     def __init__(m, msg, token):
         m.msg, m.token = msg, token
 

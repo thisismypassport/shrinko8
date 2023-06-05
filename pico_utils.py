@@ -172,7 +172,8 @@ def parse_p8scii(str):
 
         start = pos + length
             
-def bytes_to_string_contents(bytes): # TODO: just use format_string_literal... 
+def bytes_to_string_contents(bytes): # TODO: should this just use format_string_literal? (same logic)
+    """convert a bytes objects to a pico8 string literal, without the surrounding "-s"""
     data = []
 
     esc_map = {

@@ -5,6 +5,7 @@ from pico_compress import compress_code, uncompress_code, get_compressed_size, p
 import hashlib, base64
 
 class CartFormat(Enum):
+    """An enum representing the supported cart formats"""
     values = ("auto", "p8", "png", "lua", "rom", "tiny_rom", "clip", "url", "code", "js", "pod")
 
     _input_names = values
@@ -14,9 +15,12 @@ class CartFormat(Enum):
     _pack_names = ("js", "pod")
 
 class CodeMapping(Tuple):
+    """Specifies that code starting at index 'idx' maps to the given source starting at index 'src_idx'"""
     fields = ("idx", "src_name", "src_code", "src_idx", "src_line")
 
 class Cart:
+    """A pico8 cart, including its code (as a p8str), rom (as a Memory), and more"""
+
     def __init__(m, code="", rom=None):
         m.version_id = k_default_version_id
         m.version_tuple = get_version_tuple(k_default_version_id)
@@ -567,6 +571,7 @@ def read_cart_autodetect(path, **opts):
         return read_cart(path, CartFormat.png, **opts)
 
 def read_cart(path, format=None, **opts):
+    """Read a cart from the given path, assuming it is in the given format"""
     if format in (CartFormat.p8, CartFormat.code):
         return read_cart_from_source(file_read_text(path), path=path, **opts)
     elif format == CartFormat.png:
@@ -587,6 +592,8 @@ def read_cart(path, format=None, **opts):
         fail("invalid format for reading: %s" % format)
 
 class PicoPreprocessor:
+    """The standard pico8 preprocessor (supporting #include and nothing else)"""
+
     def __init__(m, strict=True, include_handler=None):
         m.strict = strict
         m.include_handler = include_handler
@@ -633,6 +640,7 @@ k_long_brackets_re = re.compile(r"\[(=*)\[(.*?)\]\1\]", re.S)
 k_wspace = " \t\r\n"
 
 def preprocess_code(name, path, code, start_line=0, preprocessor=None):
+    """preprocess the given pico8 code (e.g. handle #include-s)"""
     outparts = []
     outmappings = []
     i = start_i = out_i = 0
@@ -705,6 +713,7 @@ def preprocess_code(name, path, code, start_line=0, preprocessor=None):
     return "".join(outparts), outmappings
 
 def write_cart(path, cart, format, **opts):
+    """Writes a cart to the given path in the given format"""
     if format == CartFormat.p8:
         file_write_text(path, write_cart_to_source(cart, **opts))
     elif format == CartFormat.png:
@@ -734,6 +743,8 @@ def get_bbs_cart_url(id):
     return "https://www.lexaloffle.com/bbs/get_cart.php?%s" % urlencode(params)
 
 class CartPackage:
+    """A container of multiple carts"""
+
     def __init__(m, reader, carts, default_name):
         m.carts = carts # name -> <obj>
         m.default_name = default_name
@@ -804,6 +815,7 @@ def read_pod_package(r):
     return CartPackage(reader, carts, default_name)
 
 def read_cart_package(path, format):
+    """Read a CartPackage from the given path, assuming it is in the given format"""
     if format == CartFormat.js:
         return read_js_package(file_read_text(path))
     if format == CartFormat.pod:

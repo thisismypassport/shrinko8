@@ -783,9 +783,9 @@ class BinaryReader(BinaryBase):
     def f64(m):
         return m.f64be() if m.big_end else m.f64le()
 
-    def zbytes(m, len = None, count = 1, allow_eof = False):
+    def zbytes(m, size=None, count=1, allow_eof=False):
         zero = b"\0" * count
-        if len is None:
+        if size is None:
             # TODO: optimize if seeking supported?
             result = b""
             while True:
@@ -799,26 +799,26 @@ class BinaryReader(BinaryBase):
                 else:
                     result += char
         else:
-            result = m.bytes(len * count, allow_eof)
+            result = m.bytes(size * count, allow_eof)
             if allow_eof and count > 1 and len(result) % count:
                 raise struct.error("end of file inside char")
             # TODO: any better way? (can't search/split if count > 1)
-            for i in range(0, len, count):
+            for i in range(0, size, count):
                 if result[i:i+count] == zero:
                     result = result[:i]
                     break
         return result
         
-    def zstr(m, len = None, enc=None):
-        return m.zbytes(len).decode(enc or m.enc)
-    def wzstr(m, len = None, enc=None):
-        return m.zbytes(len, 2).decode(enc or m.wenc)
+    def zstr(m, size=None, enc=None):
+        return m.zbytes(size).decode(enc or m.enc)
+    def wzstr(m, size=None, enc=None):
+        return m.zbytes(size, 2).decode(enc or m.wenc)
     
     def struct(m, struct):
         return struct.unpack(m.f.read(struct.size))
     
-    def list(m, func, len):
-        return [func() for _ in range(len)]
+    def list(m, func, size):
+        return [func() for _ in range(size)]
     
     def bool(m):
         return m.u8() != 0
@@ -1029,17 +1029,17 @@ class BinaryWriter(BinaryBase):
     def wstr(m, v, enc=None):
         m.bytes(v.encode(enc or m.wenc))
             
-    def zbytes(m, v, len=None, count=1):
+    def zbytes(m, v, size=None, count=1):
         m.bytes(v)
-        if len is None:
+        if size is None:
             m.bytes(b"\0" * count)
         else:
             raise NotImplementedError() # yet
         
-    def zstr(m, v, len=None, enc=None):
-        m.zbytes(v.encode(enc or m.enc), len)
-    def wzstr(m, v, len=None, enc=None):
-        m.zbytes(v.encode(enc or m.wenc), len, 2)
+    def zstr(m, v, size=None, enc=None):
+        m.zbytes(v.encode(enc or m.enc), size)
+    def wzstr(m, v, size=None, enc=None):
+        m.zbytes(v.encode(enc or m.wenc), size, 2)
 
     def struct(m, struct, value):
         m.f.write(struct.pack(*value))
@@ -1048,8 +1048,8 @@ class BinaryWriter(BinaryBase):
         for v in value:
             func(v)
             
-    def fill(m, v, len):
-        for i in range(len):
+    def fill(m, v, size):
+        for i in range(size):
             m.u8(v)
 
     def nat(m, v):

@@ -2,6 +2,8 @@ from utils import *
 from sdl2_utils import Color
 
 class Memory(bytearray):
+    """A block pico8 memory - a bytearray with some convenience functions like get/set16, get/set4, etc."""
+
     def copy(m):
         return Memory(m)
 
@@ -58,31 +60,38 @@ class Memory(bytearray):
         m.set8_bits(i, 4 if high else 0, 0xf, value)
 
 def mem_tile_addr(x, y):
+    """Convert an (x,y) coord to a tile address, for use with Memory.get/set4"""
     return y * 0x40 + (x >> 1), (x & 1)
     
 def mem_map_addr(x, y):
+    """Convert an (x,y) coord to a map address"""
     if y >= 0x20: y -= 0x40  # in effect
     return 0x2000 + y * 0x80 + x
 
 def mem_flag_addr(x, y):
+    """Convert an (x,y) coord to the tile's flags address"""
     return 0x3000 + y * 0x80 + x
 
 def mem_music_addr(music, ch):
+    """Returns the address of the given channel of the given music"""
     return 0x3100 + music * 0x4 + ch
     
 def mem_sfx_addr(sound, note):
+    """Return the address of the given note of the given sfx"""
     return 0x3200 + sound * 0x44 + note * 0x2
     
 def mem_sfx_info_addr(sound, i):
+    """Return the address of the i-th info byte of the given sfx"""
     return mem_sfx_addr(sound, 0x20) + i
 
-k_rom_size = 0x4300
-k_cart_size = 0x8000
-k_code_size = k_cart_size - k_rom_size
-k_trailer_size = 0x20
-k_url_size = 2040
+k_rom_size = 0x4300 # size of the part of the pico8 cart that gets copied to the pico8 Memory
+k_cart_size = 0x8000 # size of the entire pico8 cart
+k_code_size = k_cart_size - k_rom_size # size of the code in a pico8 cart
+k_trailer_size = 0x20 # size of the pico8 cart trailer in png format
+k_url_size = 2040 # max. size of a pico8 url
 k_url_prefix_size = 4
 
+# the pico8 palette
 k_palette = [
     Color(0x00, 0x00, 0x00, 0xff), # black
     Color(0x1d, 0x2b, 0x53, 0xff), # dark blue
@@ -119,8 +128,10 @@ k_palette = [
     Color(0xFF, 0x9D, 0x81, 0xff),
 ]
 
+# maps color to pico8 palette index
 k_palette_map = {color: i for i, color in enumerate(k_palette)}
 
+ # the pico8 character set
 k_charset = [
     None, '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '	', '\n', 'ᵇ', 'ᶜ', '\r', 'ᵉ', 'ᶠ',
     '▮', '■', '□', '⁙', '⁘', '‖', '◀', '▶', '「', '」', '¥', '•', '、', '。', '゛', '゜'
@@ -137,6 +148,7 @@ k_charset += [
 ]
 assert len(k_charset) == 0x100
 
+# maps unicode character to pico8 char index
 k_charset_map = {ch[0]: i for i, ch in enumerate(k_charset) if ch != None}
 
 k_variant_char = '\uFE0F'
@@ -145,10 +157,16 @@ k_unicap_chars = ['𝘢','𝘣','𝘤','𝘥','𝘦','𝘧','𝘨','𝘩','𝘪'
 
 k_charset_map.update((ch, i) for i, ch in enumerate(k_unicap_chars, start=ord('A')))
 
+# a variant of the pico8 character set that uses unicode italics for capital characters (used by pico8 for copy/paste)
 k_unicap_charset = k_charset[:ord('A')] + k_unicap_chars + k_charset[ord('Z')+1:]
 assert len(k_unicap_charset) == 0x100
 
+# p8str - a string where each character is between '\0' and '\xff' and represents
+# the corresponding pico8 character. 
+# (in the future, this might become a real type. Now, it's just an agreement on how str is used)
+
 def to_p8str(text):
+    """Convert a unicode string to a pico8 string"""
     result = []
     for ch in text:
         if ord(ch) < 0x80:
@@ -162,13 +180,16 @@ def to_p8str(text):
     return "".join(result)
 
 def from_p8str(text, unicaps=False):
+    """Convert a pico8 string to a unicode string. unicaps determines whether to use unicode italics for capital letters"""
     charset = k_unicap_charset if unicaps else k_charset
     return "".join(charset[ord(ch)] for ch in text)
 
 def encode_p8str(text):
+    """Encode a pico8 string into bytes"""
     return bytes(ord(ch) for ch in text)
 
 def decode_p8str(bytes):
+    """Decodes bytes into a pico8 string"""
     return "".join(chr(b) for b in bytes)
 
 to_pico_chars = to_p8str # legacy name
@@ -194,6 +215,7 @@ k_default_version_id = maybe_int(os.getenv("PICO8_VERSION_ID"), 38) # TODO - upd
 k_default_platform = os.getenv("PICO8_PLATFORM_CHAR", 'w' if os.name == 'nt' else 'x' if sys.platform == 'darwin' else 'l')
 
 def get_version_tuple(id):
+    """Maps a pico8 version id to a tuple representing the actual version (e.g. (0,2,4,1) is v0.2.4b)"""
     version = k_version_tuples.get(id)
     if version is None:
         if id >= 29:

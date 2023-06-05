@@ -17,6 +17,9 @@ k_lint_count_stop = "count::stop"
 k_language_prefix = "language::"
 
 class TokenNodeBase:
+    """Baseclass for both pico8 Token-s and pico8 Node-s.
+    The syntax tree is comprised of these and can be traversed via traverse_nodes or traverse_tokens"""
+
     def __init__(m):
         m.parent, m.children = None, ()
     
@@ -85,6 +88,9 @@ class TokenType(Enum):
     values = ("number", "string", "ident", "keyword", "punct", "comment", "lint")
 
 class Token(TokenNodeBase):
+    """A pico8 token, at 'source'.text['idx':'endidx'] (which is equal to its 'value'). Its 'type' is a TokenType.
+    For number/string tokens, the actual value can be read via parse_fixnum/parse_string_literal"""
+
     def __init__(m, type, value, source=None, idx=None, endidx=None, vline=None):
         super().__init__()
         m.type, m.value, m.source, m.idx, m.endidx, m.vline, m.modified = type, value, source, idx, endidx, vline, False
@@ -510,12 +516,18 @@ def count_tokens(tokens):
         count += 1
     return count
 
+# fixnum - an integer representing a 16.16 pico8 fixed-point number
+# e.g. 
+# This may become a class in the future, but is a convention now.
+
 k_fixnum_mask = 0xffffffff
 
 def num_to_fixnum(value):
+    """convert a python int or real to a fixnum"""
     return int(value * (1 << 16)) & k_fixnum_mask
 
 def fixnum_to_num(value):
+    """convert a fixnum to a python int or real"""
     neg = value & 0x80000000
     if neg:
         value = (-value) & k_fixnum_mask
@@ -526,6 +538,7 @@ def fixnum_to_num(value):
     return -value if neg else value
 
 def parse_fixnum(str):
+    """parse a fixnum from a pico8 string"""
     str = str.lower()
     neg = False
     if str.startswith("-"):
@@ -570,6 +583,7 @@ k_char_escapes = {
 }
 
 def parse_string_literal(str):
+    """parse a pico8 string from a pico8 string literal"""
     if str.startswith("["):
         start = str.index("[", 1) + 1
         end = -start

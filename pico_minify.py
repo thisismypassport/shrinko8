@@ -7,6 +7,7 @@ from pico_parse import k_unary_ops_prec, k_binary_op_precs, k_right_binary_ops
 # essentially only returns decvalue right now, given mostly non-fract. inputs
 # TODO: test with fract-ish inputs to see what's best to do.
 def format_fixnum(value, allow_minus=False):
+    """format a fixnum to a pico8 string"""
     intvalue = value >> 16
     dotvalue = value & 0xffff
 
@@ -54,6 +55,8 @@ k_char_escapes_rev.update({"\0": "0", "\x0e": "14", "\x0f": "15"})
 k_char_escapes_rev_min = {k: v for k, v in k_char_escapes_rev.items() if k in "\0\n\r\"'\\"}
 
 def format_string_literal(value, use_ctrl_chars=True, long=False):
+    """format a pico8 string to a pico8 string literal"""
+
     # currently, I'm unable to find a better-than-nothing heuristic for long strings's compression size
     # if len(strlit) > len(value) + len(long_prefix) + 4 and ...
     if long and "\0" not in value and "\r" not in value and "]]" not in value:
