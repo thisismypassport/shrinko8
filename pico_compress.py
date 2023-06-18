@@ -172,14 +172,12 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
 
     def find_match(i, max_o=max_o):
         best_c, best_j = -1, -1
+        best_slice = ""
         for j in reversed(min_matches[code[i:i+min_c]]):
-            if best_c >= 0:
-                if best_slice == code[j:j+best_c]: # some speed-up, esp. for cpython
-                    c = get_match_length(code, i, code, j, best_c)
-                else:
-                    continue
+            if best_slice == code[j:j+best_c]: # some speed-up, esp. for cpython
+                c = get_match_length(code, i, code, j, best_c if best_c >= 0 else min_c)
             else:
-                c = get_match_length(code, i, code, j, min_c)
+                continue
                 
             if max_c != None:
                 c = min(c, max_c)

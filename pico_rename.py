@@ -27,6 +27,8 @@ def rename_tokens(ctxt, root, rename):
     preserve_all_members = False
     members_as_globals = False
 
+    # read rename options (e.g. what to preserve)
+
     if isinstance(rename, dict):
         members_as_globals = rename.get("members=globals", False)
         rules_input = rename.get("rules")
@@ -59,6 +61,7 @@ def rename_tokens(ctxt, root, rename):
                     fail(value)
 
     # collect char histogram
+    # (reusing commonly used chars in our new identifiers lowers compressed size)
 
     char_uses = CounterDictionary()
     def collect_chars(token):
@@ -73,6 +76,8 @@ def rename_tokens(ctxt, root, rename):
 
     root.traverse_tokens(collect_chars)
 
+    # seems like a good balance between char size and compressed size
+    # (tried adding wide/etc chars, tried subtracing uppercase chars - no clear wins)
     k_identifier_chars = string.ascii_letters + string.digits + "_"
     
     ident_chars = []
@@ -86,7 +91,8 @@ def rename_tokens(ctxt, root, rename):
 
     ident_char_order_map = {ch1: ch2 for ch1, ch2 in zip(ident_chars, ident_chars[1:])}
 
-    # collect ident uses
+    # collect uses of identifier
+    # (e.g. to give priority to more frequently used ones)
 
     global_uses = CounterDictionary()
     member_uses = CounterDictionary()
@@ -94,6 +100,7 @@ def rename_tokens(ctxt, root, rename):
     scopes = []
 
     def compute_effective_kind(node, kind, explicit):
+        """get the identifier kind (global/member/etc) of a node, taking into account hints in the code"""
         if kind == VarKind.member:
             table_name = None
             
@@ -207,7 +214,7 @@ def rename_tokens(ctxt, root, rename):
 
     root.traverse_nodes(collect_idents_pre, collect_idents_post, extra=True)
 
-    # assign idents
+    # assign new names to identifiers
 
     def get_next_ident_char(ch, first):
         nextch = ident_char_order_map.get(ch) if ch else ident_chars[0]
@@ -219,6 +226,7 @@ def rename_tokens(ctxt, root, rename):
             return ident_chars[0], False
 
     def create_ident_stream():
+        """returns a function that can be called to return new identifiers, in the ideal order"""
         next_ident = ""
 
         def get_next_ident():
@@ -235,6 +243,7 @@ def rename_tokens(ctxt, root, rename):
         return get_next_ident
 
     def assign_idents(uses, excludes, skip=0):
+        """assign new names to the given identifiers, in usage frequency order, and ignoring unwanted names"""
         ident_stream = create_ident_stream()
         rename_map = {}
 
@@ -255,6 +264,7 @@ def rename_tokens(ctxt, root, rename):
     global_renames = assign_idents(global_uses, preserved_globals)
     rev_global_renames = {v: k for k, v in global_renames.items()}
     
+    # assign new names to the locals' identifiers, like assign_idents but trickier as it takes scopes into account
     local_ident_stream = create_ident_stream()
     local_renames = {}
 
@@ -283,7 +293,7 @@ def rename_tokens(ctxt, root, rename):
         for i, ident_local in reversed(ident_locals):
             assert remaining_local_uses.pop(i) == ident_local
 
-    # output
+    # output the identifier mapping, if needed
 
     def update_srcmap(mapping, kind):
         for old, new in mapping.items():
@@ -295,6 +305,8 @@ def rename_tokens(ctxt, root, rename):
         update_srcmap(member_renames, "member")
         update_srcmap(global_renames, "global")
         update_srcmap(local_renames, "local")
+
+    # write the new names into the syntax tree
 
     def update_idents(node):
         if node.type == NodeType.var:
@@ -309,6 +321,7 @@ def rename_tokens(ctxt, root, rename):
             else:
                 return
 
+            # need to update the tokens as well...
             if node.parent.type == NodeType.const: # const string interpreted as identifier case
                 assert len(node.parent.children) == 1 and node.parent.extra_names[node.extra_i] == orig_name
                 node.parent.extra_names[node.extra_i] = node.name
