@@ -1,6 +1,6 @@
 __lua__
 print=printh?"hello ᶜ7there♥ら"
-t(stat(band()))t()x=0 b=0 b=0print"this is included"?"#[disable[[this for now/ever]]]"
+🐱,あ,ョ,◝,゛,゜,F,F=11,12,13,14,15,16,17,17t(stat(band()))t()x=0 b=0 b=0print"this is included"?"#[disable[[this for now/ever]]]"
 local l={1,2,3}print(#l)print(#[[#include notaninclude
 ]])local l="preserved_key"local e={preserved_key=123}?e[l]
 local l="preserved_glob"preserved_glob=123?_ENV[l]

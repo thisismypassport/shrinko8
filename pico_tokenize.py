@@ -231,14 +231,14 @@ class CustomPreprocessor(PicoPreprocessor):
     def finish(m, path, code):
         if m.ppstack:
             raise Exception("Unterminated preprocessor ifs")
-    
+
 def is_ident_char(ch):
-    return '0' <= ch <= '9' or 'a' <= ch <= 'z' or 'A' <= ch <= 'Z' or ch == '_' or ch >= chr(0x80)
+    return '0' <= ch <= '9' or 'a' <= ch <= 'z' or 'A' <= ch <= 'Z' or ch in ('_', '\x1e', '\x1f') or ch >= '\x80'
 
 def is_identifier(str):
     return str and all(is_ident_char(ch) for ch in str) and not str[:1].isdigit() and str not in keywords
     
-k_identifier_split_re = re.compile(r"([0-9A-Za-z_\x80-\xff]+)")
+k_identifier_split_re = re.compile(r"([0-9A-Za-z_\x1e\x1f\x80-\xff]+)")
 
 def tokenize(source, ctxt=None):
     text = source.text

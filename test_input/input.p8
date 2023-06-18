@@ -3,6 +3,7 @@ print=printh -- note: most of this test is NOT covered in print/printh - check o
 
 -- special characters
 ?"hello ᶜ7there♥ら"
+🐱,あ,ョ,◝,゛,゜,𝘧,F=11,12,13,14,15,16,17,17
 
 -- various globals
 t(stat(band()))

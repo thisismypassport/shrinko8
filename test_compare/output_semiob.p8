@@ -1,6 +1,7 @@
 __lua__
 print=printh 
 ?"hello ᶜ7there♥ら"
+🐱,f,a,i,d,r,e,e=11,12,13,14,15,16,17,17
 
 
 t(stat(band()))
@@ -11,8 +12,8 @@ t()
 
 
 
-c=0 e=0
-e=0
+h=0 o=0
+o=0
 
 
 print"this is included"
@@ -28,8 +29,8 @@ print(
 
 
 local e = "preserved_key"
-local a = {preserved_key=123}
-?a[e] 
+local o = {preserved_key=123}
+?o[e] 
 
 local e = "preserved_glob"
 preserved_glob = 123
@@ -44,15 +45,15 @@ function e:subfunc() end
 
 
 local e = "key"
-local a = {key=123}
-?a[e]
+local o = {key=123}
+?o[e]
 
 local e = split "key1,key2,key3,123"
-local a = {key1=123,key2=234,key3=345}
-?a[e[2]]
+local o = {key1=123,key2=234,key3=345}
+?o[e[2]]
 
-local e = "o"
-o = 123
+local e = "n"
+n = 123
 ?_ENV[e]
 
 local e = "key1:key2#~~key3,", "!key1_still$key2█ア+123-key123\nif\nif◝"
@@ -72,13 +73,13 @@ some_future_pico8_api(1,2,3)
 local e = {preserved1=1, preserved2=2}
 e.preserved1 += 1
 ?e["preserved1"]
-e = setmetatable( {preserved3=3}, n)
+e = setmetatable( {preserved3=3}, c)
 ?e["preserved3"]
 
 l = {preserved1=1, preserved2=2}
 l.preserved1 += 1
 ?l["preserved1"]
-l = setmetatable( {preserved3=3}, n)
+l = setmetatable( {preserved3=3}, c)
 ?l["preserved3"]
 
 do
@@ -122,12 +123,12 @@ local l = ({})[1], (function()end)()
 local e, o = sin(1,2), cos((cos()))
 local n, c = (cos((cos())))
 local l = {ord=ord, pal=pal}
-local a = ord"123", pal{1,2}, l:ord("ord"), l:pal({1,2}), sin(1)
+local f = ord"123", pal{1,2}, l:ord("ord"), l:pal({1,2}), sin(1)
 local l = {ord"1",[2]=3,x=4,(ord"1")}
-a += 1
+f += 1
 e, o = sin(1,2), cos((cos()))
 n, c = (cos((cos())))
-function f() return 1, 2, ord"1", (ord"1") end
+function s() return 1, 2, ord"1", (ord"1") end
 if 1 == 2 then elseif 1 == 2 then else end
 while 1 == 2 do end
 repeat until 1 == 1
