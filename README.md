@@ -179,6 +179,7 @@ You can disable parts of the minification process via additional command-line op
 
 You can configure how identifier renaming is done:
 
+* `--minify-safe-only` : A shortcut to do only safe renaming (equivalent to preserving all members and - if _ENV is used - all globals)
 * `--rename-members-as-globals` : Rename members (table keys) and globals the same way, useful when tables inherit from _ENV.
 * `--preserve` : Described [here](#preserving-identifiers-across-the-entire-cart)
 * `--no-preserve` : Described [here](#advanced---renaming-built-in-pico-8-functions)

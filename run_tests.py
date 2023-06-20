@@ -3,38 +3,43 @@ from utils import *
 from unittest.mock import patch
 import argparse, subprocess
 
-status = 0
+g_status = 0
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--measure", action="store_true", help="print the input/output counts for successful tests")
-parser.add_argument("--stdout", action="store_true", help="print the stdout of shrinko8 while running the tests")
-parser.add_argument("-t", "--test", action="append", help="specify a specific test to run")
-parser.add_argument("--no-private", action="store_true", help="do not run private tests, if they exist")
-parser.add_argument("-q", "--quiet", action="store_true", help="do not print test successes")
-parser.add_argument("-x", "--exe", action="store_true", help="test a packaged exe instead of the python script")
-parser.add_argument("--pico8", action="append", help="specify a pico8 exe to test the results with")
-opts = parser.parse_args()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--measure", action="store_true", help="print the input/output counts for successful tests")
+    parser.add_argument("--stdout", action="store_true", help="print the stdout of shrinko8 while running the tests")
+    parser.add_argument("-t", "--test", action="append", help="specify a specific test to run")
+    parser.add_argument("--no-private", action="store_true", help="do not run private tests, if they exist")
+    parser.add_argument("-q", "--quiet", action="store_true", help="do not print test successes")
+    parser.add_argument("-x", "--exe", action="store_true", help="test a packaged exe instead of the python script")
+    parser.add_argument("--pico8", action="append", help="specify a pico8 exe to test the results with")
+    g_opts = parser.parse_args()
 
 # for test consistency:
 os.environ["PICO8_PLATFORM_CHAR"] = 'w'
 os.environ["PICO8_VERSION_ID"] = '38'
 
-if opts.exe:
+if g_opts.exe:
     g_exe_path = "dist/shrinko8/shrinko8.exe"
 else:
     g_code_file = "shrinko8.py"
     g_code = file_read_text(g_code_file)
 
 def fail_test():
-    global status
-    status = 1
+    global g_status
+    g_status = 1
+
+def finish_tests():
+    print("\nAll passed" if g_status == 0 else "\nSome FAILED!")
+    sys.exit(g_status)
 
 def run_code(*args, exit_code=None):
     actual_code = None
     stdout = ""
 
     try:
-        if opts.exe:
+        if g_opts.exe:
             try:
                 stdout = subprocess.check_output([g_exe_path, *args], encoding="utf8")
             except subprocess.CalledProcessError as e:
@@ -86,7 +91,7 @@ def measure(kind, path, input=False):
 
 def run_test(name, input, output, *args, private=False, from_temp=False, to_temp=False, 
              read_stdout=False, exit_code=None, extra_outputs=None, pico8_printh=None):
-    if opts.test and name not in opts.test:
+    if g_opts.test and name not in g_opts.test:
         return None
 
     prefix = "private_" if private else ""
@@ -119,10 +124,10 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
                 stdouts.append("ERROR: Extra file difference: %s, %s" % (outpath, cmppath))
                 success = False
 
-    if run_success and opts.pico8 and pico8_printh != None:
+    if run_success and g_opts.pico8 and pico8_printh != None:
         if pico8_printh == True:
             pico8_printh = file_read_text(path_join(prefix + "test_compare", output + ".printh"))
-        for pico8_exe in opts.pico8:
+        for pico8_exe in g_opts.pico8:
             p8_success, p8_stdout = run_pico8(pico8_exe, outpath, expected_printh=pico8_printh)
             if not p8_success:
                 stdouts.append("ERROR: Pico8 run failure with %s" % pico8_exe)
@@ -138,13 +143,13 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
         measure("old", cmppath)
         fail_test()
         return False
-    elif opts.measure:
+    elif g_opts.measure:
         print("\nMeasuring %s" % name)
         measure("in", inpath, input=True)
         measure("out", outpath)
-    elif not opts.quiet:
+    elif not g_opts.quiet:
         print("\nTest %s succeeded" % name)
-    if opts.stdout:
+    if g_opts.stdout:
         print(stdout)
     return True
 
@@ -160,6 +165,8 @@ def run():
              "--no-minify-spaces", "--no-minify-lines")
     run_test("minrename", "input.p8", "output_minrename.p8", "--minify", "--format", "code", 
              "--preserve", "*,*.*")
+    run_test("auto_minrename", "input.p8", "output_minrename.p8", "--minify", "--format", "code", 
+             "--minify-safe-only")
     run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify", "--format", "code",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename")
     run_test("test", "test.p8", "test.p8", "--minify", "--rename-members-as-globals", pico8_printh="DONE")
@@ -201,13 +208,12 @@ if __name__ == "__main__":
     os.makedirs("test_temp", exist_ok=True)
     run()
 
-    if not opts.no_private:
+    if not g_opts.no_private:
         try:
             from private_run_tests import run as private_run
         except ImportError:
             pass
         else:
-            private_run()
+            private_run(run_test)
     
-    print("\nAll passed" if status == 0 else "\nSome FAILED!")
-    sys.exit(status)
+    finish_tests()

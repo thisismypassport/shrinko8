@@ -32,6 +32,7 @@ pgroup.add_argument("--no-minify-spaces", action="store_true", help="disable spa
 pgroup.add_argument("--no-minify-lines", action="store_true", help="disable line removal in minification")
 pgroup.add_argument("--no-minify-comments", action="store_true", help="disable comment removal in minification (requires --no-minify-spaces)")
 pgroup.add_argument("--no-minify-tokens", action="store_true", help="disable token removal in minification")
+pgroup.add_argument("--minify-safe-only", action="store_true", help="only do minifaction that's always safe to do")
 pgroup.add_argument("--rename-members-as-globals", action="store_true", help="rename globals and members the same way")
 pgroup.add_argument("--rename-map", help="log renaming of identifiers (from minify step) to this file")
 
@@ -137,6 +138,7 @@ def main(raw_args):
     if args.rename:
         args.rename = {
             "members=globals": args.rename_members_as_globals,
+            "safe-only": args.minify_safe_only,
         }
         if args.preserve or args.no_preserve:
             rules = {}

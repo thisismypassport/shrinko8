@@ -26,11 +26,13 @@ def rename_tokens(ctxt, root, rename):
     preserve_all_globals = False
     preserve_all_members = False
     members_as_globals = False
+    safe_only = False
 
     # read rename options (e.g. what to preserve)
 
     if isinstance(rename, dict):
         members_as_globals = rename.get("members=globals", False)
+        safe_only = rename.get("safe-only", False)
         rules_input = rename.get("rules")
         if rules_input:
             for key, value in rules_input.items():
@@ -59,6 +61,19 @@ def rename_tokens(ctxt, root, rename):
                         preserved_globals.discard(key)
                 else:
                     fail(value)
+
+    # detect which renames are safe to do, if requested
+    # (note - this assumes a "pure" cart with no hints for shrinko8)
+
+    if safe_only:
+        preserve_all_members = True # can't reasonably guarantee safety of this
+        
+        def check_safety(node):
+            if node.type == NodeType.var and node.kind != VarKind.member and node.name == "_ENV":
+                nonlocal preserve_all_globals
+                preserve_all_globals = True
+
+        root.traverse_nodes(check_safety)
 
     # collect char histogram
     # (reusing commonly used chars in our new identifiers lowers compressed size)
