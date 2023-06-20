@@ -84,7 +84,8 @@ def measure(kind, path, input=False):
     else:
         print("MISSING!")
 
-def run_test(name, input, output, *args, private=False, from_temp=False, to_temp=False, pico8_printh=None):
+def run_test(name, input, output, *args, private=False, from_temp=False, to_temp=False, 
+             read_stdout=False, exit_code=None, extra_outputs=None, pico8_printh=None):
     if opts.test and name not in opts.test:
         return None
 
@@ -93,14 +94,30 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
     outpath = path_join(prefix + ("test_temp" if to_temp else "test_output"), output)
     cmppath = path_join(prefix + "test_compare", output)
 
-    run_success, run_stdout = run_code(inpath, outpath, *args)
+    if read_stdout:
+        args = (inpath,) + args
+    else:
+        args = (inpath, outpath) + args
+
+    run_success, run_stdout = run_code(*args, exit_code=exit_code)
     success = run_success
     stdouts = [run_stdout]
+
+    if read_stdout:
+        file_write_text(outpath, run_stdout)
 
     if run_success and not to_temp:
         if try_file_read(outpath) != try_file_read(cmppath):
             stdouts.append("ERROR: File difference: %s, %s" % (outpath, cmppath))
             success = False
+
+    if run_success and extra_outputs:
+        for extra_output in extra_outputs:
+            extra_outpath = path_join(prefix + "test_output", extra_output)
+            extra_cmppath = path_join(prefix + "test_compare", extra_output)
+            if try_file_read(extra_outpath) != try_file_read(extra_cmppath):
+                stdouts.append("ERROR: Extra file difference: %s, %s" % (outpath, cmppath))
+                success = False
 
     if run_success and opts.pico8 and pico8_printh != None:
         if pico8_printh == True:
@@ -131,28 +148,8 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
         print(stdout)
     return True
 
-def run_stdout_test(name, input, *args, private=False, output=None, exit_code=None):
-    if opts.test and name not in opts.test:
-        return None
-
-    prefix = "private_" if private else ""
-    inpath = path_join(prefix + "test_input", input)
-    outpath = path_join(prefix + "test_output", output)
-    cmppath = path_join(prefix + "test_compare", output)
-
-    success, stdout = run_code(inpath, *args, exit_code=exit_code)
-    file_write_text(outpath, stdout)
-    if success:
-        success = stdout == try_file_read_text(cmppath)
-
-    if not success:
-        print("\nERROR - test %s failed" % name)
-        print(stdout)
-        fail_test()
-        return False
-    elif not opts.quiet:
-        print("\nTest %s succeeded" % name)
-    return True
+def run_stdout_test(name, input, *args, output=None, **kwargs):
+    run_test(name, input, output, *args, **kwargs, read_stdout=True)
 
 def run():
     run_test("minify", "input.p8", "output.p8", "--minify",
@@ -171,6 +168,9 @@ def run():
     run_test("png2p8", "test.png", "testcvt.p8")
     if run_test("compress", "testcvt.p8", "testtmp.png", "--force-compression", to_temp=True):
         run_test("compress_check", "testtmp.png", "test_post_compress.p8", from_temp=True)
+    if run_test("old_compress", "testcvt.p8", "testtmp_old.png", "--force-compression", "--old-compression", to_temp=True):
+        run_test("old_compress_check", "testtmp_old.png", "test_post_compress_old.p8", from_temp=True)
+        run_test("old_compress_keep", "testtmp_old.png", "testtmp_old.png", "--keep-compression", from_temp=True)
     run_test("lua2p8", "included.lua", "testlua.p8")
     run_test("rom2p8", "test.rom", "test.rom.p8")
     run_test("p82rom", "testcvt.p8", "test.p8.rom")
@@ -193,6 +193,8 @@ def run():
              "--builtin", "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z")
     run_test("tinyrom", "tiny.rom", "tiny.lua")
     run_test("title", "title.p8", "title.p8.png")
+    run_test("repl", "repl.p8", "repl.p8", "--minify", "--preserve", "env.*,g_ENV.*,*._ENV,*._env,*._", 
+             "--rename-map", "test_output/repl.map", extra_outputs=["repl.map"], pico8_printh="finished")
 
 if __name__ == "__main__":
     os.makedirs("test_output", exist_ok=True)

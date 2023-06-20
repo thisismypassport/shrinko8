@@ -160,7 +160,7 @@ def get_compressed_size(r):
 class Lz77Tuple(Tuple):
     fields = ("off", "cnt")
 
-def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=None, max_o_steps=None, fast_c=None):
+def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=None, max_o_steps=None, fast_c=None, no_repeat=False):
     min_matches = defaultdict(list)
 
     def get_match_length(left, left_i, right, right_i, min_c):
@@ -181,6 +181,8 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
                 
             if max_c != None:
                 c = min(c, max_c)
+            if no_repeat:
+                c = min(c, i - j)
 
             if max_o != None and j < i - max_o:
                 break
@@ -454,7 +456,7 @@ def compress_code(w, code, size_handler=None, force_compress=False, fail_on_erro
                     w.u8(0)
                     w.u8(ord(ch))
 
-            for i, item in get_lz77(code, min_c=min_c, max_c=0x11, max_o=0xc3f):
+            for i, item in get_lz77(code, min_c=min_c, max_c=0x11, max_o=0xc3f, no_repeat=True):
                 if isinstance(item, Lz77Tuple):
                     write_match(item.off, item.cnt)
                 else:
