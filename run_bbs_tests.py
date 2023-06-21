@@ -11,6 +11,7 @@ def CommaSep(val):
 parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--carts", type=CommaSep, help="specify a specific cart or carts to run on (overrides -f)")
 parser.add_argument("-f", "--carts-file", help="specify which carts to run on via a file", default="private_bbs_tests.lst")
+parser.add_argument("-n", "--new-only", action="store_true", help="only test new carts")
 parser.add_argument("--input-redownload", action="store_true", help="download the carts again")
 parser.add_argument("--input-reprocess", action="store_true", help="process the downloaded carts again (count sizes and convert to p8)")
 parser.add_argument("--only-compress", action="store_true", help="only test compression")
@@ -98,6 +99,8 @@ def run_for_cart(args):
 
     if g_opts.input_redownload or not path_exists(download_path):
         file_write(download_path, file_read(URLPath(get_bbs_cart_url("#" + cart))))
+    elif g_opts.new_only:
+        return None
 
     new_cart_input = None
     if g_opts.input_reprocess or not cart_input:
@@ -168,9 +171,12 @@ def run():
          mt.Pool(g_opts.parallel_jobs) as mt_pool:
         
         p8_results = []
-        for (cart, is_fail, new_cart_input, cart_output, cart_deltas, cart_pico8_path) in \
-                mp_pool.imap_unordered(run_for_cart, [(cart, inputs.get(cart), outputs.get(cart), compares.get(cart)) for cart in g_opts.carts]):
-            
+        mp_inputs = [(cart, inputs.get(cart), outputs.get(cart), compares.get(cart)) for cart in g_opts.carts]
+        for mp_result in mp_pool.imap_unordered(run_for_cart, mp_inputs):
+            if not mp_result:
+                continue
+
+            (cart, is_fail, new_cart_input, cart_output, cart_deltas, cart_pico8_path) = mp_result
             if is_fail:
                 fail_test()
             if new_cart_input:
