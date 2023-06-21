@@ -24,7 +24,7 @@ parser.add_argument("input", help="input file, can be in any format. ('-' for st
 parser.add_argument("output", help="output file. ('-' for stdout)", nargs='?')
 
 pgroup = parser.add_argument_group("minify options")
-pgroup.add_argument("-m", "--minify", action="store_true", help="enable minification")
+pgroup.add_argument("-m", "--minify", action="store_true", help="enable minification of the cart")
 pgroup.add_argument("-p", "--preserve", type=CommaSep, action=extend_arg, help='preserve specific identifiers in minification, e.g. "global1,global2,*.member2,table3.*"')
 pgroup.add_argument("--no-preserve", type=CommaSep, action=extend_arg, help='do not preserve specific built-in identifiers in minification, e.g. "circfill,rectfill"')
 pgroup.add_argument("--no-minify-rename", action="store_true", help="disable variable renaming in minification")
@@ -37,7 +37,7 @@ pgroup.add_argument("--rename-members-as-globals", action="store_true", help="re
 pgroup.add_argument("--rename-map", help="log renaming of identifiers (from minify step) to this file")
 
 pgroup = parser.add_argument_group("lint options")
-pgroup.add_argument("-l", "--lint", action="store_true", help="enable erroring on lint errors")
+pgroup.add_argument("-l", "--lint", action="store_true", help="enable checking the cart for common issues")
 pgroup.add_argument("--no-lint-unused", action="store_true", help="don't print lint errors on unused variables")
 pgroup.add_argument("--no-lint-duplicate", action="store_true", help="don't print lint errors on duplicate variables")
 pgroup.add_argument("--no-lint-undefined", action="store_true", help="don't print lint errors on undefined variables")
@@ -72,6 +72,8 @@ pgroup.add_argument("--fast-compression", action="store_true", help="force fast 
 pgroup.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
 pgroup.add_argument("--old-compression", action="store_true", help="compress with the old pre-v0.2.0 compression scheme")
 pgroup.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
+pgroup.add_argument("--unminify", action="store_true", help="enable unminification of the cart (preliminary)")
+pgroup.add_argument("--unminify-indent", type=int, help="indentation size when unminifying", default=2)
 
 def user_fail(msg):
     sys.stdout.flush()
@@ -148,6 +150,11 @@ def main(raw_args):
                 rules.update({k: True for k in args.no_preserve})
             args.rename["rules"] = rules
 
+    if args.unminify:
+        args.unminify = {
+            "indent": args.unminify_indent
+        }
+
     preproc_cb, postproc_cb, sublang_cb = None, None, None
     if args.script:
         script_spec = importlib.util.spec_from_file_location(path_basename_no_extension(args.script), args.script)
@@ -186,6 +193,7 @@ def main(raw_args):
 
     ok, errors = process_code(ctxt, src, input_count=args.input_count, count=args.count,
                               lint=args.lint, minify=args.minify, rename=args.rename,
+                              unminify=args.unminify,
                               fail=False, want_count=not args.no_count_tokenize)
     if errors:
         print("Lint errors:" if ok else "Compilation errors:")

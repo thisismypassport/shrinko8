@@ -60,14 +60,16 @@ class TokenNodeBase:
     def next_token(m): return m._adjacent_token(1)
     def prev_token(m): return m._adjacent_token(-1)
 
-    def traverse_nodes(m, pre=None, post=None, extra=False):
+    def traverse_nodes(m, pre=None, post=None, tokens=None, extra=False):
         if pre: pre(m)
         for child in m.children:
             if isinstance(child, Node):
-                child.traverse_nodes(pre, post, extra)
+                child.traverse_nodes(pre, post, tokens, extra)
+            elif tokens:
+                tokens(child)
         if extra and hasattr(m, "extra_children"):
             for child in m.extra_children:
-                child.traverse_nodes(pre, post, extra)
+                child.traverse_nodes(pre, post, tokens, extra)
         if post: post(m)
 
     def traverse_tokens(m, visit):

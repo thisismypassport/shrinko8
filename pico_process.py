@@ -143,17 +143,18 @@ class Error:
 def print_token_count(num_tokens, **kwargs):
     print_size("tokens", num_tokens, 8192, **kwargs)
 
-def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, rename=False, fail=True, want_count=True):
+def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, rename=False, unminify=False, fail=True, want_count=True):
     need_lint = lint not in (None, False)
     need_minify = minify not in (None, False)
     need_rename = rename not in (None, False)
+    need_unminify = unminify not in (None, False)
 
-    if not need_lint and not need_minify and not (want_count and (count or input_count)):
+    if not need_lint and not need_minify and not need_unminify and not (want_count and (count or input_count)):
         return True, ()
 
     ok = False
     tokens, errors = tokenize(source, ctxt)
-    if not errors and (need_lint or need_minify):
+    if not errors and (need_lint or need_minify or need_unminify):
         root, errors = parse(source, tokens)
         
     if not errors:
@@ -170,6 +171,9 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
                 rename_tokens(ctxt, root, rename)
 
             source.text, tokens = minify_code(source, ctxt, tokens, root, minify)
+        
+        if need_unminify:
+            source.text = unminify_code(source, tokens, root, unminify)
 
         if count:
             print_token_count(count_tokens(tokens), handler=count)
@@ -190,6 +194,7 @@ from pico_tokenize import tokenize, count_tokens
 from pico_parse import parse
 from pico_lint import lint_code
 from pico_minify import minify_code
+from pico_unminify import unminify_code
 from pico_rename import rename_tokens
 
 # re-export some things for examples/etc.
