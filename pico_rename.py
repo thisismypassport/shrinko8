@@ -287,8 +287,8 @@ def rename_tokens(ctxt, root, rename):
     while remaining_local_uses:
         ident = local_ident_stream()
         ident_global = rev_global_renames.get(ident)
-        if not ident_global and ident in preserved_globals:
-            ident_global = ident
+        if ident_global is None and ident not in global_renames:
+            ident_global = ident # could be a global we didn't rename
         ident_locals = []
         
         for i, var in enumerate(remaining_local_uses):

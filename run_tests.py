@@ -25,7 +25,7 @@ def measure(kind, path, input=False):
         print("MISSING!")
 
 def run_test(name, input, output, *args, private=False, from_temp=False, to_temp=False, 
-             read_stdout=False, exit_code=None, extra_outputs=None, pico8_printh=None):
+             read_stdout=False, exit_code=None, extra_outputs=None, pico8_output_val=None, pico8_output=None):
     if g_opts.test and name not in g_opts.test:
         return None
 
@@ -59,11 +59,11 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
                 stdouts.append("ERROR: Extra file difference: %s, %s" % (outpath, cmppath))
                 success = False
 
-    if run_success and g_opts.pico8 and pico8_printh != None:
-        if pico8_printh == True:
-            pico8_printh = file_read_text(path_join(prefix + "test_compare", output + ".printh"))
+    if run_success and g_opts.pico8 and pico8_output != None or pico8_output_val != None:
+        if pico8_output_val is None:
+            pico8_output_val = file_read_text(path_join(prefix + "test_compare", pico8_output))
         for pico8_exe in g_opts.pico8:
-            p8_success, p8_stdout = run_pico8(pico8_exe, outpath, expected_printh=pico8_printh)
+            p8_success, p8_stdout = run_pico8(pico8_exe, outpath, expected_printh=pico8_output_val)
             if not p8_success:
                 stdouts.append("ERROR: Pico8 run failure with %s" % pico8_exe)
                 stdouts.append(p8_stdout)
@@ -94,17 +94,18 @@ def run_stdout_test(name, input, *args, output=None, **kwargs):
 def run():
     run_test("minify", "input.p8", "output.p8", "--minify",
              "--preserve", "*.preserved_key,preserved_glob,preserving_obj.*",
-             "--no-preserve", "circfill,rectfill", pico8_printh=True)
-    run_test("semiobfuscate", "input.p8", "output_semiob.p8", "--minify", "--format", "code", 
+             "--no-preserve", "circfill,rectfill", pico8_output="output.p8.printh")
+    run_test("semiobfuscate", "input.p8", "output_semiob.p8", "--minify",
              "--preserve", "*.*,preserved_glob",
-             "--no-minify-spaces", "--no-minify-lines")
-    run_test("minrename", "input.p8", "output_minrename.p8", "--minify", "--format", "code", 
-             "--preserve", "*,*.*")
-    run_test("auto_minrename", "input.p8", "output_minrename.p8", "--minify", "--format", "code",
+             "--no-minify-spaces", "--no-minify-lines", pico8_output="output.p8.printh")
+    run_test("minrename", "input.p8", "output_minrename.p8", "--minify",
+             "--preserve", "*,*.*", pico8_output="output.p8.printh")
+    run_test("auto_minrename", "input.p8", "output_minrename.p8", "--minify",
              "--minify-safe-only")
-    run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify", "--format", "code",
+    run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename")
-    run_test("test", "test.p8", "test.p8", "--minify", "--rename-members-as-globals", pico8_printh="DONE")
+             # pico8_output="output.p8.printh" - broken by comment bug in pico8 v0.2.5g...
+    run_test("test", "test.p8", "test.p8", "--minify", "--rename-members-as-globals", pico8_output_val="DONE")
     run_test("p82png", "testcvt.p8", "testcvt.png")
     run_test("test_png", "test.png", "test.png", "--minify")
     run_test("png2p8", "test.png", "testcvt.p8")
@@ -136,7 +137,7 @@ def run():
     run_test("tinyrom", "tiny.rom", "tiny.lua")
     run_test("title", "title.p8", "title.p8.png")
     run_test("repl", "repl.p8", "repl.p8", "--minify", "--preserve", "env.*,g_ENV.*,*._ENV,*._env,*._", 
-             "--rename-map", "test_output/repl.map", extra_outputs=["repl.map"], pico8_printh="finished")
+             "--rename-map", "test_output/repl.map", extra_outputs=["repl.map"], pico8_output_val="finished")
 
 if __name__ == "__main__":
     init_tests(g_opts.exe)

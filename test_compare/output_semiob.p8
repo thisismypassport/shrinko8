@@ -1,7 +1,9 @@
+pico-8 cartridge // http://www.pico-8.com
+version 38
 __lua__
 print=printh 
 ?"hello ᶜ7there♥ら"
-🐱,c,i,a,d,r,e,e=11,12,13,14,15,16,17,17
+🐱,a,d,r,h,x,e,e=11,12,13,14,15,16,17,17
 
 
 t(stat(band()))
@@ -12,7 +14,7 @@ t()
 
 
 
-h=0 o=0
+s=0 o=0
 o=0
 
 
@@ -124,14 +126,22 @@ local l = ({})[1], (function()end)()
 local e, o = sin(1,2), cos((cos()))
 local n, f = (cos((cos())))
 local l = {ord=ord, pal=pal}
-local c = ord"123", pal{1,2}, l:ord("ord"), l:pal({1,2}), sin(1)
+local a = ord"123", pal{1,2}, l:ord("ord"), l:pal({1,2}), sin(1)
 local l = {ord"1",[2]=3,x=4,(ord"1")}
-c += 1
+a += 1
 e, o = sin(1,2), cos((cos()))
 n, f = (cos((cos())))
-function x() return 1, 2, ord"1", (ord"1") end
+function u() return 1, 2, ord"1", (ord"1") end
 if 1 == 2 then elseif 1 == 2 then else end
 while 1 == 2 do end
 repeat until 1 == 1
 for l in (all{}) do end
 print("test"..@16 .."str")
+
+
+c="renaming bug"
+function i()
+  local l,e,o,n,f,i,a,d,r,t,h,x,s,u,k,y,v,p,b,w,g,m,j,q,z,A,B
+  return c
+end
+?i()

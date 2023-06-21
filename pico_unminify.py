@@ -24,7 +24,8 @@ def unminify_code(source, tokens, root, unminify):
         # TODO: preserve comments
 
         if prev_tight and prev_token.value not in ("(", "[", "{", ".", ":") and token.value not in (")", "]", "}", ",", ".", ":") and \
-                not (token.value in ("(", "[") and prev_token.type == TokenType.ident):
+                not (token.value in ("(", "[") and prev_token.type == TokenType.ident) and \
+                not (prev_token.type == TokenType.punct and prev_token.parent.type == NodeType.unary_op):
             output.append(" ")
 
         output.append(token.value)
