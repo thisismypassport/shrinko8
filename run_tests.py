@@ -59,7 +59,7 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
                 stdouts.append("ERROR: Extra file difference: %s, %s" % (outpath, cmppath))
                 success = False
 
-    if run_success and g_opts.pico8 and pico8_output != None or pico8_output_val != None:
+    if run_success and g_opts.pico8 and (pico8_output != None or pico8_output_val != None):
         if pico8_output_val is None:
             pico8_output_val = file_read_text(path_join(prefix + "test_compare", pico8_output))
         for pico8_exe in g_opts.pico8:
