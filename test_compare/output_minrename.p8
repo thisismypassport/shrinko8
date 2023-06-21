@@ -17,8 +17,9 @@ do local _ENV={assert=assert,add=add}assert(add({},1)==1)end for _ENV in all{{x=
 while(1==0)sin=cos cos=sin
 if(1==2);
 if(1==2)sin=cos cos=sin
-local l={1},{1,2,3,4}local l=1~=2local l=1,1.2345,4660,4660.33777,-1,-1.2345,-4660.33777,32776,0xf000.f,-39322,-65535.99999local l="hi","hello",'"hi"',"'hello'",'"hi"',"'hi'","","","a\nb","\\","\0¹²³⁴⁵⁶","¹²³⁴⁵⁶⁷","\\\\\\\\\\\\","\n\n\n\n\n\n","¹²³⁴⁵⁶]]"local l=[[]],[[hi]],[['hi']],[["'hi'"]],[["""""'''''hi'''''"""""]],[[♥♥♥♥]],[[]],[[
+local l={1},{1,2,3,4}local l=1~=2local e=1,1.2345,4660,4660.33777,-1,-1.2345,-4660.33777,32776,0xf000.f,-39322,-65535.99999local e="hi","hello",'"hi"',"'hello'",'"hi"',"'hi'","","","a\nb","\\","\0¹²³⁴⁵⁶","¹²³⁴⁵⁶⁷","\\\\\\\\\\\\","\n\n\n\n\n\n","¹²³⁴⁵⁶]]"local e=[[]],[[hi]],[['hi']],[["'hi'"]],[["""""'''''hi'''''"""""]],[[♥♥♥♥]],[[]],[[
 
-]]local l=-256,-256*4,65280^4,-65280,~65280?1or 1or 2and 3==4>=4|5~6<<1>><1 ..2 ..3- -1^4^1/1&7
+]]local e=-256,-256*4,65280^4,-65280,~65280if(not l)l=-1
+?1or 1or 2and 3==4>=4|5~6<<1>><1 ..2 ..3- -1^4^1/1&7
 ?((~(((((((tonum(((3or 4)and 5)~=2)|1)~2)&3)>>1)..1)-(1+3))*3))^2)^1
-local l=({})[1],(function()end)()local e,o=sin(1,2),cos((cos()))local n,c=(cos((cos())))local l={ord=ord,pal=pal}local f=ord"123",pal{1,2},l:ord("ord"),l:pal({1,2}),sin(1)local l={ord"1",[2]=3,x=4,(ord"1")}f+=1e,o=sin(1,2),cos((cos()))n,c=(cos((cos())))function xxx()return 1,2,ord"1",(ord"1")end if 1==2then elseif 1==2then else end while 1==2do end repeat until 1==1for l in(all{})do end print("test"..@16 .."str")
+local l=({})[1],(function()end)()local e,o=sin(1,2),cos((cos()))local n,f=(cos((cos())))local l={ord=ord,pal=pal}local c=ord"123",pal{1,2},l:ord("ord"),l:pal({1,2}),sin(1)local l={ord"1",[2]=3,x=4,(ord"1")}c+=1e,o=sin(1,2),cos((cos()))n,f=(cos((cos())))function xxx()return 1,2,ord"1",(ord"1")end if 1==2then elseif 1==2then else end while 1==2do end repeat until 1==1for l in(all{})do end print("test"..@16 .."str")

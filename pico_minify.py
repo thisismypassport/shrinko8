@@ -201,8 +201,8 @@ def minify_code(source, ctxt, tokens, root, minify):
         return ce or len(ct) != 2 or (ct[0].type, ct[0].value, ct[1].type, ct[1].value) != (prev_token.type, prev_token.value, token.type, token.value)
 
     def need_linebreak_between(prev_token, token):
-        # TODO: starting from 0.2.5d we could probably be more adventurous with shorthands... (except '?')
-        return prev_token.vline != token.vline and (not minify_lines or prev_token.vline in shorthand_vlines)
+        return e(prev_token.vline) and e(token.vline) and prev_token.vline != token.vline and \
+            (not minify_lines or prev_token.vline in shorthand_vlines)
 
     if minify_wspace:
         # add keep: comments (for simplicity, at start)

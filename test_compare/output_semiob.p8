@@ -1,7 +1,7 @@
 __lua__
 print=printh 
 ?"hello ᶜ7there♥ら"
-🐱,f,a,i,d,r,e,e=11,12,13,14,15,16,17,17
+🐱,c,i,a,d,r,e,e=11,12,13,14,15,16,17,17
 
 
 t(stat(band()))
@@ -73,13 +73,13 @@ some_future_pico8_api(1,2,3)
 local e = {preserved1=1, preserved2=2}
 e.preserved1 += 1
 ?e["preserved1"]
-e = setmetatable( {preserved3=3}, c)
+e = setmetatable( {preserved3=3}, f)
 ?e["preserved3"]
 
 l = {preserved1=1, preserved2=2}
 l.preserved1 += 1
 ?l["preserved1"]
-l = setmetatable( {preserved3=3}, c)
+l = setmetatable( {preserved3=3}, f)
 ?l["preserved3"]
 
 do
@@ -109,26 +109,27 @@ local l = {1}, {1,2,3,4}
 
 
 local l = 1 ~= 2
-local l = 1, 1.2345, 4660, 4660.33777, -1, -1.2345, -4660.33777, 32776, 0xf000.f, -39322, -65535.99999
-local l = "hi", "hello", '"hi"', "'hello'", '"hi"', "'hi'", "", "", "a\nb", "\\", "\0¹²³⁴⁵⁶", "¹²³⁴⁵⁶⁷", "\\\\\\\\\\\\", "\n\n\n\n\n\n", "¹²³⁴⁵⁶]]"
-local l = [[]], [[hi]], [['hi']], [["'hi'"]], [["""""'''''hi'''''"""""]], [[♥♥♥♥]], [[]], [[
+local e = 1, 1.2345, 4660, 4660.33777, -1, -1.2345, -4660.33777, 32776, 0xf000.f, -39322, -65535.99999
+local e = "hi", "hello", '"hi"', "'hello'", '"hi"', "'hi'", "", "", "a\nb", "\\", "\0¹²³⁴⁵⁶", "¹²³⁴⁵⁶⁷", "\\\\\\\\\\\\", "\n\n\n\n\n\n", "¹²³⁴⁵⁶]]"
+local e = [[]], [[hi]], [['hi']], [["'hi'"]], [["""""'''''hi'''''"""""]], [[♥♥♥♥]], [[]], [[
 
 ]]
-local l = -256, -256*4, 65280^4, -65280, ~65280
+local e = -256, -256*4, 65280^4, -65280, ~65280
+if (not l) l = -1
 
 
 ?1 or 1 or 2 and 3 == 4 >= 4 | 5 ~ 6 << 1 >>< 1 .. 2 .. 3 - -1^4^1 / 1 & 7
 ?((~(((((((tonum(((3 or 4) and 5) ~= 2) | 1) ~ 2) & 3) >> 1) .. 1) - (1 + 3)) * 3)) ^ 2) ^ 1
 local l = ({})[1], (function()end)()
 local e, o = sin(1,2), cos((cos()))
-local n, c = (cos((cos())))
+local n, f = (cos((cos())))
 local l = {ord=ord, pal=pal}
-local f = ord"123", pal{1,2}, l:ord("ord"), l:pal({1,2}), sin(1)
+local c = ord"123", pal{1,2}, l:ord("ord"), l:pal({1,2}), sin(1)
 local l = {ord"1",[2]=3,x=4,(ord"1")}
-f += 1
+c += 1
 e, o = sin(1,2), cos((cos()))
-n, c = (cos((cos())))
-function s() return 1, 2, ord"1", (ord"1") end
+n, f = (cos((cos())))
+function x() return 1, 2, ord"1", (ord"1") end
 if 1 == 2 then elseif 1 == 2 then else end
 while 1 == 2 do end
 repeat until 1 == 1

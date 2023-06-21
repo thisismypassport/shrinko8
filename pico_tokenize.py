@@ -99,13 +99,13 @@ class Token(TokenNodeBase):
     def dummy(m, source, idx=None):
         if idx is None:
             idx = len(source.text) if source else 0
-        return Token(None, None, source, idx, idx, 0)
+        return Token(None, None, source, idx, idx)
 
     @classmethod
     def synthetic(m, type, value, other, append=False, prepend=False):
         idx = other.endidx if append else other.idx
         endidx = other.idx if prepend else other.endidx
-        return Token(type, value, other.source, idx, endidx, 0)
+        return Token(type, value, other.source, idx, endidx)
 
     @property
     def fake(m):
