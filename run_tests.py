@@ -1,85 +1,20 @@
 #!/usr/bin/env python3
-from utils import *
-from unittest.mock import patch
-import argparse, subprocess
+from test_utils import *
+import argparse
 
-g_status = 0
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--measure", action="store_true", help="print the input/output counts for successful tests")
-    parser.add_argument("--stdout", action="store_true", help="print the stdout of shrinko8 while running the tests")
-    parser.add_argument("-t", "--test", action="append", help="specify a specific test to run")
-    parser.add_argument("--no-private", action="store_true", help="do not run private tests, if they exist")
-    parser.add_argument("-q", "--quiet", action="store_true", help="do not print test successes")
-    parser.add_argument("-x", "--exe", action="store_true", help="test a packaged exe instead of the python script")
-    parser.add_argument("--pico8", action="append", help="specify a pico8 exe to test the results with")
-    g_opts = parser.parse_args()
+parser = argparse.ArgumentParser()
+parser.add_argument("--measure", action="store_true", help="print the input/output counts for successful tests")
+parser.add_argument("--stdout", action="store_true", help="print the stdout of shrinko8 while running the tests")
+parser.add_argument("-t", "--test", action="append", help="specify a specific test to run")
+parser.add_argument("--no-private", action="store_true", help="do not run private tests, if they exist")
+parser.add_argument("-q", "--quiet", action="store_true", help="do not print test successes")
+parser.add_argument("-x", "--exe", action="store_true", help="test a packaged exe instead of the python script")
+parser.add_argument("--pico8", action="append", help="specify a pico8 exe to test the results with")
+g_opts = parser.parse_args()
 
 # for test consistency:
 os.environ["PICO8_PLATFORM_CHAR"] = 'w'
 os.environ["PICO8_VERSION_ID"] = '38'
-
-if g_opts.exe:
-    g_exe_path = "dist/shrinko8/shrinko8.exe"
-else:
-    g_code_file = "shrinko8.py"
-    g_code = file_read_text(g_code_file)
-
-def fail_test():
-    global g_status
-    g_status = 1
-
-def finish_tests():
-    print("\nAll passed" if g_status == 0 else "\nSome FAILED!")
-    sys.exit(g_status)
-
-def run_code(*args, exit_code=None):
-    actual_code = None
-    stdout = ""
-
-    try:
-        if g_opts.exe:
-            try:
-                stdout = subprocess.check_output([g_exe_path, *args], encoding="utf8")
-            except subprocess.CalledProcessError as e:
-                actual_code = e.returncode
-                stdout = e.stdout
-        else:
-            stdout_io = StringIO()
-            try:
-                with patch.object(sys, "argv", ["dontcare", *args]):
-                    with patch.object(sys, "stdout", stdout_io):
-                        exec(g_code, {"__file__": g_code_file, "__name__": "__main__"})
-            except SystemExit as e:
-                actual_code = e.code
-            
-            stdout = stdout_io.getvalue()
-
-    except Exception:
-        traceback.print_exc()
-        return False, stdout
-            
-    if exit_code == actual_code:
-        return True, stdout
-    else:
-        print("Exit with unexpected code %s" % actual_code)
-        return False, stdout
-
-def run_pico8(p8_exe, cart_path, expected_printh):
-    try:
-        stdout = subprocess.check_output([p8_exe, "-x", cart_path], encoding="utf8", stderr=subprocess.STDOUT, timeout=5.0)
-    except subprocess.SubprocessError as e:
-        return False, e.stdout
-    
-    actual_printh_lines = []
-    for line in stdout.splitlines():
-        if line.startswith("INFO:"):
-            actual_printh_lines.append(str_after_first(line, ':').strip())
-
-    assert expected_printh # we don't check for errors, so we must rely on a final printh!
-    success = "\n".join(actual_printh_lines) == expected_printh
-    return success, stdout
 
 def measure(kind, path, input=False):
     print("Measuring %s..." % kind)
@@ -165,7 +100,7 @@ def run():
              "--no-minify-spaces", "--no-minify-lines")
     run_test("minrename", "input.p8", "output_minrename.p8", "--minify", "--format", "code", 
              "--preserve", "*,*.*")
-    run_test("auto_minrename", "input.p8", "output_minrename.p8", "--minify", "--format", "code", 
+    run_test("auto_minrename", "input.p8", "output_minrename.p8", "--minify", "--format", "code",
              "--minify-safe-only")
     run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify", "--format", "code",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename")
@@ -204,6 +139,8 @@ def run():
              "--rename-map", "test_output/repl.map", extra_outputs=["repl.map"], pico8_printh="finished")
 
 if __name__ == "__main__":
+    init_tests(g_opts.exe)
+    
     os.makedirs("test_output", exist_ok=True)
     os.makedirs("test_temp", exist_ok=True)
     run()
@@ -214,6 +151,6 @@ if __name__ == "__main__":
         except ImportError:
             pass
         else:
-            private_run(run_test)
+            private_run(run_test, run_stdout_test)
     
-    finish_tests()
+    exit_tests()

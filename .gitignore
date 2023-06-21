@@ -2,6 +2,7 @@ __pycache__
 tmp
 test_output
 test_temp
+test_bbs
 private_*
 orig
 dist
