@@ -128,7 +128,7 @@ def main(raw_args):
             "undefined": not args.no_lint_undefined,
         }
 
-    if args.minify:
+    if args.minify or args.minify_safe_only:
         args.minify = {
             "lines": not args.no_minify_lines,
             "wspace": not args.no_minify_spaces,

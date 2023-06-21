@@ -148,7 +148,7 @@ def run_for_cart(args):
         best_path_for_pico8 = compress_path
     
     if g_opts.all or g_opts.only_safe_minify:
-        safe_minify_results = run_code(uncompress_path, safe_minify_path, "--minify", "--minify-safe-only", "--count", "--parsable-count")
+        safe_minify_results = run_code(uncompress_path, safe_minify_path, "--minify-safe-only", "--count", "--parsable-count")
         process_output("safe_minify", check_run("%s:safe_minify" % cart, safe_minify_results, parse_meta=True))
         best_path_for_pico8 = safe_minify_path
     

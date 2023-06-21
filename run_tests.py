@@ -100,8 +100,7 @@ def run():
              "--no-minify-spaces", "--no-minify-lines", pico8_output="output.p8.printh")
     run_test("minrename", "input.p8", "output_minrename.p8", "--minify",
              "--preserve", "*,*.*", pico8_output="output.p8.printh")
-    run_test("auto_minrename", "input.p8", "output_minrename.p8", "--minify",
-             "--minify-safe-only")
+    run_test("auto_minrename", "input.p8", "output_minrename.p8", "--minify-safe-only")
     run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename")
              # pico8_output="output.p8.printh" - broken by comment bug in pico8 v0.2.5g...
