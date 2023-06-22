@@ -169,7 +169,7 @@ class CustomPreprocessor(PicoPreprocessor):
             m.active = m.get_active()
 
         elif not (m.pp_handler and m.pp_handler(op=op, args=args, ppline=line, active=m.active, outparts=outparts)):
-            raise Exception("Invalid preprocessor line: %s" % line)
+            throw("Invalid custom preprocessor line: %s" % line)
 
         # (do not keep empty lines, unlike PicoPreprocessor)
         return m.active, end_i + 1, end_i + 1, out_i
@@ -198,14 +198,14 @@ class CustomPreprocessor(PicoPreprocessor):
                 if key in m.defines:
                     value = m.defines[key]
                 else:
-                    raise Exception("Undefined preprocessor variable: %s" % key)
+                    throw("Undefined custom preprocessor variable: %s" % key)
 
         elif list_get(code, i) == '[':
             cond_args = []
             while list_get(code, i) == '[':
                 match = k_long_brackets_re.match(code, i)
                 if not match:
-                    raise Exception("Unterminated preprocessor long brackets")
+                    throw("Unterminated custom preprocessor long brackets")
 
                 i = match.end()
                 inline = code[orig_i:i + 1]
@@ -214,25 +214,25 @@ class CustomPreprocessor(PicoPreprocessor):
             if list_get(code, i) == ']':
                 end_i = i + 1
             else:
-                raise Exception("Invalid inline preprocesor directive: %s" % inline)
+                throw("Invalid inline custom preprocesor directive: %s" % inline)
 
             value = m.pp_handler(op=op, args=cond_args, ppline=inline, active=True, outparts=outparts) if m.pp_handler else None
             if value is None:
                 if len(cond_args) > 2:
-                    raise Exception("Too many inline preprocessor directive params: %s" % inline)
+                    throw("Too many inline custom preprocessor directive params: %s" % inline)
                 if (key in m.defines) ^ negate:
                     value = list_get(cond_args, 0, "")
                 else:
                     value = list_get(cond_args, 1, "")
         else:
-            raise Exception("Invalid inline preprocesor directive: %s" % op)
+            throw("Invalid inline custom preprocesor directive: %s" % op)
 
         outparts.append(value)
         return True, end_i, end_i, out_i + len(value)
 
     def finish(m, path, code):
         if m.ppstack:
-            raise Exception("Unterminated preprocessor ifs")
+            throw("Unterminated custom preprocessor ifs")
 
 def is_ident_char(ch):
     return '0' <= ch <= '9' or 'a' <= ch <= 'z' or 'A' <= ch <= 'Z' or ch in ('_', '\x1e', '\x1f') or ch >= '\x80'
@@ -622,7 +622,7 @@ def parse_string_literal(str):
                 hex_esc = str[end + 2 : start]
                 value = maybe_int(hex_esc, base=16)
                 if value is None:
-                    raise Exception("Invalid hex escape: %s" % hex_esc)
+                    throw("Invalid hex escape: %s" % hex_esc)
                 litparts.append(chr(value))
 
             elif '0' <= esc <= '9':
@@ -632,11 +632,11 @@ def parse_string_literal(str):
                 dec_esc = str[end + 1 : start]
                 value = maybe_int(dec_esc)
                 if value is None or value >= 256:
-                    raise Exception("Invalid dec escape: %s" % dec_esc)
+                    throw("Invalid dec escape: %s" % dec_esc)
                 litparts.append(chr(value))
 
             else:
-                raise Exception("Invalid escape: %s" % esc)
+                throw("Invalid escape: %s" % esc)
                 
         return "".join(litparts)
 

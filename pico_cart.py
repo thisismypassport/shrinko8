@@ -91,7 +91,7 @@ def read_cart_from_rom(buffer, path=None, allow_tiny=False, **opts):
                 hash = r.bytes(20)
 
                 if hash != bytes(20) and hash != hashlib.sha1(buffer[:k_cart_size]).digest():
-                    raise Exception("corrupted cart (wrong hash)")
+                    throw("corrupted cart (wrong hash)")
 
     return cart
 
@@ -145,12 +145,12 @@ k_palette_map_6bpp = {Color(c.r & ~3, c.g & ~3, c.b & ~3, c.a & ~3): i for c, i 
 def load_cart_image(f):
     r = BinaryReader(f)
     if r.bytes(8) != b"\x89PNG\r\n\x1a\n":
-        raise Exception("Not a valid png")
+        throw("Not a valid png")
     r.subpos(8)
 
     image = Surface.load(f)
     if image.width != k_cart_image_width or image.height != k_cart_image_height:
-        raise Exception("Png has wrong size")
+        throw("Png has wrong size")
 
     return image
 
@@ -446,14 +446,14 @@ def read_cart_from_url(url, size_handler=None, **opts):
         print_url_size(len(url), prefix="input", handler=size_handler)
 
     if "?" not in url:
-        raise Exception("Invalid url - no '?'")
+        throw("Invalid url - no '?'")
 
     code, gfx = None, None
     
     url_params = url.split("?", 1)[1]
     for url_param in url_params.split("&"):
         if "=" not in url_param:
-            raise Exception("Invalid url param: %s" % url_param)
+            throw("Invalid url param: %s" % url_param)
         
         key, value = url_param.split("=", 1)
         if key == "c":
@@ -461,7 +461,7 @@ def read_cart_from_url(url, size_handler=None, **opts):
         elif key == "g":
             gfx = value
         else:
-            raise Exception("Unknown url param: %s" % key)
+            throw("Unknown url param: %s" % key)
 
     cart = Cart()
 
@@ -540,7 +540,7 @@ def read_cart_from_clip(clip, **opts):
         data = bytes.fromhex(clip[len(prefix):-len(suffix)])
         return read_cart_from_image(data, **opts)
     else:
-        raise Exception("Invalid clipboard tag")
+        throw("Invalid clipboard tag")
 
 def write_cart_to_clip(cart, **opts):
     data = write_cart_to_image(cart, **opts)
@@ -589,7 +589,7 @@ def read_cart(path, format=None, **opts):
     elif format in (None, CartFormat.auto):
         return read_cart_autodetect(path, **opts)
     else:
-        fail("invalid format for reading: %s" % format)
+        throw("invalid format for reading: %s" % format)
 
 class PicoPreprocessor:
     """The standard pico8 preprocessor (supporting #include and nothing else)"""
@@ -604,7 +604,7 @@ class PicoPreprocessor:
     def read_included_cart(m, orig_path, inc_name, out_i, outparts, outmappings):
         inc_path = path_join(path_dirname(orig_path), inc_name)
         if not path_exists(inc_path):
-            raise Exception("cannot open included cart at: %s" % inc_path)
+            throw("cannot open included cart at: %s" % inc_path)
 
         inc_cart = m.include_handler(inc_path) if m.include_handler else None
         if inc_cart is None:
@@ -731,11 +731,11 @@ def write_cart(path, cart, format, **opts):
     elif format == CartFormat.code:
         file_write_text(path, write_cart_to_raw_source(cart, with_header=True, **opts))
     else:
-        fail("invalid format for writing: %s" % format)
+        throw("invalid format for writing: %s" % format)
 
 def get_bbs_cart_url(id):
     if not id.startswith("#"):
-        fail("invalid bbs id - # prefix expected")
+        throw("invalid bbs id - # prefix expected")
 
     from urllib.parse import urlencode
     params = {"lid": id[1:], "cat": 7}
@@ -757,13 +757,13 @@ class CartPackage:
         if cart_name is None:
             cart_name = m.default_name
         if cart_name not in m.carts:
-            fail("cart %s not found in package" % cart_name)
+            throw("cart %s not found in package" % cart_name)
         return m.reader(m.carts[cart_name], path=cart_name, **opts)
 
 def read_js_package(text):
     cartnames_raw = re.search("var\s+_cartname\s*=\s*\[(.*?)\]", text, re.S)
     if not cartnames_raw:
-        fail("can't find _cartname var in js")
+        throw("can't find _cartname var in js")
 
     carts = {}
     default_name = None
@@ -775,7 +775,7 @@ def read_js_package(text):
 
     cartdata_raw = re.search("var\s+_cartdat\s*=\s*\[(.*?)\]", text, re.S)
     if not cartdata_raw:
-        fail("can't find _cartdat var in js")
+        throw("can't find _cartdat var in js")
     
     cartdata = bytearray(k_cart_size * len(carts))
     for i, b in enumerate(cartdata_raw.group(1).split(",")):
@@ -821,4 +821,4 @@ def read_cart_package(path, format):
     if format == CartFormat.pod:
         return read_pod_package(BinaryReader(path))
     else:
-        fail("invalid format for listing: %s" % format)
+        throw("invalid format for listing: %s" % format)

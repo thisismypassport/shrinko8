@@ -75,12 +75,7 @@ pgroup.add_argument("--custom-preprocessor", action="store_true", help="enable a
 pgroup.add_argument("--unminify", action="store_true", help="enable unminification of the cart (preliminary)")
 pgroup.add_argument("--unminify-indent", type=int, help="indentation size when unminifying", default=2)
 
-def user_fail(msg):
-    sys.stdout.flush()
-    eprint("ERROR: " + msg)
-    sys.exit(1)
-
-def main(raw_args):
+def main_inner(raw_args):
     if not raw_args: # help is better than usage
         parser.print_help(sys.stderr)
         return 1
@@ -99,15 +94,15 @@ def main(raw_args):
         args.input_format = CartFormat.png
 
     if not args.lint and not args.count and not args.output and not args.input_count and not args.version and not args.list:
-        user_fail("No operation (--lint/--count) or output file specified")
+        throw("No operation (--lint/--count) or output file specified")
     if args.format and not args.output:
-        user_fail("Output should be specified under --format")
+        throw("Output should be specified under --format")
     if args.minify and not args.output and not args.count:
-        user_fail("Output (or --count) should be specified under --minify")
+        throw("Output (or --count) should be specified under --minify")
     if args.minify and args.keep_compression:
-        user_fail("Can't modify code and keep compression")
+        throw("Can't modify code and keep compression")
     if args.list and (args.output or args.lint or args.count):
-        user_fail("--list can't be combined with most other options")
+        throw("--list can't be combined with most other options")
         
     if not args.format and args.output:
         ext = path_extension(args.output)[1:].lower()
@@ -181,7 +176,7 @@ def main(raw_args):
                         keep_compression=args.keep_compression, preprocessor=preprocessor)
         src = CartSource(cart)
     except OSError as e:
-        user_fail("cannot read cart: %s" % e)
+        throw("cannot read cart: %s" % e)
 
     if args.input_count:
         write_code_size(cart, handler=args.input_count, input=True)
@@ -220,7 +215,7 @@ def main(raw_args):
                     force_compress=args.count or args.force_compression,
                     fast_compress=args.fast_compression, keep_compression=args.keep_compression)
     except OSError as e:
-        user_fail("cannot write cart: %s" % e)
+        throw("cannot write cart: %s" % e)
 
     if args.version:
         print("version: %d, v%d.%d.%d:%d, %c" % (cart.version_id, *cart.version_tuple, cart.platform))
@@ -228,8 +223,13 @@ def main(raw_args):
     if errors:
         return 2
 
-if __name__ == "__main__":
+def main(raw_args):
     try:
-        sys.exit(main(sys.argv[1:]))
+        return main_inner(raw_args)
     except CheckError as e:
-        user_fail(str(e))
+        sys.stdout.flush()
+        eprint("ERROR: " + str(e))
+        return 1
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

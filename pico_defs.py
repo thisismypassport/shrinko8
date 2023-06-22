@@ -176,7 +176,7 @@ def to_p8str(text):
         elif ch == k_variant_char:
             pass
         else:
-            raise Exception("invalid char: %s (%s)" % (ch, ord(ch)))
+            throw("invalid char: %s (%s)" % (ch, ord(ch)))
     return "".join(result)
 
 def from_p8str(text, unicaps=False):

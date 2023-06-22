@@ -2281,6 +2281,10 @@ def check(cond, msg):
     if not cond:
         raise CheckError(msg)
 
+def throw(msg):
+    """Unconditionally raise CheckError"""
+    raise CheckError(msg)
+
 def desc(value):
     """Set a description (desc attr) of the given function"""
     def decorator(f):

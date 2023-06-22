@@ -179,7 +179,7 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
             print_token_count(count_tokens(tokens), handler=count)
 
     if fail and errors:
-        raise Exception("\n".join(map(str, errors)))
+        throw("\n".join(map(str, errors)))
     return ok, errors
 
 def echo_code(code, echo=True):
