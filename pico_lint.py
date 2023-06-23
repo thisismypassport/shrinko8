@@ -1,8 +1,8 @@
 from utils import *
-from pico_tokenize import TokenType, is_identifier
+from pico_tokenize import CommentHint, is_identifier
 from pico_parse import VarKind, NodeType, Global
 
-def lint_code(ctxt, tokens, root, lint_rules):
+def lint_code(ctxt, root, lint_rules):
     errors = []
     vars = defaultdict(list)
     builtin_globals = ctxt.builtins
@@ -13,11 +13,6 @@ def lint_code(ctxt, tokens, root, lint_rules):
         lint_undefined = lint_rules.get("undefined", True)
         lint_unused = lint_rules.get("unused", True)
         lint_duplicate = lint_rules.get("duplicate", True)
-
-    for token in tokens:
-        if token.type == TokenType.lint:
-            for value in token.value:
-                custom_globals.add(value)
 
     def add_error(msg, node):
         err = Error(msg, node)
@@ -35,7 +30,14 @@ def lint_code(ctxt, tokens, root, lint_rules):
     def is_function_target(node):
         return node.parent.type == NodeType.function and node == node.parent.target
 
-    def preprocess_vars(node):        
+    def preprocess_tokens(token):
+        if token.children:
+            for comment in token.children:
+                if comment.hint == CommentHint.lint:
+                    for value in comment.hintdata:
+                        custom_globals.add(value)
+
+    def preprocess_vars(node):
         if node.type == NodeType.var:
             if node.kind == VarKind.global_ and node.name not in custom_globals:
                 assign = False
@@ -62,7 +64,7 @@ def lint_code(ctxt, tokens, root, lint_rules):
                     custom_globals.add(glob)
                     vars[glob].append(root.globals[glob])
 
-    root.traverse_nodes(preprocess_vars, extra=True)
+    root.traverse_nodes(preprocess_vars, tokens=preprocess_tokens, extra=True)
 
     # check for issues
 

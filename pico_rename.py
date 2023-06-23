@@ -80,7 +80,7 @@ def rename_tokens(ctxt, root, rename):
 
     char_uses = CounterDictionary()
     def collect_chars(token):
-        if token.type != TokenType.ident and not token.fake:
+        if token.type != TokenType.ident:
             sublang = getattr(token, "sublang", None)
             if sublang and sublang.get_unminified_chars:
                 for ch in sublang.get_unminified_chars():

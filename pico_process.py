@@ -151,10 +151,13 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
 
     if not need_lint and not need_minify and not need_unminify and not (want_count and (count or input_count)):
         return True, ()
+    
+    need_parse = need_lint or need_minify or need_unminify
+    need_all_comments = need_unminify or (need_minify and minify_needs_comments(minify))
 
     ok = False
-    tokens, errors = tokenize(source, ctxt)
-    if not errors and (need_lint or need_minify or need_unminify):
+    tokens, errors = tokenize(source, ctxt, need_all_comments)
+    if not errors and need_parse:
         root, errors = parse(source, tokens)
         
     if not errors:
@@ -164,19 +167,20 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
             print_token_count(count_tokens(tokens), prefix="input", handler=input_count)
 
         if need_lint:
-            errors = lint_code(ctxt, tokens, root, lint)
+            errors = lint_code(ctxt, root, lint)
         
         if need_minify:
             if need_rename:
                 rename_tokens(ctxt, root, rename)
 
-            source.text, tokens = minify_code(source, ctxt, tokens, root, minify)
+            source.text = minify_code(source, ctxt, root, minify)
         
         if need_unminify:
-            source.text = unminify_code(source, root, unminify)
+            source.text = unminify_code(root, unminify)
 
         if count:
-            print_token_count(count_tokens(tokens), handler=count)
+            new_tokens = root.get_tokens() if need_parse else tokens
+            print_token_count(count_tokens(new_tokens), handler=count)
 
     if fail and errors:
         throw("\n".join(map(str, errors)))
@@ -193,7 +197,7 @@ def echo_code(code, echo=True):
 from pico_tokenize import tokenize, count_tokens
 from pico_parse import parse
 from pico_lint import lint_code
-from pico_minify import minify_code
+from pico_minify import minify_code, minify_needs_comments
 from pico_unminify import unminify_code
 from pico_rename import rename_tokens
 

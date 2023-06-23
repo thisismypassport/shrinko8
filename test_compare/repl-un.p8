@@ -2,6 +2,11 @@ pico-8 cartridge // http://www.pico-8.com
 version 38
 __lua__
 
+--------------------------------------
+-- Please see 'Commented Source Code' section in the BBS
+-- for the original commented source code
+-- (The below had the comments stripped due to cart size limits)
+--------------------------------------
 local nw, nx, n3 = _ENV, {}, {}
 for n, e in pairs(_ENV) do
   nx[n] = e

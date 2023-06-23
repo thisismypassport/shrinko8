@@ -5,9 +5,7 @@ print=printh
 ?"hello ᶜ7there♥ら"
 🐱,i,d,r,h,x,e,e=11,12,13,14,15,16,17,17
 
-
 t(stat(band()))
-
 
 
 t()
@@ -16,7 +14,6 @@ t()
 
 s=0 o=0
 o=0
-
 
 print"this is included"
 ?"#[disable[[this for now/ever]]]"
@@ -29,22 +26,18 @@ print(
 ]]
 )
 
-
 local e = "preserved_key"
 local o = {preserved_key=123}
 ?o[e] 
-
 local e = "preserved_glob"
 preserved_glob = 123
 ?_ENV[e] 
-
 local e = {}
 e["whatever"] = 123
 ?e.whatever 
 function e.subfunc() end
 function e:subfunc() end
 ?e:subfunc()
-
 
 local e = "key"
 local o = {key=123}
@@ -60,7 +53,6 @@ n = 123
 
 local e = "key1:key2#~~key3,", "!key1_still$key2█ア+123-key123\nif\nif◝"
 
-
 do
   local _ENV = { assert=assert}
   assert(true)
@@ -70,7 +62,6 @@ for _ENV in all{{x=1}, {x=2}} do
 end
 function some_future_pico8_api() end
 some_future_pico8_api(1,2,3)
-
 
 local e = {preserved1=1, preserved2=2}
 e.preserved1 += 1
@@ -98,22 +89,18 @@ for _ENV in all{{x=1,y=5}, {x=2,y=6}} do
   x += y + y*x
 end
 
-
 local l = {key1=1,key2=2, other=3}
 l.key1 = l. other
-
 
 circfill, rectfill = circfill, rectfill
 circfill(120,126,3) circfill(126,120,3)
 rectfill(120,120,123,123) rectfill(123,123,126,126)
-
 
 while (1==0);
 while (1==0) sin=cos cos=sin
 if (1 == 2);
 if (1 == 2) sin=cos cos=sin
 local l = {1}, {1,2,3,4}
-
 
 local l = 1 ~= 2
 local e = 1, 1.2345, 4660, 4660.33777, -1, -1.2345, -4660.33777, 32776, 0xf000.f, -39322, -65535.99999
@@ -123,7 +110,6 @@ local e = [[]], [[hi]], [['hi']], [["'hi'"]], [["""""'''''hi'''''"""""]], [[♥�
 ]]
 local e = -256, -256*4, 65280^4, -65280, ~65280
 if (not l) l = -1
-
 
 ?1 or 1 or 2 and 3 == 4 >= 4 | 5 ~ 6 << 1 >>< 1 .. 2 .. 3 - -1^4^1 / 1 & 7
 ?((~(((((((tonum(((3 or 4) and 5) ~= 2) | 1) ~ 2) & 3) >> 1) .. 1) - (1 + 3)) * 3)) ^ 2) ^ 1
@@ -142,7 +128,6 @@ while 1 == 2 do end
 repeat until 1 == 1
 for l in (all{}) do end
 print("test"..@16 .."str")
-
 
 c="renaming bug"
 function a()

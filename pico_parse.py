@@ -101,6 +101,11 @@ class Node(TokenNodeBase):
                 return m.scopespec[1]
         return ()
     
+    def get_tokens(m):
+        tokens = []
+        m.traverse_tokens(lambda token: tokens.append(token))
+        return tokens
+    
 class ParseError(Exception):
     pass
 
@@ -134,8 +139,6 @@ def parse(source, tokens):
     scope = Scope(None, depth, funcdepth)
     errors = []
     globals = LazyDict(lambda key: Global(key))
-
-    tokens = [t for t in tokens if not t.fake]
     
     scope.add(Local("_ENV", scope, True))
    
@@ -679,26 +682,22 @@ def parse(source, tokens):
         root.globals = globals
         if peek().type != None:
             add_error("Expected end of input")
+        if idx < len(tokens):
+            root.children.append(take()) # extra comments/etc
         assert scope.parent is None
         #verify_parse(root) # DEBUG
         return root
 
-    """def verify_parse_rec(node):
-        if isinstance(node, Node):
-            for child in node.children:
-                verify_parse_rec(child)
-        else:
-            assert isinstance(node, Token)
-            nonlocal idx
-            if node.source != None:
-                assert node == tokens[idx]
-                idx += 1
-
     def verify_parse(root):
+        def visitor(token):
+            nonlocal idx
+            assert token == tokens[idx]
+            idx += 1
+
         nonlocal idx
         idx = 0
-        verify_parse_rec(root)
-        assert idx == len(tokens)"""
+        root.traverse_tokens(visitor)
+        assert idx == len(tokens)
 
     try:
         return parse_root(), errors

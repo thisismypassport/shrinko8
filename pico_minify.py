@@ -1,6 +1,6 @@
 from utils import *
-from pico_tokenize import TokenType, tokenize, Token, k_char_escapes
-from pico_tokenize import parse_string_literal, parse_fixnum
+from pico_tokenize import TokenType, tokenize, Token, k_char_escapes, CommentHint
+from pico_tokenize import parse_string_literal, parse_fixnum, k_keep_prefix
 from pico_parse import NodeType
 from pico_parse import k_unary_ops_prec, k_binary_op_precs, k_right_binary_ops
 
@@ -98,8 +98,12 @@ def is_right_assoc(node):
 
 def is_vararg_expr(node):
     return node.type in (NodeType.call, NodeType.varargs)
+
+def minify_needs_comments(minify):
+    # returns whether minify_code makes use of the tokens' comments
+    return isinstance(minify, dict) and not minify.get("wspace", True)
     
-def minify_code(source, ctxt, tokens, root, minify):
+def minify_code(source, ctxt, root, minify):
 
     minify_lines = minify_wspace = minify_tokens = minify_comments = True
     if isinstance(minify, dict):
@@ -189,7 +193,6 @@ def minify_code(source, ctxt, tokens, root, minify):
                     token.value = token.value[1:]
                     minus_token = Token.synthetic(TokenType.punct, "-", token, prepend=True)
                     token.parent.children.insert(0, minus_token)
-                    tokens.insert(tokens.index(token), minus_token)
 
     root.traverse_tokens(fixup_tokens)
 
@@ -205,14 +208,16 @@ def minify_code(source, ctxt, tokens, root, minify):
             (not minify_lines or prev_token.vline in shorthand_vlines)
 
     if minify_wspace:
-        # add keep: comments (for simplicity, at start)
-        for token in tokens:
-            if token.type == TokenType.comment:
-                output.append("--%s\n" % token.value)
-
+        # output the tokens as tightly as possible
         prev_token = Token.dummy(None)
         def output_tokens(token):
             nonlocal prev_token
+
+            if token.children:
+                for comment in token.children:
+                    if comment.hint == CommentHint.keep:
+                        output.append(comment.value.replace(k_keep_prefix, "", 1))
+
             if token.value is None:
                 return
 
@@ -231,33 +236,26 @@ def minify_code(source, ctxt, tokens, root, minify):
         root.traverse_tokens(output_tokens)
 
     else:
-        # just remove the comments (if needed), with minimal impact on visible whitespace
+        # output both tokens and surrounding whitespace, possible excluding comments
         prev_token = Token.dummy(None)
         prev_welded_token = None
 
-        def output_wspace(wspace):
-            if minify_comments and not wspace.isspace():
-                start_i, end_i = 0, len(wspace)
-
-                while start_i < len(wspace) and wspace[start_i].isspace():
-                    start_i += 1
-
-                while end_i > 0 and wspace[end_i - 1].isspace():
-                    end_i -= 1
-
-                result = wspace[:start_i] + wspace[end_i:]
-                if wspace and not result:
-                    result = " "
-                output.append(result)
-            else:
-                output.append(wspace)
-
-        for token in tokens:
-            if token.type == TokenType.lint:
-                continue
-
+        def output_tokens(token):
+            nonlocal prev_token, prev_welded_token
             if prev_token.endidx != token.idx:
-                output_wspace(source.text[prev_token.endidx:token.idx])
+                wspace = source.text[prev_token.endidx:token.idx]
+                if minify_comments and token.children:
+                    # only output spacing before and after the comments between the tokens
+                    prespace = source.text[prev_token.endidx:token.children[0].idx]
+                    postspace = source.text[token.children[-1].endidx:token.idx]
+                    output.append(prespace)
+                    if "\n" in wspace and "\n" not in prespace and "\n" not in postspace:
+                        output.append("\n")
+                    elif wspace and not prespace and not postspace:
+                        output.append(" ")
+                    output.append(postspace)
+                else:
+                    output.append(wspace)
                 prev_welded_token = None
             
             # extra whitespace may be needed due to modified or deleted tokens
@@ -265,16 +263,14 @@ def minify_code(source, ctxt, tokens, root, minify):
                 if need_whitespace_between(prev_welded_token, token):
                     output.append(" ")
 
-            if token.type == TokenType.comment:
-                output.append("--%s\n" % token.value)
-            elif token.value != None:
+            if token.value != None:
                 output.append(token.value)
                 prev_welded_token = token
                 
             prev_token = token
+        
+        root.traverse_tokens(output_tokens)
 
-        output_wspace(source.text[prev_token.endidx:])
-
-    return "".join(output), tokens
+    return "".join(output)
 
 from pico_process import PicoSource

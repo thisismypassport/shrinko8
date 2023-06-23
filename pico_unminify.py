@@ -5,7 +5,7 @@ from pico_parse import NodeType
 def is_node_function_stmt(node):
     return (node.type == NodeType.function and node.target) or (node.type == NodeType.local and node.func_local)
 
-def unminify_code(source, root, unminify):
+def unminify_code(root, unminify):
     
     indent_delta = 2
     if isinstance(unminify, dict):
@@ -19,15 +19,33 @@ def unminify_code(source, root, unminify):
     curr_stmt = None
     stmt_stack = []
 
+    k_tight_prefix_tokens = ("(", "[", "{", "?", ".", ":", "::")
+    k_tight_suffix_tokens = (")", "]", "}", ",", ";", ".", ":", "::")
+
     def visit_token(token):
         nonlocal prev_token, prev_tight
-        if token.fake or token.value is None:
-            return
-        
-        # TODO: preserve comments
 
-        if prev_tight and prev_token.value not in ("(", "[", "{", "?", ".", ":", "::") and \
-                token.value not in (")", "]", "}", ",", ".", ":", "::") and \
+        for comment in token.children:
+            comment_value = comment.value
+            if "\n" in comment_value:
+                if prev_tight:
+                    output.append("\n")
+                    output.append(" " * indent)
+                output.append(comment_value)
+                if not comment_value.endswith("\n"):
+                    output.append("\n")
+                output.append(" " * indent)
+            else:
+                if prev_tight and prev_token.value not in k_tight_prefix_tokens:
+                    output.append(" ")
+                output.append(comment_value)
+            prev_tight = False
+
+        if token.value is None:
+            return
+
+        if prev_tight and prev_token.value not in k_tight_prefix_tokens and \
+                token.value not in k_tight_suffix_tokens and \
                 not (token.value in ("(", "[") and (prev_token.type == TokenType.ident or 
                                                     prev_token.value in ("function", ")", "]", "}"))) and \
                 not (prev_token.type == TokenType.punct and prev_token.parent.type == NodeType.unary_op):

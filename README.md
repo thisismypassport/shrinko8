@@ -201,8 +201,6 @@ You can keep specific comments in the output via:
 -- But this comment is gone after minify
 ```
 
-Currently, all kept comments are placed at the start of the file, however.
-
 # Linting
 
 Linting finds common code issues in your cart, like forgetting to use a 'local' statement

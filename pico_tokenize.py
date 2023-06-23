@@ -17,7 +17,7 @@ k_lint_count_stop = "count::stop"
 k_language_prefix = "language::"
 
 class TokenNodeBase:
-    """Baseclass for both pico8 Token-s and pico8 Node-s.
+    """Baseclass for both pico8 Tokens and pico8 Nodes.
     The syntax tree is comprised of these and can be traversed via traverse_nodes or traverse_tokens"""
 
     def __init__(m):
@@ -87,11 +87,12 @@ class TokenNodeBase:
         m.extra_children.append(child)
 
 class TokenType(Enum):
-    values = ("number", "string", "ident", "keyword", "punct", "comment", "lint")
+    values = ("number", "string", "ident", "keyword", "punct")
 
 class Token(TokenNodeBase):
     """A pico8 token, at 'source'.text['idx':'endidx'] (which is equal to its 'value'). Its 'type' is a TokenType.
-    For number/string tokens, the actual value can be read via parse_fixnum/parse_string_literal"""
+    For number/string tokens, the actual value can be read via parse_fixnum/parse_string_literal
+    Its children are the comments *before* it, if any."""
 
     def __init__(m, type, value, source=None, idx=None, endidx=None, vline=None):
         super().__init__()
@@ -109,11 +110,26 @@ class Token(TokenNodeBase):
         endidx = other.idx if prepend else other.endidx
         return Token(type, value, other.source, idx, endidx)
 
+class CommentHint(Enum):
+    values = ("none", "lint", "keep")
+
+class Comment(TokenNodeBase):
+    """A pico8 comment, optionally holding some kind of hint"""
+
+    def __init__(m, hint, hintdata=None, source=None, idx=None, endidx=None):
+        super().__init__()
+        m.hint, m.hintdata, m.source, m.idx, m.endidx = hint, hintdata, source, idx, endidx
+
     @property
-    def fake(m):
-        return m.type in (TokenType.lint, TokenType.comment)
+    def value(m):
+        if m.source and m.idx != None and m.endidx != None:
+            return m.source.text[m.idx:m.endidx]
+        else:
+            return None
 
 class CustomPreprocessor(PicoPreprocessor):
+    """A custom preprocessor that isn't enabled by default (and is quite quirky & weird)"""
+
     def __init__(m, defines=None, pp_handler=None, **kwargs):
         super().__init__(**kwargs)
         m.defines = defines.copy() if defines else {}
@@ -242,16 +258,23 @@ def is_identifier(str):
     
 k_identifier_split_re = re.compile(r"([0-9A-Za-z_\x1e\x1f\x80-\xff]+)")
 
-def tokenize(source, ctxt=None):
+class NextTokenMods:
+    def __init__(m):
+        m.var_kind, m.keys_kind, m.func_kind, m.sublang = None, None, None, None
+        m.comments = None
+        
+    def add_comment(m, cmt):
+        if m.comments is None:
+            m.comments = []
+        m.comments.append(cmt)
+
+def tokenize(source, ctxt=None, all_comments=False):
     text = source.text
     idx = 0
     vline = 0
     tokens = []
     errors = []
-    next_var_kind = None
-    next_keys_kind = None
-    next_func_kind = None
-    next_sublang = None
+    next_mods = None
 
     def peek(off=0):
         i = idx + off
@@ -277,12 +300,23 @@ def tokenize(source, ctxt=None):
             return True
         return False
 
+    def get_next_mods():
+        nonlocal next_mods
+        if next_mods is None:
+            next_mods = NextTokenMods()
+        return next_mods
+
     def add_token(type, start, end_off=0, value=None):
         end = idx + end_off
         if value is None:
             value = text[start:end]
-        tokens.append(Token(type, value, source, start, end, vline))
-        add_token_kinds()
+        token = Token(type, value, source, start, end, vline)
+        tokens.append(token)
+        
+        nonlocal next_mods
+        if next_mods != None:
+            add_next_mods(token, next_mods)
+            next_mods = None
 
     def add_error(msg, off=-1):
         errors.append(Error(msg, Token.dummy(source, idx + off)))
@@ -296,51 +330,50 @@ def tokenize(source, ctxt=None):
                 tokens[-1].sublang = sublang_cls(parse_string_literal(token.value), on_error=add_lang_error)
                 return
 
-    def add_token_kinds():
-        nonlocal next_var_kind, next_keys_kind, next_func_kind, next_sublang
-        if next_var_kind != None:
-            tokens[-1].var_kind = next_var_kind
-            next_var_kind = None
-        if next_keys_kind != None:
-            tokens[-1].keys_kind = next_keys_kind
-            next_keys_kind = None
-        if next_func_kind != None:
-            tokens[-1].func_kind = next_func_kind
-            next_func_kind = None
-        if next_sublang != None:
-            add_sublang(tokens[-1], next_sublang)
-            next_sublang = None
+    def add_next_mods(token, mods):
+        if mods.comments != None:
+            token.children = mods.comments        
+        if mods.var_kind != None:
+            token.var_kind = mods.var_kind
+        if mods.keys_kind != None:
+            token.keys_kind = mods.keys_kind
+        if mods.func_kind != None:
+            token.func_kind = mods.func_kind
+        if mods.sublang != None:
+            add_sublang(token, mods.sublang)
 
     def process_comment(orig_idx, comment, isblock):
+        hint, hintdata = CommentHint.none, None
+
         if comment.startswith(k_lint_prefix):
             lints = [v.strip() for v in comment[len(k_lint_prefix):].split(",")]
-            add_token(TokenType.lint, orig_idx, value=lints)
+            hint, hintdata = CommentHint.lint, lints
 
             for lint in lints:
                 if lint.startswith(k_lint_func_prefix):
-                    nonlocal next_func_kind
-                    next_func_kind = lint[len(k_lint_func_prefix):]
+                    get_next_mods().func_kind = lint[len(k_lint_func_prefix):]
 
         elif comment.startswith(k_keep_prefix):
-            keep_comment = comment[len(k_keep_prefix):].rstrip()
-            add_token(TokenType.comment, orig_idx, value=keep_comment)
+            hint = CommentHint.keep
 
         elif isblock:
-            nonlocal next_var_kind, next_keys_kind, next_sublang
             if comment in ("global", "nameof"): # nameof is deprecated
-                next_var_kind = VarKind.global_
+                get_next_mods().var_kind = VarKind.global_
             elif comment in ("member", "memberof"): # memberof is deprecated
-                next_var_kind = VarKind.member
+                get_next_mods().var_kind = VarKind.member
             elif comment in ("preserve", "string"):
-                next_var_kind = False
+                get_next_mods().var_kind = False
             elif comment == "global-keys":
-                next_keys_kind = VarKind.global_
+                get_next_mods().keys_kind = VarKind.global_
             elif comment == "member-keys":
-                next_keys_kind = VarKind.member
+                get_next_mods().keys_kind = VarKind.member
             elif comment in ("preserve-keys", "string-keys"):
-                next_keys_kind = False
+                get_next_mods().keys_kind = False
             elif comment.startswith(k_language_prefix) and not any(ch.isspace() for ch in comment):
-                next_sublang = comment[len(k_language_prefix):]
+                get_next_mods().sublang = comment[len(k_language_prefix):]
+        
+        if all_comments or hint != CommentHint.none:
+            get_next_mods().add_comment(Comment(hint, hintdata, source, orig_idx, idx))
 
     def tokenize_line_comment():
         nonlocal vline
@@ -348,7 +381,7 @@ def tokenize(source, ctxt=None):
         while take() not in ('\n', ''): pass
         vline += 1
 
-        process_comment(orig_idx, text[orig_idx:idx], isblock=False)
+        process_comment(orig_idx - 2, text[orig_idx:idx], isblock=False)
 
     def tokenize_long_brackets(off):
         nonlocal idx
@@ -377,7 +410,7 @@ def tokenize(source, ctxt=None):
         nonlocal idx
         ok, orig_idx, start, end = tokenize_long_brackets(0)
         if ok:
-            process_comment(orig_idx, text[start:end], isblock=True)
+            process_comment(orig_idx - 2, text[start:end], isblock=True)
         else:
             idx = orig_idx
         return ok
@@ -496,16 +529,18 @@ def tokenize(source, ctxt=None):
 
         else:
             add_error("invalid character")
-        
+    
+    if next_mods or all_comments:
+        add_token(None, idx) # end token, for ending whitespace/comments/etc
     return tokens, errors
 
 def count_tokens(tokens):
     count = 0
     for i, token in enumerate(tokens):
-        if token.fake:
-            if token.type == TokenType.lint and k_lint_count_stop in token.value:
-                break
-            continue
+        if token.children:
+            for comment in token.children:
+                if comment.hint == CommentHint.lint and k_lint_count_stop in comment.hintdata:
+                    return count
 
         if token.value in (",", ".", ":", ";", "::", ")", "]", "}", "end", "local", None):
             continue
