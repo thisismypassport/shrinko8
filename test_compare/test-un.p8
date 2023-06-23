@@ -2,19 +2,19 @@ pico-8 cartridge // http://www.pico-8.com
 version 36
 __lua__
 
-t = 1
+f = 1
 assert(true, 1)
-assert(t == 1, 2)
+assert(f == 1, 2)
 assert("\0ᶜ3\n	⁵Aa" == "\0ᶜ3\n	⁵Aa")
 assert("'\"\\'" == [['"\']], 3)
 assert("]]" == "]]", 4)
-t = 1
-w = 1
-assert(t == 1 and w == 1, 5)
+f = 1
+p = 1
+assert(f == 1 and p == 1, 5)
 assert(0xf.f == 0xf.f and 2.25 == 2.25, 6)
-e, o, u = 1, {}, 3
-e, o.n, o[1], u = u, 2, 4, e
-assert(e == 3 and u == 1 and o["n"] == 2 and o[1] == 4, 8)
+e, o, c = 1, {}, 3
+e, o.n, o[1], c = c, 2, 4, e
+assert(e == 3 and c == 1 and o["n"] == 2 and o[1] == 4, 8)
 do
   local n = e + 1
   assert(n == 4, 9)
@@ -31,8 +31,8 @@ function d()
   return 1, 2, 3
 end
 
-local t, u, h, i, w, p = 0, d()
-assert(t == 0 and u == 1 and h == 2 and i == 3 and w == nil and p == nil, 12)
+local t, u, c, f, g, p = 0, d()
+assert(t == 0 and u == 1 and c == 2 and f == 3 and g == nil and p == nil, 12)
 
 function d(...)
   return ...
@@ -125,15 +125,15 @@ end
 assert(d() == nil and pack(d()).n == 0, 34)
 assert(a() == nil and pack(a()).n == 0, 35)
 
-function c(...)
+function s(...)
   return ...
 end
 
-e = {1, 2, e = 1, o = 2, 3, 4, [12] = 4, c(5, 6, nil, 8)}
+e = {1, 2, e = 1, o = 2, 3, 4, [12] = 4, s(5, 6, nil, 8)}
 assert(e[1] == 1 and e[2] == 2 and e[3] == 3 and e[4] == 4 and e[5] == 5 and e[6] == 6, 36)
 assert(e[7] == nil and e[8] == 8 and e["e"] == 1 and e.o == 2 and e[12] == 4, 37)
 
-function c(...)
+function s(...)
   return {...}
 end
 
@@ -144,32 +144,32 @@ do
 
   assert(#n(1, 2) == 1 and n(1, 2).e == 3, 38)
 end
-assert(#c(1, 2) == 2, 39)
+assert(#s(1, 2) == 2, 39)
 assert(1 + 4 * 5 == 21 and 498 & 255 << 4 == 496, 40)
 assert((1 + 4) * 5 == 25 and (498 & 255) << 4 == 3872, 41)
 assert(-2 ^ 4 == -16 and (-2) ^ 4 == 16, 42)
 assert(1 ~= 2 and 1 ~= 2 or assert(false, 43), 43.1)
-i = {d = function(n)
-  return n.i
-end, i = 3}
-assert(i:d() == 3 and i.d {i = 4} == 4, 44)
-setmetatable(i, {__index = function(e, n)
+f = {d = function(n)
+  return n.u
+end, u = 3}
+assert(f:d() == 3 and f.d {u = 4} == 4, 44)
+setmetatable(f, {__index = function(e, n)
   return n
 end})
-assert(i.p == "p", 45)
-i.a = i
+assert(f.b == "b", 45)
+f.a = f
 
-function i.a.a.i(n)
+function f.a.a.u(n)
   return n
 end
 
-assert(i.i(false) == false, 46)
+assert(f.u(false) == false, 46)
 
-function i.a.a:h(n)
+function f.a.a:g(n)
   return self, n
 end
 
-assert(i:h(true) == i and select(2, i:h(true)) == true, 47)
+assert(f:g(true) == f and select(2, f:g(true)) == true, 47)
 do
   t = 1
   do
@@ -206,23 +206,23 @@ local function n(e)
 end
 
 local e = _ENV
-n {assert = assert, b = 123}
-assert(b == 123, 52)
+n {assert = assert, z = 123}
+assert(z == 123, 52)
 n(e)
 
 function d()
   return 9, 0, 1
 end
 
-function z(n)
+function A(n)
   return n()
 end
 
-function A(n)
+function B(n)
   return (n())
 end
 
-assert(pack(z(d)).n == 3 and pack(A(d)).n == 1, 53)
+assert(pack(A(d)).n == 3 and pack(B(d)).n == 1, 53)
 t = 72
 t -= 4 * 2
 t >>>= 16
@@ -240,7 +240,7 @@ do
   end
 
 end
-assert(D == nil, 56)
+assert(O == nil, 56)
 t = 1
 repeat
   local n = 2
@@ -279,15 +279,15 @@ end
 local o, l, a, t = n(10), n(20), n(30, 1)
 assert(o() == 11 and l() == 21 and n(0)() == 1 and a() == 31 and t() == 61 and o() == 12 and l() == 22 and n(0)() == 1 and a() == 32 and t() == 62, 60)
 
-function r(n)
+function i(n)
   return n
 end
 
-assert(r "me" == "me" and r [[me]] == "me", 61)
-g = {r = function(e, n)
+assert(i "me" == "me" and i [[me]] == "me", 61)
+m = {i = function(e, n)
   return n
 end}
-assert(g:r "me" == "me" and #g:r {} == 0, 62)
+assert(m:i "me" == "me" and #m:i {} == 0, 62)
 do
   while true do
     if 1 == 1 then
@@ -299,28 +299,28 @@ do
 end
 local n = 1
 
-function B()
+function k()
   return n
 end
 
 local n = 2
-assert(B() == 1, 63)
+assert(k() == 1, 63)
 local n = 1
 do
-  function k()
+  function D()
     return n
   end
 
   local n = 2
-  assert(k() == 1, 64)
+  assert(D() == 1, 64)
 end
 do
   local n, e = 1, 2
   ::_1::
   assert(e == 2, 65)
-  if (n > 1) assert(f() == 4 and e == 2, 66); goto out
+  if (n > 1) assert(r() == 4 and e == 2, 66); goto out
   local e = 3
-  f = function()
+  r = function()
     e += 1
     return e
   end
@@ -332,8 +332,8 @@ do
   local n = 1
   ::_1::
   local d = n
-  e = f
-  f = function()
+  e = r
+  r = function()
     d += 1
     return d
   end
@@ -341,7 +341,7 @@ do
   if (n == 3) goto out2 else goto _1
 end
 ::out2::
-assert(f() == 3 and f() == 4 and e() == 2 and f() == 5 and e() == 3, 67)
+assert(r() == 3 and r() == 4 and e() == 2 and r() == 5 and e() == 3, 67)
 do
   goto foo
   local n
@@ -357,10 +357,10 @@ function ord(e, d)
 end
 
 local n = {}
-ord(0, n).t, ord(1, n).t = ord(2, 2), ord(3, function()
+ord(0, n).f, ord(1, n).f = ord(2, 2), ord(3, function()
   return 3
 end)(ord(4, 1), ord(5, 1))
-assert(n.t == 2, 69)
+assert(n.f == 2, 69)
 local o, n = 1, 2
 assert(n == 2, 70)
 
@@ -369,24 +369,24 @@ function d(e, n)
 end
 
 d(1, 2)
-m = 0
-s = {10, 20}
+w = 0
+x = {10, 20}
 
 function e()
-  m += 1
-  return m
+  w += 1
+  return w
 end
 
-s[e()] += 1
-assert(s[1] == 11 and s[2] == 20, 72)
+x[e()] += 1
+assert(x[1] == 11 and x[2] == 20, 72)
 n = 0
 n += 16
 assert(n == 16, 73)
 assert([[[[]] == "[[", 73.5)
 if (1 == 1) if (2 == 3) n = 1 else n = 2
 assert(n == 2, 74)
-if (1 == 2) x = 1 else if (1 == 3) x = 2 else x = 3
-assert(x == 3, 76)
+if (1 == 2) h = 1 else if (1 == 3) h = 2 else h = 3
+assert(h == 3, 76)
 if (1 == 1) if 2 == 2 then n = 4 else n = 5 end else n = 6
 assert(n == 4, 77)
 do

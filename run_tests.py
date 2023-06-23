@@ -56,7 +56,7 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
             extra_outpath = path_join(prefix + "test_output", extra_output)
             extra_cmppath = path_join(prefix + "test_compare", extra_output)
             if try_file_read(extra_outpath) != try_file_read(extra_cmppath):
-                stdouts.append("ERROR: Extra file difference: %s, %s" % (outpath, cmppath))
+                stdouts.append("ERROR: Extra file difference: %s, %s" % (extra_outpath, extra_cmppath))
                 success = False
 
     if run_success and g_opts.pico8 and (pico8_output != None or pico8_output_val != None):
@@ -143,6 +143,9 @@ def run():
         run_test("unminrepl", "repl.p8", "repl-un.p8", "--unminify",
                  from_output=True, pico8_output_val="finished")
     run_test("reformat", "input.p8", "input-reformat.p8", "--unminify", "--unminify-indent", "4")
+    run_test("notnil", "notnil.p8", "notnil.p8", "--minify", pico8_output_val="passed")
+    run_test("wildcards", "wildcards.p8", "wildcards.p8", "--minify",
+             "--preserve", "p_*,*_p,*_p_*,*.*", "--no-preserve", "weak.*,*.junk,*.my_*,scored.*_,scored.id")
 
 if __name__ == "__main__":
     init_tests(g_opts.exe)

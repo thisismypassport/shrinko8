@@ -3,6 +3,7 @@ from pico_defs import from_p8str
 from pico_tokenize import TokenType, is_identifier, keywords
 from pico_parse import VarKind, NodeType, Local
 from pico_minify import format_string_literal
+import fnmatch
 
 global_callbacks = {
     "_init", "_draw", "_update", "_update60",
@@ -18,13 +19,90 @@ member_strings = {
     "__pairs", "__ipairs", "__metatable", "__gc", "__mode",
 }
 
+class IncludeExcludeMapping:
+    def __init__(m, keys=None):
+        m.dict = dict.fromkeys(keys, True) if e(keys) else {}
+        m.default = None
+        m.regexs = None
+
+    def set(m, key, value):
+        if key == "*":
+            m.default = value
+        elif "*" not in key:
+            m.dict[key] = value
+        else:
+            if not m.regexs:
+                m.regexs = []
+            m.regexs.append((re.compile(fnmatch.translate(key)), value))
+            
+    def __contains__(m, key):
+        value = m.dict.get(key, m.default)
+        if value is False:
+            return False
+
+        if m.regexs:
+            for regex, re_value in m.regexs:
+                if regex.match(key):
+                    value = re_value
+                    if value is False:
+                        return False
+        
+        return bool(value)
+    
+class TableMemberPairIncludeExcludeMapping:
+    def __init__(m, tables=None, members=None, pairs=None):
+        m.table_dict = dict.fromkeys(tables, True) if e(tables) else {}
+        m.member_dict = dict.fromkeys(members, True) if e(members) else {}
+        m.pair_dict = dict.fromkeys(pairs, True) if e(pairs) else {}
+        m.default = None
+        m.regexs = None
+
+    def set(m, key, value):
+        table, member = key
+        if table == "*" and member == "*":
+            m.default = value
+        elif "*" not in table and member == "*":
+            m.table_dict[table] = value
+        elif table == "*" and "*" not in member:
+            m.member_dict[member] = value
+        elif "*" not in table and "*" not in member:
+            m.pair_dict[(table, member)] = value
+        else:
+            if not m.regexs:
+                m.regexs = []
+            m.regexs.append((re.compile(fnmatch.translate(table)),
+                             re.compile(fnmatch.translate(member)), value))
+        
+    def __contains__(m, key):
+        if isinstance(key, tuple):
+            table, member = key
+        else:
+            table, member = "", key
+
+        value = m.pair_dict.get(key, m.table_dict.get(table, m.member_dict.get(member, m.default)))
+        if value is False:
+            return False
+
+        if m.regexs:
+            for table_regex, member_regex, re_value in m.regexs:
+                if table_regex.match(table) and member_regex.match(member):
+                    value = re_value
+                    if value is False:
+                        return False
+        
+        return bool(value)
+
 def rename_tokens(ctxt, root, rename):
-    all_builtins = ctxt.builtins.copy()
-    preserved_globals = global_callbacks.copy()
-    preserved_members = member_strings.copy()
-    preserved_tables = set()
-    preserve_all_globals = False
-    preserve_all_members = False
+    # TODO: would be nice to find definitely-assigned globals. Could then:
+    # - rename them even if their name matches a builtin
+    # - rename them into names matching unused builtins
+
+    # we avoid renaming into any names used by pico8/lua, as otherwise renamed variables may have a non-nill initial value
+    global_excludes = ctxt.builtins | global_callbacks
+    member_excludes = member_strings.copy()
+
+    preserved_globals = IncludeExcludeMapping(global_excludes)
+    preserved_members = TableMemberPairIncludeExcludeMapping(members=member_strings)
     members_as_globals = False
     safe_only = False
 
@@ -36,42 +114,20 @@ def rename_tokens(ctxt, root, rename):
         rules_input = rename.get("rules")
         if rules_input:
             for key, value in rules_input.items():
-                if value == False:
-                    if key == "*":
-                        preserve_all_globals = True
-                    elif key == "*.*":
-                        preserve_all_members = True
-                    elif key.endswith(".*"):
-                        preserved_tables.add(key[:-2])
-                    elif key.startswith("*."):
-                        preserved_members.add(key[2:])
-                    else:
-                        preserved_globals.add(key)
-                elif value == True:
-                    if key == "*":
-                        preserve_all_globals = False
-                    elif key == "*.*":
-                        preserve_all_members = False
-                    elif key.endswith(".*"):
-                        preserved_tables.discard(key[:-2])
-                    elif key.startswith("*."):
-                        preserved_members.discard(key[2:])
-                    else:
-                        all_builtins.discard(key)
-                        preserved_globals.discard(key)
+                if "." in key:
+                    preserved_members.set(key.split(".", 1), not value)
                 else:
-                    fail(value)
+                    preserved_globals.set(key, not value)
 
     # detect which renames are safe to do, if requested
     # (note - this assumes a "pure" cart with no hints for shrinko8)
 
     if safe_only:
-        preserve_all_members = True # can't reasonably guarantee safety of this
+        preserved_members.default = True # can't reasonably guarantee safety of this
         
         def check_safety(node):
             if node.type == NodeType.var and node.kind != VarKind.member and node.name == "_ENV":
-                nonlocal preserve_all_globals
-                preserve_all_globals = True
+                preserved_globals.default = True
 
         root.traverse_nodes(check_safety)
 
@@ -113,11 +169,11 @@ def rename_tokens(ctxt, root, rename):
     member_uses = CounterDictionary()
     local_uses = CounterDictionary()
     scopes = []
-
+    
     def compute_effective_kind(node, kind, explicit):
         """get the identifier kind (global/member/etc) of a node, taking into account hints in the code"""
         if kind == VarKind.member:
-            table_name = None
+            table_name = ""
             
             if node.parent.type == NodeType.member and node.parent.key == node and node.parent.child.type == NodeType.var:
                 var_node = node.parent.child
@@ -140,11 +196,8 @@ def rename_tokens(ctxt, root, rename):
                         if not explicit and target_node.var and target_node.var.keys_kind != None:
                             return compute_effective_kind(node, target_node.var.keys_kind, explicit=True)
             
-            if preserve_all_members:
-                return None
-            elif node.name in preserved_members:
-                return None
-            elif table_name in preserved_tables:
+            if (table_name, node.name) in preserved_members:
+                member_excludes.add(node.name)
                 return None
             elif table_name == "_ENV":
                 return compute_effective_kind(node, VarKind.global_, explicit=True)
@@ -158,12 +211,8 @@ def rename_tokens(ctxt, root, rename):
                 if env_var and env_var.keys_kind != None:
                     return compute_effective_kind(node, env_var.keys_kind, explicit=True)
 
-            if preserve_all_globals:
-                return None
-            elif node.name in preserved_globals:
-                return None
-            elif node.name in all_builtins:
-                preserved_globals.add(node.name)
+            if node.name in preserved_globals:
+                global_excludes.add(node.name)
                 return None
 
         elif kind == VarKind.local:
@@ -211,18 +260,20 @@ def rename_tokens(ctxt, root, rename):
                         scope.used_locals.add(node.var)
                         
         elif node.type == NodeType.sublang:
-            # slight dup of compute_effective_kind logic
 
             for name, count in node.lang.get_global_usages().items():
-                if name not in preserved_globals and is_identifier(name):
-                    if name in all_builtins:
-                        preserved_globals.add(name)
+                if is_identifier(name):
+                    if name in preserved_globals:
+                        global_excludes.add(name)
                     else:
                         global_uses[name] += count
 
             for name, count in node.lang.get_member_usages().items():
-                if name not in preserved_members and is_identifier(name):
-                    member_uses[name] += count
+                if is_identifier(name):
+                    if name in preserved_members:
+                        member_excludes.add(name)
+                    else:
+                        member_uses[name] += count
 
             for var, count in node.lang.get_local_usages().items():
                 if not var.implicit:
@@ -280,8 +331,8 @@ def rename_tokens(ctxt, root, rename):
 
         return rename_map
 
-    member_renames = assign_idents(member_uses, preserved_members)
-    global_renames = assign_idents(global_uses, preserved_globals)
+    member_renames = assign_idents(member_uses, member_excludes)
+    global_renames = assign_idents(global_uses, global_excludes)
 
     class ReverseRenameMap:
         def __init__(m, map):
