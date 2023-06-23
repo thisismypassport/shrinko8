@@ -37,15 +37,17 @@ class Scope:
     @lazy_property
     def used_locals(m):
         return set()
+    
     @lazy_property
     def used_globals(m):
-        return set()
-    @lazy_property
-    def used_members(m):
         return set()
     @property
     def has_used_globals(m):
         return lazy_property.is_set(m, "used_globals")
+    
+    @lazy_property
+    def used_members(m): # note - only for members used as if they were globals,
+        return set()     # NOT for normally used members! (very rare)
     @property
     def has_used_members(m):
         return lazy_property.is_set(m, "used_members")
@@ -76,6 +78,11 @@ class Node(TokenNodeBase):
 
         for child in children:
             child.parent = m
+
+    # a scopespec is either: None if there's no scoping change,
+    #   a Scope that acts upon the node,
+    #   (True, node) for a scope that the node starts (but does not end)
+    #   (False, nodes) for scopes that the node ends (but does not start)
 
     @property
     def start_scope(m):
@@ -545,7 +552,7 @@ def parse(source, tokens):
             func = parse_function(stmt=True, local=True)
             tokens.append(func)
 
-            return Node(NodeType.local, tokens, targets=[func.name], sources=[func], scopespec=(True, newscope))
+            return Node(NodeType.local, tokens, targets=[func.name], sources=[func], scopespec=(True, newscope), func_local=True)
 
         else:
             targets = parse_list(tokens, lambda: parse_var(newscope=newscope))
@@ -557,7 +564,7 @@ def parse(source, tokens):
                 newscope.add(target.var)
             scope = newscope
 
-            return Node(NodeType.local, tokens, targets=targets, sources=sources, scopespec=(True, newscope))
+            return Node(NodeType.local, tokens, targets=targets, sources=sources, scopespec=(True, newscope), func_local=False)
 
     def parse_assign(first):
         tokens = [first]

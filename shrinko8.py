@@ -61,6 +61,10 @@ parser.add_argument("-u", "--unicode-caps", action="store_true", help="write cap
 parser.add_argument("--list", action="store_true", help="list all cart names inside a cart package (%s)" % CartFormatList(CartFormat._pack_names))
 parser.add_argument("--cart", help="name of cart to extract from cart package (%s)" % CartFormatList(CartFormat._pack_names))
 
+pgroup = parser.add_argument_group("unminify options")
+pgroup.add_argument("--unminify", action="store_true", help="enable unminification of the cart")
+pgroup.add_argument("--unminify-indent", type=int, help="indentation size when unminifying", default=2)
+
 pgroup = parser.add_argument_group("misc. options (semi-undocumented)")
 pgroup.add_argument("--builtin", type=CommaSep, action=extend_arg, help="treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
 pgroup.add_argument("--not-builtin", type=CommaSep, action=extend_arg, help="do not treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
@@ -72,8 +76,6 @@ pgroup.add_argument("--fast-compression", action="store_true", help="force fast 
 pgroup.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
 pgroup.add_argument("--old-compression", action="store_true", help="compress with the old pre-v0.2.0 compression scheme")
 pgroup.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
-pgroup.add_argument("--unminify", action="store_true", help="enable unminification of the cart (preliminary)")
-pgroup.add_argument("--unminify-indent", type=int, help="indentation size when unminifying", default=2)
 
 def main_inner(raw_args):
     if not raw_args: # help is better than usage

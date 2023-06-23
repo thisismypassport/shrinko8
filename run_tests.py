@@ -24,13 +24,13 @@ def measure(kind, path, input=False):
     else:
         print("MISSING!")
 
-def run_test(name, input, output, *args, private=False, from_temp=False, to_temp=False, 
+def run_test(name, input, output, *args, private=False, from_temp=False, to_temp=False, from_output=False,
              read_stdout=False, exit_code=None, extra_outputs=None, pico8_output_val=None, pico8_output=None):
     if g_opts.test and name not in g_opts.test:
         return None
 
     prefix = "private_" if private else ""
-    inpath = path_join(prefix + ("test_temp" if from_temp else "test_input"), input)
+    inpath = path_join(prefix + ("test_temp" if from_temp else "test_output" if from_output else "test_input"), input)
     outpath = path_join(prefix + ("test_temp" if to_temp else "test_output"), output)
     cmppath = path_join(prefix + "test_compare", output)
 
@@ -92,9 +92,11 @@ def run_stdout_test(name, input, *args, output=None, **kwargs):
     run_test(name, input, output, *args, **kwargs, read_stdout=True)
 
 def run():
-    run_test("minify", "input.p8", "output.p8", "--minify",
-             "--preserve", "*.preserved_key,preserved_glob,preserving_obj.*",
-             "--no-preserve", "circfill,rectfill", pico8_output="output.p8.printh")
+    if run_test("minify", "input.p8", "output.p8", "--minify",
+                "--preserve", "*.preserved_key,preserved_glob,preserving_obj.*",
+                "--no-preserve", "circfill,rectfill", pico8_output="output.p8.printh"):
+        run_test("unminify", "output.p8", "input-un.p8", "--unminify",
+                 from_output=True, pico8_output="output.p8.printh")
     run_test("semiobfuscate", "input.p8", "output_semiob.p8", "--minify",
              "--preserve", "*.*,preserved_glob",
              "--no-minify-spaces", "--no-minify-lines", pico8_output="output.p8.printh")
@@ -104,7 +106,8 @@ def run():
     run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename")
              # pico8_output="output.p8.printh" - broken by comment bug in pico8 v0.2.5g...
-    run_test("test", "test.p8", "test.p8", "--minify", "--rename-members-as-globals", pico8_output_val="DONE")
+    if run_test("test", "test.p8", "test.p8", "--minify", "--rename-members-as-globals", pico8_output_val="DONE"):
+        run_test("unmintest", "test.p8", "test-un.p8", "--unminify", from_output=True, pico8_output_val="DONE")
     run_test("p82png", "testcvt.p8", "testcvt.png")
     run_test("test_png", "test.png", "test.png", "--minify")
     run_test("png2p8", "test.png", "testcvt.p8")
@@ -135,8 +138,11 @@ def run():
              "--builtin", "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z")
     run_test("tinyrom", "tiny.rom", "tiny.lua")
     run_test("title", "title.p8", "title.p8.png")
-    run_test("repl", "repl.p8", "repl.p8", "--minify", "--preserve", "env.*,g_ENV.*,*._ENV,*._env,*._", 
-             "--rename-map", "test_output/repl.map", extra_outputs=["repl.map"], pico8_output_val="finished")
+    if run_test("repl", "repl.p8", "repl.p8", "--minify", "--preserve", "env.*,g_ENV.*,*._ENV,*._env,*._", 
+                "--rename-map", "test_output/repl.map", extra_outputs=["repl.map"], pico8_output_val="finished"):
+        run_test("unminrepl", "repl.p8", "repl-un.p8", "--unminify",
+                 from_output=True, pico8_output_val="finished")
+    run_test("reformat", "input.p8", "input-reformat.p8", "--unminify", "--unminify-indent", "4")
 
 if __name__ == "__main__":
     init_tests(g_opts.exe)

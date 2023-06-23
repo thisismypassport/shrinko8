@@ -173,7 +173,7 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
             source.text, tokens = minify_code(source, ctxt, tokens, root, minify)
         
         if need_unminify:
-            source.text = unminify_code(source, tokens, root, unminify)
+            source.text = unminify_code(source, root, unminify)
 
         if count:
             print_token_count(count_tokens(tokens), handler=count)
