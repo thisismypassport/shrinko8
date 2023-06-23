@@ -546,6 +546,10 @@ class lazy_property(object):
             obj.__dict__[m.func.__name__] = value # won't be called again for this obj
             return value
         
+    @staticmethod
+    def is_set(obj, name):
+        return name in obj.__dict__
+        
 class post_property_set(object):
     """Method decorator that creates a field-backed read-write property that calls the
     decorated method when set, with the old and new values"""

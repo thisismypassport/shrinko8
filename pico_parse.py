@@ -33,6 +33,22 @@ class Scope:
             return m.items[item]
         elif m.parent:
             return m.parent.find(item)
+    
+    @lazy_property
+    def used_locals(m):
+        return set()
+    @lazy_property
+    def used_globals(m):
+        return set()
+    @lazy_property
+    def used_members(m):
+        return set()
+    @property
+    def has_used_globals(m):
+        return lazy_property.is_set(m, "used_globals")
+    @property
+    def has_used_members(m):
+        return lazy_property.is_set(m, "used_members")
 
 class NodeType(Enum):
     values = ("var", "index", "member", "const", "group", "unary_op", "binary_op", "call",

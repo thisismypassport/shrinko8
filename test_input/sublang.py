@@ -68,7 +68,7 @@ class MySubLanguage(SubLanguageBase):
     # only needed if your language supports locals:
     # called to get all uses of locals in the language's code.
     # should return a Counter dict similar to above, except the keys are 
-    # Local objects, and their scope (Scope objects) have 2 extra fields:
+    # Local objects, and their scope (Scope objects) specify:
     #   used_globals - a set of all global names used in that scope
     #                  or in any of its child scopes
     #   used_locals - a set of all locals (Local objects) that are both:

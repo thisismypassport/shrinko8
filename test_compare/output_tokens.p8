@@ -89,8 +89,13 @@ g_my_table.preserved1 += 1
 g_my_table = setmetatable(--[[preserve-keys]]{preserved3=3}, my_meta)
 ?g_my_table["preserved3"]
 
+local env = --[[global-keys]]{assert=assert, add=add}
 do
-  local _ENV = --[[global-keys]]{assert=assert, add=add}
+  local _ENV = env
+  assert(add({}, 1) == 1)
+end
+do
+  local _ENV = {assert=assert, add=add}
   assert(add({}, 1) == 1)
 end
 

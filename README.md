@@ -141,11 +141,14 @@ my_table.preserved1 += 1 -- all member accesses through my_table are preserved
 my_table = setmetatable(--[[preserve-keys]]{preserved3=3}, my_meta)
 ?my_table["preserved3"]
 
+-- while assigning directly to _ENV no longer requires a hint, indirect assignment like below does:
+local env = --[[global-keys]]{assert=assert, add=add}
 do
-  local _ENV = --[[global-keys]]{assert=assert, add=add}
+  local _ENV = env
   assert(add({}, 1) == 1)
 end
 
+-- hints on an _ENV local affects all globals in its scope
 for --[[member-keys]]_ENV in all({{x=1,y=5}, {x=2,y=6}}) do
   x += y + y*x
 end

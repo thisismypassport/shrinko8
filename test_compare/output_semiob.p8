@@ -3,7 +3,7 @@ version 38
 __lua__
 print=printh 
 ?"hello ᶜ7there♥ら"
-🐱,a,d,r,h,x,e,e=11,12,13,14,15,16,17,17
+🐱,i,d,r,h,x,e,e=11,12,13,14,15,16,17,17
 
 
 t(stat(band()))
@@ -84,6 +84,11 @@ l.preserved1 += 1
 l = setmetatable( {preserved3=3}, f)
 ?l["preserved3"]
 
+local l = {assert=assert, add=add}
+do
+  local _ENV = l
+  assert(add({}, 1) == 1)
+end
 do
   local _ENV = {assert=assert, add=add}
   assert(add({}, 1) == 1)
@@ -126,9 +131,9 @@ local l = ({})[1], (function()end)()
 local e, o = sin(1,2), cos((cos()))
 local n, f = (cos((cos())))
 local l = {ord=ord, pal=pal}
-local a = ord"123", pal{1,2}, l:ord("ord"), l:pal({1,2}), sin(1)
+local i = ord"123", pal{1,2}, l:ord("ord"), l:pal({1,2}), sin(1)
 local l = {ord"1",[2]=3,x=4,(ord"1")}
-a += 1
+i += 1
 e, o = sin(1,2), cos((cos()))
 n, f = (cos((cos())))
 function u() return 1, 2, ord"1", (ord"1") end
@@ -140,8 +145,8 @@ print("test"..@16 .."str")
 
 
 c="renaming bug"
-function i()
-  local l,e,o,n,f,i,a,d,r,t,h,x,s,u,k,y,v,p,b,w,g,m,j,q,z,A,B
+function a()
+  local l,e,o,n,f,a,i,d,r,t,h,x,s,u,k,y,v,p,b,w,g,m,j,q,z,A,B
   return c
 end
-?i()
+?a()

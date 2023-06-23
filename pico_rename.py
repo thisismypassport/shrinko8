@@ -126,16 +126,19 @@ def rename_tokens(ctxt, root, rename):
                 if not explicit and var_node.var and var_node.var.keys_kind != None:
                     return compute_effective_kind(node, var_node.var.keys_kind, explicit=True)
 
-            elif not explicit and node.parent.type == NodeType.table_member and node.parent.key == node:
+            elif node.parent.type == NodeType.table_member and node.parent.key == node:
                 table_node = node.parent.parent
-                if table_node.keys_kind != None:
+                if not explicit and table_node.keys_kind != None:
                     return compute_effective_kind(node, table_node.keys_kind, explicit=True)
 
                 if table_node.parent.type in (NodeType.assign, NodeType.local) and table_node in table_node.parent.sources:
                     assign_i = table_node.parent.sources.index(table_node)
                     target_node = list_get(table_node.parent.targets, assign_i)
-                    if target_node and target_node.type == NodeType.var and target_node.var and target_node.var.keys_kind != None:
-                        return compute_effective_kind(node, target_node.var.keys_kind, explicit=True)
+                    if target_node and target_node.type == NodeType.var:
+                        table_name = target_node.name
+
+                        if not explicit and target_node.var and target_node.var.keys_kind != None:
+                            return compute_effective_kind(node, target_node.var.keys_kind, explicit=True)
             
             if preserve_all_members:
                 return None
@@ -174,8 +177,6 @@ def rename_tokens(ctxt, root, rename):
     def collect_idents_pre(node):
         scope = node.start_scope
         if e(scope):
-            scope.used_globals = set()
-            scope.used_locals = set()
             scopes.append(scope)
             
         if node.type == NodeType.var:
@@ -194,10 +195,14 @@ def rename_tokens(ctxt, root, rename):
                 #else:
                 local_uses[node.var] += 1
                     
-            # add to the scope based on real kind, to avoid conflicts (e.g. between builtins and globals)
+            # add to the scope based on real kind, as we need to avoid conflicts with preserved vars too
             if node.kind == VarKind.global_:
-                for scope in scopes:
-                    scope.used_globals.add(node.name)
+                if node.effective_kind == VarKind.member: # rare, e.g. see --[[member-keys]] example
+                    for scope in scopes:
+                        scope.used_members.add(node.name)
+                else:
+                    for scope in scopes:
+                        scope.used_globals.add(node.name)
 
             elif node.kind == VarKind.local:
                 if node.var.scope in scopes:
@@ -277,7 +282,23 @@ def rename_tokens(ctxt, root, rename):
 
     member_renames = assign_idents(member_uses, preserved_members)
     global_renames = assign_idents(global_uses, preserved_globals)
-    rev_global_renames = {v: k for k, v in global_renames.items()}
+
+    class ReverseRenameMap:
+        def __init__(m, map):
+            m.map = map
+            m.revmap = None
+        
+        def get(m, ident):
+            if m.revmap is None:
+                m.revmap = {v: k for k, v in m.map.items()}
+            
+            orig_ident = m.revmap.get(ident)
+            if orig_ident is None and ident not in m.map:
+                orig_ident = ident # could be one we didn't rename
+            return orig_ident
+
+    rev_member_renames = ReverseRenameMap(member_renames)
+    rev_global_renames = ReverseRenameMap(global_renames)    
     
     # assign new names to the locals' identifiers, like assign_idents but trickier as it takes scopes into account
     local_ident_stream = create_ident_stream()
@@ -286,14 +307,21 @@ def rename_tokens(ctxt, root, rename):
     remaining_local_uses = list(sorted(local_uses, key=lambda k: local_uses[k], reverse=True))
     while remaining_local_uses:
         ident = local_ident_stream()
-        ident_global = rev_global_renames.get(ident)
-        if ident_global is None and ident not in global_renames:
-            ident_global = ident # could be a global we didn't rename
+        ident_global, ident_member = None, None
         ident_locals = []
         
         for i, var in enumerate(remaining_local_uses):
-            if ident_global in var.scope.used_globals:
-                continue
+            if var.scope.has_used_globals:
+                if ident_global is None:
+                    ident_global = rev_global_renames.get(ident)
+                if ident_global in var.scope.used_globals:
+                    continue
+            
+            if var.scope.has_used_members:
+                if ident_member is None:
+                    ident_member = rev_member_renames.get(ident)
+                if ident_member in var.scope.used_members:
+                    continue
             
             for _, ident_local in ident_locals:
                 if ident_local in var.scope.used_locals:
