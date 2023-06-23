@@ -102,6 +102,7 @@ assert(u==0x.0040,55)
 do local zoom = 1; function zoom() end end
 assert(zoom==nil,56)
 u=1; repeat local u=2 until assert(u==2,57)
+do local u=2 repeat local v=3 until assert(u*v==6,57.5) end
 local function f() return 3 end
 assert(-f() + f() == 0,58)
 local function ff() return f end

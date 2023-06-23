@@ -7,7 +7,7 @@ parser.add_argument("--measure", action="store_true", help="print the input/outp
 parser.add_argument("--stdout", action="store_true", help="print the stdout of shrinko8 while running the tests")
 parser.add_argument("-t", "--test", action="append", help="specify a specific test to run")
 parser.add_argument("--no-private", action="store_true", help="do not run private tests, if they exist")
-parser.add_argument("-q", "--quiet", action="store_true", help="do not print test successes")
+parser.add_argument("-v", "--verbose", action="store_true", help="print test successes")
 parser.add_argument("-x", "--exe", action="store_true", help="test a packaged exe instead of the python script")
 parser.add_argument("--pico8", action="append", help="specify a pico8 exe to test the results with")
 g_opts = parser.parse_args()
@@ -82,7 +82,7 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
         print("\nMeasuring %s" % name)
         measure("in", inpath, input=True)
         measure("out", outpath)
-    elif not g_opts.quiet:
+    elif g_opts.verbose:
         print("\nTest %s succeeded" % name)
     if g_opts.stdout:
         print(stdout)

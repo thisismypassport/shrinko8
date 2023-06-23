@@ -55,9 +55,7 @@ def unminify_code(source, root, unminify):
                 output.append(";")
 
         elif curr_stmt is None:
-            if node.type == NodeType.until:
-                indent -= indent_delta
-            elif is_node_function_stmt(node):
+            if is_node_function_stmt(node):
                 child_i = node.parent.children.index(node)
                 if child_i > 0 and not is_node_function_stmt(node.parent.children[child_i - 1]):
                     output.append("\n")
@@ -74,13 +72,11 @@ def unminify_code(source, root, unminify):
         nonlocal indent, curr_stmt, short_count, prev_tight
 
         if node.type == NodeType.block:
-            is_until = node.parent and node.parent.type == NodeType.repeat
-
-            if node.parent and not is_until:
+            if node.parent:
                 indent -= indent_delta
 
             curr_stmt = stmt_stack.pop()
-            if not short_count and not is_until:
+            if not short_count:
                 output.append(" " * indent)
                 prev_tight = False
                 
@@ -89,7 +85,7 @@ def unminify_code(source, root, unminify):
 
         elif node is curr_stmt:
             curr_stmt = None
-            if not short_count and node.type != NodeType.until:
+            if not short_count:
                 output.append("\n")
                 prev_tight = False
                 

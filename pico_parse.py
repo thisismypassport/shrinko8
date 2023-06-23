@@ -475,9 +475,12 @@ def parse(source, tokens):
 
     def parse_repeat():
         tokens = [peek(-1)]
-        body = parse_block(until=True)
+        body, until = parse_block(with_until=True)
         tokens.append(body)
-        return Node(NodeType.repeat, tokens, body=body, until=body.children[-1])
+        tokens.append(until)
+        repeat = Node(NodeType.repeat, tokens, body=body, until=until, scopespec=body.scopespec)
+        body.scopespec = None
+        return repeat
 
     def parse_until():
         tokens = []
@@ -634,7 +637,7 @@ def parse(source, tokens):
         else:
             return parse_misc_stmt()
 
-    def parse_block(vline=None, until=False):
+    def parse_block(vline=None, with_until=False):
         nonlocal scope, depth
         oldscope = scope
         start = peek()
@@ -656,8 +659,8 @@ def parse(source, tokens):
             else:
                 tokens.append(peek(-1))
 
-        if until:
-            tokens.append(parse_until())
+        if with_until:
+            until = parse_until()
 
         depth -= 1
         scopes = []
@@ -665,7 +668,11 @@ def parse(source, tokens):
             scopes.append(scope)
             scope = scope.parent
         
-        return Node(NodeType.block, tokens, stmts=stmts, scopespec=(False, scopes))
+        node = Node(NodeType.block, tokens, stmts=stmts, scopespec=(False, scopes))
+        if with_until:
+            return node, until
+        else:
+            return node
 
     def parse_root():
         root = parse_block()

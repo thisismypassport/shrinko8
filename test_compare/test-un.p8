@@ -31,8 +31,8 @@ function d()
   return 1, 2, 3
 end
 
-local t, u, h, i, w, b = 0, d()
-assert(t == 0 and u == 1 and h == 2 and i == 3 and w == nil and b == nil, 12)
+local t, u, h, i, w, p = 0, d()
+assert(t == 0 and u == 1 and h == 2 and i == 3 and w == nil and p == nil, 12)
 
 function d(...)
   return ...
@@ -93,37 +93,37 @@ if (n == 5) n = 0; n = 1 else assert(false, 26)
 assert(n == 1, 27)
 if (n == 5) assert(false, 28) else n = 2
 assert(n == 2, 29)
-a = 1
-while (n > 0) n -= 1; a *= 2
-assert(a == 4 and n == 0, 30)
-while a > 0 do
-  a -= 1
+l = 1
+while (n > 0) n -= 1; l *= 2
+assert(l == 4 and n == 0, 30)
+while l > 0 do
+  l -= 1
   n += 1
 end
-assert(n == 4 and a == 0, 31)
+assert(n == 4 and l == 0, 31)
 while n > 0 do
   n -= 1
-  a += 1
-  if a == 3 then
+  l += 1
+  if l == 3 then
     break
   end
 end
-assert(n == 1 and a == 3, 32)
+assert(n == 1 and l == 3, 32)
 repeat
   n += 1
-  a -= 1
+  l -= 1
 until n == 1 or n == 3
-assert(n == 3 and a == 1, 33)
+assert(n == 3 and l == 1, 33)
 
 function d()
   return
 end
 
-function l()
+function a()
 end
 
 assert(d() == nil and pack(d()).n == 0, 34)
-assert(l() == nil and pack(l()).n == 0, 35)
+assert(a() == nil and pack(a()).n == 0, 35)
 
 function c(...)
   return ...
@@ -156,16 +156,16 @@ assert(i:d() == 3 and i.d {i = 4} == 4, 44)
 setmetatable(i, {__index = function(e, n)
   return n
 end})
-assert(i.b == "b", 45)
-i.l = i
+assert(i.p == "p", 45)
+i.a = i
 
-function i.l.l.i(n)
+function i.a.a.i(n)
   return n
 end
 
 assert(i.i(false) == false, 46)
 
-function i.l.l:h(n)
+function i.a.a:h(n)
   return self, n
 end
 
@@ -206,8 +206,8 @@ local function n(e)
 end
 
 local e = _ENV
-n {assert = assert, p = 123}
-assert(p == 123, 52)
+n {assert = assert, b = 123}
+assert(b == 123, 52)
 n(e)
 
 function d()
@@ -245,6 +245,12 @@ t = 1
 repeat
   local n = 2
 until assert(n == 2, 57)
+do
+  local n = 2
+  repeat
+    local e = 3
+  until assert(n * e == 6, 57.5)
+end
 
 local function d()
   return 3
@@ -270,8 +276,8 @@ local function n(e, d)
   end
 end
 
-local o, a, l, t = n(10), n(20), n(30, 1)
-assert(o() == 11 and a() == 21 and n(0)() == 1 and l() == 31 and t() == 61 and o() == 12 and a() == 22 and n(0)() == 1 and l() == 32 and t() == 62, 60)
+local o, l, a, t = n(10), n(20), n(30, 1)
+assert(o() == 11 and l() == 21 and n(0)() == 1 and a() == 31 and t() == 61 and o() == 12 and l() == 22 and n(0)() == 1 and a() == 32 and t() == 62, 60)
 
 function r(n)
   return n
