@@ -97,11 +97,8 @@ def rename_tokens(ctxt, root, rename):
     # - rename them even if their name matches a builtin
     # - rename them into names matching unused builtins
 
-    # we avoid renaming into any names used by pico8/lua, as otherwise renamed variables may have a non-nill initial value
-    global_excludes = ctxt.builtins | global_callbacks
-    member_excludes = member_strings.copy()
-
-    preserved_globals = IncludeExcludeMapping(global_excludes)
+    global_strings_cpy = ctxt.builtins | global_callbacks
+    preserved_globals = IncludeExcludeMapping(global_strings_cpy)
     preserved_members = TableMemberPairIncludeExcludeMapping(members=member_strings)
     members_as_globals = False
     safe_only = False
@@ -179,6 +176,12 @@ def rename_tokens(ctxt, root, rename):
     local_uses = CounterDictionary()
     scopes = []
     
+    # we avoid renaming into any names used by pico8/lua, as otherwise renamed variables may have a non-nill initial value
+    global_excludes = global_strings_cpy
+    member_excludes = member_strings.copy()
+    global_excludes.add("_ENV")
+    member_excludes.add("_ENV")
+
     def compute_effective_kind(node, kind, explicit):
         """get the identifier kind (global/member/etc) of a node, taking into account hints in the code"""
         if kind == VarKind.member:
@@ -369,6 +372,9 @@ def rename_tokens(ctxt, root, rename):
         ident = local_ident_stream()
         ident_global, ident_member = None, None
         ident_locals = []
+
+        if ident == "_ENV" or ident in keywords:
+            continue
         
         for i, var in enumerate(remaining_local_uses):
             if var.scope.has_used_globals:

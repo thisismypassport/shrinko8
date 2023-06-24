@@ -93,13 +93,15 @@ def init_for_process(opts):
 
 def run_for_cart(args):
     (cart, cart_input, cart_output, cart_compare, cart_unfocused) = args
+    
+    short_prefix = "c" if g_opts.focus_chars else "b" if g_opts.focus_compressed else ""
 
     basepath = path_join("test_bbs", cart)
     download_path = basepath + ".dl.png"
     uncompress_path = basepath + ".dp.p8"
     compress_path = basepath + ".c.png"
-    safe_minify_path = basepath + ".sm.png"
-    unsafe_minify_path = basepath + ".um.png"
+    safe_minify_path = basepath + ".%ssm.png" % short_prefix
+    unsafe_minify_path = basepath + ".%sum.png" % short_prefix
 
     if g_opts.input_redownload or not path_exists(download_path):
         file_write(download_path, file_read(URLPath(get_bbs_cart_url("#" + cart))))
