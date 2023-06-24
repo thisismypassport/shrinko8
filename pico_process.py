@@ -143,16 +143,18 @@ class Error:
 def print_token_count(num_tokens, **kwargs):
     print_size("tokens", num_tokens, 8192, **kwargs)
 
-def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, rename=False, unminify=False, fail=True, want_count=True):
+def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, rename=False, unminify=False, fail=True, want_count=True, annotate=False):
     need_lint = lint not in (None, False)
     need_minify = minify not in (None, False)
     need_rename = rename not in (None, False)
     need_unminify = unminify not in (None, False)
+    need_annotate = annotate not in (None, False)
 
-    if not need_lint and not need_minify and not need_unminify and not (want_count and (count or input_count)):
+    need_parse = need_lint or need_minify or need_unminify or need_annotate
+
+    if not need_parse and not (want_count and (count or input_count)):
         return True, ()
-    
-    need_parse = need_lint or need_minify or need_unminify
+
     need_all_comments = need_unminify or (need_minify and minify_needs_comments(minify))
 
     ok = False
@@ -182,6 +184,9 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
             new_tokens = root.get_tokens() if need_parse else tokens
             print_token_count(count_tokens(new_tokens), handler=count)
 
+        if annotate:
+            annotate_code(ctxt, source, root)
+
     if fail and errors:
         throw("\n".join(map(str, errors)))
     return ok, errors
@@ -199,6 +204,7 @@ from pico_parse import parse
 from pico_lint import lint_code
 from pico_minify import minify_code, minify_needs_comments
 from pico_unminify import unminify_code
+from pico_annotate import annotate_code
 from pico_rename import rename_tokens
 
 # re-export some things for examples/etc.
