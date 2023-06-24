@@ -279,15 +279,15 @@ end
 local o, l, a, t = n(10), n(20), n(30, 1)
 assert(o() == 11 and l() == 21 and n(0)() == 1 and a() == 31 and t() == 61 and o() == 12 and l() == 22 and n(0)() == 1 and a() == 32 and t() == 62, 60)
 
-function i(n)
+function r(n)
   return n
 end
 
-assert(i "me" == "me" and i [[me]] == "me", 61)
-m = {i = function(e, n)
+assert(r "me" == "me" and r [[me]] == "me", 61)
+m = {r = function(e, n)
   return n
 end}
-assert(m:i "me" == "me" and #m:i {} == 0, 62)
+assert(m:r "me" == "me" and #m:r {} == 0, 62)
 do
   while true do
     if 1 == 1 then
@@ -318,9 +318,9 @@ do
   local n, e = 1, 2
   ::_1::
   assert(e == 2, 65)
-  if (n > 1) assert(r() == 4 and e == 2, 66); goto out
+  if (n > 1) assert(i() == 4 and e == 2, 66); goto out
   local e = 3
-  r = function()
+  i = function()
     e += 1
     return e
   end
@@ -332,8 +332,8 @@ do
   local n = 1
   ::_1::
   local d = n
-  e = r
-  r = function()
+  e = i
+  i = function()
     d += 1
     return d
   end
@@ -341,7 +341,7 @@ do
   if (n == 3) goto out2 else goto _1
 end
 ::out2::
-assert(r() == 3 and r() == 4 and e() == 2 and r() == 5 and e() == 3, 67)
+assert(i() == 3 and i() == 4 and e() == 2 and i() == 5 and e() == 3, 67)
 do
   goto foo
   local n
@@ -395,6 +395,22 @@ do
 end
 n = 123
 assert(n == 123, 78)
+do
+  local n
+  print = function(e)
+    n = e
+  end
+  ?1
+  assert(n == 1, 79)
+end
+do
+  local n
+  local print = function(e)
+    n = e
+  end
+  ?2
+  assert(n == 2, 80)
+end
 printh "DONE"
 
 __gfx__

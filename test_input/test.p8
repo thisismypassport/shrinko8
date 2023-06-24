@@ -155,6 +155,10 @@ if (1==1) if (2==2) then a=4 else a=5 end else a=6
 assert(a==4,77)
 do a=0 if (1==2) end a=123
 assert(a==123,78)
+do local r; print = function(x) r=x end; ?1
+   assert(r==1,79) end
+do local r; local print = function(x) r=x end; ?2
+   assert(r==2,80) end
 printh("DONE")
 
 __music__

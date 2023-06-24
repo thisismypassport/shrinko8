@@ -6,14 +6,15 @@ class VarKind(Enum):
     values = ("local", "global_", "member")
     
 class VarBase():
-    def __init__(m, name):
+    def __init__(m, name, implicit=False):
         m.name = name
         m.keys_kind = None
+        m.implicit = implicit
 
 class Local(VarBase):
     def __init__(m, name, scope, implicit=False):
-        super().__init__(name)
-        m.scope, m.implicit = scope, implicit
+        super().__init__(name, implicit)
+        m.scope = scope
 
 class Global(VarBase):
     pass
@@ -188,15 +189,19 @@ def parse(source, tokens):
         var = None
         kind = VarKind.local
         if newscope:
-            var = Local(name, newscope, implicit)
+            var = Local(name, newscope)
         elif member:
             kind = VarKind.member
         else:
             if e(scope):
                 var = scope.find(name)
+            
             if not var:
                 kind = VarKind.global_
                 var = globals[name]
+
+        if implicit and var:
+            var.implicit = True
 
         var_kind = getattr(token, "var_kind", None)
         if var and hasattr(token, "keys_kind"):
@@ -547,6 +552,15 @@ def parse(source, tokens):
         else:
             rets = parse_list(tokens, parse_expr)
             return Node(NodeType.return_, tokens, items=rets)
+        
+    def parse_print():
+        tokens = [peek(-1)]
+        args = parse_list(tokens, parse_expr)
+        node = Node(NodeType.print, tokens, args=args)
+        # best to represent the implicit global access explicitly
+        print_token = Token.synthetic(TokenType.ident, "print", tokens[0])
+        node.add_extra_child(parse_var(token=print_token, implicit=True))
+        return node
 
     def parse_local():
         nonlocal scope
@@ -634,9 +648,7 @@ def parse(source, tokens):
         elif value == "function":
             return parse_function(stmt=True)
         elif value == "?":
-            tokens = [token]
-            args = parse_list(tokens, parse_expr)
-            return Node(NodeType.print, tokens, args=args)
+            return parse_print()
         else:
             return parse_misc_stmt()
 

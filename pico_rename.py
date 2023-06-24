@@ -93,10 +93,6 @@ class TableMemberPairIncludeExcludeMapping:
         return bool(value)
 
 def rename_tokens(ctxt, root, rename):
-    # TODO: would be nice to find definitely-assigned globals. Could then:
-    # - rename them even if their name matches a builtin
-    # - rename them into names matching unused builtins
-
     global_strings_cpy = ctxt.builtins | global_callbacks
     preserved_globals = IncludeExcludeMapping(global_strings_cpy)
     preserved_members = TableMemberPairIncludeExcludeMapping(members=member_strings)
@@ -270,7 +266,6 @@ def rename_tokens(ctxt, root, rename):
                         scope.used_locals.add(node.var)
                         
         elif node.type == NodeType.sublang:
-
             for name, count in node.lang.get_global_usages().items():
                 if is_identifier(name):
                     if name in preserved_globals:

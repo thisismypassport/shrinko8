@@ -16,6 +16,9 @@ k_lint_count_stop = "count::stop"
 
 k_language_prefix = "language::"
 
+class StopTraverse(BaseException):
+    pass
+
 class TokenNodeBase:
     """Baseclass for both pico8 Tokens and pico8 Nodes.
     The syntax tree is comprised of these and can be traversed via traverse_nodes or traverse_tokens"""
@@ -61,15 +64,16 @@ class TokenNodeBase:
     def prev_token(m): return m._adjacent_token(-1)
 
     def traverse_nodes(m, pre=None, post=None, tokens=None, extra=False):
-        if pre: pre(m)
-        for child in m.children:
-            if isinstance(child, Node):
-                child.traverse_nodes(pre, post, tokens, extra)
-            elif tokens:
-                tokens(child)
-        if extra and hasattr(m, "extra_children"):
-            for child in m.extra_children:
-                child.traverse_nodes(pre, post, tokens, extra)
+        skip = pre(m) if pre else None
+        if not skip:
+            for child in m.children:
+                if isinstance(child, Node):
+                    child.traverse_nodes(pre, post, tokens, extra)
+                elif tokens:
+                    tokens(child)
+            if extra and hasattr(m, "extra_children"):
+                for child in m.extra_children:
+                    child.traverse_nodes(pre, post, tokens, extra)
         if post: post(m)
 
     def traverse_tokens(m, visit):
