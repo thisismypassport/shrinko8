@@ -55,7 +55,7 @@ class TokenNodeBase:
                 m = m.children[i]
             else:
                 m = m._adjacent(delta)
-        return m if m else Token.dummy(None)
+        return m if m else Token.none
 
     def next_token(m): return m._adjacent_token(1)
     def prev_token(m): return m._adjacent_token(-1)
@@ -109,6 +109,8 @@ class Token(TokenNodeBase):
         idx = other.endidx if append else other.idx
         endidx = other.idx if prepend else other.endidx
         return Token(type, value, other.source, idx, endidx)
+
+Token.none = Token.dummy(None)
 
 class CommentHint(Enum):
     values = ("none", "lint", "keep")

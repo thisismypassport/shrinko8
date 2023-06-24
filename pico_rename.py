@@ -100,10 +100,8 @@ def rename_tokens(ctxt, root, rename):
     global_strings_cpy = ctxt.builtins | global_callbacks
     preserved_globals = IncludeExcludeMapping(global_strings_cpy)
     preserved_members = TableMemberPairIncludeExcludeMapping(members=member_strings)
-    members_as_globals = False
-    safe_only = False
-    focus_chars = False
-    focus_compressed = False
+    members_as_globals = safe_only = False
+    focus_chars = focus_compressed = False
 
     # read rename options (e.g. what to preserve)
 

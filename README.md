@@ -28,6 +28,8 @@ In detail:
 * Identifiers are renamed to be as short as possible
 * Tokens are made more consistent, to reduce compression ratio
 
+There are command line [options](#minify-options) to choose whether to focus more on reducing character count vs compressed size, as well as to only do some of the minification steps.
+
 ## To minify your p8 cart:
 
 `python shrinko8.py path-to-input.p8 path-to-output.p8 --minify`
@@ -36,11 +38,9 @@ If you just want the lua source without the rest of the baggage, change the outp
 
 `python shrinko8.py path-to-input.p8 path-to-output.lua --minify`
 
-If you want to create a png cart, change the output extension to .png:
+If you want to create a png cart (recommended - since Shrinko8 compresses code better than Pico-8), change the output extension to .png:
 
 `python shrinko8.py path-to-input.p8 path-to-output.png --minify`
-
-Shrinko8 compresses code a bit better than Pico-8.
 
 ## Automatic renaming of identifiers
 
@@ -171,7 +171,13 @@ Here, all uses of circfill and rectfill are renamed unless they're preceded by `
 
 Be aware that doing this won't reduce the compressed size of the cart, and will increases the token count (due to the assignment), so it's of limited use, for when you care about character count above all else.
 
-## Options
+## Minify options
+
+You can specify what the minification should focus on reducing via additional command-line options:
+
+* `--focus-chars` : Focus on reducing the amount of uncompressed characters, even if compressed size grows
+* `--focus-compressed` : Focus on reducing the compressed size of the code, even if the amount of characters grows
+* By default, the minification is balanced for both.
 
 You can disable parts of the minification process via additional command-line options:
 
@@ -213,7 +219,7 @@ You can combine linting with other operations:
 
 `python shrinko8.py path-to-input.p8 path-to-output.p8 --lint --count --minify`
 
-## Options
+## Linting options
 
 You can disable certain lints globally via additional command-line options:
 

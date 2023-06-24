@@ -12,7 +12,7 @@ def unminify_code(root, unminify):
         indent_delta = unminify.get("indent", indent_delta)
 
     output = []
-    prev_token = Token.dummy(None)
+    prev_token = Token.none
     prev_tight = False
     indent = 0
     short_count = 0

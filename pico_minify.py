@@ -106,11 +106,14 @@ def minify_needs_comments(minify):
 def minify_code(source, ctxt, root, minify):
 
     minify_lines = minify_wspace = minify_tokens = minify_comments = True
+    focus_chars = focus_compressed = False
     if isinstance(minify, dict):
         minify_lines = minify.get("lines", True)
         minify_wspace = minify.get("wspace", True)
         minify_tokens = minify.get("tokens", True)
         minify_comments = minify.get("comments", True)
+        focus_chars = minify.get("focus") == "chars"
+        focus_compressed = minify.get("focus") == "compressed"
 
     shorthand_vlines = set()
 
@@ -209,7 +212,7 @@ def minify_code(source, ctxt, root, minify):
 
     if minify_wspace:
         # output the tokens as tightly as possible
-        prev_token = Token.dummy(None)
+        prev_token = Token.none
         def output_tokens(token):
             nonlocal prev_token
 
@@ -237,7 +240,7 @@ def minify_code(source, ctxt, root, minify):
 
     else:
         # output both tokens and surrounding whitespace, possible excluding comments
-        prev_token = Token.dummy(None)
+        prev_token = Token.none
         prev_welded_token = None
 
         def output_tokens(token):

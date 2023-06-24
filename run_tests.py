@@ -143,6 +143,10 @@ def run():
                 "--rename-map", "test_output/repl.map", extra_outputs=["repl.map"], pico8_output_val="finished"):
         run_test("unminrepl", "repl.p8", "repl-un.p8", "--unminify",
                  from_output=True, pico8_output_val="finished")
+    run_test("repl-oc", "repl.p8", "repl-oc.p8", "--minify", "--preserve", "env.*,g_ENV.*,*._ENV,*._env,*._",
+             "--focus-chars", pico8_output_val="finished")
+    run_test("repl-oc", "repl.p8", "repl-ob.p8", "--minify", "--preserve", "env.*,g_ENV.*,*._ENV,*._env,*._",
+             "--focus-compressed", pico8_output_val="finished")
     run_test("reformat", "input.p8", "input-reformat.p8", "--unminify", "--unminify-indent", "4")
     run_test("notnil", "notnil.p8", "notnil.p8", "--minify", pico8_output_val="passed")
     run_test("wildcards", "wildcards.p8", "wildcards.p8", "--minify",
