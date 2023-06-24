@@ -105,12 +105,16 @@ def rename_tokens(ctxt, root, rename):
     preserved_members = TableMemberPairIncludeExcludeMapping(members=member_strings)
     members_as_globals = False
     safe_only = False
+    focus_chars = False
+    focus_compressed = False
 
     # read rename options (e.g. what to preserve)
 
     if isinstance(rename, dict):
         members_as_globals = rename.get("members=globals", False)
         safe_only = rename.get("safe-only", False)
+        focus_chars = rename.get("focus") == "chars"
+        focus_compressed = rename.get("focus") == "compressed"
         rules_input = rename.get("rules")
         if rules_input:
             for key, value in rules_input.items():
@@ -136,7 +140,8 @@ def rename_tokens(ctxt, root, rename):
 
     char_uses = CounterDictionary()
     def collect_chars(token):
-        if token.type != TokenType.ident:
+        if token.type != TokenType.ident:# (TODO: beneficial but maybe more can be done) or \
+                #token.value in (preserved_members if token.parent.type in (NodeType.member, NodeType.table_member) else preserved_globals):
             sublang = getattr(token, "sublang", None)
             if sublang and sublang.get_unminified_chars:
                 for ch in sublang.get_unminified_chars():
@@ -147,9 +152,13 @@ def rename_tokens(ctxt, root, rename):
 
     root.traverse_tokens(collect_chars)
 
-    # seems like a good balance between char size and compressed size
-    # (tried adding wide/etc chars, tried subtracing uppercase chars - no clear wins)
-    k_identifier_chars = string.ascii_letters + string.digits + "_"
+    # TODO: something must still be unoptimal with char_uses collection, as hardcoding k_identifier_chars is more helpful than going by uses...
+    if focus_chars:
+        k_identifier_chars = string.ascii_letters + string.digits + "_\x1e\x1f" + "".join(chr(x) for x in range(0x80,0x100))
+    elif focus_compressed:
+        k_identifier_chars = string.ascii_lowercase + string.digits + "_"
+    else:
+        k_identifier_chars = string.ascii_letters + string.digits + "_"
     
     ident_chars = []
     for ch in sorted(char_uses, key=lambda k: char_uses[k], reverse=True):

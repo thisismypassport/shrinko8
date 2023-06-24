@@ -18,11 +18,15 @@ parser.add_argument("--only-compress", action="store_true", help="only test comp
 parser.add_argument("--only-safe-minify", action="store_true", help="only test safe minification")
 parser.add_argument("--only-unsafe-minify", action="store_true", help="only test unsafe minification")
 parser.add_argument("--none", action="store_true", help="do not test anything (allows running pico8 against input)")
+parser.add_argument("-oc", "--focus-chars", action="store_true", help="focus on char count")
+parser.add_argument("-ob", "--focus-compressed", action="store_true", help="focus on compressed size")
 parser.add_argument("-i", "--compare-input", action="store_true", help="compare results vs the inputs too")
+parser.add_argument("-u", "--compare-unfocused", action="store_true", help="compare results vs the unfocused results too")
 parser.add_argument("-v", "--verbose", action="store_true", help="print changes in individual carts")
 parser.add_argument("-x", "--exe", action="store_true", help="use a packaged exe instead of the python script")
-parser.add_argument("--pico8", action="append", help="specify a pico8 exe to test the results with")
+parser.add_argument("-p", "--pico8", action="append", help="specify a pico8 exe to test the results with")
 parser.add_argument("--pico8-time", type=float, help="how long to run pico8 carts for", default=2.0)
+parser.add_argument("-P", "--no-pico8", action="store_true", help="disable running pico8 even if exe is supplied (for convenience)")
 parser.add_argument("-j", "--parallel-jobs", type=int, help="how many processes to run in parallel")
 g_opts = parser.parse_args()
 
@@ -88,7 +92,7 @@ def init_for_process(opts):
     init_tests(opts.exe)
 
 def run_for_cart(args):
-    (cart, cart_input, cart_output, cart_compare) = args
+    (cart, cart_input, cart_output, cart_compare, cart_unfocused) = args
 
     basepath = path_join("test_bbs", cart)
     download_path = basepath + ".dl.png"
@@ -140,38 +144,47 @@ def run_for_cart(args):
         if g_opts.compare_input:
             process_compare(kind + "-vs-input", output, cart_input, ignore_partial=True)
 
+        if g_opts.compare_unfocused:
+            process_compare(kind + "-vs-unfocused", output, cart_unfocused[kind])
+
     best_path_for_pico8 = download_path
     
     if g_opts.all or g_opts.only_compress:
         compress_results = run_code(uncompress_path, compress_path, "--count", "--parsable-count", "--no-count-tokenize")
         process_output("compress", check_run("%s:compress" % cart, compress_results, parse_meta=True))
         best_path_for_pico8 = compress_path
+
+    minify_opts = ["--focus-chars"] if g_opts.focus_chars else ["--focus-compressed"] if g_opts.focus_compressed else []
     
     if g_opts.all or g_opts.only_safe_minify:
-        safe_minify_results = run_code(uncompress_path, safe_minify_path, "--minify-safe-only", "--count", "--parsable-count")
+        safe_minify_results = run_code(uncompress_path, safe_minify_path, "--minify-safe-only", "--count", "--parsable-count", *minify_opts)
         process_output("safe_minify", check_run("%s:safe_minify" % cart, safe_minify_results, parse_meta=True))
         best_path_for_pico8 = safe_minify_path
     
     if g_opts.all or g_opts.only_unsafe_minify:
-        unsafe_minify_results = run_code(uncompress_path, unsafe_minify_path, "--minify", "--count", "--parsable-count")
+        unsafe_minify_results = run_code(uncompress_path, unsafe_minify_path, "--minify", "--count", "--parsable-count", *minify_opts)
         process_output("unsafe_minify", check_run("%s:unsafe_minify" % cart, unsafe_minify_results, parse_meta=True))
 
     return (cart, is_fail_test(), new_cart_input, cart_output, deltas, best_path_for_pico8)
 
 def run():
+    prefix = "chars_" if g_opts.focus_chars else "compressed_" if g_opts.focus_compressed else ""
+
     input_json = path_join("test_bbs", "input.json")
-    output_json = path_join("test_bbs", "output.json")
-    compare_json = path_join("test_bbs", "compare.json")
+    output_json = path_join("test_bbs", prefix + "output.json")
+    compare_json = path_join("test_bbs", prefix + "compare.json")
+    unfocused_json = path_join("test_bbs", "compare.json") if g_opts.compare_unfocused else None
     inputs = try_file_read_json(input_json, {})
     outputs = try_file_read_json(output_json, {})
     compares = try_file_read_json(compare_json, {})
+    unfocuseds = try_file_read_json(unfocused_json, {}) if unfocused_json else {}
     deltas = DeltaInfoDictionary()
 
     with mp.Pool(g_opts.parallel_jobs, init_for_process, (g_opts,)) as mp_pool, \
          mt.Pool(g_opts.parallel_jobs) as mt_pool:
         
         p8_results = []
-        mp_inputs = [(cart, inputs.get(cart), outputs.get(cart), compares.get(cart)) for cart in g_opts.carts]
+        mp_inputs = [(cart, inputs.get(cart), outputs.get(cart), compares.get(cart), unfocuseds.get(cart)) for cart in g_opts.carts]
         for mp_result in mp_pool.imap_unordered(run_for_cart, mp_inputs):
             if not mp_result:
                 continue
@@ -184,15 +197,15 @@ def run():
             outputs[cart] = cart_output
             deltas.apply_dictionary(cart_deltas)
             
-            if cart_pico8_path and g_opts.pico8:
+            if cart_pico8_path and g_opts.pico8 and not g_opts.no_pico8:
                 for pico8 in g_opts.pico8:
                     p8_results.append(mt_pool.apply_async(lambda: run_pico8(pico8, cart_pico8_path, timeout=g_opts.pico8_time, allow_timeout=True)))
 
         for p8_result in p8_results:
             check_run("%s:p8-run" % cart, p8_result.get())
 
-    file_write_json(input_json, inputs, indent=4)
-    file_write_json(output_json, outputs, indent=4)
+    file_write_json(input_json, inputs, sort_keys=True, indent=4)
+    file_write_json(output_json, outputs, sort_keys=True, indent=4)
 
     for key, info in sorted(deltas.items()):
         extra_print = []

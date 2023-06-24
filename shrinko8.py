@@ -25,14 +25,16 @@ parser.add_argument("output", help="output file. ('-' for stdout)", nargs='?')
 
 pgroup = parser.add_argument_group("minify options")
 pgroup.add_argument("-m", "--minify", action="store_true", help="enable minification of the cart")
+pgroup.add_argument("-M", "--minify-safe-only", action="store_true", help="only do minifaction that's always safe to do")
 pgroup.add_argument("-p", "--preserve", type=CommaSep, action=extend_arg, help='preserve specific identifiers in minification, e.g. "global1,global2,*.member2,table3.*"')
 pgroup.add_argument("--no-preserve", type=CommaSep, action=extend_arg, help='do not preserve specific built-in identifiers in minification, e.g. "circfill,rectfill"')
+pgroup.add_argument("-oc", "--focus-chars", action="store_true", help="when minifying, focus on lowering the code's number of chars (uncompressed size)")
+pgroup.add_argument("-ob", "--focus-compressed", action="store_true", help="when minifying, focus on lowering the code's compressed size (number of bytes)")
 pgroup.add_argument("--no-minify-rename", action="store_true", help="disable variable renaming in minification")
 pgroup.add_argument("--no-minify-spaces", action="store_true", help="disable space removal in minification")
 pgroup.add_argument("--no-minify-lines", action="store_true", help="disable line removal in minification")
 pgroup.add_argument("--no-minify-comments", action="store_true", help="disable comment removal in minification (requires --no-minify-spaces)")
 pgroup.add_argument("--no-minify-tokens", action="store_true", help="disable token removal in minification")
-pgroup.add_argument("--minify-safe-only", action="store_true", help="only do minifaction that's always safe to do")
 pgroup.add_argument("--rename-members-as-globals", action="store_true", help="rename globals and members the same way")
 pgroup.add_argument("--rename-map", help="log renaming of identifiers (from minify step) to this file")
 
@@ -131,6 +133,7 @@ def main_inner(raw_args):
             "wspace": not args.no_minify_spaces,
             "comments": not args.no_minify_comments,
             "tokens": not args.no_minify_tokens,
+            "focus": "chars" if args.focus_chars else "compressed" if args.focus_compressed else None,
         }
 
     args.rename = bool(args.minify) and not args.no_minify_rename
@@ -138,6 +141,7 @@ def main_inner(raw_args):
         args.rename = {
             "members=globals": args.rename_members_as_globals,
             "safe-only": args.minify_safe_only,
+            "focus": args.minify.get("focus"),
         }
         if args.preserve or args.no_preserve:
             rules = {}

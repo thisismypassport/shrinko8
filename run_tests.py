@@ -9,7 +9,8 @@ parser.add_argument("-t", "--test", action="append", help="specify a specific te
 parser.add_argument("--no-private", action="store_true", help="do not run private tests, if they exist")
 parser.add_argument("-v", "--verbose", action="store_true", help="print test successes")
 parser.add_argument("-x", "--exe", action="store_true", help="test a packaged exe instead of the python script")
-parser.add_argument("--pico8", action="append", help="specify a pico8 exe to test the results with")
+parser.add_argument("-p", "--pico8", action="append", help="specify a pico8 exe to test the results with")
+parser.add_argument("-P", "--no-pico8", action="store_true", help="disable running pico8 even if exe is supplied (for convenience)")
 g_opts = parser.parse_args()
 
 # for test consistency:
@@ -59,7 +60,7 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
                 stdouts.append("ERROR: Extra file difference: %s, %s" % (extra_outpath, extra_cmppath))
                 success = False
 
-    if run_success and g_opts.pico8 and (pico8_output != None or pico8_output_val != None):
+    if run_success and g_opts.pico8 and not g_opts.no_pico8 and (pico8_output != None or pico8_output_val != None):
         if pico8_output_val is None:
             pico8_output_val = file_read_text(path_join(prefix + "test_compare", pico8_output))
         for pico8_exe in g_opts.pico8:
