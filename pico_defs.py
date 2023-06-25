@@ -133,7 +133,7 @@ k_palette_map = {color: i for i, color in enumerate(k_palette)}
 
  # the pico8 character set
 k_charset = [
-    None, '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '	', '\n', 'ᵇ', 'ᶜ', '\r', 'ᵉ', 'ᶠ',
+    None, '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '\t', '\n', 'ᵇ', 'ᶜ', '\r', 'ᵉ', 'ᶠ',
     '▮', '■', '□', '⁙', '⁘', '‖', '◀', '▶', '「', '」', '¥', '•', '、', '。', '゛', '゜'
 ]
 for i in range(0x20, 0x7f):

@@ -401,7 +401,7 @@ def rename_tokens(ctxt, root, rename):
         for old, new in mapping.items():
             old_name = old.name if isinstance(old, Local) else old
 
-            ctxt.srcmap.append("%s %s <- %s" % (kind, from_p8str(new), old_name))
+            ctxt.srcmap.append("%s %s <- %s" % (kind, from_p8str(new), from_p8str(old_name)))
 
     if e(ctxt.srcmap):
         update_srcmap(member_renames, "member")

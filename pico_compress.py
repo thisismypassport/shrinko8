@@ -42,7 +42,7 @@ def update_mtf(mtf, idx, ch):
         mtf[ii] = mtf[ii - 1]
     mtf[0] = ch
 
-def uncompress_code(r, size_handler=None, **_):
+def uncompress_code(r, size_handler=None, debug_handler=None, **_):
     start_pos = r.pos()
     header = r.bytes(4, allow_eof=True)
 
@@ -55,17 +55,17 @@ def uncompress_code(r, size_handler=None, **_):
         
         mtf = [chr(i) for i in range(0x100)]
         br = BinaryBitReader(r.f)
+        if debug_handler: debug_handler.init(br)
         
         code = []
         while len(code) < unc_size:
-            #last_bit_pos = br.bit_position
             if br.bit():
                 extra = 0
                 while br.bit():
                     extra += 1
                 idx = br.bits(4 + extra) + make_mask(4, extra)
                 
-                #print(ord(mtf[idx]), br.bit_position - last_bit_pos)
+                if debug_handler: debug_handler.update(mtf[idx])                    
                 code.append(mtf[idx])
                 
                 update_mtf(mtf, idx, code[-1])
@@ -75,14 +75,15 @@ def uncompress_code(r, size_handler=None, **_):
 
                 if offset == 1 and offlen != 5:
                     assert offlen == 10
+                    startlen = len(code)
                     while True:
                         ch = br.bits(8)
                         if ch != 0:
                             code.append(chr(ch))
                         else:
                             break
-                    #print("******", br.bit_position - last_bit_pos)
-                
+                        
+                    if debug_handler: debug_handler.update(code[startlen:])
                 else:
                     count = 3
                     while True:
@@ -91,16 +92,18 @@ def uncompress_code(r, size_handler=None, **_):
                         if part != 7:
                             break
                     
-                    #print("%s:%s" % (offset, count), br.bit_position - last_bit_pos)
+                    if debug_handler: debug_handler.update((offset, count))
                     for _ in range(count):
                         code.append(code[-offset])
         
+        if debug_handler: debug_handler.end()
         assert r.pos() == start_pos + com_size
         assert len(code) == unc_size
 
     elif header == k_compressed_code_header:
         unc_size = r.u16()
         assert r.u16() == 0 # ?
+        if debug_handler: debug_handler.init(r)
 
         code = []
         while True:
@@ -110,19 +113,25 @@ def uncompress_code(r, size_handler=None, **_):
                 if ch2 == 0x00:
                     break
                 code.append(chr(ch2))
+                if debug_handler: debug_handler.update(code[-1])
+
             elif ch <= 0x3b:
                 code.append(k_code_table[ch])
+                if debug_handler: debug_handler.update(code[-1])
+
             else:
                 ch2 = r.u8()
                 count = (ch2 >> 4) + 2
                 offset = ((ch - 0x3c) << 4) + (ch2 & 0xf)
                 assert count <= offset
+                if debug_handler: debug_handler.update((offset, count))                
                 for _ in range(count):
                     code.append(code[-offset])
 
         if size_handler:
             print_compressed_size(r.pos() - start_pos, prefix="input", handler=size_handler)
 
+        if debug_handler: debug_handler.end()
         assert len(code) in (unc_size, unc_size - 1) # extra null at the end dropped?
 
     else:
@@ -158,7 +167,7 @@ def get_compressed_size(r):
         return len(r.zbytes(k_code_size))
 
 class Lz77Tuple(Tuple):
-    fields = ("off", "cnt")
+    fields = ("off", "cnt") # the subtracted values, not the real values
 
 def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=None, max_o_steps=None, fast_c=None, no_repeat=False, litblock_idxs=None):
     min_matches = defaultdict(list)
@@ -283,7 +292,8 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
                 min_matches[code[j:j+min_c]].append(j)
         prev_i = i
 
-def compress_code(w, code, size_handler=None, force_compress=False, fail_on_error=True, fast_compress=False, old_compress=False, **_):
+def compress_code(w, code, size_handler=None, debug_handler=None, force_compress=False, 
+                  fail_on_error=True, fast_compress=False, old_compress=False, **_):
     is_new = not old_compress
     min_c = 3
     
@@ -296,6 +306,7 @@ def compress_code(w, code, size_handler=None, force_compress=False, fail_on_erro
                 
         if is_new:
             bw = BinaryBitWriter(w.f)
+            if debug_handler: debug_handler.init(bw)
             mtf = [chr(i) for i in range(0x100)]
 
             def mtf_cost_heuristic(ch_i):
@@ -424,20 +435,22 @@ def compress_code(w, code, size_handler=None, force_compress=False, fail_on_erro
                                  max_o_steps=(0x20, 0x400), litblock_idxs=preprocess_litblock_idxs())
 
             for i, item in items:
-                #last_bit_pos = bw.bit_position
                 if isinstance(item, Lz77Tuple):
                     write_match(item.off, item.cnt)
-                    #print("%s:%s" % (item.off + 1, item.cnt + min_c), bw.bit_position - last_bit_pos)
+                    if debug_handler: debug_handler.update((item.off + 1, item.cnt + min_c))
                 elif len(item) == 1:
                     write_literal(item)
-                    #print(ord(item), bw.bit_position - last_bit_pos)
+                    if debug_handler: debug_handler.update(item)
                 else:
                     write_litblock(item)
-                    #print("******", bw.bit_position - last_bit_pos)
+                    if debug_handler: debug_handler.update(item)
                     
+            if debug_handler: debug_handler.end()
             bw.flush()
 
         else:
+            if debug_handler: debug_handler.init(w)
+
             def write_match(offset_val, count_val):
                 offset_val += 1
                 count_val += 1
@@ -457,8 +470,12 @@ def compress_code(w, code, size_handler=None, force_compress=False, fail_on_erro
             for i, item in get_lz77(code, min_c=min_c, max_c=0x11, max_o=0xc3f, no_repeat=True):
                 if isinstance(item, Lz77Tuple):
                     write_match(item.off, item.cnt)
+                    if debug_handler: debug_handler.update((item.off + 1, item.cnt + min_c))
                 else:
                     write_literal(item)
+                    if debug_handler: debug_handler.update(item)
+                    
+            if debug_handler: debug_handler.end()
 
         size = w.pos() - start_pos
         if size_handler:
@@ -474,3 +491,44 @@ def compress_code(w, code, size_handler=None, force_compress=False, fail_on_erro
             
     else:
         w.bytes(encode_p8str(code))
+
+class CompressionTracer:
+    """a debug_handler that traces compression to a file"""
+    def __init__(m, path):
+        m.file = file_create_text(path)
+
+    def init(m, reader):
+        m.reader = reader
+        m.old_bitpos = m.curr_bitpos()
+        m.code = []
+    
+    def curr_bitpos(m):
+        if isinstance(m.reader, (BinaryBitReader, BinaryBitWriter)):
+            return m.reader.bit_position
+        elif isinstance(m.reader, (BinaryReader, BinaryWriter)):
+            return m.reader.position * 8
+        fail()
+
+    def escape(m, str):
+        str = from_p8str(str)
+        return str.replace("\\", "\\\\").replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t")
+
+    def update(m, item):
+        bitpos = m.curr_bitpos()
+        bitsize = bitpos - m.old_bitpos
+
+        if isinstance(item, tuple):
+            offset, count = item
+            for _ in range(count):
+                m.code.append(m.code[-offset])
+            m.file.write("%d\t%s\t%d:%d\n" % (bitsize, m.escape(m.code[-count:]), offset, count))
+
+        else:
+            for ch in item:
+                m.code.append(ch)
+            m.file.write("%d\t%s\n" % (bitsize, m.escape(item)))
+
+        m.old_bitpos = bitpos
+
+    def end(m):
+        m.file.close()

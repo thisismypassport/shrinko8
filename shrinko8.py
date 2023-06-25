@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from utils import *
 from pico_process import PicoContext, process_code, CartSource, CustomPreprocessor
-from pico_compress import write_code_size, write_compressed_size
+from pico_compress import write_code_size, write_compressed_size, CompressionTracer
 from pico_cart import CartFormat, read_cart, write_cart, read_cart_package, get_bbs_cart_url
 import argparse, importlib.util
 
@@ -67,16 +67,20 @@ pgroup = parser.add_argument_group("unminify options")
 pgroup.add_argument("--unminify", action="store_true", help="enable unminification of the cart")
 pgroup.add_argument("--unminify-indent", type=int, help="indentation size when unminifying", default=2)
 
+pgroup = parser.add_argument_group("compression options (semi-undocumented)")
+pgroup.add_argument("--keep-compression", action="store_true", help="keep existing compression, instead of re-compressing")
+pgroup.add_argument("--fast-compression", action="store_true", help="force fast but poor compression (when creating pngs)")
+pgroup.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
+pgroup.add_argument("--old-compression", action="store_true", help="compress with the old pre-v0.2.0 compression scheme")
+pgroup.add_argument("--trace-compression", help="trace the compressed symbols and their cost into this file")
+pgroup.add_argument("--trace-input-compression", help="trace the input's compressed symbols and their cost into this file")
+
 pgroup = parser.add_argument_group("misc. options (semi-undocumented)")
 pgroup.add_argument("--builtin", type=CommaSep, action=extend_arg, help="treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
 pgroup.add_argument("--not-builtin", type=CommaSep, action=extend_arg, help="do not treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
 pgroup.add_argument("--version", action="store_true", help="print version of cart")
 pgroup.add_argument("--bbs", action="store_true", help="interpret input as a bbs cart id, e.g. '#...' and download it from the bbs")
 pgroup.add_argument("--url", action="store_true", help="interpret input as a URL, and download it from the internet")
-pgroup.add_argument("--keep-compression", action="store_true", help="keep existing compression, instead of re-compressing")
-pgroup.add_argument("--fast-compression", action="store_true", help="force fast but poor compression (when creating pngs)")
-pgroup.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
-pgroup.add_argument("--old-compression", action="store_true", help="compress with the old pre-v0.2.0 compression scheme")
 pgroup.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
 
 def main_inner(raw_args):
@@ -171,6 +175,11 @@ def main_inner(raw_args):
     if args.count:
         args.count = base_count_handler
 
+    if args.trace_input_compression:
+        args.trace_input_compression = CompressionTracer(args.trace_input_compression)
+    if args.trace_compression:
+        args.trace_compression = CompressionTracer(args.trace_compression)
+
     try:
         if args.list:
             for entry in read_cart_package(args.input, args.input_format).list():
@@ -178,8 +187,9 @@ def main_inner(raw_args):
             return 0
 
         preprocessor = CustomPreprocessor() if args.custom_preprocessor else None
-        cart = read_cart(args.input, args.input_format, size_handler=args.input_count, cart_name=args.cart,
-                        keep_compression=args.keep_compression, preprocessor=preprocessor)
+        cart = read_cart(args.input, args.input_format, size_handler=args.input_count, 
+                         debug_handler=args.trace_input_compression, cart_name=args.cart,
+                         keep_compression=args.keep_compression, preprocessor=preprocessor)
         src = CartSource(cart)
     except OSError as e:
         throw("cannot read cart: %s" % e)
@@ -217,9 +227,10 @@ def main_inner(raw_args):
     try:
         if args.output:
             write_cart(args.output, cart, args.format, size_handler=args.count,
-                    unicode_caps=args.unicode_caps, old_compress=args.old_compression,
-                    force_compress=args.count or args.force_compression,
-                    fast_compress=args.fast_compression, keep_compression=args.keep_compression)
+                       debug_handler=args.trace_compression,
+                       unicode_caps=args.unicode_caps, old_compress=args.old_compression,
+                       force_compress=args.count or args.force_compression,
+                       fast_compress=args.fast_compression, keep_compression=args.keep_compression)
     except OSError as e:
         throw("cannot write cart: %s" % e)
 
