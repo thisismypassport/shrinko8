@@ -54,35 +54,53 @@ k_char_escapes_rev.update({"\0": "0", "\x0e": "14", "\x0f": "15"})
 
 k_char_escapes_rev_min = {k: v for k, v in k_char_escapes_rev.items() if k in "\0\n\r\"'\\"}
 
-def format_string_literal(value, use_ctrl_chars=True, long=False):
+def format_string_literal(value, use_ctrl_chars=True, long=None, quote=None):
     """format a pico8 string to a pico8 string literal"""
 
-    # currently, I'm unable to find a better-than-nothing heuristic for long strings's compression size
-    # if len(strlit) > len(value) + len(long_prefix) + 4 and ...
-    if long and "\0" not in value and "\r" not in value and "]]" not in value:
-        long_prefix = "\n" if value.startswith("\n") else ""
-        # note: we never generate [=[]=] and the like, as pico doesn't like it much
-        return "[[%s%s]]" % (long_prefix, value)
-
-    char_escapes_rev = k_char_escapes_rev_min if use_ctrl_chars else k_char_escapes_rev
-    if value.count('"') <= value.count("'"):
-        opener = closer = '"'
-        exclude_esc = "'"
-    else:
-        opener = closer = "'"
-        exclude_esc = '"'
-
-    litparts = []
-    for i, ch in enumerate(value):
-        if ch in char_escapes_rev and ch != exclude_esc:
-            esc = char_escapes_rev[ch]
-            if esc.isdigit() and i + 1 < len(value) and value[i + 1].isdigit():
-                esc = esc.rjust(3, '0')
-            litparts.append("\\" + esc)
+    if long != False:
+        if "\0" not in value and "\r" not in value and "]]" not in value:
+            long_prefix = "\n" if value.startswith("\n") else ""
+            # note: we never generate [=[]=] and the like, as pico doesn't like it much
+            strlong = "[[%s%s]]" % (long_prefix, value)
+            if long == True:
+                return strlong
         else:
-            litparts.append(ch)
+            strlong = None
+            long = False
 
-    return '%s%s%s' % (opener, "".join(litparts), closer)
+    if long != True:
+        if quote is None:
+            quote = '"' if value.count('"') <= value.count("'") else "'"
+
+        exclude_esc = "'" if quote == '"' else '"'
+            
+        char_escapes_rev = k_char_escapes_rev_min if use_ctrl_chars else k_char_escapes_rev
+
+        litparts = []
+        for i, ch in enumerate(value):
+            if ch in char_escapes_rev and ch != exclude_esc:
+                esc = char_escapes_rev[ch]
+                if esc.isdigit() and i + 1 < len(value) and value[i + 1].isdigit():
+                    esc = esc.rjust(3, '0')
+                litparts.append("\\" + esc)
+            else:
+                litparts.append(ch)
+
+        strlit = '%s%s%s' % (quote, "".join(litparts), quote)
+        if long == False:
+            return strlit
+
+    return strlong if len(strlong) < len(strlit) else strlit
+
+def minify_string_literal(token, focus_chars, value=None):
+    if value is None:
+        value = parse_string_literal(token.value)
+    
+    if focus_chars:
+        return format_string_literal(value)
+    else:
+        # haven't found a good balanced heuristic for 'long' yet
+        return format_string_literal(value, long=token.value.startswith('['))
 
 def get_precedence(node):
     if node.type == NodeType.binary_op:
@@ -133,7 +151,7 @@ def minify_code(source, ctxt, root, minify):
 
         sublang = getattr(token, "sublang", None)
         if sublang and sublang.minify:
-            token.value = format_string_literal(sublang.minify(), long=token.value.startswith('['))
+            token.value = minify_string_literal(token, focus_chars, value=sublang.minify())
 
         if minify_tokens:
             
@@ -185,7 +203,7 @@ def minify_code(source, ctxt, root, minify):
                 token.value = "~"
 
             if token.type == TokenType.string:
-                token.value = format_string_literal(parse_string_literal(token.value), long=token.value.startswith('['))
+                token.value = minify_string_literal(token, focus_chars)
 
             if token.type == TokenType.number:
                 outer_prec = get_precedence(token.parent.parent) if token.parent.type == NodeType.const else None

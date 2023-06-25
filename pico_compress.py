@@ -510,8 +510,7 @@ class CompressionTracer:
         fail()
 
     def escape(m, str):
-        str = from_p8str(str)
-        return str.replace("\\", "\\\\").replace("\r", "\\r").replace("\n", "\\n").replace("\t", "\\t")
+        return '"%s"' % str.replace('"', '""') # let \n/etc go unescaped, good for excel/etc
 
     def update(m, item):
         bitpos = m.curr_bitpos()
@@ -521,12 +520,13 @@ class CompressionTracer:
             offset, count = item
             for _ in range(count):
                 m.code.append(m.code[-offset])
-            m.file.write("%d\t%s\t%d:%d\n" % (bitsize, m.escape(m.code[-count:]), offset, count))
+            str = "".join(m.code[-count:])
+            m.file.write("%d,%s,%d:%d\n" % (bitsize, m.escape(str), offset, count))
 
         else:
             for ch in item:
                 m.code.append(ch)
-            m.file.write("%d\t%s\n" % (bitsize, m.escape(item)))
+            m.file.write("%d,%s\n" % (bitsize, m.escape(item)))
 
         m.old_bitpos = bitpos
 

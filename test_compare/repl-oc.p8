@@ -8,7 +8,8 @@ __lua__
 --------------------------------------
 local t,█,▒=_ENV,{},{}for n,e in pairs(_ENV)do █[n]=e if(type(e)=="function")▒[n]=true
 end local _ENV=█ z,W=true function f(t,e)for n=1,#e do if(sub(e,n,n)==t)return n
-end end function e(t,n)return sub(t,n,n)end local 🐱,⬇️=split"a,b,f,n,r,t,v,\\,\",',\n,*,#,-,|,+,^",split"⁷,⁸,ᶜ,\n,\r,	,ᵇ,\\,\",',\n,¹,²,³,⁴,⁵,⁶"local █={}for n=1,#🐱 do █[🐱[n]]=⬇️[n]end function g(n)return n>="0"and n<="9"end function B(n)return n>="A"and n<="Z"or n>="a"and n<="z"or n=="_"or n>="█"or g(n)end function き(r,n,i,o)local t=""while n<=#r do local l=e(r,n)if(l==i)break
+end end function e(t,n)return sub(t,n,n)end local 🐱,⬇️=split[[a,b,f,n,r,t,v,\,",',
+,*,#,-,|,+,^]],split"⁷,⁸,ᶜ,\n,\r,	,ᵇ,\\,\",',\n,¹,²,³,⁴,⁵,⁶"local █={}for n=1,#🐱 do █[🐱[n]]=⬇️[n]end function g(n)return n>="0"and n<="9"end function B(n)return n>="A"and n<="Z"or n>="a"and n<="z"or n=="_"or n>="█"or g(n)end function き(r,n,i,o)local t=""while n<=#r do local l=e(r,n)if(l==i)break
 if l=="\\"then n+=1local t=e(r,n)l=█[t]if t=="x"then t=tonum("0x"..sub(r,n+1,n+2))if(t)n+=2else o"bad hex escape"
 l=chr(t)elseif g(t)then local i=n while g(t)and n<i+3do n+=1t=e(r,n)end n-=1t=tonum(sub(r,i,n))if(not t or t>=256)o"bad decimal escape"
 l=chr(t)elseif t=="z"then repeat n+=1t=e(r,n)until not f(t," \r	ᶜᵇ\n")if(t=="")o()

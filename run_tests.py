@@ -145,7 +145,7 @@ def run():
                  from_output=True, pico8_output_val="finished")
     run_test("repl-oc", "repl.p8", "repl-oc.p8", "--minify", "--preserve", "env.*,g_ENV.*,*._ENV,*._env,*._",
              "--focus-chars", pico8_output_val="finished")
-    run_test("repl-oc", "repl.p8", "repl-ob.p8", "--minify", "--preserve", "env.*,g_ENV.*,*._ENV,*._env,*._",
+    run_test("repl-ob", "repl.p8", "repl-ob.p8", "--minify", "--preserve", "env.*,g_ENV.*,*._ENV,*._env,*._",
              "--focus-compressed", pico8_output_val="finished")
     run_test("reformat", "input.p8", "input-reformat.p8", "--unminify", "--unminify-indent", "4")
     run_test("notnil", "notnil.p8", "notnil.p8", "--minify", pico8_output_val="passed")
