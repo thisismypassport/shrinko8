@@ -136,10 +136,10 @@ def minify_code(source, ctxt, root, minify):
     shorthand_vlines = set()
 
     def remove_parens(token):
-        token.value = None
+        token.erase()
         end_token = token.parent.children[-1]
         assert end_token.value == ")"
-        end_token.value = None
+        end_token.erase()
 
     def fixup_tokens(token):
         # find shorthands
@@ -151,7 +151,7 @@ def minify_code(source, ctxt, root, minify):
 
         sublang = getattr(token, "sublang", None)
         if sublang and sublang.minify:
-            token.value = minify_string_literal(token, focus_chars, value=sublang.minify())
+            token.modify(minify_string_literal(token, focus_chars, value=sublang.minify()))
 
         if minify_tokens:
             
@@ -159,11 +159,11 @@ def minify_code(source, ctxt, root, minify):
 
             if token.value == ";" and token.parent.type == NodeType.block and token.next_token().value != "(":
                 if not (getattr(token.parent.parent, "short", False) and not token.parent.stmts):
-                    token.value = None
+                    token.erase()
                     return
 
             if token.value in (",", ";") and token.parent.type == NodeType.table and token.next_sibling().value == "}":
-                token.value = None
+                token.erase()
                 return
 
             if token.value == "(" and token.parent.type == NodeType.call and len(token.parent.args) == 1:
@@ -194,24 +194,24 @@ def minify_code(source, ctxt, root, minify):
             # replace tokens for higher consistency
 
             if token.value == ";" and token.parent.type == NodeType.table:
-                token.value = ","
+                token.modify(",")
 
             if token.value == "!=":
-                token.value = "~="
+                token.modify("~=")
              
             if token.value == "^^" and ctxt.version >= 37:
-                token.value = "~"
+                token.modify("~")
 
             if token.type == TokenType.string:
-                token.value = minify_string_literal(token, focus_chars)
+                token.modify(minify_string_literal(token, focus_chars))
 
             if token.type == TokenType.number:
                 outer_prec = get_precedence(token.parent.parent) if token.parent.type == NodeType.const else None
                 allow_minus = outer_prec is None or outer_prec < k_unary_ops_prec
-                token.value = format_fixnum(parse_fixnum(token.value), allow_minus=allow_minus)
+                token.modify(format_fixnum(parse_fixnum(token.value), allow_minus=allow_minus))
                 if token.value.startswith("-"):
                     # insert synthetic minus token, so that output_tokens's tokenize won't get confused
-                    token.value = token.value[1:]
+                    token.modify(token.value[1:])
                     minus_token = Token.synthetic(TokenType.punct, "-", token, prepend=True)
                     token.parent.children.insert(0, minus_token)
 

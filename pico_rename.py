@@ -427,11 +427,10 @@ def rename_tokens(ctxt, root, rename):
             if node.parent.type == NodeType.const: # const string interpreted as identifier case
                 assert len(node.parent.children) == 1 and node.parent.extra_names[node.extra_i] == orig_name
                 node.parent.extra_names[node.extra_i] = node.name
-                node.parent.children[0].value = format_string_literal("".join(node.parent.extra_names))
+                node.parent.children[0].modify(format_string_literal("".join(node.parent.extra_names)))
             else:
                 assert len(node.children) == 1 and node.children[0].value == orig_name
-                node.children[0].value = node.name
-                node.children[0].modified = True
+                node.children[0].modify(node.name)
                 
         elif node.type == NodeType.sublang:
             node.lang.rename(globals=global_renames, members=member_renames, locals=local_renames)

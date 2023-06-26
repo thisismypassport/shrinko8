@@ -149,7 +149,7 @@ until (1 == 1)
 ;for a in (all({})) do
 end
 print("test" .. (@16) .. "str")
--- renaming bug
+-- renaming bugs
 l = "renaming bug"
 
 function fff()
@@ -158,3 +158,5 @@ function fff()
 end
 
 ?fff()
+x = 0.
+x = 1

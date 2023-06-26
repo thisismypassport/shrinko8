@@ -101,6 +101,13 @@ class Token(TokenNodeBase):
     def __init__(m, type, value, source=None, idx=None, endidx=None, vline=None):
         super().__init__()
         m.type, m.value, m.source, m.idx, m.endidx, m.vline, m.modified = type, value, source, idx, endidx, vline, False
+    
+    def modify(m, value):
+        m.value = value
+        m.modified = True
+    
+    def erase(m):
+        m.modify(None)
 
     @classmethod
     def dummy(m, source, idx=None):
