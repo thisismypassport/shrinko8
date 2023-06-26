@@ -104,9 +104,9 @@ end)()
 local o, n = sin(1, 2), cos((cos()))
 local f, c = (cos((cos())))
 local l = {d = ord, r = pal}
-local a = ord "123", pal {1, 2}, l:d("ord"), l:r({1, 2}), sin(1)
-local l = {ord "1", [2] = 3, l = 4, (ord "1")}
-a += 1
+local l = ord "123", pal {1, 2}, l:d("ord"), l:r({1, 2}), sin(1)
+local a = {ord "1", [2] = 3, l = 4, (ord "1")}
+l += 1
 o, n = sin(1, 2), cos((cos()))
 f, c = (cos((cos())))
 

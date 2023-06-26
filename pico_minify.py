@@ -4,6 +4,9 @@ from pico_tokenize import parse_string_literal, parse_fixnum, k_keep_prefix
 from pico_parse import NodeType
 from pico_parse import k_unary_ops_prec, k_binary_op_precs, k_right_binary_ops
 
+class Focus(Enum):
+    values = ("none", "chars", "compressed")
+
 # essentially only returns decvalue right now, given mostly non-fract. inputs
 # TODO: test with fract-ish inputs to see what's best to do.
 def format_fixnum(value, allow_minus=False):
@@ -92,11 +95,11 @@ def format_string_literal(value, use_ctrl_chars=True, long=None, quote=None):
 
     return strlong if len(strlong) < len(strlit) else strlit
 
-def minify_string_literal(token, focus_chars, value=None):
+def minify_string_literal(token, focus, value=None):
     if value is None:
         value = parse_string_literal(token.value)
     
-    if focus_chars:
+    if focus == Focus.chars:
         return format_string_literal(value)
     else:
         # haven't found a good balanced heuristic for 'long' yet
@@ -124,14 +127,13 @@ def minify_needs_comments(minify):
 def minify_code(source, ctxt, root, minify):
 
     minify_lines = minify_wspace = minify_tokens = minify_comments = True
-    focus_chars = focus_compressed = False
+    focus = Focus.none
     if isinstance(minify, dict):
         minify_lines = minify.get("lines", True)
         minify_wspace = minify.get("wspace", True)
         minify_tokens = minify.get("tokens", True)
         minify_comments = minify.get("comments", True)
-        focus_chars = minify.get("focus") == "chars"
-        focus_compressed = minify.get("focus") == "compressed"
+        focus = Focus(minify.get("focus", "none"))
 
     shorthand_vlines = set()
 
@@ -151,7 +153,7 @@ def minify_code(source, ctxt, root, minify):
 
         sublang = getattr(token, "sublang", None)
         if sublang and sublang.minify:
-            token.modify(minify_string_literal(token, focus_chars, value=sublang.minify()))
+            token.modify(minify_string_literal(token, focus, value=sublang.minify()))
 
         if minify_tokens:
             
@@ -203,7 +205,7 @@ def minify_code(source, ctxt, root, minify):
                 token.modify("~")
 
             if token.type == TokenType.string:
-                token.modify(minify_string_literal(token, focus_chars))
+                token.modify(minify_string_literal(token, focus))
 
             if token.type == TokenType.number:
                 outer_prec = get_precedence(token.parent.parent) if token.parent.type == NodeType.const else None

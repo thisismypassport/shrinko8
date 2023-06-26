@@ -4,7 +4,6 @@ from pico_parse import VarKind, NodeType, Global
 
 def lint_code(ctxt, root, lint_rules):
     errors = []
-    vars = defaultdict(list)
     builtin_globals = ctxt.builtins
     custom_globals = set()
 
@@ -50,7 +49,6 @@ def lint_code(ctxt, root, lint_rules):
 
                 if assign and (func == None or func.kind == "_init" or (func.kind is None and func.name == "_init" and func.find_parent(NodeType.function) == None)):
                     custom_globals.add(node.name)
-                    vars[node.name].append(node.var)
 
             if node.kind == VarKind.local and not node.new:
                 if is_assign_target(node) or is_op_assign_target(node) or is_function_target(node):
@@ -62,7 +60,6 @@ def lint_code(ctxt, root, lint_rules):
             for glob in node.lang.get_defined_globals():
                 if glob not in custom_globals and is_identifier(glob):
                     custom_globals.add(glob)
-                    vars[glob].append(root.globals[glob])
 
     root.traverse_nodes(preprocess_vars, tokens=preprocess_tokens, extra=True)
 
@@ -71,10 +68,11 @@ def lint_code(ctxt, root, lint_rules):
     def lint_pre(node):
         if node.type == NodeType.var:
             if node.kind == VarKind.local and node.new:
-                if lint_duplicate and vars[node.name] and node.name not in ('_', '_ENV'):
-                    prev_var = vars[node.name][-1]
-                    if isinstance(prev_var, Global):
-                        add_error("Local '%s' has the same name as a global" % node.name, node)
+                if lint_duplicate and node.name not in ('_', '_ENV'):
+                    prev_var = node.scope.parent.find(node.name)
+                    if prev_var is None:
+                        if node.name in custom_globals:
+                            add_error("Local '%s' has the same name as a global" % node.name, node)
                     elif prev_var.scope.funcdepth < node.var.scope.funcdepth:
                         if prev_var.scope.funcdepth == 0:
                             add_error("Local '%s' has the same name as a local declared at the top level" % node.name, node)
@@ -85,8 +83,6 @@ def lint_code(ctxt, root, lint_rules):
                     else:
                         add_error("Local '%s' has the same name as a local declared in the same scope" % node.name, node)
                 
-                vars[node.name].append(node.var)
-
                 if lint_unused and node.var not in used_locals and not node.name.startswith("_"):
                     if node.var in assigned_locals:
                         add_error("Local '%s' is only ever assigned to, never used" % node.name, node)
@@ -113,12 +109,7 @@ def lint_code(ctxt, root, lint_rules):
             add_lang_error = lambda msg: add_error("%s: %s" % (node.name, msg), node)
             node.lang.lint(on_error=add_lang_error, builtins=builtin_globals, globals=custom_globals)
 
-    def lint_post(node):
-        for scope in node.end_scopes:
-            for item in scope.items:
-                vars[item].pop()
-
-    root.traverse_nodes(lint_pre, lint_post, extra=True)
+    root.traverse_nodes(lint_pre, extra=True)
     return errors
 
 from pico_process import Error

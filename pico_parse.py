@@ -3,7 +3,7 @@ from pico_tokenize import TokenNodeBase, Token, TokenType
 from pico_tokenize import is_identifier, parse_string_literal, k_identifier_split_re
 
 class VarKind(Enum):
-    values = ("local", "global_", "member")
+    values = ("local", "global_", "member", "label")
     
 class VarBase():
     def __init__(m, name, implicit=False):
@@ -29,11 +29,18 @@ class Scope:
     def add(m, var):
         m.items[var.name] = var
 
-    def find(m, item):
-        if item in m.items:
-            return m.items[item]
+    def find(m, name):
+        var = m.items.get(name)
+        if var:
+            return var
         elif m.parent:
-            return m.parent.find(item)
+            return m.parent.find(name)
+    
+    def chain(m):
+        curr = m
+        while curr:
+            yield curr
+            curr = curr.parent
     
     @lazy_property
     def used_locals(m):
@@ -52,6 +59,37 @@ class Scope:
     @property
     def has_used_members(m):
         return lazy_property.is_set(m, "used_members")
+
+"""class LabelScope:
+    def __init__(m, parent=None, funcdepth=0):
+        m.parent = parent
+        m.funcdepth = funcdepth
+        m.labels = None
+        m.gotos = None
+    
+    def add(m, var):
+        if m.labels is None:
+            m.labels = {}
+        m.labels[var.name] = var
+    
+    def find(m, name):
+        var = m.labels.get(name) if m.labels else None
+        if var:
+            return var
+        elif m.parent and m.parent.funcdepth == m.funcdepth:
+            return m.parent.find(name)
+    
+    def add_goto(m, node):
+        if m.gotos is None:
+            m.gotos = []
+        m.gotos.append(node)
+        
+    @lazy_property
+    def used_labels(m):
+        return set()
+    @property
+    def has_used_labels(m):
+        return lazy_property.is_set(m, "used_labels")"""
 
 class NodeType(Enum):
     values = ("var", "index", "member", "const", "group", "unary_op", "binary_op", "call",
@@ -74,33 +112,11 @@ class Node(TokenNodeBase):
         else:
             m.source, m.idx, m.endidx = None, None, None
 
-        m.type, m.children, m.value, m.scopespec = type, children, None, None
+        m.type, m.children, m.value = type, children, None
         m.__dict__.update(kwargs)
 
         for child in children:
             child.parent = m
-
-    # a scopespec is either: None if there's no scoping change,
-    #   a Scope that acts upon the node,
-    #   (True, node) for a scope that the node starts (but does not end)
-    #   (False, nodes) for scopes that the node ends (but does not start)
-
-    @property
-    def start_scope(m):
-        if m.scopespec:
-            if isinstance(m.scopespec, Scope):
-                return m.scopespec
-            elif m.scopespec[0]:
-                return m.scopespec[1]
-
-    @property
-    def end_scopes(m):
-        if m.scopespec:
-            if isinstance(m.scopespec, Scope):
-                return (m.scopespec,)
-            elif not m.scopespec[0]:
-                return m.scopespec[1]
-        return ()
     
     def get_tokens(m):
         tokens = []
@@ -207,7 +223,7 @@ def parse(source, tokens):
         if var and hasattr(token, "keys_kind"):
             var.keys_kind = token.keys_kind
 
-        return Node(NodeType.var, [token], name=name, kind=kind, var_kind=var_kind, var=var, new=bool(newscope), parent_scope=scope)
+        return Node(NodeType.var, [token], name=name, kind=kind, var_kind=var_kind, var=var, new=bool(newscope), scope=newscope or scope)
     
     def parse_function(stmt=False, local=False):
         nonlocal scope, funcdepth
@@ -271,7 +287,7 @@ def parse(source, tokens):
         scope = scope.parent
         funcdepth -= 1
 
-        funcnode = Node(NodeType.function, tokens, target=target, params=params, body=body, name=name, scopespec=funcscope, kind=func_kind)
+        funcnode = Node(NodeType.function, tokens, target=target, params=params, body=body, name=name, kind=func_kind)
         if self_param:
             funcnode.add_extra_child(self_param)
         return funcnode
@@ -486,8 +502,7 @@ def parse(source, tokens):
         body, until = parse_block(with_until=True)
         tokens.append(body)
         tokens.append(until)
-        repeat = Node(NodeType.repeat, tokens, body=body, until=until, scopespec=body.scopespec)
-        body.scopespec = None
+        repeat = Node(NodeType.repeat, tokens, body=body, until=until)
         return repeat
 
     def parse_until():
@@ -525,7 +540,7 @@ def parse(source, tokens):
             require("end", tokens)
             scope = scope.parent
 
-            return Node(NodeType.for_, tokens, target=target, min=min, max=max, step=step, body=body, scopespec=newscope)
+            return Node(NodeType.for_, tokens, target=target, min=min, max=max, step=step, body=body)
 
         else:
             newscope = Scope(scope, depth + 1, funcdepth)
@@ -543,7 +558,7 @@ def parse(source, tokens):
             require("end", tokens)
             scope = scope.parent
 
-            return Node(NodeType.for_in, tokens, targets=targets, sources=sources, body=body, scopespec=newscope)
+            return Node(NodeType.for_in, tokens, targets=targets, sources=sources, body=body)
 
     def parse_return(vline):
         tokens = [peek(-1)]
@@ -572,7 +587,7 @@ def parse(source, tokens):
             func = parse_function(stmt=True, local=True)
             tokens.append(func)
 
-            return Node(NodeType.local, tokens, targets=[func.name], sources=[func], scopespec=(True, newscope), func_local=True)
+            return Node(NodeType.local, tokens, targets=[func.name], sources=[func], func_local=True)
 
         else:
             targets = parse_list(tokens, lambda: parse_var(newscope=newscope))
@@ -584,7 +599,7 @@ def parse(source, tokens):
                 newscope.add(target.var)
             scope = newscope
 
-            return Node(NodeType.local, tokens, targets=targets, sources=sources, scopespec=(True, newscope), func_local=False)
+            return Node(NodeType.local, tokens, targets=targets, sources=sources, func_local=False)
 
     def parse_assign(first):
         tokens = [first]
@@ -678,12 +693,10 @@ def parse(source, tokens):
             until = parse_until()
 
         depth -= 1
-        scopes = []
         while scope != oldscope:
-            scopes.append(scope)
             scope = scope.parent
         
-        node = Node(NodeType.block, tokens, stmts=stmts, scopespec=(False, scopes))
+        node = Node(NodeType.block, tokens, stmts=stmts)
         if with_until:
             return node, until
         else:

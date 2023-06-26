@@ -75,8 +75,9 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
     if not success:
         print("\nERROR - test %s failed" % name)
         print(stdout)
-        measure("new", outpath)
-        measure("old", cmppath)
+        if not read_stdout:
+            measure("new", outpath)
+            measure("old", cmppath)
         fail_test()
         return False
     elif g_opts.measure:

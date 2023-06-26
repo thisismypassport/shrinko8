@@ -18,8 +18,8 @@ assert(e == 3 and c == 1 and o["n"] == 2 and o[1] == 4, 8)
 do
   local n = e + 1
   assert(n == 4, 9)
-  local e = n * 2
-  assert(e == 8, 9.1)
+  local n = n * 2
+  assert(n == 8, 9.1)
 end
 assert(e == 3, 9.2)
 local t = _ENV
@@ -201,8 +201,8 @@ do
   assert(_ENV[1] == 3, 51)
 end
 
-local function n(e)
-  _ENV = e
+local function n(n)
+  _ENV = n
 end
 
 local e = _ENV

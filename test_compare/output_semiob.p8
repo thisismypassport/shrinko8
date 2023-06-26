@@ -117,9 +117,9 @@ local l = ({})[1], (function()end)()
 local o, n = sin(1,2), cos((cos()))
 local f, c = (cos((cos())))
 local l = {ord=ord, pal=pal}
-local d = ord"123", pal{1,2}, l:ord("ord"), l:pal({1,2}), sin(1)
-local l = {ord"1",[2]=3,x=4,(ord"1")}
-d += 1
+local l = ord"123", pal{1,2}, l:ord("ord"), l:pal({1,2}), sin(1)
+local d = {ord"1",[2]=3,x=4,(ord"1")}
+l += 1
 o, n = sin(1,2), cos((cos()))
 f, c = (cos((cos())))
 function u() return 1, 2, ord"1", (ord"1") end

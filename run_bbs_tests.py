@@ -20,6 +20,7 @@ parser.add_argument("--only-unsafe-minify", action="store_true", help="only test
 parser.add_argument("--none", action="store_true", help="do not test anything (allows running pico8 against input)")
 parser.add_argument("-oc", "--focus-chars", action="store_true", help="focus on char count")
 parser.add_argument("-ob", "--focus-compressed", action="store_true", help="focus on compressed size")
+parser.add_argument("-oa", "--focus-all", action="store_true", help="test all focuses")
 parser.add_argument("-i", "--compare-input", action="store_true", help="compare results vs the inputs too")
 parser.add_argument("-u", "--compare-unfocused", action="store_true", help="compare results vs the unfocused results too")
 parser.add_argument("-v", "--verbose", action="store_true", help="print changes in individual carts")
@@ -46,17 +47,23 @@ g_opts.all = not g_opts.only_compress and not g_opts.only_safe_minify and not g_
 
 class DeltaInfoDictionary(defaultdict): # keeps sum, min, max
     class Info:
-        __slots__ = ('sum', 'min', 'max')
+        __slots__ = ('sum', 'min', 'max', 'count')
         def __init__(m):
-            m.sum = m.min = m.max = 0
+            m.sum = m.min = m.max = m.count = 0
         def apply(m, value):
             m.sum += value
+            m.count += 1
             m.min = min(m.min, value)
             m.max = max(m.max, value)
         def apply_info(m, info):
             m.sum += info.sum
+            m.count += info.count
             m.min = min(m.min, info.min)
             m.max = max(m.max, info.max)
+
+        @property
+        def average(m):
+            return m.sum / m.count
 
     def __missing__(m, key):
         info = m.Info()
@@ -88,13 +95,14 @@ def check_run(name, result, parse_meta=False):
         return meta
 
 def init_for_process(opts):
+    global g_opts
     g_opts = opts
     init_tests(opts.exe)
 
 def run_for_cart(args):
-    (cart, cart_input, cart_output, cart_compare, cart_unfocused) = args
+    (cart, cart_input, cart_output, cart_compare, cart_unfocused, focus) = args
     
-    short_prefix = "c" if g_opts.focus_chars else "b" if g_opts.focus_compressed else ""
+    short_prefix = "c" if focus == "chars" else "b" if focus == "compressed" else ""
 
     basepath = path_join("test_bbs", cart)
     download_path = basepath + ".dl.png"
@@ -156,7 +164,7 @@ def run_for_cart(args):
         process_output("compress", check_run("%s:compress" % cart, compress_results, parse_meta=True))
         best_path_for_pico8 = compress_path
 
-    minify_opts = ["--focus-chars"] if g_opts.focus_chars else ["--focus-compressed"] if g_opts.focus_compressed else []
+    minify_opts = ["--focus-%s" % focus] if focus else []
     
     if g_opts.all or g_opts.only_safe_minify:
         safe_minify_results = run_code(uncompress_path, safe_minify_path, "--minify-safe-only", "--count", "--parsable-count", *minify_opts)
@@ -169,8 +177,8 @@ def run_for_cart(args):
 
     return (cart, is_fail_test(), new_cart_input, cart_output, deltas, best_path_for_pico8)
 
-def run():
-    prefix = "chars_" if g_opts.focus_chars else "compressed_" if g_opts.focus_compressed else ""
+def run(focus):
+    prefix = "%s_" % focus if focus else ""
 
     input_json = path_join("test_bbs", "input.json")
     output_json = path_join("test_bbs", prefix + "output.json")
@@ -186,7 +194,7 @@ def run():
          mt.Pool(g_opts.parallel_jobs) as mt_pool:
         
         p8_results = []
-        mp_inputs = [(cart, inputs.get(cart), outputs.get(cart), compares.get(cart), unfocuseds.get(cart)) for cart in g_opts.carts]
+        mp_inputs = [(cart, inputs.get(cart), outputs.get(cart), compares.get(cart), unfocuseds.get(cart), focus) for cart in g_opts.carts]
         for mp_result in mp_pool.imap_unordered(run_for_cart, mp_inputs):
             if not mp_result:
                 continue
@@ -217,12 +225,21 @@ def run():
             extra_print.append("WARNING: %d max regression" % info.max)
         
         if info.sum <= 0:
-            print("%s improved by %d in total (%s)" % (key, -info.sum, ", ".join(extra_print)))
+            print("%s improved by %d in total (%f average, %s)" % (key, -info.sum, -info.average, ", ".join(extra_print)))
         else:
-            print("WARNING: %s regressed by %d in total (%s)" % (key, info.sum, ", ".join(extra_print)))
+            print("WARNING: %s regressed by %d in total (%f average, %s)" % (key, info.sum, info.average, ", ".join(extra_print)))
+
+def run_all():
+    if g_opts.focus_all:
+        for focus in [None, "chars", "compressed"]:
+            print("Focus %s:" % focus)
+            run(focus)
+    else:
+        focus = "chars" if g_opts.focus_chars else "compressed" if g_opts.focus_compressed else None
+        run(focus)
 
 if __name__ == "__main__":
     init_tests(g_opts.exe)
     os.makedirs("test_bbs", exist_ok=True)
-    run()
+    run_all()
     exit_tests()

@@ -2,7 +2,7 @@ from utils import *
 from pico_defs import from_p8str
 from pico_tokenize import TokenType, is_identifier, keywords
 from pico_parse import VarKind, NodeType, Local
-from pico_minify import format_string_literal
+from pico_minify import format_string_literal, Focus
 import fnmatch
 
 global_callbacks = {
@@ -97,15 +97,14 @@ def rename_tokens(ctxt, root, rename):
     preserved_globals = IncludeExcludeMapping(global_strings_cpy)
     preserved_members = TableMemberPairIncludeExcludeMapping(members=member_strings)
     members_as_globals = safe_only = False
-    focus_chars = focus_compressed = False
+    focus = Focus.none
 
     # read rename options (e.g. what to preserve)
 
     if isinstance(rename, dict):
         members_as_globals = rename.get("members=globals", False)
         safe_only = rename.get("safe-only", False)
-        focus_chars = rename.get("focus") == "chars"
-        focus_compressed = rename.get("focus") == "compressed"
+        focus = Focus(rename.get("focus", "none"))
         rules_input = rename.get("rules")
         if rules_input:
             for key, value in rules_input.items():
@@ -144,12 +143,12 @@ def rename_tokens(ctxt, root, rename):
     root.traverse_tokens(collect_chars)
 
     # TODO: something must still be unoptimal with char_uses collection, as hardcoding k_identifier_chars is more helpful than going by uses...
-    if focus_chars:
+    if focus == Focus.chars:
         k_identifier_chars = string.ascii_letters + string.digits + "_\x1e\x1f" + "".join(chr(x) for x in range(0x80,0x100))
-    elif focus_compressed:
-        k_identifier_chars = string.ascii_lowercase + string.digits + "_"
-    else:
+    elif focus == Focus.none:
         k_identifier_chars = string.ascii_letters + string.digits + "_"
+    else:
+        k_identifier_chars = string.ascii_lowercase + string.digits + "_"
     
     ident_chars = []
     for ch in sorted(char_uses, key=lambda k: char_uses[k], reverse=True):
@@ -168,7 +167,6 @@ def rename_tokens(ctxt, root, rename):
     global_uses = CounterDictionary()
     member_uses = CounterDictionary()
     local_uses = CounterDictionary()
-    scopes = []
     
     # we avoid renaming into any names used by pico8/lua, as otherwise renamed variables may have a non-nill initial value
     global_excludes = global_strings_cpy
@@ -213,7 +211,7 @@ def rename_tokens(ctxt, root, rename):
 
         elif kind == VarKind.global_:
             if not explicit:
-                env_var = node.parent_scope.find("_ENV")
+                env_var = node.scope.find("_ENV")
                 if env_var and env_var.keys_kind != None:
                     return compute_effective_kind(node, env_var.keys_kind, explicit=True)
 
@@ -229,11 +227,7 @@ def rename_tokens(ctxt, root, rename):
 
         return kind
 
-    def collect_idents_pre(node):
-        scope = node.start_scope
-        if e(scope):
-            scopes.append(scope)
-            
+    def collect_idents_pre(node):            
         if node.type == NodeType.var:
             node.effective_kind = compute_effective_kind(node, default(node.var_kind, node.kind), explicit=e(node.var_kind))
             
@@ -252,18 +246,17 @@ def rename_tokens(ctxt, root, rename):
                     
             # add to the scope based on real kind, as we need to avoid conflicts with preserved vars too
             if node.kind == VarKind.global_:
-                if node.effective_kind == VarKind.member: # rare, e.g. see --[[member-keys]] example
-                    for scope in scopes:
+                for scope in node.scope.chain():
+                    if node.effective_kind == VarKind.member: # rare, e.g. see --[[member-keys]] example
                         scope.used_members.add(node.name)
-                else:
-                    for scope in scopes:
+                    else:
                         scope.used_globals.add(node.name)
 
             elif node.kind == VarKind.local:
-                if node.var.scope in scopes:
-                    i = scopes.index(node.var.scope)
-                    for scope in scopes[i:]:
-                        scope.used_locals.add(node.var)
+                for scope in node.scope.chain():
+                    scope.used_locals.add(node.var)
+                    if scope == node.var.scope:
+                        break
                         
         elif node.type == NodeType.sublang:
             for name, count in node.lang.get_global_usages().items():
@@ -284,11 +277,7 @@ def rename_tokens(ctxt, root, rename):
                 if not var.implicit:
                     local_uses[var] += count
 
-    def collect_idents_post(node):
-        for scope in node.end_scopes:
-            assert scopes.pop() == scope
-
-    root.traverse_nodes(collect_idents_pre, collect_idents_post, extra=True)
+    root.traverse_nodes(collect_idents_pre, extra=True)
 
     # assign new names to identifiers
 

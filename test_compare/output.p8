@@ -24,5 +24,5 @@ local l={1},{1,2,3,4}local l=1~=2local o=1,1.2345,4660,4660.33777,-1,-1.2345,-46
 ]]local o=-256,-256*4,65280^4,-65280,~65280if(not l)l=-1
 ?1or 1or 2and 3==4>=4|5~6<<1>><1 ..2 ..3- -1^4^1/1&7
 ?((~(((((((tonum(((3or 4)and 5)~=2)|1)~2)&3)>>1)..1)-(1+3))*3))^2)^1
-local l=({})[1],(function()end)()local o,n=sin(1,2),cos((cos()))local f,c=(cos((cos())))local l={d=ord,r=pal}local a=ord"123",pal{1,2},l:d("ord"),l:r({1,2}),sin(1)local l={ord"1",[2]=3,l=4,(ord"1")}a+=1o,n=sin(1,2),cos((cos()))f,c=(cos((cos())))function y()return 1,2,ord"1",(ord"1")end if 1==2then elseif 1==2then else end while 1==2do end repeat until 1==1for l in(all{})do end print("test"..@16 .."str")d="renaming bug"function r()local l,e,o,n,f,c,a,i,r,t,h,x,s,u,k,y,v,p,b,w,g,m,j,q,z,A,B return d end?r()
+local l=({})[1],(function()end)()local o,n=sin(1,2),cos((cos()))local f,c=(cos((cos())))local l={d=ord,r=pal}local l=ord"123",pal{1,2},l:d("ord"),l:r({1,2}),sin(1)local a={ord"1",[2]=3,l=4,(ord"1")}l+=1o,n=sin(1,2),cos((cos()))f,c=(cos((cos())))function y()return 1,2,ord"1",(ord"1")end if 1==2then elseif 1==2then else end while 1==2do end repeat until 1==1for l in(all{})do end print("test"..@16 .."str")d="renaming bug"function r()local l,e,o,n,f,c,a,i,r,t,h,x,s,u,k,y,v,p,b,w,g,m,j,q,z,A,B return d end?r()
 e=0e=1

@@ -137,7 +137,7 @@ def main_inner(raw_args):
             "wspace": not args.no_minify_spaces,
             "comments": not args.no_minify_comments,
             "tokens": not args.no_minify_tokens,
-            "focus": "chars" if args.focus_chars else "compressed" if args.focus_compressed else None,
+            "focus": "chars" if args.focus_chars else "compressed" if args.focus_compressed else "none",
         }
 
     args.rename = bool(args.minify) and not args.no_minify_rename
