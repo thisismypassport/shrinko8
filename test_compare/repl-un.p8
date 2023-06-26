@@ -1160,10 +1160,10 @@ function _draw()
     end
     s = n
     k = mid(k, 0, max(s - 21, 0))
-    ::again::
+    ::n::
     local n = o - s + k
-    if (n + t < 0) k += 1; goto again
-    if (n + t >= 21) k -= 1; goto again
+    if (n + t < 0) k += 1; goto n
+    if (n + t >= 21) k -= 1; goto n
     local n = n * 6
     rectfill(0, n, 127, n + s * 6 - 1, 0)
     if (s > 21) rectfill(0, 126, 127, 127, 0)
@@ -1186,7 +1186,7 @@ function _draw()
     end
   end
 
-  ::again::
+  ::n::
   local r, t
   if a or b then
     r, t = D(b, 0, h)
@@ -1204,7 +1204,7 @@ function _draw()
     e(r)
     R(u, 0, (o - r) * 6, i[1])
     if r < t - h then
-      if (d(r)) goto again
+      if (d(r)) goto n
     else
       local d, u, t = C(J, 0)
       e(t)
@@ -1257,9 +1257,9 @@ end
 
 function nb(n)
   local e = cocreate(nl)
-  ::_::
+  ::n::
   local n, e = coresume(e, n)
-  if (n and not e) goto _
+  if (n and not e) goto n
   if (not n) e, m = m, false
   return n, e
 end

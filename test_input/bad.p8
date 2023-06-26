@@ -24,17 +24,23 @@ function fx()
 end
 function ff(d,e,f)
   d = 1
+  ::lbl::
+  if (true) goto lbl ::lbl::
 end
 
 -- dups
 g_a = 3
 local uu = 1
+goto dup ::dup::
 function f3()
+  goto dup ::dup::
   local z, g_a, uu = 4, 4
   for i=1,10 do
   for i=1,5 do
+    goto dup ::dup::
     local i = 3
     local function finner(z)
+      goto dup ::dup::
     end
   end
   end

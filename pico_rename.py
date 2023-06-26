@@ -1,7 +1,7 @@
 from utils import *
 from pico_defs import from_p8str
 from pico_tokenize import TokenType, is_identifier, keywords
-from pico_parse import VarKind, NodeType, Local
+from pico_parse import VarKind, NodeType, VarBase
 from pico_minify import format_string_literal, Focus
 import fnmatch
 
@@ -167,6 +167,7 @@ def rename_tokens(ctxt, root, rename):
     global_uses = CounterDictionary()
     member_uses = CounterDictionary()
     local_uses = CounterDictionary()
+    label_uses = CounterDictionary()
     
     # we avoid renaming into any names used by pico8/lua, as otherwise renamed variables may have a non-nill initial value
     global_excludes = global_strings_cpy
@@ -233,16 +234,12 @@ def rename_tokens(ctxt, root, rename):
             
             if node.effective_kind == VarKind.member:
                 member_uses[node.name] += 1
-
             elif node.effective_kind == VarKind.global_:
                 global_uses[node.name] += 1
-
             elif node.effective_kind == VarKind.local:
-                # should in theory help, but doesn't...
-                #if node.new:
-                #    local_uses[node.var] += 0
-                #else:
                 local_uses[node.var] += 1
+            elif node.effective_kind == VarKind.label:
+                label_uses[node.var] += 1
                     
             # add to the scope based on real kind, as we need to avoid conflicts with preserved vars too
             if node.kind == VarKind.global_:
@@ -252,7 +249,7 @@ def rename_tokens(ctxt, root, rename):
                     else:
                         scope.used_globals.add(node.name)
 
-            elif node.kind == VarKind.local:
+            elif node.kind in (VarKind.local, VarKind.label):
                 for scope in node.scope.chain():
                     scope.used_locals.add(node.var)
                     if scope == node.var.scope:
@@ -307,13 +304,10 @@ def rename_tokens(ctxt, root, rename):
 
         return get_next_ident
 
-    def assign_idents(uses, excludes, skip=0):
+    def assign_idents(uses, excludes):
         """assign new names to the given identifiers, in usage frequency order, and ignoring unwanted names"""
         ident_stream = create_ident_stream()
         rename_map = {}
-
-        for i in range(skip):
-            ident_stream()
 
         for value in sorted(uses, key=lambda k: uses[k], reverse=True):
             while True:
@@ -345,50 +339,56 @@ def rename_tokens(ctxt, root, rename):
     rev_member_renames = ReverseRenameMap(member_renames)
     rev_global_renames = ReverseRenameMap(global_renames)    
     
-    # assign new names to the locals' identifiers, like assign_idents but trickier as it takes scopes into account
-    local_ident_stream = create_ident_stream()
-    local_renames = {}
+    def assign_locals_idents(uses, excludes):
+        """assign new names to the locals' identifiers, like assign_idents but trickier as it takes scopes into account"""
+        ident_stream = create_ident_stream()
+        rename_map = {}
 
-    remaining_local_uses = list(sorted(local_uses, key=lambda k: local_uses[k], reverse=True))
-    while remaining_local_uses:
-        ident = local_ident_stream()
-        ident_global, ident_member = None, None
-        ident_locals = []
+        remaining_uses = list(sorted(uses, key=lambda k: uses[k], reverse=True))
+        while remaining_uses:
+            ident = ident_stream()
+            ident_global, ident_member = None, None
+            ident_locals = []
 
-        if ident == "_ENV" or ident in keywords:
-            continue
+            if ident in excludes or ident in keywords:
+                continue
+            
+            for i, var in enumerate(remaining_uses):
+                if var.scope.has_used_globals:
+                    if ident_global is None:
+                        ident_global = rev_global_renames.get(ident)
+                    if ident_global in var.scope.used_globals:
+                        continue
+                
+                if var.scope.has_used_members:
+                    if ident_member is None:
+                        ident_member = rev_member_renames.get(ident)
+                    if ident_member in var.scope.used_members:
+                        continue
+                
+                for _, ident_local in ident_locals:
+                    if ident_local in var.scope.used_locals:
+                        break
+                    if var in ident_local.scope.used_locals:
+                        break
+
+                else:
+                    rename_map[var] = ident
+                    ident_locals.append((i, var))
+
+            for i, ident_local in reversed(ident_locals):
+                assert remaining_uses.pop(i) == ident_local
+
+        return rename_map
         
-        for i, var in enumerate(remaining_local_uses):
-            if var.scope.has_used_globals:
-                if ident_global is None:
-                    ident_global = rev_global_renames.get(ident)
-                if ident_global in var.scope.used_globals:
-                    continue
-            
-            if var.scope.has_used_members:
-                if ident_member is None:
-                    ident_member = rev_member_renames.get(ident)
-                if ident_member in var.scope.used_members:
-                    continue
-            
-            for _, ident_local in ident_locals:
-                if ident_local in var.scope.used_locals:
-                    break
-                if var in ident_local.scope.used_locals:
-                    break
-
-            else:
-                local_renames[var] = ident
-                ident_locals.append((i, var))
-
-        for i, ident_local in reversed(ident_locals):
-            assert remaining_local_uses.pop(i) == ident_local
+    local_renames = assign_locals_idents(local_uses, ("_ENV",))
+    label_renames = assign_locals_idents(label_uses, ())
 
     # output the identifier mapping, if needed
 
     def update_srcmap(mapping, kind):
         for old, new in mapping.items():
-            old_name = old.name if isinstance(old, Local) else old
+            old_name = old.name if isinstance(old, VarBase) else old
 
             ctxt.srcmap.append("%s %s <- %s" % (kind, from_p8str(new), from_p8str(old_name)))
 
@@ -396,6 +396,7 @@ def rename_tokens(ctxt, root, rename):
         update_srcmap(member_renames, "member")
         update_srcmap(global_renames, "global")
         update_srcmap(local_renames, "local")
+        update_srcmap(label_renames, "label")
 
     # write the new names into the syntax tree
 
@@ -409,6 +410,8 @@ def rename_tokens(ctxt, root, rename):
                 node.name = global_renames[node.name]
             elif node.effective_kind == VarKind.local:
                 node.name = local_renames[node.var]
+            elif node.effective_kind == VarKind.label:
+                node.name = label_renames[node.var]
             else:
                 return
 

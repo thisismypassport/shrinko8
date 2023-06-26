@@ -178,20 +178,20 @@ end)if(not n)t=e>=l and r or r-1
 if(o>0)l+=1
 return t,l end function nw(n,t,l,e)if type(e)=="function"then np(n,function(n,r,o,i)print(r,t+o*4,l+i*6,e(n))end)else print(n and"⁶rw"..n,t,l,e)end end function er(n,o,f)local d,t,u,l=ng(n)local t=1nw(n,o,f,function(o)while t<=#l and l[t]<o do t+=1end local n if(t<=#l and u[t]<=o)n=d[t]
 local t=i[5]if n==false then t=i[6]elseif n==true then t=i[7]elseif type(n)~="string"or r(n,{"nil","true","false"})then t=i[8]elseif nd[n]then t=i[9]elseif not q(e(n,1))then t=i[10]elseif ea[n]then t=i[11]end return t end)end function _draw()local u=peek(24357)local c,p=peek2(24360),peek2(24362)camera()local function e(n)cursor(0,127)for n=1,n do rectfill(0,o*6,127,(o+1)*6-1,0)if o<21then o+=1else print""end end end local function w(n,e)for n=1,n do if(o>e)o-=1
-rectfill(0,o*6,127,(o+1)*6-1,0)end end local function m(n,e)for t=0,2do local l=pget(n+t,e+5)pset(n+t,e+5,l==0and i[12]or 0)end end local function f(f)local r=d..n.." "local l,t,n=nt(r,#d+l)if n>s then e(n-s)elseif n<s then w(s-n,n)end s=n k=mid(k,0,max(s-21,0))::again::local n=o-s+k if(n+t<0)k+=1goto again
-if(n+t>=21)k-=1goto again
+rectfill(0,o*6,127,(o+1)*6-1,0)end end local function m(n,e)for t=0,2do local l=pget(n+t,e+5)pset(n+t,e+5,l==0and i[12]or 0)end end local function f(f)local r=d..n.." "local l,t,n=nt(r,#d+l)if n>s then e(n-s)elseif n<s then w(s-n,n)end s=n k=mid(k,0,max(s-21,0))::n::local n=o-s+k if(n+t<0)k+=1goto n
+if(n+t>=21)k-=1goto n
 local n=n*6rectfill(0,n,127,n+s*6-1,0)if(s>21)rectfill(0,126,127,127,0)
 er(r,0,n)print(d,0,n,i[4])if(v>=10and f~=false and not x)m(l*4,n+t*6)
 end local function d(t)e(1)o-=1print("[enter] ('esc' to abort)",0,o*6,i[3])while true do flip()n9()for n in nv()do if(n=="•")ne=true b=""a={}return false
 if(n=="\r"or n=="\n")h+=t return true
-end end end::again::local r,t if a or b then r,t=nl(b,0,h)if t-h<=20and a then b,a=el(b,a)r,t=nl(b,0,h)if(#a==0and not x)a=nil
+end end end::n::local r,t if a or b then r,t=nl(b,0,h)if t-h<=20and a then b,a=el(b,a)r,t=nl(b,0,h)if(#a==0and not x)a=nil
 end end if(not x)camera()
 if(h==0and not x)f(not b)
-if b then local u=sub(b,r)local r=min(t-h,20)e(r)nw(u,0,(o-r)*6,i[1])if r<t-h then if(d(r))goto again
+if b then local u=sub(b,r)local r=min(t-h,20)e(r)nw(u,0,(o-r)*6,i[1])if r<t-h then if(d(r))goto n
 else local d,u,t=nt(nc,0)e(t)nw(nc,0,(o-t)*6,i[2])if x then h+=r else n,s,k,l,h,b,nc="",0,0,1,0f()end end end if x then e(1)o-=1print(x,0,o*6,i[3])end if z then e(1)o-=1print(z,0,o*6,i[3])z=nil end if n1 then n1-=1if(n1==0)z,n1=""
 end v-=1if(v==0)v=20
 color(u)camera(c,p)if(o<=20)cursor(0,o*6)
-end ns,nr,no=false,false,false ni={}function n8(n,e)m,eo=n,e assert(false,n)end function nx(n,e,l)return n4(n,l)(e or t)end function n3(n,e)return nx("return "..n,e,true)end function ei(n)local e=cocreate(n4)::_::local n,e=coresume(e,n)if(n and not e)goto _
+end ns,nr,no=false,false,false ni={}function n8(n,e)m,eo=n,e assert(false,n)end function nx(n,e,l)return n4(n,l)(e or t)end function n3(n,e)return nx("return "..n,e,true)end function ei(n)local e=cocreate(n4)::n::local n,e=coresume(e,n)if(n and not e)goto n
 if(not n)e,m=m,false
 return n,e end function ef(n,e)local n,e=nt(n,e)return"line "..e+1 .." col "..n+1end function ny(e,l)a,ne,m={},false,false ns,nr,no=false,false,false local t=cocreate(function()nx(e)end)local r,n while true do r,n=coresume(t)if(costatus(t)=="dead")break
 if nu and not nr then x="running, press 'esc' to abort"_draw()flip()x=nil else if(na and not nr and not no)flip()

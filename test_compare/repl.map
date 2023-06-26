@@ -635,3 +635,6 @@ local nx <- my_ENV
 local n3 <- globfuncs
 local nm <- esc_keys
 local n7 <- esc_values
+label n <- again
+label n <- again
+label n <- _

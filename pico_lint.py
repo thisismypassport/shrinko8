@@ -20,6 +20,7 @@ def lint_code(ctxt, root, lint_rules):
     # find global assignment, and check for uses
 
     used_locals = set()
+    used_labels = set()
     assigned_locals = set()
 
     def is_assign_target(node):
@@ -55,6 +56,9 @@ def lint_code(ctxt, root, lint_rules):
                     assigned_locals.add(node.var)
                 else:
                     used_locals.add(node.var)
+            
+            if node.kind == VarKind.label and not node.new:
+                used_labels.add(node.var)
 
         elif node.type == NodeType.sublang:
             for glob in node.lang.get_defined_globals():
@@ -89,6 +93,21 @@ def lint_code(ctxt, root, lint_rules):
                     elif not (node.parent.type == NodeType.function and node in node.parent.params and 
                               (node != node.parent.params[-1] or node not in node.parent.children)): # don't warn for non-last or implicit params
                         add_error("Local '%s' isn't used" % node.name, node)
+
+            elif node.kind == VarKind.label and node.new:
+                if lint_duplicate and node.name != '_':
+                    prev_var = node.scope.parent.find(node.name, crossfunc=True)
+                    if prev_var != None:
+                        if prev_var.scope.funcdepth < node.var.scope.funcdepth:
+                            if prev_var.scope.funcdepth == 0:
+                                add_error("Label '%s' has the same name as a label declared at the top level" % node.name, node)
+                            else:
+                                add_error("Label '%s' has the same name as a label declared in a parent function" % node.name, node)
+                        else:
+                            add_error("Label '%s' has the same name as a label declared in a parent scope" % node.name, node)
+                
+                if lint_unused and node.var not in used_labels and not node.name.startswith("_"):
+                    add_error("Label '%s' isn't used" % node.name, node)
 
             elif node.kind == VarKind.global_:
                 if lint_undefined and node.name not in custom_globals:

@@ -46,6 +46,9 @@ def run_code(*args, exit_code=None):
                         exec(g_code, {"__file__": g_code_file, "__name__": "__main__"})
             except SystemExit as e:
                 actual_code = e.code
+            except Exception:
+                traceback.print_exc()
+                actual_code = -1
             
             stdout = stdout_io.getvalue()
 

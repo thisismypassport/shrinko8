@@ -19,6 +19,11 @@ class Local(VarBase):
 class Global(VarBase):
     pass
 
+class Label(VarBase):
+    def __init__(m, name, scope):
+        super().__init__(name)
+        m.scope = scope
+
 class Scope:
     def __init__(m, parent=None, depth=0, funcdepth=0):
         m.parent = parent
@@ -60,36 +65,45 @@ class Scope:
     def has_used_members(m):
         return lazy_property.is_set(m, "used_members")
 
-"""class LabelScope:
+class LabelScope:
     def __init__(m, parent=None, funcdepth=0):
         m.parent = parent
         m.funcdepth = funcdepth
         m.labels = None
-        m.gotos = None
     
     def add(m, var):
         if m.labels is None:
             m.labels = {}
         m.labels[var.name] = var
     
-    def find(m, name):
+    def find(m, name, crossfunc=False):
         var = m.labels.get(name) if m.labels else None
         if var:
             return var
-        elif m.parent and m.parent.funcdepth == m.funcdepth:
+        elif m.parent and (crossfunc or m.parent.funcdepth == m.funcdepth):
             return m.parent.find(name)
     
-    def add_goto(m, node):
-        if m.gotos is None:
-            m.gotos = []
-        m.gotos.append(node)
+    def chain(m, crossfunc=False):
+        curr = m
+        while curr:
+            yield curr
+            curr = curr.parent if (crossfunc or curr.parent.funcdepth == curr.funcdepth) else None
+    
+    # for implementation reuse with locals, we stored used labels in used_locals
         
     @lazy_property
-    def used_labels(m):
+    def used_locals(m):
         return set()
     @property
-    def has_used_labels(m):
-        return lazy_property.is_set(m, "used_labels")"""
+    def has_used_locals(m):
+        return lazy_property.is_set(m, "used_locals")
+    
+    @property
+    def has_used_globals(m):
+        return False
+    @property
+    def has_used_members(m):
+        return False
 
 class NodeType(Enum):
     values = ("var", "index", "member", "const", "group", "unary_op", "binary_op", "call",
@@ -154,6 +168,8 @@ def parse(source, tokens):
     depth = -1
     funcdepth = 0
     scope = Scope(None, depth, funcdepth)
+    labelscope = LabelScope(None, funcdepth)
+    unresolved_labels = None
     errors = []
     globals = LazyDict(lambda key: Global(key))
     
@@ -178,11 +194,14 @@ def parse(source, tokens):
             return True
         return False
 
-    def add_error(msg, off=0, fail=False):
-        err = Error(msg, peek(off))
+    def add_error_at(msg, token, fail=False):
+        err = Error(msg, token)
         errors.append(err)
         if fail:
             raise ParseError()
+
+    def add_error(msg, off=0, fail=False):
+        add_error_at(msg, peek(off), fail)
 
     def require(value, tokens=None):
         if not accept(value, tokens):
@@ -198,18 +217,32 @@ def parse(source, tokens):
             return peek(-1)
         add_error("identifier expected", fail=True)
 
-    def parse_var(token=None, newscope=None, member=False, implicit=False):
+    def parse_var(token=None, new=None, member=False, label=False, implicit=False):
         token = token or require_ident()
         name = token.value
 
         var = None
-        kind = VarKind.local
-        if newscope:
-            var = Local(name, newscope)
-        elif member:
+        search_scope = None
+        
+        if member:
             kind = VarKind.member
+
+        elif label:
+            kind = VarKind.label
+            search_scope = labelscope
+
+            if new:
+                var = Label(name, labelscope)
+            # else, can't resolve until func ends
+
         else:
-            if e(scope):
+            kind = VarKind.local
+            search_scope = new or scope
+
+            if new:
+                assert isinstance(new, Scope)
+                var = Local(name, new)
+            else:
                 var = scope.find(name)
             
             if not var:
@@ -223,10 +256,18 @@ def parse(source, tokens):
         if var and hasattr(token, "keys_kind"):
             var.keys_kind = token.keys_kind
 
-        return Node(NodeType.var, [token], name=name, kind=kind, var_kind=var_kind, var=var, new=bool(newscope), scope=newscope or scope)
+        node = Node(NodeType.var, [token], name=name, kind=kind, var_kind=var_kind, var=var, new=bool(new), scope=search_scope)
+
+        if label and not new:
+            nonlocal unresolved_labels
+            if unresolved_labels is None:
+                unresolved_labels = []
+            unresolved_labels.append(node)
+
+        return node
     
     def parse_function(stmt=False, local=False):
-        nonlocal scope, funcdepth
+        nonlocal scope, funcdepth, unresolved_labels
         tokens = [peek(-1)]
         self_param = None
         func_kind = getattr(tokens[0], "func_kind", None)
@@ -237,7 +278,7 @@ def parse(source, tokens):
         params = []
         if stmt:
             if local:
-                target = parse_var(newscope=scope)
+                target = parse_var(new=scope)
                 scope.add(target.var)
                 name = target.name
             else:
@@ -257,7 +298,7 @@ def parse(source, tokens):
                     name += ":" + key.name
 
                     self_token = Token.synthetic(TokenType.ident, "self", target, append=True)
-                    self_param = parse_var(token=self_token, newscope=funcscope, implicit=True)
+                    self_param = parse_var(token=self_token, new=funcscope, implicit=True)
                     params.append(self_param)
 
             tokens.append(target)
@@ -268,7 +309,7 @@ def parse(source, tokens):
                 if accept("..."):
                     params.append(Node(NodeType.varargs, [peek(-1)]))
                 else:
-                    params.append(parse_var(newscope=funcscope))
+                    params.append(parse_var(new=funcscope))
                 tokens.append(params[-1])
 
                 if accept(")", tokens):
@@ -278,6 +319,9 @@ def parse(source, tokens):
         for param in params:
             if param.type == NodeType.var:
                 funcscope.add(param.var)
+                
+        old_unresolved = unresolved_labels
+        unresolved_labels = None
 
         funcdepth += 1
         scope = funcscope
@@ -286,6 +330,9 @@ def parse(source, tokens):
         require("end", tokens)
         scope = scope.parent
         funcdepth -= 1
+        
+        late_resolve_labels()
+        unresolved_labels = old_unresolved
 
         funcnode = Node(NodeType.function, tokens, target=target, params=params, body=body, name=name, kind=func_kind)
         if self_param:
@@ -518,7 +565,7 @@ def parse(source, tokens):
 
         if peek(1).value == "=":
             newscope = Scope(scope, depth + 1, funcdepth)
-            target = parse_var(newscope=newscope)
+            target = parse_var(new=newscope)
             tokens.append(target)
             require("=", tokens)
             min = parse_expr()
@@ -544,7 +591,7 @@ def parse(source, tokens):
 
         else:
             newscope = Scope(scope, depth + 1, funcdepth)
-            targets = parse_list(tokens, lambda: parse_var(newscope=newscope))
+            targets = parse_list(tokens, lambda: parse_var(new=newscope))
             require("in", tokens)
             sources = parse_list(tokens, parse_expr)
             require("do", tokens)
@@ -590,7 +637,7 @@ def parse(source, tokens):
             return Node(NodeType.local, tokens, targets=[func.name], sources=[func], func_local=True)
 
         else:
-            targets = parse_list(tokens, lambda: parse_var(newscope=newscope))
+            targets = parse_list(tokens, lambda: parse_var(new=newscope))
             sources = []
             if accept("=", tokens):
                 sources = parse_list(tokens, parse_expr)
@@ -654,10 +701,11 @@ def parse(source, tokens):
         elif value == "local":
             return parse_local()
         elif value == "goto":
-            label = require_ident()
+            label = parse_var(label=True)
             return Node(NodeType.goto, [token, label], label=label)
         elif value == "::":
-            label = require_ident()
+            label = parse_var(label=True, new=True)
+            labelscope.add(label.var)
             end = require("::")
             return Node(NodeType.label, [token, label, end], label=label)
         elif value == "function":
@@ -668,9 +716,9 @@ def parse(source, tokens):
             return parse_misc_stmt()
 
     def parse_block(vline=None, with_until=False):
-        nonlocal scope, depth
+        nonlocal scope, labelscope, depth
         oldscope = scope
-        start = peek()
+        labelscope = LabelScope(labelscope, funcdepth)
         depth += 1
 
         stmts = []
@@ -693,6 +741,7 @@ def parse(source, tokens):
             until = parse_until()
 
         depth -= 1
+        labelscope = labelscope.parent
         while scope != oldscope:
             scope = scope.parent
         
@@ -701,10 +750,18 @@ def parse(source, tokens):
             return node, until
         else:
             return node
+    
+    def late_resolve_labels():
+        if unresolved_labels:
+            for node in unresolved_labels:
+                node.var = node.scope.find(node.name)
+                if not node.var:
+                    add_error_at("Unknown label %s" % node.name, node.children[0])
 
     def parse_root():
         root = parse_block()
         root.globals = globals
+        late_resolve_labels()
         if peek().type != None:
             add_error("Expected end of input")
         if idx < len(tokens):

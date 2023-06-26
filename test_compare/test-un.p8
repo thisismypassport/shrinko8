@@ -173,20 +173,20 @@ assert(f:g(true) == f and select(2, f:g(true)) == true, 47)
 do
   t = 1
   do
-    ::x::
+    ::n::
     t += 1
     if (t == 4) goto e
-    goto x
+    goto n
   end
   ::e::
   assert(t == 4, 48)
 end
 do
-  ::y::
+  ::n::
   do
-    goto y
+    goto n
     assert(false, 49)
-    ::y::
+    ::n::
   end
 end
 t = 0
@@ -291,11 +291,11 @@ assert(m:r "me" == "me" and #m:r {} == 0, 62)
 do
   while true do
     if 1 == 1 then
-      ::zoo::
+      ::n::
     end
-    goto zoo
+    goto n
   end
-  ::zoo::
+  ::n::
 end
 local n = 1
 
@@ -316,21 +316,21 @@ do
 end
 do
   local n, e = 1, 2
-  ::_1::
+  ::n::
   assert(e == 2, 65)
-  if (n > 1) assert(i() == 4 and e == 2, 66); goto out
+  if (n > 1) assert(i() == 4 and e == 2, 66); goto e
   local e = 3
   i = function()
     e += 1
     return e
   end
   n += 1
-  goto _1
+  goto n
 end
-::out::
+::e::
 do
   local n = 1
-  ::_1::
+  ::n::
   local d = n
   e = i
   i = function()
@@ -338,14 +338,14 @@ do
     return d
   end
   n += 1
-  if (n == 3) goto out2 else goto _1
+  if (n == 3) goto d else goto n
 end
-::out2::
+::d::
 assert(i() == 3 and i() == 4 and e() == 2 and i() == 5 and e() == 3, 67)
 do
-  goto foo
+  goto n
   local n
-  ::foo::
+  ::n::
 end
 if (1 == 1) ;
 local n = 0
