@@ -36,8 +36,7 @@ undocumented_builtins = {
 
 pattern_builtins = set(chr(ch) for ch in range(0x80, 0x9a))
 
-def get_line_col(text, idx): # (0-based)
-    start = 0
+def get_line_col(text, idx, start=0): # (0-based)
     line = 0
 
     while start < idx:
@@ -49,16 +48,41 @@ def get_line_col(text, idx): # (0-based)
     
     return line, idx - start
 
+k_tab_break = "\n-->8\n" # yes, pico8 doesn't accept consecutive/initial/final tab breaks
+
+def get_tab_line_col(text, idx, start=0): # (0-based)
+    tab = 0
+
+    while start < idx and tab < 15:
+        end = text.find(k_tab_break, start)
+        if end < 0 or end >= idx:
+            break
+        tab += 1
+        start = end + len(k_tab_break)
+    
+    line, col = get_line_col(text, idx, start)
+    return tab, line, col
+
+class SourceLocation(Tuple):
+    """A location in a source file (optionally with a tab)"""
+    fields = ("path", "tab", "line", "col") # (0-based)
+
+def get_source_location(path, text, idx, start_line=0, tabs=False):
+    if tabs:
+        tab, line, col = get_tab_line_col(text, idx)
+    else:
+        tab, line, col = None, *get_line_col(text, idx)
+    return SourceLocation(path, tab, line + start_line, col)
+
 class PicoSource: # keep this light - created for temp. tokenizations
     """A pico8 source file - e.g. either the main one or an included file"""
-    __slots__ = ("name", "text")
+    __slots__ = ("path", "text")
 
-    def __init__(m, name, text):
-        m.name, m.text = name, text
+    def __init__(m, path, text):
+        m.path, m.text = path, text
         
-    def get_name_line_col(m, idx): # (0-based)
-        line, col = get_line_col(m.text, idx)        
-        return m.name, line, col
+    def get_location(m, idx, tabs=False): # (0-based)
+        return get_source_location(m.path, m.text, idx, tabs=tabs)
 
 class CartSource(PicoSource):
     """The source of a pico8 cart, maps indexes in the preprocessed code to individual source files"""
@@ -67,18 +91,17 @@ class CartSource(PicoSource):
         m.mappings = cart.code_map
         # no __init__ - we override with properties
 
-    def get_name_line_col(m, idx):
+    def get_location(m, idx, tabs=False):
         for mapping in reversed(m.mappings):
             if idx >= mapping.idx:
-                name = mapping.src_name
-                line, col = get_line_col(mapping.src_code, mapping.src_idx + (idx - mapping.idx))
-                return name, line + mapping.src_line, col
+                mapped_idx = mapping.src_idx + (idx - mapping.idx)
+                return get_source_location(mapping.src_path, mapping.src_code, mapped_idx, mapping.src_line, tabs=tabs)
         
-        return super().get_name_line_col(idx)
+        return super().get_location(idx, tabs)
 
     @property
-    def name(m):
-        return m.cart.name
+    def path(m):
+        return m.cart.path
         
     @property
     def text(m):
@@ -130,15 +153,30 @@ class PicoContext:
         m.sublang_getter = sublang_getter
         m.version = version
 
+class ErrorFormat(Enum):
+    values = ("common", "absolute", "tabbed")
+
 class Error:
     """An error (or warning) to be reported together with where in the source it occured"""
     def __init__(m, msg, token):
         m.msg, m.token = msg, token
 
-    def __str__(m):
+    def __lt__(m, other):
+        return m.token.idx < other.token.idx
+
+    def format(m, fmt=None):
+        fmt = default(fmt, ErrorFormat.common)
+        tabbed = fmt == ErrorFormat.tabbed
         token = m.token
-        name, line, col = token.source.get_name_line_col(token.idx) if token.source else ("???", 0, 0)
-        return "%s(%s:%s) - %s" % (name, line + 1, col + 1, m.msg)
+        loc = token.source.get_location(token.idx, tabs=tabbed) if token.source else SourceLocation("???", 0, 0, 0)
+        path = path_absolute(loc.path) if fmt == ErrorFormat.absolute else path_relative(loc.path, fallback=True)
+        if tabbed:
+            return "%s (tab %X, line %d, col %d): %s" % (path, loc.tab, loc.line + 1, loc.col + 1, m.msg)
+        else:
+            return "%s:%d:%d: %s" % (path, loc.line + 1, loc.col + 1, m.msg)
+
+    def __str__(m):
+        return m.format()
 
 def print_token_count(num_tokens, **kwargs):
     print_size("tokens", num_tokens, 8192, **kwargs)

@@ -1,0 +1,3 @@
+Compilation errors:
+test_input/worse.p8:4:6: Unknown label unknown
+test_input/worse.p8:6:1: expression has no side-effect

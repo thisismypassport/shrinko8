@@ -17,6 +17,9 @@ g_opts = parser.parse_args()
 os.environ["PICO8_PLATFORM_CHAR"] = 'w'
 os.environ["PICO8_VERSION_ID"] = '38'
 
+def norm_paths(output):
+    return output.replace("\\", "/")
+
 def measure(kind, path, input=False):
     print("Measuring %s..." % kind)
     if path_exists(path):
@@ -26,7 +29,8 @@ def measure(kind, path, input=False):
         print("MISSING!")
 
 def run_test(name, input, output, *args, private=False, from_temp=False, to_temp=False, from_output=False,
-             read_stdout=False, exit_code=None, extra_outputs=None, pico8_output_val=None, pico8_output=None):
+             read_stdout=False, norm_stdout=None, exit_code=None, extra_outputs=None,
+             pico8_output_val=None, pico8_output=None):
     if g_opts.test and name not in g_opts.test:
         return None
 
@@ -45,7 +49,7 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
     stdouts = [run_stdout]
 
     if read_stdout:
-        file_write_text(outpath, run_stdout)
+        file_write_text(outpath, norm_stdout(run_stdout) if norm_stdout else run_stdout)
 
     if run_success and not to_temp:
         if try_file_read(outpath) != try_file_read(cmppath):
@@ -123,15 +127,18 @@ def run():
     run_test("p82rom", "testcvt.p8", "test.p8.rom")
     run_test("clip2p8", "test.clip", "test.clip.p8")
     run_test("p82clip", "testcvt.p8", "testcvt.clip")
-    run_test("url2p8", "test.url", "test.url.p8")
-    run_test("p82url", "bad.p8", "bad.url")
+    if run_test("url2p8", "test.url", "test.url.p8"):
+        run_test("p82url", "test.url.p8", "test.url", from_output=True)
     run_test("genend", "genend.p8.png", "genend.p8")
-    run_stdout_test("lint", "bad.p8", "--lint", output="bad.txt", exit_code=1)
+    run_stdout_test("lint", "bad.p8", "--lint", output="bad.txt", norm_stdout=norm_paths, exit_code=1)
+    run_stdout_test("linttab", "bad.p8", "--lint", "--error-format", "tabbed",
+                    output="bad-tab.txt", norm_stdout=norm_paths, exit_code=1)
     run_stdout_test("count", "bad.p8", "--count", output="badcount.txt")
+    run_stdout_test("error", "worse.p8", "--lint", output="worse.txt", norm_stdout=norm_paths, exit_code=1)
     run_test("script", "script.p8", "script.p8", "--script", path_join("test_input", "my_script.py"),
              "--script-args", "my-script-arg", "--my-script-opt", "123")
     run_stdout_test("sublang.lint", "sublang.p8", "--lint",
-             "--script", path_join("test_input", "sublang.py"), output="sublang.txt", exit_code=1)
+             "--script", path_join("test_input", "sublang.py"), output="sublang.txt", norm_stdout=norm_paths, exit_code=1)
     run_test("sublang", "sublang.p8", "sublang.p8", "--minify",
              "--script", path_join("test_input", "sublang.py"))
     run_test("unkform1", "unkform1", "unkform1")
@@ -156,8 +163,8 @@ def run():
 if __name__ == "__main__":
     init_tests(g_opts.exe)
     
-    os.makedirs("test_output", exist_ok=True)
-    os.makedirs("test_temp", exist_ok=True)
+    dir_ensure_exists("test_output")
+    dir_ensure_exists("test_temp")
     run()
 
     if not g_opts.no_private:

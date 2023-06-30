@@ -1,2 +1,2 @@
 Lint errors:
-sublang.p8(4:27) - evally: Identifier 'g_same_global' not found
+test_input/sublang.p8:4:27: evally: Identifier 'g_same_global' not found

@@ -1,36 +1,38 @@
 Lint errors:
-badinc.p8(3:7) - Local 'from_include' isn't used
-bad.p8(5:8) - Identifier 'u' not found
-bad.p8(5:11) - Identifier 'v' not found
-bad.p8(6:3) - Identifier 'x' not found - did you mean to use 'local' to define it?
-bad.p8(6:6) - Identifier 'y' not found - did you mean to use 'local' to define it?
-bad.p8(6:9) - Built-in global 't' assigned outside _init - did you mean to use 'local'?
-bad.p8(7:12) - Identifier 'f1' not found - did you mean to use 'local function' to define it?
-bad.p8(8:18) - Local 'f12' isn't used
-bad.p8(14:12) - Built-in global 'band' assigned outside _init - did you mean to use 'local function'?
-bad.p8(21:9) - Local 'a' isn't used
-bad.p8(21:12) - Local 'b' is only ever assigned to, never used
-bad.p8(25:13) - Local 'd' is only ever assigned to, never used
-bad.p8(25:17) - Local 'f' isn't used
-bad.p8(27:5) - Label 'lbl' isn't used
-bad.p8(28:24) - Label 'lbl' has the same name as a label declared in a parent scope
-bad.p8(33:7) - Local 'uu' isn't used
-bad.p8(36:14) - Label 'dup' has the same name as a label declared at the top level
-bad.p8(37:9) - Local 'z' isn't used
-bad.p8(37:12) - Local 'g_a' has the same name as a global
-bad.p8(37:12) - Local 'g_a' isn't used
-bad.p8(37:17) - Local 'uu' has the same name as a local declared at the top level
-bad.p8(37:17) - Local 'uu' isn't used
-bad.p8(38:7) - Local 'i' isn't used
-bad.p8(39:7) - Local 'i' has the same name as a local declared in a parent scope
-bad.p8(39:7) - Local 'i' isn't used
-bad.p8(40:16) - Label 'dup' has the same name as a label declared in a parent scope
-bad.p8(41:11) - Local 'i' has the same name as a local declared in the same scope
-bad.p8(41:11) - Local 'i' isn't used
-bad.p8(42:20) - Local 'finner' isn't used
-bad.p8(42:27) - Local 'z' has the same name as a local declared in a parent function
-bad.p8(42:27) - Local 'z' isn't used
-bad.p8(43:18) - Label 'dup' has the same name as a label declared in a parent function
-bad.p8(54:18) - Local 'unused' isn't used
-badinc.p8.png(2:7) - Local 'from_include' has the same name as a local declared in the same scope
-badinc.p8.png(2:7) - Local 'from_include' isn't used
+test_input/badinc.p8:3:7: Local 'from_include' isn't used
+test_input/bad.p8:5:8: Identifier 'u' not found
+test_input/bad.p8:5:11: Identifier 'v' not found
+test_input/bad.p8:6:3: Identifier 'x' not found - did you mean to use 'local' to define it?
+test_input/bad.p8:6:6: Identifier 'y' not found - did you mean to use 'local' to define it?
+test_input/bad.p8:6:9: Built-in global 't' assigned outside _init - did you mean to use 'local'?
+test_input/bad.p8:7:12: Identifier 'f1' not found - did you mean to use 'local function' to define it?
+test_input/bad.p8:8:18: Local 'f12' isn't used
+test_input/bad.p8:14:12: Built-in global 'band' assigned outside _init - did you mean to use 'local function'?
+test_input/bad.p8:21:9: Local 'a' isn't used
+test_input/bad.p8:21:12: Local 'b' is only ever assigned to, never used
+test_input/bad.p8:25:13: Local 'd' is only ever assigned to, never used
+test_input/bad.p8:25:17: Local 'f' isn't used
+test_input/bad.p8:27:5: Label 'lbl' isn't used
+test_input/bad.p8:28:24: Label 'lbl' has the same name as a label declared in a parent scope
+test_input/bad.p8:33:7: Local 'uu' isn't used
+test_input/bad.p8:36:14: Label 'dup' has the same name as a label declared at the top level
+test_input/bad.p8:37:9: Local 'z' isn't used
+test_input/bad.p8:37:12: Local 'g_a' has the same name as a global
+test_input/bad.p8:37:12: Local 'g_a' isn't used
+test_input/bad.p8:37:17: Local 'uu' has the same name as a local declared at the top level
+test_input/bad.p8:37:17: Local 'uu' isn't used
+test_input/bad.p8:38:7: Local 'i' isn't used
+test_input/bad.p8:39:7: Local 'i' has the same name as a local declared in a parent scope
+test_input/bad.p8:39:7: Local 'i' isn't used
+test_input/bad.p8:40:16: Label 'dup' has the same name as a label declared in a parent scope
+test_input/bad.p8:41:11: Local 'i' has the same name as a local declared in the same scope
+test_input/bad.p8:41:11: Local 'i' isn't used
+test_input/bad.p8:42:20: Local 'finner' isn't used
+test_input/bad.p8:42:27: Local 'z' has the same name as a local declared in a parent function
+test_input/bad.p8:42:27: Local 'z' isn't used
+test_input/bad.p8:43:18: Label 'dup' has the same name as a label declared in a parent function
+test_input/bad.p8:54:18: Local 'unused' isn't used
+test_input/badinc.p8.png:2:7: Local 'from_include' has the same name as a local declared in the same scope
+test_input/badinc.p8.png:2:7: Local 'from_include' isn't used
+test_input/bad.p8:78:7: Local 'tab_b' isn't used
+test_input/bad.p8:88:7: Local 'tab_still_f' isn't used

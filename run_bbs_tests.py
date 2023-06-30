@@ -240,6 +240,6 @@ def run_all():
 
 if __name__ == "__main__":
     init_tests(g_opts.exe)
-    os.makedirs("test_bbs", exist_ok=True)
+    dir_ensure_exists("test_bbs")
     run_all()
     exit_tests()

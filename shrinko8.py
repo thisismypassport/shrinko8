@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from utils import *
-from pico_process import PicoContext, process_code, CartSource, CustomPreprocessor
+from pico_process import PicoContext, process_code, CartSource, CustomPreprocessor, ErrorFormat
 from pico_compress import write_code_size, write_compressed_size, CompressionTracer
 from pico_cart import CartFormat, read_cart, write_cart, read_cart_package, get_bbs_cart_url
 import argparse, importlib.util
@@ -8,11 +8,14 @@ import argparse, importlib.util
 def CommaSep(val):
     return val.split(",")
 
-def CartFormatFromStr(val):
-    return CartFormat(val.replace("-", "_").replace(" ", "_"))
+def EnumFromStr(enum_type):
+    def cvt(name):
+        return enum_type(name.replace("-", "_").replace(" ", "_"))
+    cvt.__name__ = enum_type.__name__
+    return cvt
 
-def CartFormatList(list):
-    return ",".join(str.replace("_", "-") for str in list)
+def EnumList(list):
+    return ", ".join(str.replace("_", "-") for str in list)
 
 def ParsableCountHandler(prefix, name, size, limit):
     print("count:%s:%s:%d:%d" % (prefix, name, size, limit))
@@ -44,6 +47,7 @@ pgroup.add_argument("--no-lint-unused", action="store_true", help="don't print l
 pgroup.add_argument("--no-lint-duplicate", action="store_true", help="don't print lint errors on duplicate variables")
 pgroup.add_argument("--no-lint-undefined", action="store_true", help="don't print lint errors on undefined variables")
 pgroup.add_argument("--no-lint-fail", action="store_true", help="don't fail immediately on lint errors")
+pgroup.add_argument("--error-format", type=EnumFromStr(ErrorFormat), help="how to format lint & compilation errors {%s}" % EnumList(ErrorFormat._values))
 
 pgroup = parser.add_argument_group("count options")
 pgroup.add_argument("-c", "--count", action="store_true", help="enable printing token count, character count & compressed size")
@@ -57,11 +61,11 @@ pgroup.add_argument("-s", "--script", help="manipulate the cart via a custom pyt
 pgroup.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
 
 pgroup = parser.add_argument_group("format options")
-parser.add_argument("-f", "--format", type=CartFormatFromStr, help="output format {%s}" % CartFormatList(CartFormat._output_names))
-parser.add_argument("-F", "--input-format", type=CartFormatFromStr, help="input format {%s}" % CartFormatList(CartFormat._input_names))
+parser.add_argument("-f", "--format", type=EnumFromStr(CartFormat), help="output cart format {%s}" % EnumList(CartFormat._output_names))
+parser.add_argument("-F", "--input-format", type=EnumFromStr(CartFormat), help="input cart format {%s}" % EnumList(CartFormat._input_names))
 parser.add_argument("-u", "--unicode-caps", action="store_true", help="write capitals as italicized unicode characters (better for copy/paste)")
-parser.add_argument("--list", action="store_true", help="list all cart names inside a cart package (%s)" % CartFormatList(CartFormat._pack_names))
-parser.add_argument("--cart", help="name of cart to extract from cart package (%s)" % CartFormatList(CartFormat._pack_names))
+parser.add_argument("--list", action="store_true", help="list all cart names inside a cart package (%s)" % EnumList(CartFormat._pack_names))
+parser.add_argument("--cart", help="name of cart to extract from cart package (%s)" % EnumList(CartFormat._pack_names))
 
 pgroup = parser.add_argument_group("unminify options")
 pgroup.add_argument("--unminify", action="store_true", help="enable unminification of the cart")
@@ -200,7 +204,7 @@ def main_inner(raw_args):
     ctxt = PicoContext(extra_builtins=args.builtin, not_builtins=args.not_builtin, 
                        srcmap=args.rename_map, sublang_getter=sublang_cb, version=cart.version_id)
     if preproc_cb:
-        preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args, res_path=None) # (res_path is obsolete)
+        preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args)
 
     ok, errors = process_code(ctxt, src, input_count=args.input_count, count=args.count,
                               lint=args.lint, minify=args.minify, rename=args.rename,
@@ -208,8 +212,8 @@ def main_inner(raw_args):
                               fail=False, want_count=not args.no_count_tokenize)
     if errors:
         print("Lint errors:" if ok else "Compilation errors:")
-        for error in errors:
-            print(error)
+        for error in sorted(errors):
+            print(error.format(args.error_format))
         if not ok or not args.no_lint_fail:
             return 1
 
@@ -217,7 +221,7 @@ def main_inner(raw_args):
         file_write_text(args.rename_map, "\n".join(ctxt.srcmap))
         
     if postproc_cb:
-        postproc_cb(cart=cart, args=args, res_path=None) # (res_path is obsolete)
+        postproc_cb(cart=cart, args=args)
 
     if args.count:
         write_code_size(cart, handler=args.count)

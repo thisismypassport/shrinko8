@@ -229,6 +229,8 @@ You can disable certain lints globally via additional command-line options:
 
 Normally, a lint failure prevents cart creation, but `--no-lint-fail` overrides that.
 
+Normally, lint errors are displayed in a format useful for external editors, showing the line number in the whole .p8 file. However, you can use `--error-format tabbed` to show the pico8 tab number and line number inside that tab instead.
+
 ## Undefined variable lints
 
 In Pico-8 (and lua in general), variables that aren't explicitly declared as local (via a `local` statement) are implicitly global. This can cause all sorts of bugs and headaches if you typo the name of a local or forget to declare a local.
@@ -245,7 +247,7 @@ end
 
 The linter normally allows you to define global variables in the global scope or in the _init function. If you don't, your options are either:
 
-Tell the linter about the globals it didn't see you define via the `--lint` hint:
+Tell the linter about the globals it didn't see you define via the `--lint:` hint:
 ```lua
 --lint: global_1, global_2
 function f()
@@ -253,11 +255,11 @@ function f()
 end
 ```
 
-Tell the linter to allow you to define globals (by assigning to them) in a specific function via the `--lint func::_init` hint:
+Tell the linter to allow you to define globals (by assigning to them) in a specific function via the `--lint: func::_init` hint:
 ```lua
 --lint: func::_init
 function my_init()
-    global_1, global_2 = 1, 2 -- these globals can be used anywhere now that they're assigned here
+    global_1, global_2 = 1, 2 -- these globals can be used anywhere since they're assigned here
 end
 ```
 

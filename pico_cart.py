@@ -16,7 +16,7 @@ class CartFormat(Enum):
 
 class CodeMapping(Tuple):
     """Specifies that code starting at index 'idx' maps to the given source starting at index 'src_idx'"""
-    fields = ("idx", "src_name", "src_code", "src_idx", "src_line")
+    fields = ("idx", "src_path", "src_code", "src_idx", "src_line")
 
 class Cart:
     """A pico8 cart, including its code (as a p8str), rom (as a Memory), and more"""
@@ -26,7 +26,7 @@ class Cart:
         m.version_tuple = get_version_tuple(k_default_version_id)
         m.platform = k_default_platform
         m.rom = rom.copy() if rom else Memory(k_rom_size)
-        m.name = ""
+        m.path = ""
         m.code = code
         m.code_map = ()
         m.code_rom = None
@@ -41,18 +41,18 @@ class Cart:
         title_meta = m.meta.get("title")
         if title_meta is None:
             title = ""
-            for line in m.code.splitlines()[:2]:
-                match = re.fullmatch(r"-- ?(.*)\s*", line)
+            for line in m.code.split("\n", 2)[:2]: # (splitlines isn't appropriate for p8str)
+                match = re.fullmatch(r"-- ?(.*)[%s]*" % k_wspace, line)
                 if match:
                     title += match.group(1)
                 title += "\n"
             return title.rstrip("\n")
         else:
-            return "\n".join(title_meta)
+            return "\n".join(to_p8str(line) for line in title_meta)
 
     @title.setter
     def title(m, value):
-        m.meta["title"] = value.splitlines()
+        m.meta["title"] = from_p8str(value).splitlines()
 
     def set_code_without_title(m, code):
         old_title = m.title
@@ -72,7 +72,7 @@ def read_code_from_rom(r, keep_compression=False, **opts):
 
 def read_cart_from_rom(buffer, path=None, allow_tiny=False, **opts):
     cart = Cart()
-    cart.name = path_basename(path)
+    cart.path = path
     
     with BinaryReader(BytesIO(buffer), big_end = True) as r:
         if r.len() < k_cart_size and allow_tiny: # tiny rom, code only
@@ -178,14 +178,31 @@ def read_cart_from_image(data, **opts):
     cart = read_cart_from_rom(data, **opts)
     cart.screenshot = screenshot
     return cart
+
+def get_res_path():
+    return path_dirname(path_resolve(__file__))
+
+def draw_text_on_image(image, text, offset):
+    with file_open(path_join(get_res_path(), "font.png")) as font_f:
+        font_surf = Surface.load(font_f)
+        x, y = 0, 0
+        for ch in text:
+            chi = ord(ch)
+            chrect = Rect(chi % 16 * 8, chi // 16 * 6, 8 if chi >= 0x80 else 4, 6)
+            if ch == '\n' or x + chrect.w > 124:
+                x = 0
+                y += 8
+                if y >= 16:
+                    break
+                elif ch == '\n':
+                    continue
+            image.draw(font_surf, offset + Point(x, y), chrect)
+            x += chrect.w
     
-def write_cart_to_image(cart, screenshot_path=None, title=None, res_path=None, **opts):
+def write_cart_to_image(cart, screenshot_path=None, title=None, **opts):
     output = write_cart_to_rom(cart, with_trailer=True, **opts)
 
-    if res_path is None:
-        res_path = path_dirname(path_resolve(__file__))
-    
-    with file_open(path_join(res_path, "template.png")) as template_f:
+    with file_open(path_join(get_res_path(), "template.png")) as template_f:
         image = load_cart_image(template_f)
         width, height = image.size
 
@@ -206,21 +223,7 @@ def write_cart_to_image(cart, screenshot_path=None, title=None, res_path=None, *
         if title is None:
             title = cart.title
         if title:
-            with file_open(path_join(res_path, "font.png")) as font_f:
-                font_surf = Surface.load(font_f)
-                x, y = 0, 0
-                for ch in title:
-                    chi = ord(ch)
-                    chrect = Rect(chi % 16 * 8, chi // 16 * 6, 8 if chi >= 0x80 else 4, 6)
-                    if ch == '\n' or x + chrect.w > 124:
-                        x = 0
-                        y += 8
-                        if y >= 16:
-                            break
-                        elif ch == '\n':
-                            continue
-                    image.draw(font_surf, k_title_offset + Point(x, y), chrect)
-                    x += chrect.w
+            draw_text_on_image(image, title, k_title_offset)
         
         image.lock()
         for y in range(height):
@@ -243,6 +246,7 @@ k_meta_prefix = "meta:"
 
 def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
     cart = Cart()
+    cart.path = path
     
     def nybbles(line):
         for b in line:
@@ -346,8 +350,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
             cart.version_id = int(clean.split()[1])
             cart.version_tuple = get_version_tuple(cart.version_id)
             
-    cart.name = path_basename(path)
-    cart.code, cart.code_map = preprocess_code(cart.name, path, "".join(code), code_line, preprocessor=preprocessor)
+    cart.code, cart.code_map = preprocess_code(path, "".join(code), code_line, preprocessor=preprocessor)
     return cart
 
 def write_cart_to_source(cart, unicode_caps=False, **_):
@@ -594,9 +597,8 @@ def read_cart(path, format=None, **opts):
 class PicoPreprocessor:
     """The standard pico8 preprocessor (supporting #include and nothing else)"""
 
-    def __init__(m, strict=True, include_handler=None):
+    def __init__(m, strict=True):
         m.strict = strict
-        m.include_handler = include_handler
         
     def start(m, path, code):
         pass
@@ -606,15 +608,13 @@ class PicoPreprocessor:
         if not path_exists(inc_path):
             throw("cannot open included cart at: %s" % inc_path)
 
-        inc_cart = m.include_handler(inc_path) if m.include_handler else None
-        if inc_cart is None:
-            inc_cart = read_cart(inc_path, preprocessor=m)
+        inc_cart = read_cart(inc_path, preprocessor=m)
 
         if inc_cart.code_map:
             for map in inc_cart.code_map:
-                outmappings.append(CodeMapping(out_i + map.idx, map.src_name, map.src_code, map.src_idx, map.src_line))
+                outmappings.append(CodeMapping(out_i + map.idx, map.src_path, map.src_code, map.src_idx, map.src_line))
         else:
-            outmappings.append(CodeMapping(out_i, inc_name, inc_cart.code, 0, 0))
+            outmappings.append(CodeMapping(out_i, inc_path, inc_cart.code, 0, 0))
         outparts.append(inc_cart.code)
 
         return out_i + len(inc_cart.code)
@@ -639,7 +639,7 @@ class PicoPreprocessor:
 k_long_brackets_re = re.compile(r"\[(=*)\[(.*?)\]\1\]", re.S)
 k_wspace = " \t\r\n"
 
-def preprocess_code(name, path, code, start_line=0, preprocessor=None):
+def preprocess_code(path, code, start_line=0, preprocessor=None):
     """preprocess the given pico8 code (e.g. handle #include-s)"""
     outparts = []
     outmappings = []
@@ -661,7 +661,7 @@ def preprocess_code(name, path, code, start_line=0, preprocessor=None):
         nonlocal start_i, out_i
         if i > start_i and active:
             outparts.append(code[start_i:i])
-            outmappings.append(CodeMapping(out_i, name, code, start_i, start_line))
+            outmappings.append(CodeMapping(out_i, path, code, start_i, start_line))
             out_i += (i - start_i)
         start_i = i
 
@@ -688,7 +688,7 @@ def preprocess_code(name, path, code, start_line=0, preprocessor=None):
         elif ch != '#':
             i += 1
 
-        elif list_get(code, i + 1) == '[' and list_get(code, i + 2) != '[': # #[...] inline directive
+        elif list_get(code, i + 1) == '[' and list_get(code, i + 2) != '[': # #[...] inline directive (not used by pico preprocessor)
             flush_output()
             active, i, start_i, out_i = preprocessor.handle_inline(path, code, i, start_i, out_i, outparts, outmappings)
 

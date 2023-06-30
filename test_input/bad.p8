@@ -15,7 +15,7 @@ function f2d1()
 end
 local this_is_ok = bor
 function bor() return this_is_ok() end
-
+-->8
 -- unused
 function fx()
   local a, b, c = 3, 4, 5
@@ -27,7 +27,7 @@ function ff(d,e,f)
   ::lbl::
   if (true) goto lbl ::lbl::
 end
-
+-->8
 -- dups
 g_a = 3
 local uu = 1
@@ -45,7 +45,7 @@ function f3()
   end
   end
 end
-
+-->8
 -- bugs
 function f3:foo()
   return self
@@ -60,3 +60,29 @@ function f3:foo3(unused) end
 print("\"\z  
 #include notaninclude\
 ")
+-->8
+
+-->8
+
+-->8
+
+-->8
+
+-->8
+
+-->8
+
+-->8
+
+-->8
+local tab_b
+-->8
+
+-->8
+
+-->8
+
+-->8
+
+-->8
+local tab_still_f

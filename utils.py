@@ -2097,6 +2097,15 @@ def path_split_comps(path):
     comps.reverse()
     return comps
 
+def path_relative(path, base=None, fallback=False):
+    try:
+        return os.path.relpath(path, base)
+    except ValueError:
+        if fallback:
+            return path
+        else:
+            raise
+
 def path_modify_time(path):
     """Return the modify time of the file/directory at the given path"""
     return datetime.fromtimestamp(os.path.getmtime(path))
