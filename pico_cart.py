@@ -139,6 +139,8 @@ k_cart_image_width, k_cart_image_height = 160, 205
 k_screenshot_rect = Rect(0, 0, 128, 128)
 k_screenshot_offset = Point(16, 24)
 k_title_offset = Point(18, 167)
+k_title_spacing = Point(0, 2)
+k_title_size = Point(31 * 4, 16)
 
 k_palette_map_6bpp = {Color(c.r & ~3, c.g & ~3, c.b & ~3, c.a & ~3): i for c, i in k_palette_map.items()}
 
@@ -182,24 +184,26 @@ def read_cart_from_image(data, **opts):
 def get_res_path():
     return path_dirname(path_resolve(__file__))
 
-def draw_text_on_image(image, text, offset):
+def draw_text_on_image(image, text, offset, size, spacing=Point.zero, wrap=False):
     with file_open(path_join(get_res_path(), "font.png")) as font_f:
         font_surf = Surface.load(font_f)
         x, y = 0, 0
         for ch in text:
             chi = ord(ch)
             chrect = Rect(chi % 16 * 8, chi // 16 * 6, 8 if chi >= 0x80 else 4, 6)
-            if ch == '\n' or x + chrect.w > 124:
+            new_x = x + chrect.w + spacing.x
+            if ch == '\n' or (wrap and new_x > size.x):
                 x = 0
-                y += 8
-                if y >= 16:
+                y += chrect.h + spacing.y
+                if y >= size.y:
                     break
                 elif ch == '\n':
                     continue
-            image.draw(font_surf, offset + Point(x, y), chrect)
-            x += chrect.w
+            if new_x <= size.x:
+                image.draw(font_surf, offset + Point(x, y), chrect)
+            x = new_x
     
-def write_cart_to_image(cart, screenshot_path=None, title=None, **opts):
+def write_cart_to_image(cart, screenshot_path=None, title=None, wrap=False, **opts):
     output = write_cart_to_rom(cart, with_trailer=True, **opts)
 
     with file_open(path_join(get_res_path(), "template.png")) as template_f:
@@ -223,7 +227,7 @@ def write_cart_to_image(cart, screenshot_path=None, title=None, **opts):
         if title is None:
             title = cart.title
         if title:
-            draw_text_on_image(image, title, k_title_offset)
+            draw_text_on_image(image, title, k_title_offset, k_title_size, k_title_spacing, wrap=wrap)
         
         image.lock()
         for y in range(height):
