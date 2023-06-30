@@ -374,6 +374,12 @@ Specifying the format is also useful when using the standard input/output (via `
 
 `python shrinko8.py path-to-input.p8 - --minify --format lua` (This prints minified lua to stdout)
 
+## Specifying custom labels & titles
+
+Normally, shrinko8 will take the label and title (if any) from the input cart, same as pico8 does.
+
+However, it is also possible to override the label from a custom 128x128 screenshot via `--label <path>` and the title via `--title "some title"`
+
 ## Reading exported formats
 
 Shrinko8 can also read (but only read) exported carts:

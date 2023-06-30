@@ -42,7 +42,7 @@ class Cart:
         if title_meta is None:
             title = ""
             for line in m.code.split("\n", 2)[:2]: # (splitlines isn't appropriate for p8str)
-                match = re.fullmatch(r"-- ?(.*)[%s]*" % k_wspace, line)
+                match = re.fullmatch(r"-- ?(.*)", line)
                 if match:
                     title += match.group(1)
                 title += "\n"
@@ -193,6 +193,7 @@ def draw_text_on_image(image, text, offset, size, spacing=Point.zero, wrap=False
             chrect = Rect(chi % 16 * 8, chi // 16 * 6, 8 if chi >= 0x80 else 4, 6)
             new_x = x + chrect.w + spacing.x
             if ch == '\n' or (wrap and new_x > size.x):
+                new_x -= x
                 x = 0
                 y += chrect.h + spacing.y
                 if y >= size.y:
@@ -203,7 +204,7 @@ def draw_text_on_image(image, text, offset, size, spacing=Point.zero, wrap=False
                 image.draw(font_surf, offset + Point(x, y), chrect)
             x = new_x
     
-def write_cart_to_image(cart, screenshot_path=None, title=None, wrap=False, **opts):
+def write_cart_to_image(cart, screenshot_path=None, title=None, **opts):
     output = write_cart_to_rom(cart, with_trailer=True, **opts)
 
     with file_open(path_join(get_res_path(), "template.png")) as template_f:
@@ -224,8 +225,10 @@ def write_cart_to_image(cart, screenshot_path=None, title=None, wrap=False, **op
             screenshot_surf.unlock()
             image.draw(screenshot_surf, k_screenshot_offset, k_screenshot_rect)
         
+        wrap = True
         if title is None:
             title = cart.title
+            wrap = False
         if title:
             draw_text_on_image(image, title, k_title_offset, k_title_size, k_title_spacing, wrap=wrap)
         

@@ -66,6 +66,8 @@ parser.add_argument("-F", "--input-format", type=EnumFromStr(CartFormat), help="
 parser.add_argument("-u", "--unicode-caps", action="store_true", help="write capitals as italicized unicode characters (better for copy/paste)")
 parser.add_argument("--list", action="store_true", help="list all cart names inside a cart package (%s)" % EnumList(CartFormat._pack_names))
 parser.add_argument("--cart", help="name of cart to extract from cart package (%s)" % EnumList(CartFormat._pack_names))
+parser.add_argument("--label", help="path to image to use as the label when creating png carts (default: taken from __label__ like pico8 does)")
+parser.add_argument("--title", help="title to use when creating png carts (default: taken from first two comments like pico8 does)")
 
 pgroup = parser.add_argument_group("unminify options")
 pgroup.add_argument("--unminify", action="store_true", help="enable unminification of the cart")
@@ -73,8 +75,8 @@ pgroup.add_argument("--unminify-indent", type=int, help="indentation size when u
 
 pgroup = parser.add_argument_group("compression options (semi-undocumented)")
 pgroup.add_argument("--keep-compression", action="store_true", help="keep existing compression, instead of re-compressing")
-pgroup.add_argument("--fast-compression", action="store_true", help="force fast but poor compression (when creating pngs)")
-pgroup.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating pngs)")
+pgroup.add_argument("--fast-compression", action="store_true", help="force fast but poor compression (when creating png carts)")
+pgroup.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating png carts)")
 pgroup.add_argument("--old-compression", action="store_true", help="compress with the old pre-v0.2.0 compression scheme")
 pgroup.add_argument("--trace-compression", help="trace the compressed symbols and their cost into this file")
 pgroup.add_argument("--trace-input-compression", help="trace the input's compressed symbols and their cost into this file")
@@ -234,7 +236,8 @@ def main_inner(raw_args):
                        debug_handler=args.trace_compression,
                        unicode_caps=args.unicode_caps, old_compress=args.old_compression,
                        force_compress=args.count or args.force_compression,
-                       fast_compress=args.fast_compression, keep_compression=args.keep_compression)
+                       fast_compress=args.fast_compression, keep_compression=args.keep_compression,
+                       screenshot_path=args.label, title=args.title)
     except OSError as e:
         throw("cannot write cart: %s" % e)
 
