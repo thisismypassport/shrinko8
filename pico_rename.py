@@ -123,6 +123,7 @@ def rename_tokens(ctxt, root, rename):
 
     # collect char histogram
     # (reusing commonly used chars in our new identifiers lowers compressed size)
+    #
     # also takes the opportunity to find global preserve hints in code
 
     char_uses = CounterDictionary()
@@ -136,8 +137,8 @@ def rename_tokens(ctxt, root, rename):
         if token.value is None:
             return
 
-        if token.type != TokenType.ident: # (TODO: beneficial but maybe more can be done) or \
-                #token.value in (preserved_members if token.parent.type in (NodeType.member, NodeType.table_member) else preserved_globals):
+        if token.type != TokenType.ident: # including preserved idents would help a tiny bit, but isn't a clear win
+                                          # (plus, it's now too early to check for preserved idents here)
             sublang = getattr(token, "sublang", None)
             if sublang and sublang.get_unminified_chars:
                 for ch in sublang.get_unminified_chars():

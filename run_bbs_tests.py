@@ -135,8 +135,8 @@ def run_for_cart(args):
             elif cmpval is None:
                 if not ignore_partial:
                     print("New key %s in output of %s:%s" % (key, cart, kind))
-            elif outval != cmpval:
-                if g_opts.verbose:
+            else:
+                if g_opts.verbose and outval != cmpval:
                     if outval < cmpval:
                         print("Improvement of %d in %s:%s:%s" % (cmpval - outval, cart, kind, key))
                     else:
@@ -144,6 +144,9 @@ def run_for_cart(args):
                 deltas.apply("%s.%s" % (kind, key), outval - cmpval)
 
     def process_output(kind, output):
+        if output is None:
+            return # already printed about this
+
         cart_output[kind] = output
         if cart_compare and kind in cart_compare:
             process_compare(kind, output, cart_compare[kind])
@@ -218,6 +221,9 @@ def run(focus):
     file_write_json(output_json, outputs, sort_keys=True, indent=4)
 
     for key, info in sorted(deltas.items()):
+        if not info.min and not info.max:
+            continue
+
         extra_print = []
         if info.min:
             extra_print.append("%d max improvement" % -info.min)

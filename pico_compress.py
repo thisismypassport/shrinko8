@@ -24,7 +24,7 @@ def write_code_size(cart, handler=None, input=False):
 def write_compressed_size(cart, handler=True, **opts):
     compress_code(BinaryWriter(BytesIO()), cart.code, size_handler=handler, force_compress=True, fail_on_error=False, **opts)
 
-k_code_table = [
+k_old_code_table = [
     None, '\n', ' ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', # 00
     'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', # 0d
     'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', # 1a
@@ -32,9 +32,9 @@ k_code_table = [
     '+', '=', '/', '*', ':', ';', '.', ',', '~', '_' # 32
 ]
 
-k_inv_code_table = {ch: i for i, ch in enumerate(k_code_table)}
+k_old_inv_code_table = {ch: i for i, ch in enumerate(k_old_code_table)}
 
-k_compressed_code_header = b":c:\0"
+k_old_compressed_code_header = b":c:\0"
 k_new_compressed_code_header = b"\0pxa"
 
 def update_mtf(mtf, idx, ch):
@@ -100,7 +100,7 @@ def uncompress_code(r, size_handler=None, debug_handler=None, **_):
         assert r.pos() == start_pos + com_size
         assert len(code) == unc_size
 
-    elif header == k_compressed_code_header:
+    elif header == k_old_compressed_code_header:
         unc_size = r.u16()
         assert r.u16() == 0 # ?
         if debug_handler: debug_handler.init(r)
@@ -116,7 +116,7 @@ def uncompress_code(r, size_handler=None, debug_handler=None, **_):
                 if debug_handler: debug_handler.update(code[-1])
 
             elif ch <= 0x3b:
-                code.append(k_code_table[ch])
+                code.append(k_old_code_table[ch])
                 if debug_handler: debug_handler.update(code[-1])
 
             else:
@@ -148,7 +148,7 @@ def get_compressed_size(r):
         r.u16()
         return r.u16() # compressed size
 
-    elif header == k_compressed_code_header:
+    elif header == k_old_compressed_code_header:
         r.u16()
         r.u16()
         
@@ -230,55 +230,56 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
 
             if best_c >= 0:
                 # would it be better to find a match after one literal char?
-                best_cp1, best_jp1 = find_match(i+1)
-                yield_ch = best_cp1 > best_c            
-                if measure and best_cp1 in (best_c, best_c - 1):
-                    lz_cost = measure(i, mktuple(i, best_j, best_c), *code[best_j:best_j+(1 + best_cp1 - best_c)])
-                    p1_cost = measure(i, code[i], mktuple(i + 1, best_jp1, best_cp1))
+                p1_best_c, p1_best_j = find_match(i+1)
+                yield_ch = p1_best_c > best_c            
+                if measure and p1_best_c in (best_c, best_c - 1):
+                    lz_cost = measure(i, mktuple(i, best_j, best_c), *code[best_j:best_j+(1 + p1_best_c - best_c)])
+                    p1_cost = measure(i, code[i], mktuple(i + 1, p1_best_j, p1_best_c))
                     # could measure the two-lztuples vs char+two-lztuples case - but results were mixed.
                     if p1_cost < lz_cost:
                         yield_ch = True
 
                 if measure and not yield_ch:
                     # if not, would it be better to find a match after two literal chars?
-                    best_cp2, best_jp2 = find_match(i+2)
-                    if best_cp2 > best_c:
-                        best_cf2, best_jf2 = find_match(i + best_c)
-                        if 2 + best_cp2 > best_c + best_cf2:
+                    p2_best_c, p2_best_j = find_match(i+2)
+                    if p2_best_c > best_c:
+                        best_c2, best_j2 = find_match(i + best_c)
+                        if 2 + p2_best_c > best_c + best_c2:
                             yield_ch = True
-                        elif 2 + best_cp2 == best_c + best_cf2:
-                            lz_cost = measure(i, mktuple(i, best_j, best_c), mktuple(i + best_c, best_jf2, best_cf2))
-                            p2_cost = measure(i, *code[i:i+2], mktuple(i + 2, best_jp2, best_cp2))
+                        elif 2 + p2_best_c == best_c + best_c2:
+                            lz_cost = measure(i, mktuple(i, best_j, best_c), mktuple(i + best_c, best_j2, best_c2))
+                            p2_cost = measure(i, *code[i:i+2], mktuple(i + 2, p2_best_j, p2_best_c))
                             if p2_cost < lz_cost:
                                 yield_ch = True
-                    elif best_cp2 == best_c:
+                    elif p2_best_c == best_c:
                         lz_cost = measure(i, mktuple(i, best_j, best_c), *code[best_j:best_j+2])
-                        p2_cost = measure(i, *code[i:i+2], mktuple(i + 2, best_jp2, best_cp2))
+                        p2_cost = measure(i, *code[i:i+2], mktuple(i + 2, p2_best_j, p2_best_c))
                         # could measure the two-lztuple vs two-char+two-lztuples case (probably useless)
                         if p2_cost < lz_cost:
                             yield_ch = True
 
                 if yield_ch:
+                    #TODO, instead of below: best_c = -1
                     yield i, code[i]
                     i += 1
                     continue
 
-                if measure and max_o_steps:
-                    # would it be better to have a shorter yet closer match?
-                    for step in max_o_steps:
-                        if i - best_j <= step:
-                            break
+            if best_c >= 0 and measure and max_o_steps:
+                # would it be better to have a shorter yet closer match?
+                for step in max_o_steps:
+                    if i - best_j <= step:
+                        break
 
-                        best_cs, best_js = find_match(i, max_o=step)
-                        if best_cs >= 0:
-                            best_cs2, best_js2 = find_match(i + best_cs)
-                            best_c2, best_j2 = find_match(i + best_c)
-                            if best_cs + best_cs2 >= best_c + best_c2 and best_c2 >= 0:
-                                lz_cost = measure(i, mktuple(i, best_j, best_c), mktuple(i + best_c, best_j2, best_c2))
-                                s2_cost = measure(i, mktuple(i, best_js, best_cs), mktuple(i + best_cs, best_js2, best_cs2))
-                                if s2_cost < lz_cost:
-                                    best_c, best_j = best_cs, best_js
-                                    break
+                    sh_best_c, sh_best_j = find_match(i, max_o=step)
+                    if sh_best_c >= 0:
+                        sh_best_c2, sh_best_j2 = find_match(i + sh_best_c)
+                        best_c2, best_j2 = find_match(i + best_c)
+                        if sh_best_c + sh_best_c2 >= best_c + best_c2 and best_c2 >= 0:
+                            lz_cost = measure(i, mktuple(i, best_j, best_c), mktuple(i + best_c, best_j2, best_c2))
+                            sh_cost = measure(i, mktuple(i, sh_best_j, sh_best_c), mktuple(i + sh_best_c, sh_best_j2, sh_best_c2))
+                            if sh_cost < lz_cost:
+                                best_c, best_j = sh_best_c, sh_best_j
+                                break
 
             if best_c >= 0:
                 yield i, mktuple(i, best_j, best_c)
@@ -299,7 +300,7 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
     
     if len(code) >= k_code_size or force_compress: # (>= due to null)
         start_pos = w.pos()
-        w.bytes(k_new_compressed_code_header if is_new else k_compressed_code_header)
+        w.bytes(k_new_compressed_code_header if is_new else k_old_compressed_code_header)
         w.u16(len(code) & 0xffff) # only throw under fail_on_error below
         len_pos = w.pos()
         w.u16(0) # revised below
@@ -458,7 +459,7 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
                 w.u8((offset_val & 0xf) + (count_val << 4))
 
             def write_literal(ch):
-                ch_i = k_inv_code_table.get(ch, 0)
+                ch_i = k_old_inv_code_table.get(ch, 0)
                 
                 if ch_i > 0:
                     w.u8(ch_i)
