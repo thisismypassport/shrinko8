@@ -248,7 +248,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, max_o_step
             if curr_adv: # get rid of any advances
                 yield from reversed(tuple(get_advance_items(curr_adv)))
                 curr_adv = None
-            advances.clear()
+                advances.clear()
 
             best_c = sys.maxsize
             end_litblock = litblock_idxs.popleft() if litblock_idxs else len(code)

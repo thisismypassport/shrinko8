@@ -107,13 +107,17 @@ def rename_tokens(ctxt, root, rename):
             value = False
             rule = rule[1:]
         
+        if "=" in rule:
+            nonlocal members_as_globals
+            if rule in ("*=*.*", "*.*=*"):
+                members_as_globals = True
+        
         if "." in rule:
             preserved_members.set(rule.split(".", 1), value)
         else:
             preserved_globals.set(rule, value)
 
     if isinstance(rename, dict):
-        members_as_globals = rename.get("members=globals", False)
         safe_only = rename.get("safe-only", False)
         focus = Focus(rename.get("focus", "none"))
         rules_input = rename.get("rules")
@@ -223,11 +227,8 @@ def rename_tokens(ctxt, root, rename):
             if (table_name, node.name) in preserved_members:
                 member_excludes.add(node.name)
                 return None
-            elif table_name == "_ENV":
+            elif table_name == "_ENV" or members_as_globals:
                 return compute_effective_kind(node, VarKind.global_, explicit=True)
-            
-            if members_as_globals:
-                kind = VarKind.global_
 
         elif kind == VarKind.global_:
             if not explicit:

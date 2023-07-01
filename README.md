@@ -6,7 +6,7 @@ The supported tools are:
 * [Minification](#minification) - Reduce the token count, character count and compression ratio of your cart.
 * [Linting](#linting) - Check for common code errors such as forgetting to declare a local.
 * [Getting Cart Size](#getting-cart-size) - Count the amount of tokens, characters, and compressed bytes your cart uses.
-* [Format Conversion](#format-conversion) - Convert between p8 and png files. Achieves better code compression than Pico-8's.
+* [Format Conversion](#format-conversion) - Convert between p8 files, pngs, and more. Achieves better code compression than Pico-8 when creating pngs.
 * [Unminification](#unminification) - Add spaces and newlines to the code of a minified cart, to make it more readable
 * [Custom Python Script](#custom-python-script) - Run a custom python script to preprocess or postprocess your cart
 
@@ -22,40 +22,95 @@ Reading/Writing PNGs additionally requires the Pillow module (`python -m pip ins
 
 Greatly reduces the character count of your cart, as well as greatly improves its compression ratio (so that its compressed size is smaller) and can reduce the number of tokens as well.
 
-In detail:
-* All unnecessary spaces and line breaks are removed
+There are command line [options](#minify-options) to choose how aggressively to minify, as well as what metric (compressed size or character count) to focus on minifying.
+
+It's recommended to combine minification with conversion to png, as Shrinko8 is able to compress code better and can thus fit carts into pngs that Pico-8 cannot.
+
+## To minify your p8 cart:
+
+You have several options, depending on how much minification you need:
+
+The simplest approach, which gives good results and works on any cart is:
+
+`python shrinko8.py path-to-input.p8 path-to-output.png --minify-safe-only`
+
+You can also add `--focus-chars` or `--focus-compressed` to the command, depending on what you want Shrinko8 to focus on.
+
+The most aggressive approach, which gives the best results, but sometimes requires you to [give additional information to shrinko8](#pitfalls-of-full-minification) to ensure it minifies your cart correctly:
+
+`python shrinko8.py path-to-input.p8 path-to-output.png --minify`
+
+If you want to minify, but want to keep your cart easily debuggable or reasonably readable by others, you can do:
+
+`python shrinko8.py path-to-input.p8 path-to-output.png --minify-safe-only --no-minify-rename --no-minify-lines`
+
+You can also minify to a p8 file (or a lua file), e.g:
+
+`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify-safe-only`
+
+## Minify options
+
+You can specify what the minification should focus on reducing via additional command-line options:
+
+* `--focus-chars` : Focus on reducing the amount of uncompressed characters, even if compressed size grows
+* `--focus-compressed` : Focus on reducing the compressed size of the code, even if the amount of characters grows
+* By default, the minification is balanced for both.
+
+You can disable parts of the minification process via additional command-line options:
+
+* `--no-minify-rename` : Disable all renaming of identifiers
+* `--no-minify-spaces` : Disable removal of spaces (and line breaks)
+* `--no-minify-lines` : Disable removal of line breaks
+* `--no-minify-comments` : Disable removal of comments (requires `--no-minify-spaces`)
+* `--no-minify-tokens` : Disable removal and alteration of tokens (not including identifier renaming)
+
+You can configure how identifier renaming is done:
+
+* `--minify-safe-only` : A shortcut to do only safe renaming (equivalent to preserving all members and - if _ENV is used - all globals)
+* `--preserve` :  Equivalent to specifying `--preserve:` in the cart itself. Described [here](#preserving-identifiers-across-the-entire-cart).
+
+You can also generate a file telling you how the identifiers were renamed: (This can be useful for debugging and more) 
+
+* `--rename-map <file>`
+
+## Operation details
+
+* All comments, spaces and line breaks are removed, unless required.
 * Unnecessary tokens like parentheses and trailing commas are removed
 * Identifiers are renamed to be as short as possible
 * Tokens are made more consistent, to reduce compression ratio
 
-There are command line [options](#minify-options) to choose whether to focus more on reducing character count vs compressed size, as well as to only do some of the minification steps.
+## Pitfalls of full minification
 
-## To minify your p8 cart:
+When using `--minify` without `--minify-safe-only`, Shrinko8 makes some default assumptions about your cart:
 
-`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify`
+* It doesn't mix identifiers and strings when indexing tables. (E.g. it doesn't access both `some_table.x` and `some_table["x"]`)
+* It does not use _ENV
 
-If you just want the lua source without the rest of the baggage, change the output extension to .lua:
+These assumptions allow it to rename identifiers used to index tables.
 
-`python shrinko8.py path-to-input.p8 path-to-output.lua --minify`
+If these assumptions don't hold, the minified cart won't work properly, e.g:
 
-If you want to create a png cart (recommended - since Shrinko8 compresses code better than Pico-8), change the output extension to .png:
-
-`python shrinko8.py path-to-input.p8 path-to-output.png --minify`
-
-## Automatic renaming of identifiers
-
-The minifier renames all locals, globals, and table member accesses to minimize character count and compressed size.
-
-This means that if you have a table member (or global) you access both as an identifier and as a string, you'll need to take one of the two approaches below to fix this, or your minified cart won't work
-
-E.g:
 ```lua
-local my_key = "key" -- here, key is a string
-local my_obj = {key=123} -- here, key is an identifier
-?my_obj[my_key] -- BUG! my_obj will not have a "key" member after minification
+local my_obj = {key=123} -- here, key is an identifier.
+?my_obj.key -- OK. Here, key is an identifier again.
+local my_key = "key" -- here, key is a string.
+?my_obj[my_key] -- BUG! my_obj will not have a "key" member after minification!
 ```
 
-### Renaming strings (recommended, results in smaller carts)
+In such cases, you have multiple ways to tell Shrinko8 precisely how you break these assumptions, allowing you to achieve better minification than would be possible with just `--minify-safe-only`. These options are detailed below:
+
+* If you index a table by both identifiers and string literals, you can [tell Shrinko8 to rename the string literals too](#renaming-specific-strings).
+
+* If you index a table by both identifiers and strings that you build at runtime (e.g. via `+`), you can [preserve those identifiers across the entire cart](#preserving-identifiers-across-the-entire-cart).
+
+* If you have certain tables whose keys you don't want to rename - e.g. because the keys are built at runtime, or because the tables are serialized to a savefile - you can [preserve all keys in a table](#controlling-renaming-of-all-keys-of-a-table).
+
+* If you're making your tables inherit _ENV (allowing you to bind the table to _ENV and access both table members and globals without a '.'), you can [rename table keys the same way as globals](#renaming-table-keys-the-same-way-as-globals).
+
+* If you're doing other unusual things with _ENV, you may need to [specify how specific identifiers should be renamed](#controlling-renaming-of-identifiers) to get correct behaviour.
+
+### Renaming specific strings
 
 You can add a `--[[member]]` comment before a string to have the minifier rename it as if it were an identifier.
 
@@ -63,12 +118,12 @@ E.g:
 ```lua
 local my_key = --[[member]]"key" -- here, key is a string but is renamed as if it were an identifier
 local my_obj = {key=123} -- here, key is an identifier
-?my_obj[my_key] -- success, result is 123 after minification
+?my_obj[my_key] -- success, this prints 123 even after minification
 ```
 
-You can also use this with multiple keys split by comma (or other characters):
+You can also use this with multiple keys split by comma (or any other characters):
 ```lua
-local my_keys = split --[[member]]"key1,key2,key3"
+local my_keys = split --[[member]]"key1,key2,key3" -- here, each of key1, key2 and key3 is renamed
 ```
 
 And you can similarly use `--[[global]]` for globals:
@@ -78,39 +133,44 @@ glob = 123
 ?_ENV[my_key] -- 123
 ```
 
+Advanced: if you have string literals in some special format that you're parsing into a table (like "key=val,key2=val2"), you can use [this custom python script](#example---simple-sub-language-for-table-parsing) - or a variant thereof - to allow only the keys within the string to be renamed.
+
 ### Preserving identifiers across the entire cart
 
-You can instruct the minifier to preserve certain identifiers across the entire cart:
+You can instruct the minifier to preserve certain identifiers across the entire cart by adding a `--preserve:` comment anywhere in the code:
 
-`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --preserve "my_global_1,my_global_2,*.my_member,my_env.*"`
+```lua
+--preserve: my_global_1, my_global_2, update_*, *.my_member, my_env.*
+```
 
 * my_global_1 and my_global_2 will not be renamed when used as globals
-* my_member will not be renamed when used as a table member
+* globals whose names start with `update_` will not be renamed
+* my_member will not be renamed when used to index a table
 * table members will not be renamed when accessed through my_env
 
-You can also choose to preserve *all* table members, which allows freely accessing all tables through strings or through identifiers, if you prefer:
+If you prefer, you can instead pass this information in the command line, e,g:
 
-`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --preserve "*.*"`
+`python shrinko8.py path-to-input.p8 path-to-output.png --minify --preserve "my_global_1, my_global_2, update_*, *.my_member, my_env.*"`
 
-Further, you can choose to preserve *all* globals and table members, which additionally allows you to freely access _ENV through strings.
+You can combine wildcards and negation (`!`) to preserve everything except some identifiers:
 
-`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --preserve "*,*.*"`
+```lua
+--preserve: *.*, !*.my_*
+```
 
-## Advanced renaming requirements
+* Only identifiers starting with `my_` will be renamed when used to index a table
 
-While the above is enough for simpler carts, there are some advanced usecases with more complex requirements:
+### Renaming table keys the same way as globals
 
-* If you have a string in some special format that you're parsing into a table (like "key=val,key2=val2"), you can use [this custom python script](#example---simple-sub-language-for-table-parsing) - or a variant thereof - to allow the keys within the string to be renamed.
+You can instruct the minifier to rename table keys the same way as globals (allowing you to freely mix _ENV and other tables), by adding the following comment in the code:
 
-* If you have certain tables whose keys you don't want to rename - e.g. because the keys are built at runtime by concatenating strings, or because the tables are serialized to a savefile - you can [preserve all keys in a table](#advanced---controlling-renaming-of-all-keys-of-a-table).
+```lua
+--preserve: *=*.*
+```
 
-* If you're making your tables inherit _ENV (allowing you to bind the table to _ENV and access both table members and globals without a '.'), you can use `--rename-members-as-globals` in order to rename table members and globals the same way.
+If you prefer, you can instead pass `--preserve *=*.*` to the command line.
 
-* If you're doing other unusual things with _ENV, you may need to [specify how specific identifiers should be renamed](#advanced---controlling-renaming-of-identifiers) to get correct behaviour.
-
-In all these cases, you can start by disabling all member renaming (`--preserve "*.*"`) or all global and member renaming (`--preserve "*,*.*"`) to get things to work and then look into the more complicated solutions to increase compression rate, if needed.
-
-### Advanced - Controlling renaming of identifiers
+### Controlling renaming of identifiers
 
 The `--[[global]]` and `--[[member]]` hints can also be used on identifiers to change the way they're renamed.
 
@@ -128,7 +188,7 @@ end
 
 Note that this affects only a specific usage of an identifier. If you want to rename all usages of a global, `--preserve` is the recommended approach.
 
-### Advanced - Controlling renaming of all keys of a table
+### Controlling renaming of all keys of a table
 
 Additionally, you can use `--[[preserve-keys]]`, `--[[global-keys]]` and `--[[member-keys]]` to affect how *all* keys of a table are renamed.
 
@@ -157,46 +217,18 @@ end
 
 ### Advanced - Renaming Built-in Pico-8 functions
 
-For cases like tweet-carts where you want really few characters, you can minify the names of built-in pico-8 functions while still using their original name as follows:
-
-`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify --no-preserve "circfill,rectfill"`
+For cases like tweet-carts where you may want to assign builtins to shorter globals, you can tell the minifer to avoid preserving those builtins normally, but preserve them when they're first accessed, as follows:
 
 ```lua
+--preserve: !circfill, !rectfill
 circfill, rectfill = --[[preserve]]circfill, --[[preserve]]rectfill
 circfill(10,10,20); circfill(90,90,30)
 rectfill(0,0,100,100); rectfill(20,20,40,40)
 ```
 
-Here, all uses of circfill and rectfill are renamed unless they're preceded by `--[[preserve]]`
+Above, all uses of circfill and rectfill are renamed except for the ones preceded by `--[[preserve]]`
 
-Be aware that doing this won't reduce the compressed size of the cart, and will increases the token count (due to the assignment), so it's of limited use, for when you care about character count above all else.
-
-## Minify options
-
-You can specify what the minification should focus on reducing via additional command-line options:
-
-* `--focus-chars` : Focus on reducing the amount of uncompressed characters, even if compressed size grows
-* `--focus-compressed` : Focus on reducing the compressed size of the code, even if the amount of characters grows
-* By default, the minification is balanced for both.
-
-You can disable parts of the minification process via additional command-line options:
-
-* `--no-minify-rename` : Disable all renaming of identifiers
-* `--no-minify-spaces` : Disable removal of spaces (and line breaks)
-* `--no-minify-lines` : Disable removal of line breaks
-* `--no-minify-comments` : Disable removal of comments (requires `--no-minify-spaces`)
-* `--no-minify-tokens` : Disable removal and alteration of tokens (not including identifier renaming)
-
-You can configure how identifier renaming is done:
-
-* `--minify-safe-only` : A shortcut to do only safe renaming (equivalent to preserving all members and - if _ENV is used - all globals)
-* `--rename-members-as-globals` : Rename members (table keys) and globals the same way, useful when tables inherit from _ENV.
-* `--preserve` : Described [here](#preserving-identifiers-across-the-entire-cart)
-* `--no-preserve` : Described [here](#advanced---renaming-built-in-pico-8-functions)
-
-You can also generate a file telling you how the identifiers were renamed: (This can be useful for debugging and more) 
-
-* `--rename-map <file>`
+Be aware that doing this won't reduce the compressed size of the cart, and will increases the token count (due to the assignment), so it's only for when you care about character count above all else.
 
 ## Keeping comments
 
@@ -230,6 +262,10 @@ You can disable certain lints globally via additional command-line options:
 Normally, a lint failure prevents cart creation, but `--no-lint-fail` overrides that.
 
 Normally, lint errors are displayed in a format useful for external editors, showing the line number in the whole .p8 file. However, you can use `--error-format tabbed` to show the pico8 tab number and line number inside that tab instead.
+
+Misc. options:
+
+* `--lint-global` : Equivalent to specifying `--lint:` inside the cart itself
 
 ## Undefined variable lints
 
@@ -627,6 +663,7 @@ def sublanguage_main(lang, **_):
 
 In the code:
 ```lua
+-- (implementation of splitkeys omitted)
 local table = splitkeys(--[[language::splitkeys]]"key1=val1,key2=val2,val3,val4")
 ?table.key1 -- "val1"
 ?table[1] -- "val3"

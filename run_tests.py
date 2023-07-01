@@ -109,11 +109,14 @@ def run():
     run_test("minrename", "input.p8", "output_minrename.p8", "--minify",
              "--preserve", "*,*.*", pico8_output="output.p8.printh")
     run_test("auto_minrename", "input.p8", "output_minrename.p8", "--minify-safe-only")
+    run_test("minminify", "input.p8", "output_min.p8", "--minify-safe-only",
+             "--no-minify-rename", "--no-minify-lines", pico8_output="output.p8.printh")
     run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename")
              # pico8_output="output.p8.printh" - broken by comment bug in pico8 v0.2.5g...
-    if run_test("test", "test.p8", "test.p8", "--minify", "--rename-members-as-globals", pico8_output_val="DONE"):
+    if run_test("test", "test.p8", "test.p8", "--minify", pico8_output_val="DONE"):
         run_test("unmintest", "test.p8", "test-un.p8", "--unminify", from_output=True, pico8_output_val="DONE")
+    run_test("globasmemb", "globasmemb.p8", "globasmemb.p8", "--minify", pico8_output_val="OK")
     run_test("p82png", "testcvt.p8", "testcvt.png")
     run_test("test_png", "test.png", "test.png", "--minify")
     run_test("png2p8", "test.png", "testcvt.p8")
