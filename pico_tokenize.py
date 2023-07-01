@@ -8,6 +8,7 @@ keywords = {
     "while"
 }
 
+k_preserve_prefix = "preserve:"
 k_lint_prefix = "lint:"
 k_keep_prefix = "keep:"
 
@@ -124,7 +125,7 @@ class Token(TokenNodeBase):
 Token.none = Token.dummy(None)
 
 class CommentHint(Enum):
-    values = ("none", "lint", "keep")
+    values = ("none", "preserve", "lint", "keep")
 
 class Comment(TokenNodeBase):
     """A pico8 comment, optionally holding some kind of hint"""
@@ -271,6 +272,8 @@ def is_identifier(str):
     
 k_identifier_split_re = re.compile(r"([0-9A-Za-z_\x1e\x1f\x80-\xff]+)")
 
+k_hint_split_re = re.compile(r"[\s,]+")
+
 class NextTokenMods:
     def __init__(m):
         m.var_kind, m.keys_kind, m.func_kind, m.sublang = None, None, None, None
@@ -321,7 +324,7 @@ def tokenize(source, ctxt=None, all_comments=False):
 
     def add_token(type, start, end_off=0, value=None):
         end = idx + end_off
-        if value is None:
+        if value is None and type is not None: # (dummy tokens have type==value==None)
             value = text[start:end]
         token = Token(type, value, source, start, end, vline)
         tokens.append(token)
@@ -359,12 +362,16 @@ def tokenize(source, ctxt=None, all_comments=False):
         hint, hintdata = CommentHint.none, None
 
         if comment.startswith(k_lint_prefix):
-            lints = [v.strip() for v in comment[len(k_lint_prefix):].split(",")]
+            lints = k_hint_split_re.split(comment[len(k_lint_prefix):])
             hint, hintdata = CommentHint.lint, lints
 
             for lint in lints:
                 if lint.startswith(k_lint_func_prefix):
                     get_next_mods().func_kind = lint[len(k_lint_func_prefix):]
+
+        elif comment.startswith(k_preserve_prefix):
+            preserves = k_hint_split_re.split(comment[len(k_preserve_prefix):])
+            hint, hintdata = CommentHint.preserve, preserves
 
         elif comment.startswith(k_keep_prefix):
             hint = CommentHint.keep

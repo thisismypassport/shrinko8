@@ -147,18 +147,14 @@ def run():
              "--builtin", "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z")
     run_test("tinyrom", "tiny.rom", "tiny.lua")
     run_test("title", "title.p8", "title.p8.png")
-    if run_test("repl", "repl.p8", "repl.p8", "--minify", "--preserve", "env.*,g_ENV.*,*._ENV,*._env,*._", 
+    if run_test("repl", "repl.p8", "repl.p8", "--minify",
                 "--rename-map", "test_output/repl.map", extra_outputs=["repl.map"], pico8_output_val="finished"):
-        run_test("unminrepl", "repl.p8", "repl-un.p8", "--unminify",
-                 from_output=True, pico8_output_val="finished")
-    run_test("repl-oc", "repl.p8", "repl-oc.p8", "--minify", "--preserve", "env.*,g_ENV.*,*._ENV,*._env,*._",
-             "--focus-chars", pico8_output_val="finished")
-    run_test("repl-ob", "repl.p8", "repl-ob.p8", "--minify", "--preserve", "env.*,g_ENV.*,*._ENV,*._env,*._",
-             "--focus-compressed", pico8_output_val="finished")
+        run_test("unminrepl", "repl.p8", "repl-un.p8", "--unminify", from_output=True, pico8_output_val="finished")
+    run_test("repl-oc", "repl.p8", "repl-oc.p8", "--minify", "--focus-chars", pico8_output_val="finished")
+    run_test("repl-ob", "repl.p8", "repl-ob.p8", "--minify", "--focus-compressed", pico8_output_val="finished")
     run_test("reformat", "input.p8", "input-reformat.p8", "--unminify", "--unminify-indent", "4")
     run_test("notnil", "notnil.p8", "notnil.p8", "--minify", pico8_output_val="passed")
-    run_test("wildcards", "wildcards.p8", "wildcards.p8", "--minify",
-             "--preserve", "p_*,*_p,*_p_*,*.*", "--no-preserve", "weak.*,*.junk,*.my_*,scored.*_,scored.id")
+    run_test("wildcards", "wildcards.p8", "wildcards.p8", "--minify")
 
 if __name__ == "__main__":
     init_tests(g_opts.exe)

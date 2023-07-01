@@ -5,6 +5,8 @@ __lua__
 --keep: (The below had the comments stripped due to cart size limits)
 --keep:------------------------------------
 
+--preserve: env.*, g_ENV.*, *._ENV, *._env, *._
+
 ------------------------
 -- Prepare globals
 ------------------------

@@ -3,10 +3,11 @@ from utils import *
 from pico_process import PicoContext, process_code, CartSource, CustomPreprocessor, ErrorFormat
 from pico_compress import write_code_size, write_compressed_size, CompressionTracer
 from pico_cart import CartFormat, read_cart, write_cart, read_cart_package, get_bbs_cart_url
+from pico_tokenize import k_hint_split_re
 import argparse, importlib.util
 
-def CommaSep(val):
-    return val.split(",")
+def SplitBySeps(val):
+    return k_hint_split_re.split(val)
 
 def EnumFromStr(enum_type):
     def cvt(name):
@@ -29,8 +30,6 @@ parser.add_argument("output", help="output file. ('-' for stdout)", nargs='?')
 pgroup = parser.add_argument_group("minify options")
 pgroup.add_argument("-m", "--minify", action="store_true", help="enable minification of the cart")
 pgroup.add_argument("-M", "--minify-safe-only", action="store_true", help="only do minifaction that's always safe to do")
-pgroup.add_argument("-p", "--preserve", type=CommaSep, action=extend_arg, help='preserve specific identifiers in minification, e.g. "global1,global2,*.member2,table3.*"')
-pgroup.add_argument("--no-preserve", type=CommaSep, action=extend_arg, help='do not preserve specific built-in identifiers in minification, e.g. "circfill,rectfill"')
 pgroup.add_argument("-oc", "--focus-chars", action="store_true", help="when minifying, focus on lowering the code's number of chars (uncompressed size)")
 pgroup.add_argument("-ob", "--focus-compressed", action="store_true", help="when minifying, focus on lowering the code's compressed size (number of bytes)")
 pgroup.add_argument("--no-minify-rename", action="store_true", help="disable variable renaming in minification")
@@ -38,6 +37,8 @@ pgroup.add_argument("--no-minify-spaces", action="store_true", help="disable spa
 pgroup.add_argument("--no-minify-lines", action="store_true", help="disable line removal in minification")
 pgroup.add_argument("--no-minify-comments", action="store_true", help="disable comment removal in minification (requires --no-minify-spaces)")
 pgroup.add_argument("--no-minify-tokens", action="store_true", help="disable token removal in minification")
+pgroup.add_argument("-p", "--preserve", type=SplitBySeps, action=extend_arg, help='preserve specific identifiers in minification, e.g. "global1, global2, *.member2, table3.*"')
+pgroup.add_argument("--no-preserve", type=SplitBySeps, action=extend_arg, help='do not preserve specific built-in identifiers in minification, e.g. "circfill, rectfill"')
 pgroup.add_argument("--rename-members-as-globals", action="store_true", help="rename globals and members the same way")
 pgroup.add_argument("--rename-map", help="log renaming of identifiers (from minify step) to this file")
 
@@ -47,6 +48,7 @@ pgroup.add_argument("--no-lint-unused", action="store_true", help="don't print l
 pgroup.add_argument("--no-lint-duplicate", action="store_true", help="don't print lint errors on duplicate variables")
 pgroup.add_argument("--no-lint-undefined", action="store_true", help="don't print lint errors on undefined variables")
 pgroup.add_argument("--no-lint-fail", action="store_true", help="don't fail immediately on lint errors")
+pgroup.add_argument("--lint-global", type=SplitBySeps, action=extend_arg, help="don't print lint error on these globals (same as lint comment)")
 pgroup.add_argument("--error-format", type=EnumFromStr(ErrorFormat), help="how to format lint & compilation errors {%s}" % EnumList(ErrorFormat._values))
 
 pgroup = parser.add_argument_group("count options")
@@ -82,8 +84,8 @@ pgroup.add_argument("--trace-compression", help="trace the compressed symbols an
 pgroup.add_argument("--trace-input-compression", help="trace the input's compressed symbols and their cost into this file")
 
 pgroup = parser.add_argument_group("misc. options (semi-undocumented)")
-pgroup.add_argument("--builtin", type=CommaSep, action=extend_arg, help="treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
-pgroup.add_argument("--not-builtin", type=CommaSep, action=extend_arg, help="do not treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
+pgroup.add_argument("--builtin", type=SplitBySeps, action=extend_arg, help="treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
+pgroup.add_argument("--not-builtin", type=SplitBySeps, action=extend_arg, help="do not treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
 pgroup.add_argument("--version", action="store_true", help="print version of cart")
 pgroup.add_argument("--bbs", action="store_true", help="interpret input as a bbs cart id, e.g. '#...' and download it from the bbs")
 pgroup.add_argument("--url", action="store_true", help="interpret input as a URL, and download it from the internet")
@@ -135,6 +137,7 @@ def main_inner(raw_args):
             "unused": not args.no_lint_unused,
             "duplicate": not args.no_lint_duplicate,
             "undefined": not args.no_lint_undefined,
+            "globals": args.lint_global,
         }
 
     if args.minify or args.minify_safe_only:
@@ -148,18 +151,14 @@ def main_inner(raw_args):
 
     args.rename = bool(args.minify) and not args.no_minify_rename
     if args.rename:
+        if args.no_preserve:
+            args.preserve = (args.preserve or []) + ["!%s" % item for item in args.no_preserve]
         args.rename = {
             "members=globals": args.rename_members_as_globals,
             "safe-only": args.minify_safe_only,
             "focus": args.minify.get("focus"),
+            "rules": args.preserve,
         }
-        if args.preserve or args.no_preserve:
-            rules = {}
-            if args.preserve:
-                rules.update({k: False for k in args.preserve})
-            if args.no_preserve:
-                rules.update({k: True for k in args.no_preserve})
-            args.rename["rules"] = rules
 
     if args.unminify:
         args.unminify = {

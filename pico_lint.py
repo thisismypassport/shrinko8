@@ -12,6 +12,9 @@ def lint_code(ctxt, root, lint_rules):
         lint_undefined = lint_rules.get("undefined", True)
         lint_unused = lint_rules.get("unused", True)
         lint_duplicate = lint_rules.get("duplicate", True)
+        globals = lint_rules.get("globals")
+        if globals:
+            custom_globals.update(globals)
 
     def add_error(msg, node):
         err = Error(msg, node)
@@ -35,7 +38,8 @@ def lint_code(ctxt, root, lint_rules):
             for comment in token.children:
                 if comment.hint == CommentHint.lint:
                     for value in comment.hintdata:
-                        custom_globals.add(value)
+                        if "::" not in value:
+                            custom_globals.add(value)
 
     def preprocess_vars(node):
         if node.type == NodeType.var:

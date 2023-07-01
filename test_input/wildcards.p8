@@ -10,3 +10,5 @@ if(true) scored.more=nil
 if(false) scored.more_,scored.id=nil
 
 if(nil) scored={more=true,more_=false,id=false}
+
+--preserve: p_*,*_p,*_p_*,*.*   !weak.*,!*.junk,!*.my_*,!scored.*_,!scored.id

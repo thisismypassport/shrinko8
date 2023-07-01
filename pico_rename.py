@@ -1,6 +1,6 @@
 from utils import *
 from pico_defs import from_p8str
-from pico_tokenize import TokenType, is_identifier, keywords
+from pico_tokenize import TokenType, is_identifier, keywords, CommentHint
 from pico_parse import VarKind, NodeType, VarBase
 from pico_minify import format_string_literal, Focus
 import fnmatch
@@ -101,36 +101,42 @@ def rename_tokens(ctxt, root, rename):
 
     # read rename options (e.g. what to preserve)
 
+    def add_rule(rule):
+        value = True
+        if rule.startswith("!"):
+            value = False
+            rule = rule[1:]
+        
+        if "." in rule:
+            preserved_members.set(rule.split(".", 1), value)
+        else:
+            preserved_globals.set(rule, value)
+
     if isinstance(rename, dict):
         members_as_globals = rename.get("members=globals", False)
         safe_only = rename.get("safe-only", False)
         focus = Focus(rename.get("focus", "none"))
         rules_input = rename.get("rules")
         if rules_input:
-            for key, value in rules_input.items():
-                if "." in key:
-                    preserved_members.set(key.split(".", 1), not value)
-                else:
-                    preserved_globals.set(key, not value)
-
-    # detect which renames are safe to do, if requested
-    # (note - this assumes a "pure" cart with no hints for shrinko8)
-
-    if safe_only:
-        preserved_members.default = True # can't reasonably guarantee safety of this
-        
-        def check_safety(node):
-            if node.type == NodeType.var and node.kind != VarKind.member and node.name == "_ENV":
-                preserved_globals.default = True
-
-        root.traverse_nodes(check_safety)
+            for rule in rules_input:
+                add_rule(rule)
 
     # collect char histogram
     # (reusing commonly used chars in our new identifiers lowers compressed size)
+    # also takes the opportunity to find global preserve hints in code
 
     char_uses = CounterDictionary()
     def collect_chars(token):
-        if token.type != TokenType.ident:# (TODO: beneficial but maybe more can be done) or \
+        if token.children:
+            for comment in token.children:
+                if comment.hint == CommentHint.preserve:
+                    for value in comment.hintdata:
+                        add_rule(value)
+
+        if token.value is None:
+            return
+
+        if token.type != TokenType.ident: # (TODO: beneficial but maybe more can be done) or \
                 #token.value in (preserved_members if token.parent.type in (NodeType.member, NodeType.table_member) else preserved_globals):
             sublang = getattr(token, "sublang", None)
             if sublang and sublang.get_unminified_chars:
@@ -160,6 +166,18 @@ def rename_tokens(ctxt, root, rename):
             ident_chars.append(ch)
 
     ident_char_order_map = {ch1: ch2 for ch1, ch2 in zip(ident_chars, ident_chars[1:])}
+
+    # detect which renames are safe to do, if requested
+    # (note - this assumes a "pure" cart with no hints for shrinko8)
+
+    if safe_only:
+        preserved_members.default = True # can't reasonably guarantee safety of this
+        
+        def check_safety(node):
+            if node.type == NodeType.var and node.kind != VarKind.member and node.name == "_ENV":
+                preserved_globals.default = True
+
+        root.traverse_nodes(check_safety)
 
     # collect uses of identifier
     # (e.g. to give priority to more frequently used ones)
