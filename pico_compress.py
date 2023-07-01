@@ -169,7 +169,10 @@ def get_compressed_size(r):
 class Lz77Tuple(Tuple):
     fields = ("off", "cnt") # the subtracted values, not the real values
 
-def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=None, max_o_steps=None, fast_c=None, no_repeat=False, litblock_idxs=None):
+class Lz77Advance(Tuple):
+    fields = ("i", "cost", "ctxt", "item", "prev")
+
+def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, max_o_steps=None, fast_c=None, no_repeat=False, litblock_idxs=None):
     min_matches = defaultdict(list)
     next_litblock = litblock_idxs.popleft() if litblock_idxs else len(code)
 
@@ -208,8 +211,45 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
 
     i = 0
     prev_i = 0
+    advances = deque() if measure else None
+    curr_adv = None
+
+    def add_advance(cost, ctxt, c, item):
+        next_i = i + c
+        adv_idx = 0
+        insert_idx = None
+        do_replace = False
+        for adv in advances:
+            if insert_idx is None:
+                if next_i == adv.i:
+                    insert_idx, do_replace = adv_idx, True
+                elif next_i < adv.i:
+                    insert_idx = adv_idx
+
+            if insert_idx != None and cost >= adv.cost:
+                return
+            adv_idx += 1
+        
+        next_adv = Lz77Advance(next_i, cost, ctxt, item, curr_adv)
+        if do_replace:
+            advances[insert_idx] = next_adv
+        elif insert_idx != None:
+            advances.insert(insert_idx, next_adv)
+        else:
+            advances.append(next_adv)
+    
+    def get_advance_items(adv):
+        while adv:
+            yield adv.i, adv.item
+            adv = adv.prev
+
     while i < len(code):
         if i >= next_litblock:
+            if curr_adv: # get rid of any advances
+                yield from reversed(tuple(get_advance_items(curr_adv)))
+                curr_adv = None
+            advances.clear()
+
             best_c = sys.maxsize
             end_litblock = litblock_idxs.popleft() if litblock_idxs else len(code)
 
@@ -219,79 +259,56 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure_c=None, measure=
             next_litblock = litblock_idxs.popleft() if litblock_idxs else len(code)
 
         else:
-            best_c, best_j = find_match(i)
+            if measure:
+                curr_ctxt = curr_adv.ctxt if curr_adv else None
+                curr_cost = curr_adv.cost if curr_adv else 0
 
-            # is the match worth it at all?
-            if best_c >= 0 and measure and best_c <= measure_c:
-                lz_cost = measure(i, mktuple(i, best_j, best_c))
-                ch_cost = measure(i, *code[i:i+best_c])
-                if ch_cost < lz_cost:
-                    best_c = -1
+                # try using a literal
+                ch_cost, ch_ctxt = measure(curr_ctxt, code[i])
+                add_advance(curr_cost + ch_cost, ch_ctxt, 1, code[i])
 
-            if best_c >= 0:
-                # would it be better to find a match after one literal char?
-                p1_best_c, p1_best_j = find_match(i+1)
-                yield_ch = p1_best_c > best_c            
-                if measure and p1_best_c in (best_c, best_c - 1):
-                    lz_cost = measure(i, mktuple(i, best_j, best_c), *code[best_j:best_j+(1 + p1_best_c - best_c)])
-                    p1_cost = measure(i, code[i], mktuple(i + 1, p1_best_j, p1_best_c))
-                    # could measure the two-lztuples vs char+two-lztuples case - but results were mixed.
-                    if p1_cost < lz_cost:
-                        yield_ch = True
+                # try using a match
+                best_c, best_j = find_match(i)
+                if best_c >= 0:
+                    lz_item = mktuple(i, best_j, best_c)
+                    lz_cost, lz_ctxt = measure(curr_ctxt, lz_item)
+                    add_advance(curr_cost + lz_cost, lz_ctxt, best_c, lz_item)
 
-                if measure and not yield_ch:
-                    # if not, would it be better to find a match after two literal chars?
-                    p2_best_c, p2_best_j = find_match(i+2)
-                    if p2_best_c > best_c:
-                        best_c2, best_j2 = find_match(i + best_c)
-                        if 2 + p2_best_c > best_c + best_c2:
-                            yield_ch = True
-                        elif 2 + p2_best_c == best_c + best_c2:
-                            lz_cost = measure(i, mktuple(i, best_j, best_c), mktuple(i + best_c, best_j2, best_c2))
-                            p2_cost = measure(i, *code[i:i+2], mktuple(i + 2, p2_best_j, p2_best_c))
-                            if p2_cost < lz_cost:
-                                yield_ch = True
-                    elif p2_best_c == best_c:
-                        lz_cost = measure(i, mktuple(i, best_j, best_c), *code[best_j:best_j+2])
-                        p2_cost = measure(i, *code[i:i+2], mktuple(i + 2, p2_best_j, p2_best_c))
-                        # could measure the two-lztuple vs two-char+two-lztuples case (probably useless)
-                        if p2_cost < lz_cost:
-                            yield_ch = True
+                if max_o_steps:
+                    # try a shorter yet closer match
+                    for step in max_o_steps:
+                        if i - best_j <= step:
+                            break
 
-                if yield_ch:
-                    #TODO, instead of below: best_c = -1
+                        sh_best_c, sh_best_j = find_match(i, max_o=step)
+                        if sh_best_c >= 0:
+                            sh_item = mktuple(i, sh_best_j, sh_best_c)
+                            sh_cost, sh_ctxt = measure(curr_ctxt, sh_item)
+                            add_advance(curr_cost + sh_cost, sh_ctxt, sh_best_c, sh_item)
+                
+                curr_adv = advances.popleft()
+                i = curr_adv.i
+                
+                if not advances:
+                    # have a best choice, flush it
+                    yield from reversed(tuple(get_advance_items(curr_adv)))
+                    curr_adv = None
+
+            else:
+                best_c, best_j = find_match(i)
+                if best_c >= 0:
+                    yield i, mktuple(i, best_j, best_c)
+                    i += best_c
+                else:
                     yield i, code[i]
                     i += 1
-                    continue
-
-            if best_c >= 0 and measure and max_o_steps:
-                # would it be better to have a shorter yet closer match?
-                for step in max_o_steps:
-                    if i - best_j <= step:
-                        break
-
-                    sh_best_c, sh_best_j = find_match(i, max_o=step)
-                    if sh_best_c >= 0:
-                        sh_best_c2, sh_best_j2 = find_match(i + sh_best_c)
-                        best_c2, best_j2 = find_match(i + best_c)
-                        if sh_best_c + sh_best_c2 >= best_c + best_c2 and best_c2 >= 0:
-                            lz_cost = measure(i, mktuple(i, best_j, best_c), mktuple(i + best_c, best_j2, best_c2))
-                            sh_cost = measure(i, mktuple(i, sh_best_j, sh_best_c), mktuple(i + sh_best_c, sh_best_j2, sh_best_c2))
-                            if sh_cost < lz_cost:
-                                best_c, best_j = sh_best_c, sh_best_j
-                                break
-
-            if best_c >= 0:
-                yield i, mktuple(i, best_j, best_c)
-                i += best_c
-            else:
-                yield i, code[i]
-                i += 1
             
         if not (fast_c != None and best_c >= fast_c):
             for j in range(prev_i, i):
                 min_matches[code[j:j+min_c]].append(j)
         prev_i = i
+    
+    assert not curr_adv
 
 def compress_code(w, code, size_handler=None, debug_handler=None, force_compress=False, 
                   fail_on_error=True, fast_compress=False, old_compress=False, **_):
@@ -320,30 +337,21 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
                     count -= 1 # heuristic, since mtf generally pays forward
                 return count
 
-            def measure(i, *items):
-                count = 0
-                mtfcopy = None
+            def measure(ctxt_mtf, item):
+                if isinstance(item, Lz77Tuple):
+                    offset_bits = max(round_up(count_significant_bits(item.off), 5), 5)
+                    count_bits = ((item.cnt // 7) + 1) * 3
+                    cost = 2 + (offset_bits < 15) + offset_bits + count_bits
 
-                for item in items:
-                    if isinstance(item, Lz77Tuple):
-                        offset_bits = max(round_up(count_significant_bits(item.off), 5), 5)
-                        count_bits = ((item.cnt // 7) + 1) * 3
-                        count += 2 + (offset_bits < 15) + offset_bits + count_bits
-                        i += item.cnt + min_c
+                else:
+                    ctxt_mtf = ctxt_mtf or mtf                        
+                    ch_i = ctxt_mtf.index(item)
+                    cost = mtf_cost_heuristic(ch_i)
 
-                    else:
-                        if mtfcopy is None:
-                            mtfcopy = mtf[:]
-                            
-                        ch_i = mtfcopy.index(item)
+                    ctxt_mtf = ctxt_mtf[:] # a bit wasteful, but doesn't impact perf in practice
+                    update_mtf(ctxt_mtf, ch_i, item)
 
-                        cost = mtf_cost_heuristic(ch_i)
-
-                        update_mtf(mtfcopy, ch_i, item)
-                        count += cost
-                        i += 1
-
-                return count
+                return cost, ctxt_mtf
 
             # heuristicly find at which indices we should enter/leave literal blocks
             def preprocess_litblock_idxs():
@@ -432,7 +440,7 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
             if fast_compress:
                 items = get_lz77(code, min_c=min_c, max_c=None, fast_c=16)
             else:
-                items = get_lz77(code, min_c=min_c, max_c=None, measure=measure, measure_c=3, 
+                items = get_lz77(code, min_c=min_c, max_c=None, measure=measure,
                                  max_o_steps=(0x20, 0x400), litblock_idxs=preprocess_litblock_idxs())
 
             for i, item in items:
@@ -452,6 +460,14 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
         else:
             if debug_handler: debug_handler.init(w)
 
+            def measure(ctxt, item):
+                if isinstance(item, Lz77Tuple):
+                    return 2, ctxt
+                elif item in k_old_inv_code_table:
+                    return 1, ctxt
+                else:
+                    return 2, ctxt
+
             def write_match(offset_val, count_val):
                 offset_val += 1
                 count_val += 1
@@ -468,7 +484,8 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
                     w.u8(0)
                     w.u8(ord(ch))
 
-            for i, item in get_lz77(code, min_c=min_c, max_c=0x11, max_o=0xc3f, no_repeat=True):
+            for i, item in get_lz77(code, min_c=min_c, max_c=0x11, max_o=0xc3f, no_repeat=True,
+                                    measure=None if fast_compress else measure):
                 if isinstance(item, Lz77Tuple):
                     write_match(item.off, item.cnt)
                     if debug_handler: debug_handler.update((item.off + 1, item.cnt + min_c))
