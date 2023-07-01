@@ -86,6 +86,7 @@ pgroup.add_argument("--trace-input-compression", help="trace the input's compres
 pgroup = parser.add_argument_group("misc. options (semi-undocumented)")
 pgroup.add_argument("--builtin", type=SplitBySeps, action=extend_arg, help="treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
 pgroup.add_argument("--not-builtin", type=SplitBySeps, action=extend_arg, help="do not treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
+pgroup.add_argument("--global-builtins-only", action="store_true", help="assume all builtins are global, equivalent to pico8's -global_api option")
 pgroup.add_argument("--version", action="store_true", help="print version of cart")
 pgroup.add_argument("--bbs", action="store_true", help="interpret input as a bbs cart id, e.g. '#...' and download it from the bbs")
 pgroup.add_argument("--url", action="store_true", help="interpret input as a URL, and download it from the internet")
@@ -204,6 +205,7 @@ def main_inner(raw_args):
         write_code_size(cart, handler=args.input_count, input=True)
         
     ctxt = PicoContext(extra_builtins=args.builtin, not_builtins=args.not_builtin, 
+                       local_builtins=not args.global_builtins_only,
                        srcmap=args.rename_map, sublang_getter=sublang_cb, version=cart.version_id)
     if preproc_cb:
         preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args)

@@ -36,6 +36,14 @@ undocumented_builtins = {
 
 pattern_builtins = set(chr(ch) for ch in range(0x80, 0x9a))
 
+builtins_copied_to_locals = { # builtins listed here should also be listed elsewhere above!
+    "time", "sub", "chr", "ord", "tostr", "tonum", "add",
+    "del", "deli", "clip", "color", "pal", "palt", "fillp",
+    "pget", "pset", "sget", "sset", "fget", "fset",
+    "circ", "circfill", "rect", "rectfill", "oval", "ovalfill",
+    "line", "spr", "sspr"
+}
+
 def get_line_col(text, idx, start=0): # (0-based)
     line = 0
 
@@ -134,20 +142,23 @@ class SubLanguageBase:
 class PicoContext:
     """Defines information for how pico8 code is to be processed, e.g. the supported builtins and the supported pico8 version"""
     def __init__(m, deprecated=True, undocumented=True, patterns=True, srcmap=False, extra_builtins=None, not_builtins=None, 
-                 sublang_getter=None, version=sys.maxsize):
-        funcs = set(main_builtins)
+                 local_builtins=True, sublang_getter=None, version=sys.maxsize):
+        builtins = set(main_builtins)
+        local_builtins = set(builtins_copied_to_locals) if local_builtins else set()
         if deprecated:
-            funcs |= deprecated_builtins
+            builtins |= deprecated_builtins
         if undocumented:
-            funcs |= undocumented_builtins
+            builtins |= undocumented_builtins
         if patterns:
-            funcs |= pattern_builtins
+            builtins |= pattern_builtins
         if extra_builtins:
-            funcs |= set(extra_builtins)
+            builtins |= set(extra_builtins)
         if not_builtins:
-            funcs -= set(not_builtins)
+            builtins -= set(not_builtins)
+            local_builtins -= set(not_builtins)
 
-        m.builtins = funcs
+        m.builtins = builtins
+        m.local_builtins = local_builtins
 
         m.srcmap = [] if srcmap else None
         m.sublang_getter = sublang_getter
@@ -196,7 +207,7 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
     ok = False
     tokens, errors = tokenize(source, ctxt, need_all_comments)
     if not errors and need_parse:
-        root, errors = parse(source, tokens)
+        root, errors = parse(source, tokens, ctxt)
         
     if not errors:
         ok = True

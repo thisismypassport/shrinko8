@@ -85,10 +85,12 @@ do
   assert(add({}, 1) == 1)
 end
 
+local l
 for _ENV in all{{x=1,y=5}, {x=2,y=6}} do
   x += y + y*x
+  l = deli{2} 
 end
-
+assert(l == 2) 
 local l = {key1=1,key2=2, other=3}
 l.key1 = l. other
 

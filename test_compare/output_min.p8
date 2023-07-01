@@ -68,9 +68,12 @@ do
 local _ENV={assert=assert,add=add}
 assert(add({},1)==1)
 end
+local deli_result
 for _ENV in all{{x=1,y=5},{x=2,y=6}}do
 x+=y+y*x
+deli_result=deli{2}
 end
+assert(deli_result==2)
 local thing={key1=1,key2=2,other=3}
 thing.key1=thing.other
 circfill,rectfill=circfill,rectfill

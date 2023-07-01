@@ -163,7 +163,7 @@ k_right_binary_ops = {
 
 k_block_ends = ("end", "else", "elseif", "until")
 
-def parse(source, tokens):
+def parse(source, tokens, ctxt=None):
     idx = 0
     depth = -1
     funcdepth = 0
@@ -174,6 +174,10 @@ def parse(source, tokens):
     globals = LazyDict(lambda key: Global(key))
     
     scope.add(Local("_ENV", scope, True))
+
+    if ctxt and ctxt.local_builtins:
+        for local in ctxt.local_builtins:
+            scope.add(Local(local, scope, True))
    
     def peek(off=0):
         i = idx + off

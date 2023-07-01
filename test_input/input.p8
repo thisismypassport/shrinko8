@@ -97,9 +97,12 @@ do
   assert(add({}, 1) == 1)
 end
 
+local deli_result
 for --[[member-keys]]_ENV in all({{x=1,y=5}, {x=2,y=6}}) do
   x += y + y*x
+  deli_result = deli({2}) -- works due to top-level locals added by pico8
 end
+assert(deli_result == 2) -- (but assert wouldn't work inside)
 
 -- overrides
 local --[[preserve-keys]]thing = {key1=1,key2=2,--[[member]]other=3}

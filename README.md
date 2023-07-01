@@ -24,13 +24,13 @@ Greatly reduces the character count of your cart, as well as greatly improves it
 
 There are command line [options](#minify-options) to choose how aggressively to minify, as well as what metric (compressed size or character count) to focus on minifying.
 
-It's recommended to combine minification with conversion to png, as Shrinko8 is able to compress code better and can thus fit carts into pngs that Pico-8 cannot.
+It's recommended to combine minification with conversion to png (as seen in the examples below), as Shrinko8 is able to compress code better and can thus fit carts into pngs that Pico-8 cannot.
 
 ## To minify your p8 cart:
 
 You have several options, depending on how much minification you need:
 
-The simplest approach, which gives good results and works on any cart is:
+The simplest approach, which gives good results and works on any cart:
 
 `python shrinko8.py path-to-input.p8 path-to-output.png --minify-safe-only`
 
@@ -40,7 +40,7 @@ The most aggressive approach, which gives the best results, but sometimes requir
 
 `python shrinko8.py path-to-input.p8 path-to-output.png --minify`
 
-If you want to minify, but want to keep your cart easily debuggable or reasonably readable by others, you can do:
+If you want to minify, but also to keep your cart easily debuggable and reasonably readable by others, you can do:
 
 `python shrinko8.py path-to-input.p8 path-to-output.png --minify-safe-only --no-minify-rename --no-minify-lines`
 
@@ -52,9 +52,9 @@ You can also minify to a p8 file (or a lua file), e.g:
 
 You can specify what the minification should focus on reducing via additional command-line options:
 
-* `--focus-chars` : Focus on reducing the amount of uncompressed characters, even if compressed size grows
+* `--focus-chars` : Focus on reducing the amount of uncompressed characters, even if the compressed size grows
 * `--focus-compressed` : Focus on reducing the compressed size of the code, even if the amount of characters grows
-* By default, the minification is balanced for both.
+* By default, the minification is balanced for both metrics.
 
 You can disable parts of the minification process via additional command-line options:
 
@@ -66,28 +66,28 @@ You can disable parts of the minification process via additional command-line op
 
 You can configure how identifier renaming is done:
 
-* `--minify-safe-only` : A shortcut to do only safe renaming (equivalent to preserving all members and - if _ENV is used - all globals)
+* `--minify-safe-only` : Do only safe renaming (equivalent to preserving all table keys, and - if _ENV is used in the cart - all globals)
 * `--preserve` :  Equivalent to specifying `--preserve:` in the cart itself. Described [here](#preserving-identifiers-across-the-entire-cart).
 
-You can also generate a file telling you how the identifiers were renamed: (This can be useful for debugging and more) 
+You can also generate a file telling you how the identifiers were renamed: (This can be useful for debugging) 
 
 * `--rename-map <file>`
 
 ## Operation details
 
-* All comments, spaces and line breaks are removed, unless required.
+* All unnecessary comments, spaces and line breaks are removed.
 * Unnecessary tokens like parentheses and trailing commas are removed
 * Identifiers are renamed to be as short as possible
 * Tokens are made more consistent, to reduce compression ratio
 
 ## Pitfalls of full minification
 
-When using `--minify` without `--minify-safe-only`, Shrinko8 makes some default assumptions about your cart:
+When using `--minify` without `--minify-safe-only`, Shrinko8 makes - by default - some assumptions about your cart:
 
-* It doesn't mix identifiers and strings when indexing tables. (E.g. it doesn't access both `some_table.x` and `some_table["x"]`)
-* It does not use _ENV
+* Your cart doesn't mix identifiers and strings when indexing tables or _ENV. (E.g. it doesn't access both `some_table.x` and `some_table["x"]`)
+* Your cart does not use _ENV
 
-These assumptions allow it to rename identifiers used to index tables.
+These assumptions allow it to freely rename identifiers used to index tables.
 
 If these assumptions don't hold, the minified cart won't work properly, e.g:
 
@@ -98,17 +98,17 @@ local my_key = "key" -- here, key is a string.
 ?my_obj[my_key] -- BUG! my_obj will not have a "key" member after minification!
 ```
 
-In such cases, you have multiple ways to tell Shrinko8 precisely how you break these assumptions, allowing you to achieve better minification than would be possible with just `--minify-safe-only`. These options are detailed below:
+In such cases, you have multiple ways to tell Shrinko8 precisely how your cart breaks these assumptions, allowing you to achieve better minification than would be possible with just `--minify-safe-only`:
 
-* If you index a table by both identifiers and string literals, you can [tell Shrinko8 to rename the string literals too](#renaming-specific-strings).
+* If you index a table (or _ENV) by both identifiers and string literals, you can [tell Shrinko8 to rename the string literals too](#renaming-specific-strings).
 
-* If you index a table by both identifiers and strings that you build at runtime (e.g. via `+`), you can [preserve those identifiers across the entire cart](#preserving-identifiers-across-the-entire-cart).
+* If you index a table (or _ENV) by both identifiers and strings that you build at runtime (e.g. via `+`), you can [preserve those identifiers across the entire cart](#preserving-identifiers-across-the-entire-cart).
 
 * If you have certain tables whose keys you don't want to rename - e.g. because the keys are built at runtime, or because the tables are serialized to a savefile - you can [preserve all keys in a table](#controlling-renaming-of-all-keys-of-a-table).
 
 * If you're making your tables inherit _ENV (allowing you to bind the table to _ENV and access both table members and globals without a '.'), you can [rename table keys the same way as globals](#renaming-table-keys-the-same-way-as-globals).
 
-* If you're doing other unusual things with _ENV, you may need to [specify how specific identifiers should be renamed](#controlling-renaming-of-identifiers) to get correct behaviour.
+* If you're otherwise assigning to or from _ENV, you may need to either [specify how all keys of a table are renamed](#controlling-renaming-of-all-keys-of-a-table), [specify how specific usages of an identifier is renamed](#controlling-renaming-of-specific-identifier-usages), or just [rename table keys the same way as globals](#renaming-table-keys-the-same-way-as-globals).
 
 ### Renaming specific strings
 
@@ -168,11 +168,11 @@ You can instruct the minifier to rename table keys the same way as globals (allo
 --preserve: *=*.*
 ```
 
-If you prefer, you can instead pass `--preserve *=*.*` to the command line.
+If you prefer, you can instead pass `--preserve "*=*.*"` to the command line.
 
-### Controlling renaming of identifiers
+### Controlling renaming of specific identifier usages
 
-The `--[[global]]` and `--[[member]]` hints can also be used on identifiers to change the way they're renamed.
+The `--[[global]]` and `--[[member]]` hints can also be used on a specific usage of an identifier to change the way it's renamed.
 
 In additon, the `--[[preserve]]` hint can prevent identifiers from being renamed at all:
 ```lua
@@ -186,7 +186,7 @@ end
 --[[preserve]]some_future_pico8_api(1,2,3)
 ```
 
-Note that this affects only a specific usage of an identifier. If you want to rename all usages of a global, `--preserve` is the recommended approach.
+Note that this affects only a specific usage of an identifier. If you want to rename all usages, `--preserve:` is the recommended approach.
 
 ### Controlling renaming of all keys of a table
 
@@ -208,7 +208,10 @@ do
   local _ENV = env
   assert(add({}, 1) == 1)
 end
+```
 
+This can be also be useful when assigning regular tables to _ENV:
+```lua
 -- hints on an _ENV local affects all globals in its scope
 for --[[member-keys]]_ENV in all({{x=1,y=5}, {x=2,y=6}}) do
   x += y + y*x
@@ -217,7 +220,7 @@ end
 
 ### Advanced - Renaming Built-in Pico-8 functions
 
-For cases like tweet-carts where you may want to assign builtins to shorter globals, you can tell the minifer to avoid preserving those builtins normally, but preserve them when they're first accessed, as follows:
+For cases like tweet-carts, when you use a builtin function multiple times throughout your cart, you often want to assign it to a shorter name at the beginning of the cart. With shrinko8, you can keep using the full name of the builtin, but tell the minifer to only preserve the builtin when it's first accessed, as follows:
 
 ```lua
 --preserve: !circfill, !rectfill

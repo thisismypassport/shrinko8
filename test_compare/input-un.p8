@@ -4,45 +4,45 @@ __lua__
 
 print = printh
 ?"hello ᶜ7there♥ら"
-🐱, h, x, s, u, k, f, f = 11, 12, 13, 14, 15, 16, 17, 17
+🐱, d, r, h, x, s, o, o = 11, 12, 13, 14, 15, 16, 17, 17
 t(stat(band()))
 t()
 e = 0
-c = 0
-c = 0
+n = 0
+n = 0
 print "this is included"
 ?"#[disable[[this for now/ever]]]"
-local f = {1, 2, 3}
-print(#f)
+local o = {1, 2, 3}
+print(#o)
 print(#[[#include notaninclude
 ]])
-local f = "preserved_key"
-local c = {preserved_key = 123}
-?c[f]
-local f = "preserved_glob"
+local o = "preserved_key"
+local n = {preserved_key = 123}
+?n[o]
+local o = "preserved_glob"
 preserved_glob = 123
-?_ENV[f]
-local f = {}
-f["whatever"] = 123
-?f.whatever
+?_ENV[o]
+local o = {}
+o["whatever"] = 123
+?o.whatever
 
-function f.subfunc()
+function o.subfunc()
 end
 
-function f:subfunc()
+function o:subfunc()
 end
 
-?f:subfunc()
-local f = "a"
-local c = {a = 123}
-?c[f]
-local f = split "o,f,c,123"
-local c = {o = 123, f = 234, c = 345}
-?c[f[2]]
-local f = "a"
-a = 123
-?_ENV[f]
-local f = "o:f#~~c,", "!t$h+123-x\nif\ns"
+?o:subfunc()
+local o = "a"
+local n = {a = 123}
+?n[o]
+local o = split "o,f,c,123"
+local n = {o = 123, f = 234, c = 345}
+?n[o[2]]
+local o = "f"
+f = 123
+?_ENV[o]
+local o = "o:f#~~c,", "!t$h+123-x\nif\ns"
 do
   local _ENV = {assert = assert}
   assert(true)
@@ -55,35 +55,38 @@ function some_future_pico8_api()
 end
 
 some_future_pico8_api(1, 2, 3)
-local f = {preserved1 = 1, preserved2 = 2}
-f.preserved1 += 1
-?f["preserved1"]
-f = setmetatable({preserved3 = 3}, i)
-?f["preserved3"]
+local o = {preserved1 = 1, preserved2 = 2}
+o.preserved1 += 1
+?o["preserved1"]
+o = setmetatable({preserved3 = 3}, c)
+?o["preserved3"]
 l = {preserved1 = 1, preserved2 = 2}
 l.preserved1 += 1
 ?l["preserved1"]
-l = setmetatable({preserved3 = 3}, i)
+l = setmetatable({preserved3 = 3}, c)
 ?l["preserved3"]
-local f = {assert = assert, add = add}
+local o = {assert = assert, add = add}
 do
-  local _ENV = f
+  local _ENV = o
   assert(add({}, 1) == 1)
 end
 do
   local _ENV = {assert = assert, add = add}
   assert(add({}, 1) == 1)
 end
+local o
 for _ENV in all {{l = 1, e = 5}, {l = 2, e = 6}} do
   l += e + e * l
+  o = deli {2}
 end
+assert(o == 2)
 local l = {key1 = 1, key2 = 2, i = 3}
 l.key1 = l.i
-o, n = circfill, rectfill
-o(120, 126, 3)
-o(126, 120, 3)
-n(120, 120, 123, 123)
-n(123, 123, 126, 126)
+circfill, rectfill = circfill, rectfill
+circfill(120, 126, 3)
+circfill(126, 120, 3)
+rectfill(120, 120, 123, 123)
+rectfill(123, 123, 126, 126)
 while (1 == 0) ;
 while (1 == 0) sin = cos; cos = sin
 if (1 == 2) ;
@@ -105,12 +108,12 @@ local o, n = sin(1, 2), cos((cos()))
 local f, c = (cos((cos())))
 local l = {d = ord, r = pal}
 local l = ord "123", pal {1, 2}, l:d("ord"), l:r({1, 2}), sin(1)
-local a = {ord "1", [2] = 3, l = 4, (ord "1")}
+local d = {ord "1", [2] = 3, l = 4, (ord "1")}
 l += 1
 o, n = sin(1, 2), cos((cos()))
 f, c = (cos((cos())))
 
-function y()
+function u()
   return 1, 2, ord "1", (ord "1")
 end
 
@@ -125,13 +128,13 @@ until 1 == 1
 for l in (all {}) do
 end
 print("test" .. @16 .. "str")
-d = "renaming bug"
+a = "renaming bug"
 
-function r()
-  local l, e, o, n, f, c, a, i, r, t, h, x, s, u, k, y, v, p, b, w, g, m, j, q, z, A, B
-  return d
+function i()
+  local l, e, o, n, f, c, i, d, r, t, h, x, s, u, k, y, v, p, b, w, g, m, j, q, z, A, B
+  return a
 end
 
-?r()
+?i()
 e = 0
 e = 1
