@@ -249,6 +249,7 @@ def write_cart_to_image(cart, screenshot_path=None, title=None, **opts):
         image.save(f)
         return f.getvalue()
 
+k_p8_prefix = "pico-8 cartridge"
 k_meta_prefix = "meta:"
 
 def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
@@ -273,6 +274,9 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
                 yield ord(b.lower()) - ord('g') + 16
             else:
                 yield int(b, 16)
+            
+    if not raw and not data.startswith(k_p8_prefix) and not data.startswith("__lua__"): # fallback to raw
+        raw = True
     
     header = "lua" if raw else None
     code = []
@@ -361,7 +365,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
     return cart
 
 def write_cart_to_source(cart, unicode_caps=False, **_):
-    lines = ["pico-8 cartridge // http://www.pico-8.com"]
+    lines = ["%s // http://www.pico-8.com" % k_p8_prefix]
     lines.append("version %d" % cart.version_id)
 
     def nybbles(data):
@@ -561,7 +565,7 @@ def read_cart_autodetect(path, **opts):
         text = file_read_text(path)
 
         # cart?
-        if text.startswith("pico-8 cartridge") or text.startswith("__lua__"):
+        if text.startswith(k_p8_prefix) or text.startswith("__lua__"):
             return read_cart_from_source(text, path=path, **opts)
             
         rtext = text.rstrip()
