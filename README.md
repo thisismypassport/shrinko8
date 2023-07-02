@@ -2,13 +2,7 @@
 
 A set of Pico-8 cart tools, with a focus on shrinking code size.
 
-The supported tools are:
-* [Minification](#minification) - Reduce the token count, character count and compression ratio of your cart.
-* [Linting](#linting) - Check for common code errors such as forgetting to declare a local.
-* [Getting Cart Size](#getting-cart-size) - Count the amount of tokens, characters, and compressed bytes your cart uses.
-* [Format Conversion](#format-conversion) - Convert between p8 files, pngs, and more. Achieves better code compression than Pico-8 when creating pngs.
-* [Unminification](#unminification) - Add spaces and newlines to the code of a minified cart, to make it more readable
-* [Custom Python Script](#custom-python-script) - Run a custom python script to preprocess or postprocess your cart
+## [You can run it online here.](https://thisismypassport.github.io/shrinko8)
 
 [You can download a recent Windows Executable here.](https://github.com/thisismypassport/shrinko8/releases)
 
@@ -17,6 +11,14 @@ Otherwise, requires [Python](https://www.python.org/) 3.7 or above to run.
 Reading/Writing PNGs additionally requires the Pillow module (`python -m pip install pillow` to install)
 
 [Download the latest version of the source here.](https://github.com/thisismypassport/shrinko8/archive/refs/heads/main.zip)
+
+The supported tools are:
+* [Minification](#minification) - Reduce the token count, character count and compression ratio of your cart.
+* [Linting](#linting) - Check for common code errors such as forgetting to declare a local.
+* [Getting Cart Size](#getting-cart-size) - Count the amount of tokens, characters, and compressed bytes your cart uses.
+* [Format Conversion](#format-conversion) - Convert between p8 files, pngs, and more. Achieves better code compression than Pico-8 when creating pngs.
+* [Unminification](#unminification) - Add spaces and newlines to the code of a minified cart, to make it more readable
+* [Custom Python Script](#custom-python-script) - Run a custom python script to preprocess or postprocess your cart
 
 # Minification
 
