@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+  <head>
+    <title>Shrinko8 webapp</title>
+    <meta charset="utf-8">
+    <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+    <link href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.11.1/src-min/ace.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/comlink@4.4.1/dist/umd/comlink.min.js"></script>
+    <style>
+      .ace_placeholder {
+        transform: scale(1);
+      }
+
+      .base {
+        position: relative;
+      }
+
+      .overlay {
+        background: rgba(255,255,255,0.7); 
+        position: absolute; 
+        width: 100%; 
+        height: 100%; 
+        z-index: 100;
+        top: 0;
+        display: none;
+      }
+
+      .full {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%; 
+        height: 100%; 
+      }
+
+      .hcenter {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      .center {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+      }
+
+      .asis {
+        font-family: monospace;
+        white-space: pre;
+      }
+
+      .flex-column {
+        display: flex;
+        flex-flow: column;
+      }
+      .flex-row {
+        display: flex;
+        flex-flow: row;
+      }
+
+      .margin {
+        margin: 10px;
+      }
+
+      .scroll {
+        overflow-x: auto;
+        overflow-y: auto;
+      }
+
+      .count-table {
+        border-collapse: collapse;
+      }
+
+      .count-table td {
+        border: 1px solid;
+      }
+
+      .ace-textarea {
+        border: 1px solid gray;
+      }
+
+      .ui-tabs .ui-tabs-panel {
+        padding: 0;
+        display: flex; /* hack */
+      }
+
+      textarea {
+        resize: none,
+      }
+    </style>
+  </head>
+  <body style="height: 100%; margin: 0;">
+    <form class="flex-column" style="height: 100%" autocomplete="off"> <!--here to disable autocomplete-->
+
+      <div class="flex-column margin" style="flex: 1">
+        <div>
+          <label style="font-weight: bold;">Open your Pico-8 file:
+            <input id="input-file" type="file" style="margin-bottom: 10px;" accept=".p8,.lua,.png,.rom"
+                  onchange="loadInputFile(this)" />
+          </label>
+        </div>
+        <div class="base" style="flex: 1">
+          <div id="input-code" class="ace-textarea full"
+               placeholder="Or paste your Pico-8 code or p8 file here"></div>
+          <div id="input-overlay" class="overlay">
+            <div class="center">Opening...</div>
+          </div>
+          <div id="input-error-overlay" class="overlay">
+            <div class="center flex-column">
+              <div id="input-error-output" class="scroll asis" style="flex: 1"></div>
+              <div><button type="button" class="hcenter" onclick="$('#input-error-overlay').hide()">close</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="output-tabs" class="flex-column" style="flex: 1; border: 0; padding: 0">
+        <ul>
+          <li><a href="#tab-minify">Minify</a></li>
+          <li><a href="#tab-lint">Lint</a></li>
+          <li><a href="#tab-advanced">Advanced</a></li>
+        </ul>
+
+        <div id="tab-minify" class="flex-row margin" style="flex: 1">
+          <div class="flex-column" style="flex: 1">
+            <label style="display: block; margin-bottom: 10px;">Target format:
+              <select id="minify-format">
+                <option value="png">PNG cart</option>
+                <option value="p8">P8 file</option>
+                <option value="rom">ROM file</option>
+                <option value="lua">LUA file (Code only)</option>
+                <option value="tiny-rom">Tiny ROM file (Code only)</option>
+              </select>
+            </label>
+            
+            <div id="minify-overlay-parent" style="flex: 1" class="base">
+              <div id="minify-text-div" class="full flex-column">
+                <div id="minify-code" class="ace-textarea" style="flex: 1" readonly></div>
+                <div><button type="button" style="margin-top: 10px" onclick="saveOutputFile()">Download</button></div>
+              </div>
+              <div id="minify-binary-div" class="full flex-row">
+                <div>
+                  <img id="minify-image" width="160" height="205" style="margin: 10px 0"></img><br/>
+                  <button type="button" onclick="saveOutputFile()">Download</button>
+                </div>
+                <div style="flex: 1" class="flex-column margin">
+                  <div>Preview:<span style="color: gray"> (To download, click the 'Download' button to the left. Copy/pasting this preview to Pico-8 will not compress as well)</span></div>
+                  <div id="minify-preview" class="ace-textarea" style="flex: 1; margin-top: 10px" readonly></div>
+                </div>
+              </div>
+              <div id="minify-overlay" class="overlay">
+                <div class="center">Minifying...</div>
+              </div>
+              <div id="minify-error-overlay" class="overlay flex-column" style="background: white; z-index: 50">
+                <div id="minify-error-output" class="scroll asis" style="flex: 1"></div>
+              </div>
+              <div id="loading-overlay" class="overlay">
+                <div class="center">
+                  <h1 style="text-align: center">Loading Shrinko8...</h1>
+                  <progress id="loading-progress" value="0" max="100" style="width: 500px; height: 30px"></progress>
+                  <h1 id="loading-failed" style="display: none; color: red">Failed! (See console for the gory details)</h1>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="minify-opts" style="flex: 0 0 20%; margin-left: 10px" class="flex-column">
+            <div style="flex: 1">
+              <label><input type="radio" name="minify" value="--unminify">Undo Minification (Reformat)</label><br/>
+              <label><input type="radio" name="minify" value="">No Minification</label><br/>
+              <label><input type="radio" name="minify" 
+                value="--minify-safe-only --no-minify-rename --no-minify-lines">Minimal Minification (Undoable, easier to debug)</label><br/>
+              <label><input type="radio" name="minify" value="--minify-safe-only" checked>Safe Minification</label><br/>
+              <label><input type="radio" name="minify" value="--minify" id="minify-agg">Aggressive Minification</label><br/>
+
+              <div id="minify-max-warn" style="color: darkorange; margin-top: 10px; width: 100%">
+                See <a href="https://github.com/thisismypassport/shrinko8/blob/main/README.md#pitfalls-of-full-minification" target="_blank">readme</a>
+                for what can go wrong with aggresive minification and how to resolve it.
+              </div>
+
+              <label style="display: block; margin-top: 10px">Focus on minifying:
+                <select id="minify-focus">
+                  <option value="">(Balanced)</option>
+                  <option value="--focus-chars">Character count</option>
+                  <option value="--focus-compressed">Compressed size</option>
+                </select>
+              </label>
+            </div>
+            
+            <div style="flex: 0">
+              <table class="count-table" style="margin-top: 15px">
+                <tr>
+                  <td>Tokens: </td>
+                  <td id="count-tokens" style="width: 50px">0</td>
+                  <td id="percent-tokens" style="width: 50px">0%</td>
+                </tr>
+                <tr>
+                  <td>Chars: </td>
+                  <td id="count-chars">0</td>
+                  <td id="percent-chars">0%</td>
+                </tr>
+                <tr id="row-compressed">
+                  <td>Compressed: </td>
+                  <td id="count-compressed">0</td>
+                  <td id="percent-compressed">0%</td>
+                </tr>
+                <tr id="no-row-compressed" style="color: gray">
+                  <td>Compressed: </td>
+                  <td colspan="2">N/A</td>
+                </tr>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-lint" class="flex-row margin" style="flex: 1">
+          <div id="lint-overlay-parent" class="base" style="flex: 1">
+            <div id="lint-output" class="full asis scroll" style="margin: 0"></div>
+            <div id="lint-overlay" class="overlay">
+              <div class="center">Linting...</div>
+            </div>
+          </div>
+          <div id="lint-opts" style="flex: 0 0 10%; margin-left: 10px">
+            Show lint warnings for:<br/>
+            <label><input type="checkbox" id="lint-undef" checked>Undefined vars</label><br/>
+            <label><input type="checkbox" id="lint-dup" checked>Duplicate vars</label><br/>
+            <label><input type="checkbox" id="lint-unused" checked>Unused vars</label><br/>
+          </div>
+        </div>
+
+        <div id="tab-advanced" class="flex-column margin" style="flex: 1">
+          <textarea id="extra-args" style="flex: 3; margin-bottom: 10px" spellcheck="false"
+              placeholder="You can add custom Shrinko8 command line arguments here (see readme)"></textarea>
+          <div id="script-code" class="ace-textarea" style="flex: 7"
+              placeholder="You can paste a custom python script here that customizes how Shrinko8 operates.
+For example, you can paste the example sublanguage from the shrinko8 readme"></div>
+        </div>
+      </div>
+    </div>
+
+    <script src="index.js"></script>
+  </body>
+</html>
