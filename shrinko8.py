@@ -44,12 +44,12 @@ pgroup.add_argument("--rename-map", help="log renaming of identifiers (from mini
 
 pgroup = parser.add_argument_group("lint options")
 pgroup.add_argument("-l", "--lint", action="store_true", help="enable checking the cart for common issues")
-pgroup.add_argument("--no-lint-unused", action="store_true", help="don't print lint errors on unused variables")
-pgroup.add_argument("--no-lint-duplicate", action="store_true", help="don't print lint errors on duplicate variables")
-pgroup.add_argument("--no-lint-undefined", action="store_true", help="don't print lint errors on undefined variables")
-pgroup.add_argument("--no-lint-fail", action="store_true", help="don't fail immediately on lint errors")
-pgroup.add_argument("--lint-global", type=SplitBySeps, action=extend_arg, help="don't print lint error on these globals (same as lint comment)")
-pgroup.add_argument("--error-format", type=EnumFromStr(ErrorFormat), help="how to format lint & compilation errors {%s}" % EnumList(ErrorFormat._values))
+pgroup.add_argument("--no-lint-unused", action="store_true", help="don't print lint warnings on unused variables")
+pgroup.add_argument("--no-lint-duplicate", action="store_true", help="don't print lint warnings on duplicate variables")
+pgroup.add_argument("--no-lint-undefined", action="store_true", help="don't print lint warnings on undefined variables")
+pgroup.add_argument("--no-lint-fail", action="store_true", help="create output cart even if there were lint warnings")
+pgroup.add_argument("--lint-global", type=SplitBySeps, action=extend_arg, help="don't print lint warnings for these globals (same as '--lint:' comment)")
+pgroup.add_argument("--error-format", type=EnumFromStr(ErrorFormat), help="how to format lint warnings & compilation errors {%s}" % EnumList(ErrorFormat._values))
 
 pgroup = parser.add_argument_group("count options")
 pgroup.add_argument("-c", "--count", action="store_true", help="enable printing token count, character count & compressed size")
@@ -212,14 +212,14 @@ def main_inner(raw_args):
 
     ok, errors = process_code(ctxt, src, input_count=args.input_count, count=args.count,
                               lint=args.lint, minify=args.minify, rename=args.rename,
-                              unminify=args.unminify,
+                              unminify=args.unminify, stop_on_lint=not args.no_lint_fail,
                               fail=False, want_count=not args.no_count_tokenize)
     if errors:
-        print("Lint errors:" if ok else "Compilation errors:")
+        print("Lint warnings:" if ok else "Compilation errors:")
         for error in sorted(errors):
             print(error.format(args.error_format))
         if not ok or not args.no_lint_fail:
-            return 1
+            return 2 if ok else 1
 
     if args.rename_map:
         file_write_text(args.rename_map, "\n".join(ctxt.srcmap))
@@ -232,16 +232,16 @@ def main_inner(raw_args):
         if not (args.output and str(args.format) not in CartFormat._src_names) and not args.no_count_compress: # else, will be done in write_cart
             write_compressed_size(cart, handler=args.count, fast_compress=args.fast_compression)
 
-    try:
-        if args.output:
+    if args.output:
+        try:
             write_cart(args.output, cart, args.format, size_handler=args.count,
                        debug_handler=args.trace_compression,
                        unicode_caps=args.unicode_caps, old_compress=args.old_compression,
                        force_compress=args.count or args.force_compression,
                        fast_compress=args.fast_compression, keep_compression=args.keep_compression,
                        screenshot_path=args.label, title=args.title)
-    except OSError as e:
-        throw("cannot write cart: %s" % e)
+        except OSError as e:
+            throw("cannot write cart: %s" % e)
 
     if args.version:
         print("version: %d, v%d.%d.%d:%d, %c" % (cart.version_id, *cart.version_tuple, cart.platform))

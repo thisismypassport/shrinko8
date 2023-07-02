@@ -133,15 +133,15 @@ def run():
     if run_test("url2p8", "test.url", "test.url.p8"):
         run_test("p82url", "test.url.p8", "test.url", from_output=True)
     run_test("genend", "genend.p8.png", "genend.p8")
-    run_stdout_test("lint", "bad.p8", "--lint", output="bad.txt", norm_stdout=norm_paths, exit_code=1)
+    run_stdout_test("lint", "bad.p8", "--lint", output="bad.txt", norm_stdout=norm_paths, exit_code=2)
     run_stdout_test("linttab", "bad.p8", "--lint", "--error-format", "tabbed",
-                    output="bad-tab.txt", norm_stdout=norm_paths, exit_code=1)
+                    output="bad-tab.txt", norm_stdout=norm_paths, exit_code=2)
     run_stdout_test("count", "bad.p8", "--count", output="badcount.txt")
     run_stdout_test("error", "worse.p8", "--lint", output="worse.txt", norm_stdout=norm_paths, exit_code=1)
     run_test("script", "script.p8", "script.p8", "--script", path_join("test_input", "my_script.py"),
              "--script-args", "my-script-arg", "--my-script-opt", "123")
     run_stdout_test("sublang.lint", "sublang.p8", "--lint",
-             "--script", path_join("test_input", "sublang.py"), output="sublang.txt", norm_stdout=norm_paths, exit_code=1)
+             "--script", path_join("test_input", "sublang.py"), output="sublang.txt", norm_stdout=norm_paths, exit_code=2)
     run_test("sublang", "sublang.p8", "sublang.p8", "--minify",
              "--script", path_join("test_input", "sublang.py"))
     run_test("unkform1", "unkform1", "unkform1")

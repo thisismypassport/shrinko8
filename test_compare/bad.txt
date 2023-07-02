@@ -1,4 +1,4 @@
-Lint errors:
+Lint warnings:
 test_input/badinc.p8:3:7: Local 'from_include' isn't used
 test_input/bad.p8:5:8: Identifier 'u' not found
 test_input/bad.p8:5:11: Identifier 'v' not found

@@ -192,7 +192,8 @@ class Error:
 def print_token_count(num_tokens, **kwargs):
     print_size("tokens", num_tokens, 8192, **kwargs)
 
-def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, rename=False, unminify=False, fail=True, want_count=True):
+def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, rename=False, unminify=False, 
+                 stop_on_lint=True, fail=True, want_count=True):
     need_lint = lint not in (None, False)
     need_minify = minify not in (None, False)
     need_rename = rename not in (None, False)
@@ -218,18 +219,19 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
         if need_lint:
             errors = lint_code(ctxt, root, lint)
         
-        if need_minify:
-            if need_rename:
-                rename_tokens(ctxt, root, rename)
+        if not errors or not stop_on_lint:        
+            if need_minify:
+                if need_rename:
+                    rename_tokens(ctxt, root, rename)
 
-            source.text = minify_code(source, ctxt, root, minify)
-        
-        if need_unminify:
-            source.text = unminify_code(root, unminify)
+                source.text = minify_code(source, ctxt, root, minify)
+            
+            if need_unminify:
+                source.text = unminify_code(root, unminify)
 
-        if count:
-            new_tokens = root.get_tokens() if need_parse else tokens
-            print_token_count(count_tokens(new_tokens), handler=count)
+            if count:
+                new_tokens = root.get_tokens() if need_parse else tokens
+                print_token_count(count_tokens(new_tokens), handler=count)
 
     if fail and errors:
         throw("\n".join(map(str, errors)))
