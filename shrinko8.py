@@ -26,6 +26,9 @@ extend_arg = "extend" if sys.version_info >= (3,8) else None
 parser = argparse.ArgumentParser()
 parser.add_argument("input", help="input file, can be in any format. ('-' for stdin)")
 parser.add_argument("output", help="output file. ('-' for stdout)", nargs='?')
+parser.add_argument("-f", "--format", type=EnumFromStr(CartFormat), help="output cart format {%s}" % EnumList(CartFormat._output_names))
+parser.add_argument("-F", "--input-format", type=EnumFromStr(CartFormat), help="input cart format {%s}" % EnumList(CartFormat._input_names))
+parser.add_argument("-u", "--unicode-caps", action="store_true", help="write capitals as italicized unicode characters (better for copy/paste)")
 
 pgroup = parser.add_argument_group("minify options")
 pgroup.add_argument("-m", "--minify", action="store_true", help="enable minification of the cart")
@@ -58,22 +61,18 @@ pgroup.add_argument("--parsable-count", action="store_true", help="output counts
 pgroup.add_argument("--no-count-compress", action="store_true", help="do not compress the cart just to print the compressed size")
 pgroup.add_argument("--no-count-tokenize", action="store_true", help="do not tokenize the cart just to print the token count")
 
-pgroup = parser.add_argument_group("script options")
-pgroup.add_argument("-s", "--script", help="manipulate the cart via a custom python script - see README for api details")
-pgroup.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
-
-pgroup = parser.add_argument_group("format options")
-parser.add_argument("-f", "--format", type=EnumFromStr(CartFormat), help="output cart format {%s}" % EnumList(CartFormat._output_names))
-parser.add_argument("-F", "--input-format", type=EnumFromStr(CartFormat), help="input cart format {%s}" % EnumList(CartFormat._input_names))
-parser.add_argument("-u", "--unicode-caps", action="store_true", help="write capitals as italicized unicode characters (better for copy/paste)")
-parser.add_argument("--list", action="store_true", help="list all cart names inside a cart package (%s)" % EnumList(CartFormat._pack_names))
-parser.add_argument("--cart", help="name of cart to extract from cart package (%s)" % EnumList(CartFormat._pack_names))
-parser.add_argument("--label", help="path to image to use as the label when creating png carts (default: taken from __label__ like pico8 does)")
-parser.add_argument("--title", help="title to use when creating png carts (default: taken from first two comments like pico8 does)")
-
 pgroup = parser.add_argument_group("unminify options")
 pgroup.add_argument("--unminify", action="store_true", help="enable unminification of the cart")
 pgroup.add_argument("--unminify-indent", type=int, help="indentation size when unminifying", default=2)
+
+pgroup = parser.add_argument_group("misc. options")
+pgroup.add_argument("-s", "--script", help="manipulate the cart via a custom python script - see README for api details")
+pgroup.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
+pgroup.add_argument("--list", action="store_true", help="list all cart names inside a cart package (%s)" % EnumList(CartFormat._pack_names))
+pgroup.add_argument("--cart", help="name of cart to extract from cart package (%s)" % EnumList(CartFormat._pack_names))
+pgroup.add_argument("--label", help="path to image to use as the label when creating png carts (default: taken from __label__ like pico8 does)")
+pgroup.add_argument("--title", help="title to use when creating png carts (default: taken from first two comments like pico8 does)")
+pgroup.add_argument("--extra-output", nargs='+', action="append", metavar=("OUTPUT", "FORMAT"), help="Additional output file to produce (and optionally, the format to use)")
 
 pgroup = parser.add_argument_group("compression options (semi-undocumented)")
 pgroup.add_argument("--keep-compression", action="store_true", help="keep existing compression, instead of re-compressing")
@@ -83,7 +82,7 @@ pgroup.add_argument("--old-compression", action="store_true", help="compress wit
 pgroup.add_argument("--trace-compression", help="trace the compressed symbols and their cost into this file")
 pgroup.add_argument("--trace-input-compression", help="trace the input's compressed symbols and their cost into this file")
 
-pgroup = parser.add_argument_group("misc. options (semi-undocumented)")
+pgroup = parser.add_argument_group("other semi-undocumented options")
 pgroup.add_argument("--builtin", type=SplitBySeps, action=extend_arg, help="treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
 pgroup.add_argument("--not-builtin", type=SplitBySeps, action=extend_arg, help="do not treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
 pgroup.add_argument("--global-builtins-only", action="store_true", help="assume all builtins are global, equivalent to pico8's -global_api option")
@@ -91,6 +90,13 @@ pgroup.add_argument("--version", action="store_true", help="print version of car
 pgroup.add_argument("--bbs", action="store_true", help="interpret input as a bbs cart id, e.g. '#...' and download it from the bbs")
 pgroup.add_argument("--url", action="store_true", help="interpret input as a URL, and download it from the internet")
 pgroup.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
+
+def default_output_format(output):
+    ext = path_extension(output)[1:].lower()
+    if ext in CartFormat._ext_names:
+        return CartFormat(ext)
+    else:
+        return CartFormat.p8
 
 def main_inner(raw_args):
     if not raw_args: # help is better than usage
@@ -122,11 +128,7 @@ def main_inner(raw_args):
         throw("--list can't be combined with most other options")
         
     if not args.format and args.output:
-        ext = path_extension(args.output)[1:].lower()
-        if ext in CartFormat._ext_names:
-            args.format = CartFormat(ext)
-        else:
-            args.format = CartFormat.p8
+        args.format = default_output_format(args.output)
 
     if not args.input_format and args.input:
         ext = path_extension(args.input)[1:].lower()
@@ -233,15 +235,26 @@ def main_inner(raw_args):
             write_compressed_size(cart, handler=args.count, fast_compress=args.fast_compression)
 
     if args.output:
-        try:
-            write_cart(args.output, cart, args.format, size_handler=args.count,
-                       debug_handler=args.trace_compression,
-                       unicode_caps=args.unicode_caps, old_compress=args.old_compression,
-                       force_compress=args.count or args.force_compression,
-                       fast_compress=args.fast_compression, keep_compression=args.keep_compression,
-                       screenshot_path=args.label, title=args.title)
-        except OSError as e:
-            throw("cannot write cart: %s" % e)
+        all_outputs = [(args.output, args.format)]
+        if args.extra_output:
+            for extra_output in args.extra_output:
+                if len(extra_output) == 1:
+                    all_outputs.append((extra_output[0], default_output_format(extra_output[0])))
+                elif len(extra_output) == 2:
+                    all_outputs.append((extra_output[0], CartFormat(extra_output[1])))
+                else:
+                    throw("too many arguments to --extra-output")
+        
+        for output, format in all_outputs:
+            try:
+                write_cart(output, cart, format, size_handler=args.count,
+                        debug_handler=args.trace_compression,
+                        unicode_caps=args.unicode_caps, old_compress=args.old_compression,
+                        force_compress=args.count or args.force_compression,
+                        fast_compress=args.fast_compression, keep_compression=args.keep_compression,
+                        screenshot_path=args.label, title=args.title)
+            except OSError as e:
+                throw("cannot write cart: %s" % e)
 
     if args.version:
         print("version: %d, v%d.%d.%d:%d, %c" % (cart.version_id, *cart.version_tuple, cart.platform))
