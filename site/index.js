@@ -288,7 +288,6 @@ async function doMinify() {
         let encoding = isFormatText(format) ? "utf8" : "binary";
         let [code, stdouterr, output, preview] = await doShrinko(args, encoding);
 
-        $("#minify-error-overlay").toggle(code != 0);
         stdouterr = applyCounts(stdouterr);
 
         if (code != 0) {
@@ -304,7 +303,8 @@ async function doMinify() {
             }
         }
 
-        outputMap[format] = output;
+        outputMap[format] = code != 0 ? false : output;
+        $("#minify-error-overlay").toggle(code != 0);
     } finally {
         if (--activeMinifies == 0) {
             $("#minify-overlay").hide();
@@ -354,13 +354,13 @@ function doShrinkoAction() {
         case 0: { // minify
             let format = $("#minify-format").val();
             if (!(format in outputMap)) {
-                outputMap[format] = false;
+                outputMap[format] = null;
                 return doMinify();
             }
             break;
         } case 1: { // lint
             if (!("lint" in outputMap)) {
-                outputMap.lint = false;
+                outputMap.lint = null;
                 return doLint();
             }
             break;
@@ -388,6 +388,7 @@ function onMinifyFormatChange(event) {
     $("#minify-image").toggle(isFormatImg(format));
     $("#row-compressed").toggle(!isFormatText(format));
     $("#no-row-compressed").toggle(isFormatText(format));
+    $("#minify-error-overlay").toggle(outputMap[format] == false);
     if (event) {
         doShrinkoAction();
     }

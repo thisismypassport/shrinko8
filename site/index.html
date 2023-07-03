@@ -65,6 +65,10 @@
         margin: 10px;
       }
 
+      .border {
+        border: 1px solid black;
+      }
+
       .scroll {
         overflow-x: auto;
         overflow-y: auto;
@@ -88,7 +92,7 @@
       }
 
       textarea {
-        resize: none,
+        resize: none;
       }
     </style>
   </head>
@@ -155,7 +159,7 @@
                 <div class="center">Minifying...</div>
               </div>
               <div id="minify-error-overlay" class="overlay flex-column" style="background: white; z-index: 50">
-                <div id="minify-error-output" class="scroll asis" style="flex: 1"></div>
+                <div id="minify-error-output" class="scroll border asis" style="flex: 1"></div>
               </div>
               <div id="loading-overlay" class="overlay">
                 <div class="center">
@@ -217,7 +221,7 @@
 
         <div id="tab-lint" class="flex-row margin" style="flex: 1">
           <div id="lint-overlay-parent" class="base" style="flex: 1">
-            <div id="lint-output" class="full asis scroll" style="margin: 0"></div>
+            <div id="lint-output" class="full asis scroll border" style="margin: 0"></div>
             <div id="lint-overlay" class="overlay">
               <div class="center">Linting...</div>
             </div>
