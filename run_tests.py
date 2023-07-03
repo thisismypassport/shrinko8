@@ -15,7 +15,7 @@ g_opts = parser.parse_args()
 
 # for test consistency:
 os.environ["PICO8_PLATFORM_CHAR"] = 'w'
-os.environ["PICO8_VERSION_ID"] = '38'
+#os.environ["PICO8_VERSION_ID"] = ... - best test the version we set by default
 
 def norm_paths(output):
     return output.replace("\\", "/")

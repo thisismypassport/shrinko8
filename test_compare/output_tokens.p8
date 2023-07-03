@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 38
+version 41
 __lua__
 print=printh -- note: most of this test is NOT covered in print/printh - check output as well (as always)
 
