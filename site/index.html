@@ -81,6 +81,14 @@
       .count-table td {
         border: 1px solid;
       }
+      
+      .dragover {
+        outline: 2px solid blue;
+      }
+
+      .selected {
+        background-color: skyblue;
+      }
 
       .ace-textarea {
         border: 1px solid gray;
@@ -100,22 +108,41 @@
     <form class="flex-column" style="height: 100%" autocomplete="off"> <!--here to disable autocomplete-->
 
       <div class="flex-column margin" style="flex: 1">
-        <div>
-          <label style="font-weight: bold;">Open your Pico-8 file:
-            <input id="input-file" type="file" style="margin-bottom: 10px;" accept=".p8,.lua,.png,.rom"
-                  onchange="loadInputFile(this)" />
+        <div class="flex-row">
+          <label style="flex: 1; font-weight: bold;">Open your Pico-8 file:
+            <input id="input-file" type="file" multiple style="margin-bottom: 10px;" accept=".p8,.lua,.png,.rom"
+                  onchange="loadSelectedFiles(this)" />
           </label>
         </div>
         <div class="base" style="flex: 1">
-          <div id="input-code" class="ace-textarea full"
-               placeholder="Or paste your Pico-8 code or p8 file here"></div>
+          <div id="input-code" class="ace-textarea full" 
+               ondragover="onDragEnter(this, event)" ondragleave="onDragLeave(this, event)"
+               ondrop="loadDroppedFiles(this, event)"
+               placeholder="You can also paste your code here, or drag & drop a Pico-8 file here.
+It can be a .p8 file, a .png cart, and more."></div>
           <div id="input-overlay" class="overlay">
             <div class="center">Opening...</div>
           </div>
           <div id="input-error-overlay" class="overlay">
             <div class="center flex-column">
-              <div id="input-error-output" class="scroll asis" style="flex: 1"></div>
-              <div><button type="button" class="hcenter" onclick="$('#input-error-overlay').hide()">close</button></div>
+              <div class="base" style="flex: 1">
+                <div id="input-error-output" class="scroll asis" style="max-height: 30vh"></div>
+              </div>
+              <div><button type="button" class="hcenter" onclick="onInputErrorClose()">Close</button></div>
+            </div>
+          </div>
+          <div id="input-select-overlay" class="overlay">
+            <div class="center flex-column">
+              <div>Which is the main file to open? (The others will be used as includes)</div>
+              <div class="base" style="flex: 1">
+                <div id="input-select-list" class="scroll border asis" style="max-height: 30vh"></div>
+              </div>
+              <div class="margin">
+                <span class="hcenter">
+                  <button type="button" onclick="onInputSelectMain()">Open</button>
+                  <button type="button" onclick="onInputSelectMainClose()">Cancel</button>
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -231,6 +258,9 @@
             <label><input type="checkbox" id="lint-undef" checked>Undefined vars</label><br/>
             <label><input type="checkbox" id="lint-dup" checked>Duplicate vars</label><br/>
             <label><input type="checkbox" id="lint-unused" checked>Unused vars</label><br/>
+            <span style="color: gray">See 
+              <a href="https://github.com/thisismypassport/shrinko8/blob/main/README.md#undefined-variable-lints" target="_blank">readme</a> for more info
+            </span>
           </div>
         </div>
 
@@ -244,6 +274,7 @@ For example, you can paste the example sublanguage from the shrinko8 readme"></d
       </div>
     </div>
 
+    <script src="utils.js"></script>
     <script src="index.js"></script>
   </body>
 </html>

@@ -1,6 +1,6 @@
 from utils import *
 from pico_defs import from_p8str
-from pico_cart import print_size
+from pico_cart import print_size, k_tab_break
 
 main_builtins = {
     "abs", "add", "all", "assert", "atan2", "btn", "btnp",
@@ -55,8 +55,6 @@ def get_line_col(text, idx, start=0): # (0-based)
         start = end + 1
     
     return line, idx - start
-
-k_tab_break = "\n-->8\n" # yes, pico8 doesn't accept consecutive/initial/final tab breaks
 
 def get_tab_line_col(text, idx, start=0): # (0-based)
     tab = 0

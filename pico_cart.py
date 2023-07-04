@@ -274,7 +274,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
                 yield ord(b.lower()) - ord('g') + 16
             else:
                 yield int(b, 16)
-            
+      
     if not raw and not data.startswith(k_p8_prefix) and not data.startswith("__lua__"): # fallback to raw
         raw = True
     
@@ -283,83 +283,87 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
     code_line = 0
     y = 0
     for line_i, line in enumerate(data.split("\n")): # not splitlines, that eats a trailing empty line
-        clean = line.strip()
-            
-        if line.startswith("__") and clean.endswith("__") and not raw: # may end with whitespace
-            header = clean[2:-2]
-            y = 0
-            
-        elif header == "lua":
-            if y == 0:
-                code_line = line_i
-            else:
-                code.append("\n")
-            code.append(to_p8str(line))
-            y += 1
-            
-        elif header == "gfx" and clean:
-            assert len(clean) == 0x80
-            x = 0
-            for b in nybbles(clean):
-                cart.rom.set4(mem_tile_addr(x, y), b)
-                x += 1
-            y += 1
+        try:
+            clean = line.strip()
                 
-        elif header == "map" and clean:
-            assert len(clean) == 0x100
-            x = 0
-            for b in bytes(clean):
-                cart.rom.set8(mem_map_addr(x, y), b)
-                x += 1
-            y += 1
+            if line.startswith("__") and clean.endswith("__") and not raw: # may end with whitespace
+                header = clean[2:-2]
+                y = 0
                 
-        elif header == "gff" and clean:
-            assert len(clean) == 0x100
-            x = 0
-            for b in bytes(clean):
-                cart.rom.set8(mem_flag_addr(x, y), b)
-                x += 1
-            y += 1
-            
-        elif header == "sfx" and clean:
-            assert len(clean) == 0xa8
-            x = 0
-            for b in bytes(clean[:8]):
-                cart.rom.set8(mem_sfx_info_addr(y, x), b)
-                x += 1
-            x = 0
-            for bph, bpl, bw, bv, be in nybble_groups(clean[8:], 5):
-                value = bpl | ((bph & 0x3) << 4) | ((bw & 0x7) << 6) | ((bv & 0x7) << 9) | ((be & 0x7) << 12) | ((bw & 0x8) << 12) 
-                cart.rom.set16(mem_sfx_addr(y, x), value)
-                x += 1
-            y += 1
-            
-        elif header == "music" and clean:
-            assert len(clean) == 0xb and clean[2] == ' '
-            x = 0
-            flags = next(bytes(clean[:2]))
-            for b in bytes(clean[3:]):
-                value = b | (((flags >> x) & 1) << 7) 
-                cart.rom.set8(mem_music_addr(y, x), value)
-                x += 1
-            y += 1
+            elif header == "lua":
+                if y == 0:
+                    code_line = line_i
+                else:
+                    code.append("\n")
+                code.append(to_p8str(line))
+                y += 1
+                
+            elif header == "gfx" and clean:
+                assert len(clean) == 0x80
+                x = 0
+                for b in nybbles(clean):
+                    cart.rom.set4(mem_tile_addr(x, y), b)
+                    x += 1
+                y += 1
+                    
+            elif header == "map" and clean:
+                assert len(clean) == 0x100
+                x = 0
+                for b in bytes(clean):
+                    cart.rom.set8(mem_map_addr(x, y), b)
+                    x += 1
+                y += 1
+                    
+            elif header == "gff" and clean:
+                assert len(clean) == 0x100
+                x = 0
+                for b in bytes(clean):
+                    cart.rom.set8(mem_flag_addr(x, y), b)
+                    x += 1
+                y += 1
+                
+            elif header == "sfx" and clean:
+                assert len(clean) == 0xa8
+                x = 0
+                for b in bytes(clean[:8]):
+                    cart.rom.set8(mem_sfx_info_addr(y, x), b)
+                    x += 1
+                x = 0
+                for bph, bpl, bw, bv, be in nybble_groups(clean[8:], 5):
+                    value = bpl | ((bph & 0x3) << 4) | ((bw & 0x7) << 6) | ((bv & 0x7) << 9) | ((be & 0x7) << 12) | ((bw & 0x8) << 12) 
+                    cart.rom.set16(mem_sfx_addr(y, x), value)
+                    x += 1
+                y += 1
+                
+            elif header == "music" and clean:
+                assert len(clean) == 0xb and clean[2] == ' '
+                x = 0
+                flags = next(bytes(clean[:2]))
+                for b in bytes(clean[3:]):
+                    value = b | (((flags >> x) & 1) << 7) 
+                    cart.rom.set8(mem_music_addr(y, x), value)
+                    x += 1
+                y += 1
 
-        elif header == "label" and clean:
-            assert len(clean) == 0x80
-            if cart.screenshot is None:
-                cart.screenshot = MultidimArray(k_screenshot_rect.size, 0)
-            x = 0
-            for b in ext_nybbles(clean):
-                cart.screenshot[x, y] = b
-                x += 1
-            y += 1
+            elif header == "label" and clean:
+                assert len(clean) == 0x80
+                if cart.screenshot is None:
+                    cart.screenshot = MultidimArray(k_screenshot_rect.size, 0)
+                x = 0
+                for b in ext_nybbles(clean):
+                    cart.screenshot[x, y] = b
+                    x += 1
+                y += 1
 
-        elif header and header.startswith(k_meta_prefix):
-            cart.meta[header[len(k_meta_prefix):]].append(line.rstrip('\n'))
-            
-        elif header == None and clean.startswith("version "):
-            cart.version_id = int(clean.split()[1])
-            cart.version_tuple = get_version_tuple(cart.version_id)
+            elif header and header.startswith(k_meta_prefix):
+                cart.meta[header[len(k_meta_prefix):]].append(line.rstrip('\n'))
+                
+            elif header == None and clean.startswith("version "):
+                cart.version_id = int(clean.split()[1])
+                cart.version_tuple = get_version_tuple(cart.version_id)
+
+        except Exception:
+            throw("Invalid %s line in p8 file (line #%d)" % (header, line_i + 1))
             
     cart.code, cart.code_map = preprocess_code(path, "".join(code), code_line, preprocessor=preprocessor)
     return cart
@@ -605,6 +609,40 @@ def read_cart(path, format=None, **opts):
     else:
         throw("invalid format for reading: %s" % format)
 
+k_tab_break = "\n-->8\n" # yes, pico8 doesn't accept consecutive/initial/final tab breaks
+
+def trim_cart_to_tab(cart, target_tab):
+    tab = start = 0
+    limit = len(cart.code)
+    while start < limit:
+        end = cart.code.find(k_tab_break, start)
+        if end < 0:
+            end = limit
+
+        if tab == target_tab:
+            break
+
+        tab += 1
+        start = end + len(k_tab_break)
+    else:
+        throw("Couldn't find tab %d in cart: %s" % (target_tab, cart.path))
+
+    cart.code = cart.code[start:end]
+
+    new_code_map = []
+    for map in cart.code_map:
+        if map.idx > end:
+            break
+
+        if map.idx <= start:
+            new_code_map.clear()
+        
+        new_idx = max(map.idx - start, 0)
+        new_src_idx = map.src_idx + (start if map.src_path == cart.path else 0)
+
+        new_code_map.append(CodeMapping(new_idx, map.src_path, map.src_code, new_src_idx, map.src_line))
+    cart.code_map = new_code_map
+
 class PicoPreprocessor:
     """The standard pico8 preprocessor (supporting #include and nothing else)"""
 
@@ -614,12 +652,24 @@ class PicoPreprocessor:
     def start(m, path, code):
         pass
 
+    # note: we support recursive includes (unlike pico8) - it's pointless not to
+
     def read_included_cart(m, orig_path, inc_name, out_i, outparts, outmappings):
+        tab_idx = None
+        if re.fullmatch(r".*:[0-9a-fA-F]", inc_name):
+            tab_idx = int(inc_name[-1], 16)
+            inc_name = inc_name[:-2]
+
         inc_path = path_join(path_dirname(orig_path), inc_name)
         if not path_exists(inc_path):
-            throw("cannot open included cart at: %s" % inc_path)
+            # windows path outside windows, maybe?
+            inc_path = inc_path.replace("\\", "/")
+            if not path_exists(inc_path):
+                throw("cannot open included cart at: %s" % inc_path)
 
         inc_cart = read_cart(inc_path, preprocessor=m)
+        if e(tab_idx):
+            trim_cart_to_tab(inc_cart, tab_idx)
 
         if inc_cart.code_map:
             for map in inc_cart.code_map:

@@ -34,5 +34,7 @@ test_input/bad.p8:43:18: Label 'dup' has the same name as a label declared in a 
 test_input/bad.p8:54:18: Local 'unused' isn't used
 test_input/badinc.p8.png:2:7: Local 'from_include' has the same name as a local declared in the same scope
 test_input/badinc.p8.png:2:7: Local 'from_include' isn't used
-test_input/bad.p8:78:7: Local 'tab_b' isn't used
-test_input/bad.p8:88:7: Local 'tab_still_f' isn't used
+test_input/badinc.lua:29:7: Local 'inc_tab_e' isn't used
+test_input/badinc.lua:19:7: Local 'inc_tab_9' isn't used
+test_input/bad.p8:80:7: Local 'tab_b' isn't used
+test_input/bad.p8:90:7: Local 'tab_still_f' isn't used

@@ -1,8 +1,10 @@
 'use strict';
 importScripts("https://cdn.jsdelivr.net/npm/comlink@4.4.1/dist/umd/comlink.min.js");
 importScripts("https://cdn.jsdelivr.net/pyodide/v0.23.3/full/pyodide.js")
+importScripts("utils.js")
 
 let inputFile = "input.p8";
+let inputSrcDir = "input.dir";
 let outputFile = "output.unk";
 let previewFile = "preview.p8";
 let scriptFile = "script.py";
@@ -79,27 +81,66 @@ function shlex(str) {
     return shlex_module.split(str).toJs()
 }
 
-let api = {
-    loadInputFile: async (input, name) => {
-        await initPromise;
-        let ext = name.match(/\.([^\.]+)$/)[1];
+function rmdirRec(path) {
+    for (let file of fs.readdir(path)) {
+        if (file == "." || file == "..") {
+            continue;
+        }
 
-        if (ext == "p8" || ext == "lua") {
-            fs.writeFile(inputFile, new Uint8Array(input));
+        let child = joinPath(path, file);
+        if (fs.isDir(fs.stat(child).mode)) {
+            rmdirRec(child);
+            fs.rmdir(child);
+        } else {
+            fs.unlink(child);
+        }
+    }
+}
+
+function mkdirParentRec(path) {
+    let result = fs.analyzePath(path);
+    if (!result.exists && !result.parentExists) {
+        let parentPath = getParentDir(path);
+        if (parentPath) {
+            mkdirParentRec(parentPath);
+            fs.mkdir(parentPath);
+        }
+    }
+}
+
+let api = {
+    loadInputFiles: async (files, main) => {
+        await initPromise;
+
+        let mainExt = getLowExt(main);
+        if ((mainExt == "p8" || mainExt == "lua") && files.length == 1) {
+            // simple case - no conversion/preprocessing is needed or wanted.
+            let [_, data] = files[0];
+            fs.writeFile(inputFile, new Uint8Array(data));
             return fs.readFile(inputFile, {encoding: "utf8"});
         } else {
-            let fileInputFile = `file-input.${ext}`;
-            fs.writeFile(fileInputFile, new Uint8Array(input));
-
-            shrinko8([fileInputFile, inputFile], true);
+            // copy entire files list and convert/preprocess to p8
+            if (fs.analyzePath(inputSrcDir).exists) {
+                rmdirRec(inputSrcDir);
+            }
+            for (let [relpath, data] of files) {
+                let path = joinPath(inputSrcDir, relpath);
+                mkdirParentRec(path);
+                fs.writeFile(path, new Uint8Array(data));
+            }
+        
+            let mainPath = joinPath(inputSrcDir, main);
+            shrinko8([mainPath, inputFile], true);
             return fs.readFile(inputFile, {encoding: "utf8"});
         }
     },
 
-    updateInputFile: (text) => {
+    updateInputFile: async (text) => {
+        await initPromise; // includes fs init
         fs.writeFile(inputFile, text);
     },
-    updateScriptFile: (text) => {
+    updateScriptFile: async (text) => {
+        await initPromise; // includes fs init
         fs.writeFile(scriptFile, text);
     },
     getProgress: () => initProgress,
@@ -125,11 +166,13 @@ let api = {
         let [code, stdout] = shrinko8(cmdline);
 
         let output, preview;
-        if (encoding) {
-            output = fs.readFile(outputFile, {encoding});
-        }
-        if (encoding == "binary") {
-            preview = fs.readFile(previewFile, {encoding: "utf8"});
+        if (code == 0) {
+            if (encoding) {
+                output = fs.readFile(outputFile, {encoding});
+            }
+            if (encoding == "binary") {
+                preview = fs.readFile(previewFile, {encoding: "utf8"});
+            }
         }
 
         return [code, stdout, output, preview];

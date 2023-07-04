@@ -1,4 +1,4 @@
-
+'use strict';
 let isLoading = true;
 
 // Show shrinko8 loading
@@ -102,35 +102,224 @@ function onInputChange(delta) {
     inputMgr.onChange(doShrinkoAction);
 }
 
-// Called when user loads an input file
-function loadInputFile(input) {
-    let file = input.files[0];
-    if (file) {
-        inputMgr.cancel();
-        $("#input-error-overlay").hide();
-        $("#input-overlay").show();
+// returns a promise that's resolved when the File is read
+function readFile(file) {
+    return new Promise((resolve, reject) => {
         let reader = new FileReader();
-        function onerror (text) {
-            $("#input-overlay").hide();
-            $("#input-error-overlay").show();
-            applyErrors(-1, text, "#input-error-output");
-        }
         reader.onload = async () => {
-            try {
-                let code = await api.loadInputFile(reader.result, input.value);
-                inputMgr.setValue(code); // calls onInputChange
-                $("#input-overlay").hide();
-                doShrinkoAction();
-            } catch (e) {
-                console.error(e);
-                onerror(e.message);
-            }
+            resolve(reader.result);
         };
         reader.onerror = () => {
-            onerror("Failed uploading file");
+            reject(new Error("Read failed"));
         }
         reader.readAsArrayBuffer(file)
+    })
+}
+
+// returns all files (& their parent paths) in a fs entry
+async function readFSEntryRec(entry, relpath, results) {
+    if (entry.isDirectory) {
+        let dirpath = joinPath(relpath, entry.name);
+        let reader = entry.createReader();
+        while (true) {
+            let entries = await new Promise((r,j) => reader.readEntries(r,j));
+            if (entries.length == 0) {
+                break;
+            }
+
+            for (let entry of entries) {
+                await readFSEntryRec(entry, dirpath, results);
+            }
+        }
+    } else if (entry.isFile) {
+        results.push([await new Promise((r,j) => entry.file(r,j)), relpath]);
     }
+    return results; // for convenience
+}
+
+// Called when user loads an input file
+async function loadInputFiles(inputs) {
+    if (inputs.length == 0) {
+        return;
+    }
+
+    inputMgr.cancel();
+    $("#input-error-overlay").hide();
+    $("#input-select-overlay").hide();
+    $("#input-overlay").show();
+    
+    function onerror(text) {
+        $("#input-overlay").hide();
+        $("#input-error-overlay").show();
+        applyErrors(-1, text, "#input-error-output");
+    }
+
+    let allFiles = [];
+    let foundP8 = undefined;
+    async function processFile(file, relpath) {
+        try {
+            let path = joinPath(relpath, file.name);
+            let data = await readFile(file);
+            allFiles.push([path, data]);
+
+            if (getLowExt(file.name) == "p8") {
+                if (foundP8 == undefined) {
+                    foundP8 = path;
+                } else {
+                    foundP8 = false; // multiple files
+                }
+            }
+        } catch (e) {
+            onerror(`Failed reading ${file.name} from your local machine`);
+            throw e;
+        }
+    }
+
+    for (let input of inputs) {
+        if (input instanceof DataTransferItem) {
+            let content;
+            let asEntry = input.webkitGetAsEntry || input.getAsEntry;
+            if (asEntry) {
+                content = asEntry.call(input);
+            }
+
+            if (!content) {
+                content = input.getAsFile();
+            }
+            input = content;
+        }
+
+        if (input instanceof File) {
+            await processFile(input, "");
+        } else if (self.FileSystemEntry && input instanceof FileSystemEntry) {
+            for (let [file, relpath] of await readFSEntryRec(input, "", [])) {
+                await processFile(file, relpath);
+            }
+        } else {
+            console.error(input);
+        }
+    }
+
+    let mainPath;
+    if (allFiles.length == 0) {
+        onerror("Failed reading any files from your local machine");
+        return;
+    } else if (allFiles.length == 1) {
+        [mainPath] = allFiles[0];
+    } else if (foundP8) {
+        mainPath = foundP8;
+    } else {
+        mainPath = await beginInputSelectMain(allFiles);
+    }
+    
+    try {
+        let code = await api.loadInputFiles(allFiles, mainPath);
+        inputMgr.setValue(code); // calls onInputChange
+        $("#input-overlay").hide();
+        doShrinkoAction();
+    } catch (e) {
+        console.error(e);
+        onerror(e.message);
+    }
+}
+
+// called when file input selection changed
+function loadSelectedFiles(input) {
+    let entries = input.webkitEntries;
+    if (entries && entries.length > 0) {
+        loadInputFiles(entries);
+    } else {
+        loadInputFiles(input.files);
+    }
+}
+
+// are we dragging a file?
+function isFileDrag(event) {
+    let items = event.dataTransfer.items;
+    for (let item of items) {
+        if (item.kind != "file") {
+            return false;
+        }
+    }
+    return true;
+}
+
+function onDragEnter(elem, event) {
+    if (isFileDrag(event)) {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "copy";
+        $(elem).addClass("dragover");
+    }
+}
+
+function onDragLeave(elem, event) {
+    if (isFileDrag(event)) {
+        $(elem).removeClass("dragover");
+    }
+}
+
+function loadDroppedFiles(elem, event) {
+    if (isFileDrag(event)) {
+        event.preventDefault();
+        onDragLeave(elem, event);
+        loadInputFiles(event.dataTransfer.items);
+    }
+}
+
+// called to close the input error overlay
+function onInputErrorClose() {
+    $('#input-error-overlay').hide();
+}
+
+let inputSelectResolve;
+
+// create ui to select the main file, return promise for the ui's end (may never resolve)
+async function beginInputSelectMain(allFiles) {
+    $('#input-select-overlay').show();
+    $("#input-overlay").hide();
+
+    let elem = $('#input-select-list');
+    elem.empty();
+
+    let selDiv;
+    for (let [path] of allFiles) {
+        let div = $("<div/>");
+        div.text(path);
+        div.css("cursor", "pointer");
+
+        div.click(() => {
+            if (selDiv) {
+                selDiv.removeClass("selected");
+            }
+            div.addClass("selected");
+            selDiv = div;
+        });
+        
+        if (!selDiv) {
+            selDiv = div;
+            selDiv.click();
+        }
+
+        elem.append(div);
+    }
+
+    await new Promise((resolve) => {
+        inputSelectResolve = resolve;
+    });
+    
+    $('#input-select-overlay').hide();
+    $("#input-overlay").show();
+
+    return selDiv.text();
+}
+
+// called to finish selecting the main file
+function onInputSelectMain() {
+    inputSelectResolve();
+}
+
+function onInputSelectMainClose() {
+    $('#input-select-overlay').hide();
 }
 
 let scriptMgr = new InputChangeMgr("#script-code", "updateScriptFile");
@@ -203,6 +392,7 @@ async function doShrinko(args, encoding) {
     try {
         return await api.runShrinko(args, argStr, useScript, encoding);
     } catch (e) {
+        console.error(e);
         return [-1, e.message, undefined, undefined]
     }
 }
@@ -213,6 +403,11 @@ function applyErrors(code, stdouterr, selector) {
 
     if (code == 0) {
         stdouterr += "Lint succesful - no issues found.";
+    }
+
+    if (stdouterr.match(/^.*cannot open included cart/i)) {
+        stdouterr += "\nTo fix this, select (or drop) both the main p8 file and all its includes.";
+        stdouterr += "\nIf your includes are inside subfolders, you can drag & drop the whole parent directory to the input area.";
     }
 
     elem.empty();
@@ -331,7 +526,7 @@ async function doLint() {
             args.push("--no-lint-unused");
         }
 
-        let [code, stdouterr, _output, _preview] = await doShrinko(args);
+        let [code, stdouterr] = await doShrinko(args);
 
         applyErrors(code, stdouterr, "#lint-output");
 
@@ -436,7 +631,7 @@ function setUpAce(id, lang, cb) {
 }
 
 $(() => {
-    api = Comlink.wrap(new Worker("worker.js"));
+    self.api = Comlink.wrap(new Worker("worker.js"));
 
     showLoading();
     setUpAce("#input-code", "lua", onInputChange);

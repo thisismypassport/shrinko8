@@ -60,6 +60,8 @@ function f3:foo3(unused) end
 print("\"\z  
 #include notaninclude\
 ")
+#include ../test_input\badinc.lua:E
+#include ../test_input\badinc.lua:9
 -->8
 
 -->8
