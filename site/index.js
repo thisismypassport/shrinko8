@@ -175,7 +175,8 @@ async function loadInputFiles(inputs) {
         }
     }
 
-    for (let input of inputs) {
+    // handle the files in parallel, as some browsers will not allow otherwise
+    await Promise.all(Array.prototype.map.call(inputs, async input => {
         if (input instanceof DataTransferItem) {
             let content;
             let asEntry = input.webkitGetAsEntry || input.getAsEntry;
@@ -191,14 +192,12 @@ async function loadInputFiles(inputs) {
 
         if (input instanceof File) {
             await processFile(input, "");
-        } else if (self.FileSystemEntry && input instanceof FileSystemEntry) {
+        } else { // no fixed class name, assume it's a FileSystemEntry
             for (let [file, relpath] of await readFSEntryRec(input, "", [])) {
                 await processFile(file, relpath);
             }
-        } else {
-            console.error(input);
         }
-    }
+    }));
 
     let mainPath;
     if (allFiles.length == 0) {
