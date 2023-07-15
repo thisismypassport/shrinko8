@@ -79,8 +79,13 @@ You can also generate a file telling you how the identifiers were renamed: (This
 
 * All unnecessary comments, spaces and line breaks are removed.
 * Unnecessary tokens like parentheses and trailing commas are removed
-* Identifiers are renamed to be as short as possible
+* Identifiers are renamed to be short and to use common characters for better compression
+    * Under `--focus-chars`, identifiers are made as short as possible
 * Tokens are made more consistent, to reduce compression ratio
+* If/while statements may be converted to one-line shorthands, depending on the focus:
+    * By default, they're converted to shorthand if deemed to have a positive impact on compression
+    * Under `--focus-chars`, they're always converted to shorthand when possible
+    * Under `--focus-compressed`, they're always converted to either all shorthands or all longhands
 
 ## Pitfalls of full minification
 

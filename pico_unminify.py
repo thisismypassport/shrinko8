@@ -15,7 +15,6 @@ def unminify_code(root, unminify):
     prev_token = Token.none
     prev_tight = False
     indent = 0
-    short_count = 0
     curr_stmt = None
     stmt_stack = []
 
@@ -44,6 +43,11 @@ def unminify_code(root, unminify):
         if token.value is None:
             return
 
+        # ignore shorthand parens, to avoid increasing token count as we convert shorthands to longhand
+        gparent = token.parent.parent
+        if gparent and gparent.short and token.parent == gparent.cond and token.value in ("(", ")"):
+            return
+
         if prev_tight and prev_token.value not in k_tight_prefix_tokens and \
                 token.value not in k_tight_suffix_tokens and \
                 not (token.value in ("(", "[") and (prev_token.type == TokenType.ident or 
@@ -56,21 +60,19 @@ def unminify_code(root, unminify):
         prev_tight = True
 
     def visit_node(node):
-        nonlocal indent, curr_stmt, short_count, prev_tight
+        nonlocal indent, curr_stmt, prev_tight
 
         if node.type == NodeType.block:
             if node.parent:
                 indent += indent_delta
-                if getattr(node.parent, "short", False):
-                    short_count += 1
+                # shorthand -> longhand
+                if node.parent.short and node.parent.type != NodeType.else_:
+                    output.append(" then" if node.parent.type == NodeType.if_ else " do")
 
             stmt_stack.append(curr_stmt)
             curr_stmt = None
-            output.append(" " if short_count else "\n")
+            output.append("\n")
             prev_tight = False
-
-            if short_count and not node.children:
-                output.append(";")
 
         elif curr_stmt is None:
             if is_node_function_stmt(node):
@@ -79,33 +81,28 @@ def unminify_code(root, unminify):
                     output.append("\n")
 
             curr_stmt = node
-            if short_count:
-                if node.parent.children[0] != node:
-                    output.append(";")
-            else:
-                output.append(" " * indent)
-                prev_tight = False
+            output.append(" " * indent)
+            prev_tight = False
 
     def end_visit_node(node):
-        nonlocal indent, curr_stmt, short_count, prev_tight
+        nonlocal indent, curr_stmt, prev_tight
 
         if node.type == NodeType.block:
             if node.parent:
                 indent -= indent_delta
 
             curr_stmt = stmt_stack.pop()
-            if not short_count:
-                output.append(" " * indent)
-                prev_tight = False
-                
-            if node.parent and getattr(node.parent, "short", False):
-                short_count -= 1
+            output.append(" " * indent)
+            prev_tight = False
+            
+            # shorthand -> longhand
+            if node.parent and node.parent.short and not (node.parent.type == NodeType.if_ and node.parent.else_):
+                output.append("end")
 
         elif node is curr_stmt:
             curr_stmt = None
-            if not short_count:
-                output.append("\n")
-                prev_tight = False
+            output.append("\n")
+            prev_tight = False
                 
             if is_node_function_stmt(node):
                 output.append("\n")

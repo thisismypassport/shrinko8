@@ -120,13 +120,7 @@ class Node(TokenNodeBase):
     def __init__(m, type, children, **kwargs):
         super().__init__()
 
-        if children:
-            first, last = children[0], children[-1]
-            m.source, m.idx, m.endidx = first.source, first.idx, last.endidx
-        else:
-            m.source, m.idx, m.endidx = None, None, None
-
-        m.type, m.children, m.value = type, children, None
+        m.type, m.children = type, children
         m.__dict__.update(kwargs)
 
         for child in children:
@@ -137,6 +131,46 @@ class Node(TokenNodeBase):
         m.traverse_tokens(lambda token: tokens.append(token))
         return tokens
     
+    short = False # default property
+    value = None # default proprty (TODO: bad, for consistency with Token)
+
+    @property
+    def source(m):
+        return m.first_token().source
+    @property
+    def idx(m):
+        return m.first_token().idx
+    @property
+    def endidx(m):
+        return m.last_token().endidx
+    @property
+    def vline(m):
+        return m.first_token().vline
+    @property
+    def endvline(m):
+        return m.last_token().vline
+
+    def append_token(m, type, value, near_next=False):
+        m.insert_token(len(m.children), type, value, near_next)
+
+    def insert_token(m, i, type, value, near_next=False):
+        if near_next:
+            if i < len(m.children):
+                m.children.insert(i, Token.synthetic(type, value, m.children[i], prepend=True))
+            else:
+                m.children.append(Token.synthetic(type, value, m.next_token(), prepend=True))
+        else:
+            if i > 0:
+                m.children.insert(i, Token.synthetic(type, value, m.children[i - 1], append=True))
+            else:
+                m.children.insert(0, Token.synthetic(type, value, m.prev_token(), append=True))
+
+    def erase_token(m, i, expected=None):
+        m.children[i].erase(expected)
+
+    def replace_with(m, target):
+        m.__dict__ = target.__dict__
+
 class ParseError(Exception):
     pass
 

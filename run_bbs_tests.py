@@ -18,6 +18,7 @@ parser.add_argument("--only-compress", action="store_true", help="only test comp
 parser.add_argument("--only-safe-minify", action="store_true", help="only test safe minification")
 parser.add_argument("--only-unsafe-minify", action="store_true", help="only test unsafe minification")
 parser.add_argument("--none", action="store_true", help="do not test anything (allows running pico8 against input)")
+parser.add_argument("--unminify", action="store_true", help="test unminify instead of minify")
 parser.add_argument("-oc", "--focus-chars", action="store_true", help="focus on char count")
 parser.add_argument("-ob", "--focus-compressed", action="store_true", help="focus on compressed size")
 parser.add_argument("-oa", "--focus-all", action="store_true", help="test all focuses")
@@ -79,6 +80,8 @@ class DeltaInfoDictionary(defaultdict): # keeps sum, min, max
 
 def check_run(name, result, parse_meta=False):
     success, stdout = result
+    if "SHORT" in stdout:
+        print(name, stdout)
     if not success:
         print("Run %s failed. Stdout:\n%s" % (name, stdout))
         fail_test()
@@ -110,6 +113,7 @@ def run_for_cart(args):
     compress_path = basepath + ".c.png"
     safe_minify_path = basepath + ".%ssm.png" % short_prefix
     unsafe_minify_path = basepath + ".%sum.png" % short_prefix
+    unminify_path = basepath + ".un.p8"
 
     if g_opts.input_redownload or not path_exists(download_path):
         file_write(download_path, file_read(URLPath(get_bbs_cart_url("#" + cart))))
@@ -161,22 +165,28 @@ def run_for_cart(args):
             process_compare(kind + "-vs-unfocused", output, cart_unfocused[kind])
 
     best_path_for_pico8 = download_path
-    
-    if g_opts.all or g_opts.only_compress:
-        compress_results = run_code(uncompress_path, compress_path, "--count", "--parsable-count", "--no-count-tokenize")
-        process_output("compress", check_run("%s:compress" % cart, compress_results, parse_meta=True))
-        best_path_for_pico8 = compress_path
 
-    minify_opts = ["--focus-%s" % focus] if focus else []
+    if g_opts.unminify:
+        unminify_results = run_code(uncompress_path, unminify_path, "--unminify")
+        check_run("%s:unminify" % cart, unminify_results)
+        best_path_for_pico8 = unminify_path
     
-    if g_opts.all or g_opts.only_safe_minify:
-        safe_minify_results = run_code(uncompress_path, safe_minify_path, "--minify-safe-only", "--count", "--parsable-count", *minify_opts)
-        process_output("safe_minify", check_run("%s:safe_minify" % cart, safe_minify_results, parse_meta=True))
-        best_path_for_pico8 = safe_minify_path
-    
-    if g_opts.all or g_opts.only_unsafe_minify:
-        unsafe_minify_results = run_code(uncompress_path, unsafe_minify_path, "--minify", "--count", "--parsable-count", *minify_opts)
-        process_output("unsafe_minify", check_run("%s:unsafe_minify" % cart, unsafe_minify_results, parse_meta=True))
+    else:
+        if g_opts.all or g_opts.only_compress:
+            compress_results = run_code(uncompress_path, compress_path, "--count", "--parsable-count", "--no-count-tokenize")
+            process_output("compress", check_run("%s:compress" % cart, compress_results, parse_meta=True))
+            best_path_for_pico8 = compress_path
+
+        minify_opts = ["--focus-%s" % focus] if focus else []
+        
+        if g_opts.all or g_opts.only_safe_minify:
+            safe_minify_results = run_code(uncompress_path, safe_minify_path, "--minify-safe-only", "--count", "--parsable-count", *minify_opts)
+            process_output("safe_minify", check_run("%s:safe_minify" % cart, safe_minify_results, parse_meta=True))
+            best_path_for_pico8 = safe_minify_path
+        
+        if g_opts.all or g_opts.only_unsafe_minify:
+            unsafe_minify_results = run_code(uncompress_path, unsafe_minify_path, "--minify", "--count", "--parsable-count", *minify_opts)
+            process_output("unsafe_minify", check_run("%s:unsafe_minify" % cart, unsafe_minify_results, parse_meta=True))
 
     return (cart, is_fail_test(), new_cart_input, cart_output, deltas, best_path_for_pico8)
 

@@ -532,6 +532,8 @@ class writeonly_property(object):
     def __set__(m, obj, value):
         return m.func(obj, value)
 
+# reminder to self - if you want a "default property", aka one that has a default value but is settable, use a class field
+
 class lazy_property(object):
     """Method decorator that turns it into a lazily-evaluated property"""
 
@@ -549,7 +551,7 @@ class lazy_property(object):
     @staticmethod
     def is_set(obj, name):
         return name in obj.__dict__
-        
+
 class post_property_set(object):
     """Method decorator that creates a field-backed read-write property that calls the
     decorated method when set, with the old and new values"""

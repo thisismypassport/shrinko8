@@ -110,10 +110,18 @@ circfill(120, 126, 3)
 rectfill(120, 120, 123, 123)
 ;rectfill(123, 123, 126, 126)
 -- punct removal
-while (1 == 0) ;
-while (1 == 0) sin = cos;; cos = sin;
-if (1 == 2) ;
-if (1 == 2) ;;;; sin = cos;;;; cos = sin;;;
+while 1 == 0 do
+;end
+while 1 == 0 do
+    sin = cos
+;    cos = sin
+;end
+if 1 == 2 then
+;end
+if 1 == 2 then
+;;;    sin = cos
+;;;    cos = sin
+;;;end
 local tbls = {1,}, {1; 2, 3; 4;}
 -- token replacement
 local nothing = 1 != 2
@@ -124,7 +132,9 @@ local strs2 = [[]], [[hi]], [['hi']], [["'hi'"]], [["""""'''''hi'''''"""""]], [[
 
 ]]
 local numbug = 0xff00, 0xff00 * 4, 0xff00 ^ 4, -0xff00, ~0xff00
-if (not nothing) nothing = 0xffff
+if not nothing then
+    nothing = 0xffff
+end
 -- paren removal
 ?(((1 or 1) or (2 and ((3 == 4) >= (4 | (5 ^^ (((6 << 1) >>< (1 .. (2 .. (3 - ((-(1 ^ (4 ^ 1))) / 1))))) & 7)))))))
 ?((~(((((((tonum(((3 or 4) and 5) != 2) | 1) ^^ 2) & 3) >> 1) .. 1) - (1 + 3)) * 3)) ^ 2) ^ 1

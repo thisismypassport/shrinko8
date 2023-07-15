@@ -18,3 +18,10 @@ function joinPath(a, b) {
         return a + "/" + b;
     }
 }
+
+function isFormatText(fmt) {
+    return fmt == "lua" || fmt == "p8";
+}
+function isFormatImg(fmt) {
+    return fmt == "png";
+}

@@ -109,6 +109,10 @@ def run():
     run_test("minrename", "input.p8", "output_minrename.p8", "--minify",
              "--preserve", "*,*.*", pico8_output="output.p8.printh")
     run_test("auto_minrename", "input.p8", "output_minrename.p8", "--minify-safe-only")
+    run_test("auto_minrename-oc", "input.p8", "output_minrename-oc.p8", "--minify-safe-only",
+             "--focus-chars", pico8_output="output.p8.printh")
+    run_test("auto_minrename-ob", "input.p8", "output_minrename-ob.p8", "--minify-safe-only",
+             "--focus-compressed", pico8_output="output.p8.printh")
     run_test("minminify", "input.p8", "output_min.p8", "--minify-safe-only",
              "--no-minify-rename", "--no-minify-lines", pico8_output="output.p8.printh")
     run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify",
@@ -116,6 +120,8 @@ def run():
              # pico8_output="output.p8.printh" - broken by comment bug in pico8 v0.2.5g...
     if run_test("test", "test.p8", "test.p8", "--minify", pico8_output_val="DONE"):
         run_test("unmintest", "test.p8", "test-un.p8", "--unminify", from_output=True, pico8_output_val="DONE")
+    run_test("test-ob", "test.p8", "test-ob.p8", "--focus-compressed", "--minify", pico8_output_val="DONE")
+    run_test("test-oc", "test.p8", "test-oc.p8", "--focus-chars", "--minify", pico8_output_val="DONE")
     run_test("globasmemb", "globasmemb.p8", "globasmemb.p8", "--minify", pico8_output_val="OK")
     run_test("p82png", "testcvt.p8", "testcvt.png")
     run_test("test_png", "test.png", "test.png", "--minify")

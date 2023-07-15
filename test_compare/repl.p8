@@ -31,26 +31,33 @@ elseif e==t and f(t,".:^<>")then n+=1if(r=="="and f(t,".^<>"))n+=1
 elseif e=="="and f(t,"+-*/\\%^&|<>=~!")then n+=1elseif f(t,"+-*/\\%^&|<>=~#(){}[];,?@$.:")then else d("bad char: "..t)end add(o,sub(l,i,n-1))end if(not a)add(h,s)add(b,i)add(p,n-1)
 if(u)o[#o],u=false,false
 end return o,h,b,p end function r(t,n)for e=1,#n do if(n[e]==t)return e
-end end function c(n)return unpack(n,1,n.n)end function nu(e)local n={}for e,t in next,e do n[e]=t end return n end local Y=split"and,break,do,else,elseif,end,false,for,function,goto,if,in,local,nil,not,or,repeat,return,then,true,until,while"G={}for n in all(Y)do G[n]=true end local function Y(n)return type(n)=="string"and e(n,#n)=="="end nt=split"end,else,elseif,until"function nl(n,j)local o,F,l=nn(n,true)local n,f,s,y,h,Z=1,0,0local t,b local v,d,p,x={}local function i(e)ne(e,l[n-1]or 1)end local function g(n)return function()return n end end local function C(e)local n=d[e]if n then return function(t)return t[n][e]end else n=d._ENV return function(t)return t[n]._ENV[e]end end end local function q()local n=d["..."]if(not n or n~=Z)i"unexpected '...'"
-return function(e)return c(e[n]["..."])end end local function D(e)local n=d[e]if n then return function(t)return t[n],e end else n=d._ENV return function(t)return t[n]._ENV,e end end end local function l(e)local t=o[n]n+=1if(t==e)return
+end end function c(n)return unpack(n,1,n.n)end function nu(e)local n={}for e,t in next,e do n[e]=t end return n end local Y=split"and,break,do,else,elseif,end,false,for,function,goto,if,in,local,nil,not,or,repeat,return,then,true,until,while"G={}for n in all(Y)do G[n]=true end local function Y(n)return type(n)=="string"and e(n,#n)=="="end nt=split"end,else,elseif,until"function nl(n,j)local o,F,l=nn(n,true)local n,f,s,y,h,Z=1,0,0local t,b local v,d,p,x={}local function i(e)ne(e,l[n-1]or 1)end local function g(n)return function()return n end end local function C(e)local n=d[e]if(n)return function(t)return t[n][e]end else n=d._ENV return function(t)return t[n]._ENV[e]end
+end local function q()local n=d["..."]if(not n or n~=Z)i"unexpected '...'"
+return function(e)return c(e[n]["..."])end end local function D(e)local n=d[e]if(n)return function(t)return t[n],e end else n=d._ENV return function(t)return t[n]._ENV,e end
+end local function l(e)local t=o[n]n+=1if(t==e)return
 if(t==nil)i()
 i("expected: "..e)end local function u(t)if(not t)t=o[n]n+=1
 if(t==nil)i()
 if(type(t)=="string"and B(e(t,1))and not G[t])return t
 if(type(t)=="string")i("invalid identifier: "..t)
 i"identifier expected"end local function e(e)if(o[n]==e)n+=1return true
-end local function A()d=setmetatable({},{__index=d})f+=1end local function B()d=getmetatable(d).__index f-=1end local function m(l,t)local e={}local n=#t for n=1,n-1do e[n]=t[n](l)end if n>0then local t=pack(t[n](l))if t.n~=1then for l=1,t.n do e[n+l-1]=t[l]end n+=t.n-1else e[n]=t[1]end end e.n=n return e end local function k(t)local n={}add(n,(t()))while e","do add(n,(t()))end return n end local function X(r,o,i)local n={}if i then add(n,i)elseif not e")"then while true do add(n,(t()))if(e")")break
-l","end end if o then return function(e)local t=r(e)return t[o](t,c(m(e,n)))end,true,nil,function(e)local t=r(e)return t[o],pack(t,c(m(e,n)))end else return function(e)return r(e)(c(m(e,n)))end,true,nil,function(e)return r(e),m(e,n)end end end local function G()local r,d={},{}local c,a=1while not e"}"do a=nil local i,f if e"["then i=t()l"]"l"="f=t()elseif o[n+1]=="="then i=g(u())l"="f=t()else i=g(c)f=t()c+=1a=#r+1end add(r,i)add(d,f)if(e"}")break
+end local function A()d=setmetatable({},{__index=d})f+=1end local function B()d=getmetatable(d).__index f-=1end local function m(l,t)local e={}local n=#t for n=1,n-1do e[n]=t[n](l)end if n>0then local t=pack(t[n](l))if(t.n~=1)for l=1,t.n do e[n+l-1]=t[l]end n+=t.n-1else e[n]=t[1]
+end e.n=n return e end local function k(t)local n={}add(n,(t()))while e","do add(n,(t()))end return n end local function X(r,o,i)local n={}if i then add(n,i)elseif not e")"then while true do add(n,(t()))if(e")")break
+l","end end if(o)return function(e)local t=r(e)return t[o](t,c(m(e,n)))end,true,nil,function(e)local t=r(e)return t[o],pack(t,c(m(e,n)))end else return function(e)return r(e)(c(m(e,n)))end,true,nil,function(e)return r(e),m(e,n)end
+end local function G()local r,d={},{}local c,a=1while not e"}"do a=nil local i,f if e"["then i=t()l"]"l"="f=t()elseif o[n+1]=="="then i=g(u())l"="f=t()else i=g(c)f=t()c+=1a=#r+1end add(r,i)add(d,f)if(e"}")break
 if(not e";")l","
-end return function(e)local t={}for n=1,#r do if n==a then local l,n=r[n](e),pack(d[n](e))for e=1,n.n do t[l+e-1]=n[e]end else t[r[n](e)]=d[n](e)end end return t end end local function E(o,a)local n,p,t if o then if a then A()n=u()d[n]=f t=D(n)else n={u()}while(e".")add(n,u())
+end return function(e)local t={}for n=1,#r do if(n==a)local l,n=r[n](e),pack(d[n](e))for e=1,n.n do t[l+e-1]=n[e]end else t[r[n](e)]=d[n](e)
+end return t end end local function E(o,a)local n,p,t if o then if a then A()n=u()d[n]=f t=D(n)else n={u()}while(e".")add(n,u())
 if(e":")add(n,u())p=true
-if#n==1then t=D(n[1])else local e=C(n[1])for t=2,#n-1do local l=e e=function(e)return l(e)[n[t]]end end t=function(t)return e(t),n[#n]end end end end local n,r={}if(p)add(n,"self")
+if(#n==1)t=D(n[1])else local e=C(n[1])for t=2,#n-1do local l=e e=function(e)return l(e)[n[t]]end end t=function(t)return e(t),n[#n]end
+end end local n,r={}if(p)add(n,"self")
 l"("if not e")"then while true do if(e"...")r=true else add(n,u())
 if(e")")break
 l","if(r)i"unexpected param after '...'"
 end end A()for n in all(n)do d[n]=f end if(r)d["..."]=f
 local e,i,d=v,h,Z v,h,Z={},s+1,f local f=b()for n in all(v)do n()end v,h,Z=e,i,d l"end"B()return function(e)if(a)add(e,{})
-local l=nu(e)local i=#l local n=function(...)local t=pack(...)local e=l if#e~=i then local n={}for t=0,i do n[t]=e[t]end e=n end local l={}for e=1,#n do l[n[e]]=t[e]end if(r)l["..."]=pack(unpack(t,#n+1,t.n))
+local l=nu(e)local i=#l local n=function(...)local t=pack(...)local e=l if(#e~=i)local n={}for t=0,i do n[t]=e[t]end e=n
+local l={}for e=1,#n do l[n[e]]=t[e]end if(r)l["..."]=pack(unpack(t,#n+1,t.n))
 add(e,l)local n=f(e)deli(e)if n then if(type(n)=="table")return c(n)
 return n()end end if(o)local e,t=t(e)e[t]=n else return n
 end end local function Z()local e=o[n]n+=1local n if(e==nil)i()
@@ -104,11 +111,14 @@ if i==":"then r=u()if(o[n]=="{"or type(o[n])=="table")f=Z()return X(e,r,f)
 l"("return X(e,r)end end local e=D(i,d,e,t)if(not e)n-=1
 return e end t=function(r)local n,e,t,l=Z()while true do local r,o,i,f=q(r or 0,n,e)if(not r)break
 n,e,t,l=r,o,i,f end return n,t,l end local function Z()local e,n=t()if(not n)i"cannot assign to value"
-return n end local function q()local n=k(Z)l"="local e=k(t)if#n==1and#e==1then return function(t)local n,l=n[1](t)n[l]=e[1](t)end else return function(t)local l,r={},{}for e=1,#n do local n,e=n[e](t)add(l,n)add(r,e)end local e=m(t,e)for n=#n,1,-1do l[n][r[n]]=e[n]end end end end local function G(e,l)local r=o[n]n+=1local n=sub(r,1,-2)local n=D(n,0,e,function()return t()end)if(not n)i"invalid compound assignment"
-return function(e)local t,l=l(e)t[l]=n(e)end end local function H()if e"function"then return E(true,true)else local n=k(u)local e=e"="and k(t)or{}A()for e=1,#n do d[n[e]]=f end if#n==1and#e==1then return function(t)add(t,{[n[1]]=e[1](t)})end else return function(t)local l={}local r=m(t,e)for e=1,#n do l[n[e]]=r[e]end add(t,l)end end end end local function D(e)local t=F[n-1]x=function()return t~=F[n]end if(not e or x())i(n<=#o and"bad shorthand"or nil)
+return n end local function q()local n=k(Z)l"="local e=k(t)if(#n==1and#e==1)return function(t)local n,l=n[1](t)n[l]=e[1](t)end else return function(t)local l,r={},{}for e=1,#n do local n,e=n[e](t)add(l,n)add(r,e)end local e=m(t,e)for n=#n,1,-1do l[n][r[n]]=e[n]end end
+end local function G(e,l)local r=o[n]n+=1local n=sub(r,1,-2)local n=D(n,0,e,function()return t()end)if(not n)i"invalid compound assignment"
+return function(e)local t,l=l(e)t[l]=n(e)end end local function H()if e"function"then return E(true,true)else local n=k(u)local e=e"="and k(t)or{}A()for e=1,#n do d[n[e]]=f end if(#n==1and#e==1)return function(t)add(t,{[n[1]]=e[1](t)})end else return function(t)local l={}local r=m(t,e)for e=1,#n do l[n[e]]=r[e]end add(t,l)end
+end end local function D(e)local t=F[n-1]x=function()return t~=F[n]end if(not e or x())i(n<=#o and"bad shorthand"or nil)
 end local function F()local r=o[n]=="("local o=t()local t,n if e"then"then t,n=b()if e"else"then n=b()l"end"elseif e"elseif"then n=F()else l"end"end else D(r)t=b()if(not x()and e"else")n=b()
 x=nil end return function(e)if o(e)then return t(e)elseif n then return n(e)end end end local function Z(...)local n=y y=s+1local e=b(...)y=n return e end local function X(n,e)if(n==true)return
-return n,e end local function I()local r=o[n]=="("local t=t()local n if e"do"then n=Z()l"end"else D(r)n=Z()x=nil end return function(e)while t(e)do if(stat(1)>=1)w()
+return n,e end local function I()local r=o[n]=="("local t=t()local n if(e"do")n=Z()l"end"else D(r)n=Z()x=nil
+return function(e)while t(e)do if(stat(1)>=1)w()
 local n,e=n(e)if(n)return X(n,e)
 end end end local function D()local r=f local e=Z(true)l"until"local l=t()while(f>r)B()
 return function(n)repeat if(stat(1)>=1)w()
@@ -141,7 +151,8 @@ if(r=="local")return H()
 if(r=="goto")return Z()
 if(r=="::")return A(f)
 if(r=="function"and o[n]~="(")return E(true)
-if r=="?"then local e,t=C"print",k(t)return function(n)e(n)(c(m(n,t)))end end n-=1local r=n local t,f,l=t()if e","or e"="then n=r return q()elseif Y(o[n])then return G(t,f)elseif s<=1and z then return function(n)local n=pack(t(n))if(not(l and n.n==0))add(a,n)
+if(r=="?")local e,t=C"print",k(t)return function(n)e(n)(c(m(n,t)))end
+n-=1local r=n local t,f,l=t()if e","or e"="then n=r return q()elseif Y(o[n])then return G(t,f)elseif s<=1and z then return function(n)local n=pack(t(n))if(not(l and n.n==0))add(a,n)
 W=n[1]end else if(not l)i"statement has no effect"
 return function(n)t(n)end end end b=function(t)p=setmetatable({},{__index=p})p[s]=f s+=1local d=s local i=t and 32767or f local l={}while n<=#o and not r(o[n],nt)and not(x and x())do local n,t=u(l)if(n)add(l,n)
 if(t)e";"break
@@ -169,15 +180,18 @@ add(a,tostr(n))end function nr()poke(24368,1)end function no()return function()i
 end end function Q(r,o)local t=1local n,l=0,0if(not r)return t,n,l
 while t<=#r do local e=e(r,t)local r=e>="█"if(n>=(r and 31or 32))l+=1n=0
 if(o)o(t,e,n,l)
-if e=="\n"then l+=1n=0else n+=r and 2or 1end t+=1end return t,n,l end function C(t,l)local n,e=0,0local o,r,t=Q(t,function(t,i,r,o)if(l==t)n,e=r,o
+if(e=="\n")l+=1n=0else n+=r and 2or 1
+t+=1end return t,n,l end function C(t,l)local n,e=0,0local o,r,t=Q(t,function(t,i,r,o)if(l==t)n,e=r,o
 end)if(l>=o)n,e=r,t
 if(r>0)t+=1
 return n,e,t end function D(l,r,e)local t=1local n=false local r,o,l=Q(l,function(o,f,i,l)if(e==l and r==i and not n)t=o n=true
 if((e<l or e==l and r<i)and not n)t=o-1n=true
 end)if(not n)t=e>=l and r or r-1
 if(o>0)l+=1
-return t,l end function R(n,t,l,e)if type(e)=="function"then Q(n,function(n,r,o,i)print(r,t+o*4,l+i*6,e(n))end)else print(n and"⁶rw"..n,t,l,e)end end function n0(n,o,f)local d,t,u,l=nn(n)local t=1R(n,o,f,function(o)while t<=#l and l[t]<o do t+=1end local n if(t<=#l and u[t]<=o)n=d[t]
-local t=i[5]if n==false then t=i[6]elseif n==true then t=i[7]elseif type(n)~="string"or r(n,{"nil","true","false"})then t=i[8]elseif G[n]then t=i[9]elseif not B(e(n,1))then t=i[10]elseif n3[n]then t=i[11]end return t end)end function _draw()local u=peek(24357)local c,p=peek2(24360),peek2(24362)camera()local function e(n)cursor(0,127)for n=1,n do rectfill(0,o*6,127,(o+1)*6-1,0)if o<21then o+=1else print""end end end local function w(n,e)for n=1,n do if(o>e)o-=1
+return t,l end function R(n,t,l,e)if(type(e)=="function")Q(n,function(n,r,o,i)print(r,t+o*4,l+i*6,e(n))end)else print(n and"⁶rw"..n,t,l,e)
+end function n0(n,o,f)local d,t,u,l=nn(n)local t=1R(n,o,f,function(o)while t<=#l and l[t]<o do t+=1end local n if(t<=#l and u[t]<=o)n=d[t]
+local t=i[5]if n==false then t=i[6]elseif n==true then t=i[7]elseif type(n)~="string"or r(n,{"nil","true","false"})then t=i[8]elseif G[n]then t=i[9]elseif not B(e(n,1))then t=i[10]elseif n3[n]then t=i[11]end return t end)end function _draw()local u=peek(24357)local c,p=peek2(24360),peek2(24362)camera()local function e(n)cursor(0,127)for n=1,n do rectfill(0,o*6,127,(o+1)*6-1,0)if(o<21)o+=1else print""
+end end local function w(n,e)for n=1,n do if(o>e)o-=1
 rectfill(0,o*6,127,(o+1)*6-1,0)end end local function m(n,e)for t=0,2do local l=pget(n+t,e+5)pset(n+t,e+5,l==0and i[12]or 0)end end local function f(f)local r=d..n.." "local l,t,n=C(r,#d+l)if n>s then e(n-s)elseif n<s then w(s-n,n)end s=n k=mid(k,0,max(s-21,0))::n::local n=o-s+k if(n+t<0)k+=1goto n
 if(n+t>=21)k-=1goto n
 local n=n*6rectfill(0,n,127,n+s*6-1,0)if(s>21)rectfill(0,126,127,127,0)
@@ -188,7 +202,10 @@ end end end::n::local r,t if a or b then r,t=D(b,0,h)if t-h<=20and a then b,a=nh
 end end if(not x)camera()
 if(h==0and not x)f(not b)
 if b then local u=sub(b,r)local r=min(t-h,20)e(r)R(u,0,(o-r)*6,i[1])if r<t-h then if(d(r))goto n
-else local d,u,t=C(J,0)e(t)R(J,0,(o-t)*6,i[2])if x then h+=r else n,s,k,l,h,b,J="",0,0,1,0f()end end end if x then e(1)o-=1print(x,0,o*6,i[3])end if A then e(1)o-=1print(A,0,o*6,i[3])A=nil end if K then K-=1if(K==0)A,K=""
+else local d,u,t=C(J,0)e(t)R(J,0,(o-t)*6,i[2])if(x)h+=r else n,s,k,l,h,b,J="",0,0,1,0f()
+end end if(x)e(1)o-=1print(x,0,o*6,i[3])
+if(A)e(1)o-=1print(A,0,o*6,i[3])A=nil
+if K then K-=1if(K==0)A,K=""
 end v-=1if(v==0)v=20
 color(u)camera(c,p)if(o<=20)cursor(0,o*6)
 end L,E,F=false,false,false j={}function ne(n,e)m,n2=n,e assert(false,n)end function S(n,e,l)return nl(n,l)(e or t)end function T(n,e)return S("return "..n,e,true)end function nb(n)local e=cocreate(nl)::n::local n,e=coresume(e,n)if(n and not e)goto n
@@ -196,7 +213,8 @@ if(not n)e,m=m,false
 return n,e end function np(n,e)local n,e=C(n,e)return"line "..e+1 .." col "..n+1end function ni(e,l)a,X,m={},false,false L,E,F=false,false,false local t=cocreate(function()S(e)end)local r,n while true do r,n=coresume(t)if(costatus(t)=="dead")break
 if H and not E then x="running, press 'esc' to abort"_draw()flip()x=nil else if(I and not E and not F)flip()
 if(not I and holdframe)holdframe()
-F=false end for n in no()do if n=="•"then X=true else add(j,n)end end if(X)n="computation aborted"break
+F=false end for n in no()do if(n=="•")X=true else add(j,n)
+end if(X)n="computation aborted"break
 end if m==nil then if(l)n="unexpected end of code"else n,a=nil
 end if(m)n,m=m.."\nat "..np(e,n2)
 J=n j={}end w=function()L=true yield()L=false end t.flip=function(...)local n=pack(flip(...))F=true w()return c(n)end t.coresume=function(n,...)local e=pack(coresume(n,...))while L do yield()e=pack(coresume(n))end m=false return c(e)end t.stat=function(n,...)if n==30then return#j>0or stat(n,...)elseif n==31then if#j>0then return deli(j,1)else local n=stat(n,...)if(n=="•")X=true
@@ -210,17 +228,20 @@ return q==0or q>=10and q%2==0elseif U==n then U=nil end end function _update()lo
 e+=r if(not(e>=0and e<o))return false
 l=max(D(d..n,t,e)-#d,1)V=t v=20return true end local function f(r)local e,o=C(d..n,#d+l)e=r>0and 100or 0l=max(D(d..n,e,o)-#d,1)t=true end local function c(r)u[y]=n y+=r n=u[y]if r<0then l=#n+1else l=max(D(d..n,32,0)-#d,1)local n=e(n,l)if(n~=""and n~="\n")l-=1
 end t=true end local function d()if#n>0then if(#u>50)del(u,u[1])
-u[#u]=n add(u,"")y=#u t=true end end local function s(e)if l+e>0then n=sub(n,1,l+e-1)..sub(n,l+e+1)l+=e t=true end end local function o(e)n=sub(n,1,l-1)..e..sub(n,l)l+=#e t=true end local i=stat(28,224)or stat(28,228)local h=stat(28,225)or stat(28,229)local e=-1if p(80)then if(l>1)l-=1t=true
+u[#u]=n add(u,"")y=#u t=true end end local function s(e)if(l+e>0)n=sub(n,1,l+e-1)..sub(n,l+e+1)l+=e t=true
+end local function o(e)n=sub(n,1,l-1)..e..sub(n,l)l+=#e t=true end local i=stat(28,224)or stat(28,228)local h=stat(28,225)or stat(28,229)local e=-1if p(80)then if(l>1)l-=1t=true
 elseif p(79)then if(l<=#n)l+=1t=true
 elseif p(82)then if((i or not r(-1))and y>1)c(-1)
 elseif p(81)then if((i or not r(1))and y<#u)c(1)
-else local r=stat(31)e=ord(r)if r=="•"then if#n==0then extcmd"pause"else a,J={}d()end elseif r=="\r"or r=="\n"then if h then o"\n"else ni(n)if(not a)o"\n"else d()
+else local r=stat(31)e=ord(r)if r=="•"then if(#n==0)extcmd"pause"else a,J={}d()
+elseif r=="\r"or r=="\n"then if h then o"\n"else ni(n)if(not a)o"\n"else d()
 end elseif i and p(40)then ni(n,true)d()elseif r~=""and e>=32and e<154then if(N and e>=128)r=chr(e-63)
 o(r)elseif e==193then o"\n"elseif e==192then f(-1)elseif e==196then f(1)elseif e==203then N=not N A,K="shift now selects "..(N and"punycase"or"symbols"),40elseif p(74)then if(i)l=1t=true else f(-1)
 elseif p(77)then if(i)l=#n+1t=true else f(1)
 elseif p(42)then s(-1)elseif p(76)then s(0)end end local r=stat(4)if(r~=M or e==213)o(r)M=r
 if e==194or e==215then if n~=""and n~=M then M=n printh(n,"@clip")if(e==215)n=""l=1
-A="press again to put in clipboard"else A=""end end if stat(120)then local n repeat n=serial(2048,24448,128)o(chr(peek(24448,n)))until n==0end if(t)v,V=20
+A="press again to put in clipboard"else A=""end end if(stat(120))local n repeat n=serial(2048,24448,128)o(chr(peek(24448,n)))until n==0
+if(t)v,V=20
 q+=1nr()end function nf(n,e)local e,t=coresume(cocreate(e))if not e then printh("error #"..n..": "..t)print("error #"..n.."\npico8 broke something again,\nthis cart may not work.\npress any button to ignore")while(btnp()==0)flip()
 cls()end end nf(1,function()assert(pack(T"(function (...) return ... end)(1,2,nil,nil)").n==4)end)nf(2,function()assert(T"function() local temp, temp2 = {max(1,3)}, -20;return temp[1] + temp2; end"()==-17)end)printh"finished"stop()while true do if(holdframe)holdframe()
 _update()_draw()flip()end

@@ -373,13 +373,6 @@ async function saveOutputFile() {
     download(output, name + "." + ext, type);
 }
 
-function isFormatText(fmt) {
-    return fmt == "lua" || fmt == "p8";
-}
-function isFormatImg(fmt) {
-    return fmt == "png";
-}
-
 async function doShrinko(args, encoding) {
     let argStr = $("#extra-args").val();
 

@@ -87,10 +87,18 @@ circfill(120, 126, 3)
 circfill(126, 120, 3)
 rectfill(120, 120, 123, 123)
 rectfill(123, 123, 126, 126)
-while (1 == 0) ;
-while (1 == 0) sin = cos; cos = sin
-if (1 == 2) ;
-if (1 == 2) sin = cos; cos = sin
+while 1 == 0 do
+;end
+while 1 == 0 do
+  sin = cos
+  cos = sin
+end
+if 1 == 2 then
+;end
+if 1 == 2 then
+  sin = cos
+  cos = sin
+end
 local l = {1}, {1, 2, 3, 4}
 local l = 1 ~= 2
 local o = 1, 1.2345, 4660, 4660.33777, -1, -1.2345, -4660.33777, 32776, 0xf000.f, -39322, -65535.99999
@@ -99,7 +107,9 @@ local o = [[]], [[hi]], [['hi']], [["'hi'"]], [["""""'''''hi'''''"""""]], [[â™¥â
 
 ]]
 local o = -256, -256 * 4, 65280 ^ 4, -65280, ~65280
-if (not l) l = -1
+if not l then
+  l = -1
+end
 ?1 or 1 or 2 and 3 == 4 >= 4 | 5 ~ 6 << 1 >>< 1 .. 2 .. 3 - -1 ^ 4 ^ 1 / 1 & 7
 ?((~(((((((tonum(((3 or 4) and 5) ~= 2) | 1) ~ 2) & 3) >> 1) .. 1) - (1 + 3)) * 3)) ^ 2) ^ 1
 local l = ({})[1], (function()

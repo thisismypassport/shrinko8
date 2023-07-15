@@ -89,12 +89,24 @@ else
   n += 1
 end
 assert(n == 5, 25.5)
-if (n == 5) n = 0; n = 1 else assert(false, 26)
+if n == 5 then
+  n = 0
+  n = 1
+else
+  assert(false, 26)
+end
 assert(n == 1, 27)
-if (n == 5) assert(false, 28) else n = 2
+if n == 5 then
+  assert(false, 28)
+else
+  n = 2
+end
 assert(n == 2, 29)
 o = 1
-while (n > 0) n -= 1; o *= 2
+while n > 0 do
+  n -= 1
+  o *= 2
+end
 assert(o == 4 and n == 0, 30)
 while o > 0 do
   o -= 1
@@ -175,7 +187,9 @@ do
   do
     ::n::
     t += 1
-    if (t == 4) goto e
+    if t == 4 then
+      goto e
+    end
     goto n
   end
   ::e::
@@ -228,7 +242,9 @@ t -= 4 * 2
 t >>>= 16
 assert(t == .00098, 54)
 if t < 1 then
-  if (t == 0) t = 123
+  if t == 0 then
+    t = 123
+  end
 else
   t = 321
 end
@@ -318,7 +334,10 @@ do
   local n, e = 1, 2
   ::n::
   assert(e == 2, 65)
-  if (n > 1) assert(a() == 4 and e == 2, 66); goto e
+  if n > 1 then
+    assert(a() == 4 and e == 2, 66)
+    goto e
+  end
   local e = 3
   a = function()
     e += 1
@@ -338,7 +357,11 @@ do
     return d
   end
   n += 1
-  if (n == 3) goto d else goto n
+  if n == 3 then
+    goto d
+  else
+    goto n
+  end
 end
 ::d::
 assert(a() == 3 and a() == 4 and e() == 2 and a() == 5 and e() == 3, 67)
@@ -347,7 +370,8 @@ do
   local n
   ::n::
 end
-if (1 == 1) ;
+if 1 == 1 then
+;end
 local n = 0
 
 function ord(e, d)
@@ -383,15 +407,38 @@ n = 0
 n += 16
 assert(n == 16, 73)
 assert([[[[]] == "[[", 73.5)
-if (1 == 1) if (2 == 3) n = 1 else n = 2
+if 1 == 1 then
+  if 2 == 3 then
+    n = 1
+  else
+    n = 2
+  end
+end
 assert(n == 2, 74)
-if (1 == 2) c = 1 else if (1 == 3) c = 2 else c = 3
+if 1 == 2 then
+  c = 1
+else
+  if 1 == 3 then
+    c = 2
+  else
+    c = 3
+  end
+end
 assert(c == 3, 76)
-if (1 == 1) if 2 == 2 then n = 4 else n = 5 end else n = 6
+if 1 == 1 then
+  if 2 == 2 then
+    n = 4
+  else
+    n = 5
+  end
+else
+  n = 6
+end
 assert(n == 4, 77)
 do
   n = 0
-  if (1 == 2) ;
+  if 1 == 2 then
+  end
 end
 n = 123
 assert(n == 123, 78)

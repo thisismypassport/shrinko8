@@ -113,7 +113,7 @@ let api = {
         await initPromise;
 
         let mainExt = getLowExt(main);
-        if ((mainExt == "p8" || mainExt == "lua") && files.length == 1) {
+        if (isFormatText(mainExt) && files.length == 1) {
             // simple case - no conversion/preprocessing is needed or wanted.
             let [_, data] = files[0];
             fs.writeFile(inputFile, new Uint8Array(data));

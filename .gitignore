@@ -1,4 +1,5 @@
 __pycache__
+.vscode
 tmp
 test_output
 test_temp

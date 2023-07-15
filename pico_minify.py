@@ -1,7 +1,7 @@
 from utils import *
 from pico_tokenize import TokenType, tokenize, Token, k_char_escapes, CommentHint
 from pico_tokenize import parse_string_literal, parse_fixnum, k_keep_prefix
-from pico_parse import NodeType
+from pico_parse import Node, NodeType
 from pico_parse import k_unary_ops_prec, k_binary_op_precs, k_right_binary_ops
 
 class Focus(Enum):
@@ -124,6 +124,82 @@ def minify_needs_comments(minify):
     # returns whether minify_code makes use of the tokens' comments
     return isinstance(minify, dict) and not minify.get("wspace", True)
     
+def next_vline(vline):
+    # in py3.9, could use math.nextafter...
+    m, e = math.frexp(vline)
+    return math.ldexp(m + sys.float_info.epsilon / 2, e)
+
+def get_node_bodies(node):
+    if node.type in (NodeType.if_, NodeType.elseif):
+        yield node.then
+        if node.else_:
+            yield from get_node_bodies(node.else_)
+    else:
+        yield node.body
+
+def analyze_code_for_minify(root, focus):
+    shorts = CounterDictionary()
+    longs = CounterDictionary()
+    shortenables = set()
+
+    def analyze_node_post(node):
+
+        if node.type in (NodeType.if_, NodeType.while_):
+            is_short = node.short
+
+            weight = 1
+            if node.type == NodeType.if_:
+                else_ = node.else_
+                while else_ and else_.type == NodeType.elseif:
+                    weight += 1
+                    else_ = else_.else_
+            has_elseif = weight > 1
+
+            # can the node be converted to shorthand?
+            if not is_short and not has_elseif:
+                has_shorthand, has_final_shorthand, has_empties = False, False, False
+
+                def is_shorthand(node):
+                    nonlocal has_shorthand, has_final_shorthand
+                    if has_final_shorthand:
+                        has_shorthand = True # not final after all
+                    if node.type == NodeType.print:
+                        has_final_shorthand = True # ok if it's the last node
+                    if node.type in (NodeType.if_, NodeType.while_) and (node.short or node in shortenables):
+                        has_shorthand = True
+                    
+                # first check the parents
+                node.traverse_parents(is_shorthand)
+                
+                # now check the children
+                for body in get_node_bodies(node):
+                    body.traverse_nodes(post=is_shorthand)
+                    if not body.children:
+                        has_empties = True
+                
+                # empty bodies require extra ';'s to shorten, which worsens compression
+                is_short = not has_shorthand and not (has_empties and focus != Focus.chars)
+                if is_short:
+                    shortenables.add(node)
+            
+            if is_short:
+                shorts[node.type] += weight
+            else:
+                longs[node.type] += weight
+
+    root.traverse_nodes(post=analyze_node_post)
+
+    new_shorts = {}
+    for type in (NodeType.if_, NodeType.while_):
+        if focus == Focus.chars or not longs[type] or (focus == Focus.none and longs[type] * 1.5 <= shorts[type]):
+            new_shorts[type] = True
+        elif focus == Focus.compressed:
+            new_shorts[type] = False
+        else:
+            new_shorts[type] = None # leave alone
+
+    return Dynamic(new_shorts=new_shorts, shortenables=shortenables)
+
 def minify_code(source, ctxt, root, minify):
 
     minify_lines = minify_wspace = minify_tokens = minify_comments = True
@@ -135,20 +211,78 @@ def minify_code(source, ctxt, root, minify):
         minify_comments = minify.get("comments", True)
         focus = Focus(minify.get("focus", "none"))
 
+    analysis = analyze_code_for_minify(root, focus)
+
     shorthand_vlines = set()
+        
+    def fixup_nodes_pre(node):
+        if minify_tokens:  
 
-    def remove_parens(token):
-        token.erase()
-        end_token = token.parent.children[-1]
-        assert end_token.value == ")"
-        end_token.erase()
+            # remove shorthands
 
-    def fixup_tokens(token):
+            if node.type in (NodeType.if_, NodeType.while_) and node.short and (analysis.new_shorts[node.type] == False):
+                node.short = False
+                node.insert_token(2, TokenType.keyword, "then" if node.type == NodeType.if_ else "do")
+                if node.type == NodeType.if_ and node.else_:
+                    node.else_.short = False
+                    node.else_.append_token(TokenType.keyword, "end", near_next=True)
+                else:
+                    node.append_token(TokenType.keyword, "end", near_next=True)
+        
+    def fixup_nodes_post(node):
+        if minify_tokens:
+
+            # create shorthands
+            
+            if node.type in (NodeType.if_, NodeType.while_) and not node.short and \
+                    (analysis.new_shorts[node.type] == True) and node in analysis.shortenables:
+                
+                node.short = True
+                node.erase_token(2, "then" if node.type == NodeType.if_ else "do")
+                if node.type == NodeType.if_ and node.else_:
+                    node.else_.short = True
+                    node.else_.erase_token(-1, "end")
+                else:
+                    node.erase_token(-1, "end")
+                
+                # we can assume node.cond is not wrapped in parens, since we're in a post-visit
+                # wrap it in parens ourselves (eww...)
+                node.cond.replace_with(Node(NodeType.group, [], child=copy(node.cond)))
+                node.cond.children.append(node.cond.child)
+                node.cond.insert_token(0, TokenType.punct, "(", near_next=True)
+                node.cond.append_token(TokenType.punct, ")")
+
+                # fixup empty bodies
+                for body in get_node_bodies(node):
+                    if not body.children:
+                        body.append_token(TokenType.punct, ";")
+
+                vline = node.children[0].vline
+                
+                # ensure entire shorthand is on the same line
+                def set_vline(token):
+                    token.vline = vline
+                node.traverse_tokens(set_vline)
+
+                # avoid further use of our vline...
+                next = node.next_token()
+                while next.vline == vline:
+                    next.vline = next_vline(vline)
+                    next = next.next_token()
+                
+                shorthand_vlines.add(vline)
+
         # find shorthands
 
-        if token.value == "?" or (token.value in ("if", "while") and getattr(token.parent, "short", False)):
-            shorthand_vlines.add(token.vline)
-    
+        if node.type == NodeType.print or (node.type in (NodeType.if_, NodeType.while_) and node.short):
+            shorthand_vlines.add(node.children[0].vline)
+                        
+    def remove_parens(token):
+        token.erase("(")
+        token.parent.erase_token(-1, ")")
+
+    def fixup_tokens(token):
+
         # minify sublangs
 
         sublang = getattr(token, "sublang", None)
@@ -160,7 +294,8 @@ def minify_code(source, ctxt, root, minify):
             # remove unneeded tokens
 
             if token.value == ";" and token.parent.type == NodeType.block and token.next_token().value != "(":
-                if not (getattr(token.parent.parent, "short", False) and not token.parent.stmts):
+                gparent = token.parent.parent
+                if not (gparent and gparent.short and not token.parent.stmts):
                     token.erase()
                     return
 
@@ -190,7 +325,7 @@ def minify_code(source, ctxt, root, minify):
                 if outer.type in (NodeType.return_, NodeType.table) and (token.parent in outer.items[:-1] or
                         (outer.items and token.parent == outer.items[-1] and not is_vararg_expr(inner))):
                     return remove_parens(token)
-                if outer.type in (NodeType.if_, NodeType.elseif, NodeType.while_, NodeType.until) and not getattr(outer, "short", False):
+                if outer.type in (NodeType.if_, NodeType.elseif, NodeType.while_, NodeType.until) and not outer.short:
                     return remove_parens(token)
 
             # replace tokens for higher consistency
@@ -214,10 +349,9 @@ def minify_code(source, ctxt, root, minify):
                 if token.value.startswith("-"):
                     # insert synthetic minus token, so that output_tokens's tokenize won't get confused
                     token.modify(token.value[1:])
-                    minus_token = Token.synthetic(TokenType.punct, "-", token, prepend=True)
-                    token.parent.children.insert(0, minus_token)
+                    token.parent.insert_token(0, TokenType.punct, "-", near_next=True)
 
-    root.traverse_tokens(fixup_tokens)
+    root.traverse_nodes(fixup_nodes_pre, fixup_nodes_post, tokens=fixup_tokens)
 
     output = []
 
@@ -227,8 +361,7 @@ def minify_code(source, ctxt, root, minify):
         return ce or len(ct) != 2 or (ct[0].type, ct[0].value, ct[1].type, ct[1].value) != (prev_token.type, prev_token.value, token.type, token.value)
 
     def need_linebreak_between(prev_token, token):
-        return e(prev_token.vline) and e(token.vline) and prev_token.vline != token.vline and \
-            (not minify_lines or prev_token.vline in shorthand_vlines)
+        return prev_token.vline != token.vline and (not minify_lines or prev_token.vline in shorthand_vlines)
 
     if minify_wspace:
         # output the tokens as tightly as possible
@@ -249,7 +382,7 @@ def minify_code(source, ctxt, root, minify):
                 # TODO: always adding \n before if/while won a few bytes on my code - check if this is consistent & helpful.
 
                 if need_linebreak_between(prev_token, token):
-                    output.append("\n")                    
+                    output.append("\n")
                 elif need_whitespace_between(prev_token, token):
                     output.append(" ")
 

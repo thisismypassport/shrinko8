@@ -26,6 +26,9 @@ class TokenNodeBase:
 
     def __init__(m):
         m.parent, m.children = None, ()
+
+    def __str__(m):
+        return repr(m.__dict__)
     
     def find_parent(m, type):
         parent = m.parent
@@ -51,9 +54,10 @@ class TokenNodeBase:
             m = m.parent
         return None
 
-    def _adjacent_token(m, delta):
+    def _find_token(m, delta, adjacent=False):
         i = 0 if delta > 0 else -1
-        m = m._adjacent(delta)
+        if adjacent:
+            m = m._adjacent(delta)
         while isinstance(m, Node):
             if m.children:
                 m = m.children[i]
@@ -61,8 +65,11 @@ class TokenNodeBase:
                 m = m._adjacent(delta)
         return m if m else Token.none
 
-    def next_token(m): return m._adjacent_token(1)
-    def prev_token(m): return m._adjacent_token(-1)
+    def next_token(m): return m._find_token(1, adjacent=True)
+    def prev_token(m): return m._find_token(-1, adjacent=True)
+
+    def first_token(m): return m._find_token(1)
+    def last_token(m): return m._find_token(-1)
 
     def traverse_nodes(m, pre=None, post=None, tokens=None, extra=False):
         skip = pre(m) if pre else None
@@ -83,6 +90,12 @@ class TokenNodeBase:
                 child.traverse_tokens(visit)
             else:
                 visit(child)
+    
+    def traverse_parents(m, visit):
+        parent = m.parent
+        while parent:
+            visit(parent)
+            parent = parent.parent
 
     def add_extra_child(m, child):
         if not hasattr(m, "extra_children"):
@@ -99,28 +112,36 @@ class Token(TokenNodeBase):
     For number/string tokens, the actual value can be read via parse_fixnum/parse_string_literal
     Its children are the comments *before* it, if any."""
 
-    def __init__(m, type, value, source=None, idx=None, endidx=None, vline=None):
+    def __init__(m, type, value, source, idx, endidx, vline, modified=False):
         super().__init__()
-        m.type, m.value, m.source, m.idx, m.endidx, m.vline, m.modified = type, value, source, idx, endidx, vline, False
+        m.type, m.value, m.source, m.idx, m.endidx, m.vline, m.modified = type, value, source, idx, endidx, vline, modified
     
     def modify(m, value):
         m.value = value
         m.modified = True
     
-    def erase(m):
+    def erase(m, expected=None):
+        if expected != None:
+            assert m.value == expected
         m.modify(None)
 
+    @property
+    def endvline(m): # compat. with Node
+        return m.vline
+
     @classmethod
-    def dummy(m, source, idx=None):
+    def dummy(m, source, idx=None, vline=None):
         if idx is None:
             idx = len(source.text) if source else 0
-        return Token(None, None, source, idx, idx)
+            vline = sys.maxsize if source else 0
+        return Token(None, None, source, idx, idx, vline)
 
     @classmethod
     def synthetic(m, type, value, other, append=False, prepend=False):
         idx = other.endidx if append else other.idx
         endidx = other.idx if prepend else other.endidx
-        return Token(type, value, other.source, idx, endidx)
+        vline = other.endvline if append else other.vline
+        return Token(type, value, other.source, idx, endidx, vline, modified=True)
 
 Token.none = Token.dummy(None)
 
