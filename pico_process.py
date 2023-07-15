@@ -207,7 +207,8 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
     tokens, errors = tokenize(source, ctxt, need_all_comments)
     if not errors and need_parse:
         root, errors = parse(source, tokens, ctxt)
-        
+    
+    new_text = None
     if not errors:
         ok = True
 
@@ -222,10 +223,10 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
                 if need_rename:
                     rename_tokens(ctxt, root, rename)
 
-                source.text = minify_code(source, ctxt, root, minify)
+                new_text = minify_code(source, ctxt, root, minify)
             
             if need_unminify:
-                source.text = unminify_code(root, unminify)
+                new_text = unminify_code(root, unminify)
 
             if count:
                 new_tokens = root.get_tokens() if need_parse else tokens
@@ -233,6 +234,10 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
 
     if fail and errors:
         throw("\n".join(map(str, errors)))
+
+    if e(new_text):
+        source.text = new_text
+
     return ok, errors
 
 def echo_code(code, echo=True):
