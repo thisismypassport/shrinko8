@@ -92,7 +92,7 @@ You can also generate a file telling you how the identifiers were renamed: (This
 When using `--minify` without `--minify-safe-only`, Shrinko8 makes - by default - some assumptions about your cart:
 
 * Your cart doesn't mix identifiers and strings when indexing tables or _ENV. (E.g. it doesn't access both `some_table.x` and `some_table["x"]`)
-* Your cart does not use _ENV
+* Your cart does not use _ENV (except for some simple cases)
 
 These assumptions allow it to freely rename identifiers used to index tables.
 
@@ -107,15 +107,21 @@ local my_key = "key" -- here, key is a string.
 
 In such cases, you have multiple ways to tell Shrinko8 precisely how your cart breaks these assumptions, allowing you to achieve better minification than would be possible with just `--minify-safe-only`:
 
-* If you index a table (or _ENV) by both identifiers and string literals, you can [tell Shrinko8 to rename the string literals too](#renaming-specific-strings).
+* Mixing identifiers and strings when indexing tables or _ENV:
 
-* If you index a table (or _ENV) by both identifiers and strings that you build at runtime (e.g. via `+`), you can [preserve those identifiers across the entire cart](#preserving-identifiers-across-the-entire-cart).
+    * If you index a table (or _ENV) by both identifiers and string literals, you can [tell Shrinko8 to rename the string literals too](#renaming-specific-strings).
 
-* If you have certain tables whose keys you don't want to rename - e.g. because the keys are built at runtime, or because the tables are serialized to a savefile - you can [preserve all keys in a table](#controlling-renaming-of-all-keys-of-a-table).
+    * If you index a table (or _ENV) by both identifiers and strings that you build at runtime (e.g. via `+`), you can [preserve those identifiers across the entire cart](#preserving-identifiers-across-the-entire-cart).
 
-* If you're making your tables inherit _ENV (allowing you to bind the table to _ENV and access both table members and globals without a '.'), you can [rename table keys the same way as globals](#renaming-table-keys-the-same-way-as-globals).
+    * If you have certain tables whose keys you don't want to rename - e.g. because the keys are built at runtime, or because the tables are serialized to a savefile - you can [preserve all keys in a table](#controlling-renaming-of-all-keys-of-a-table).
 
-* If you're otherwise assigning to or from _ENV, you may need to either [specify how all keys of a table are renamed](#controlling-renaming-of-all-keys-of-a-table), [specify how specific usages of an identifier is renamed](#controlling-renaming-of-specific-identifier-usages), or just [rename table keys the same way as globals](#renaming-table-keys-the-same-way-as-globals).
+* Using _ENV:
+
+    * If you're making your tables inherit _ENV (allowing you to bind the table to _ENV and access both table members and globals without a '.'), you can [rename table keys the same way as globals](#renaming-table-keys-the-same-way-as-globals).
+
+    * If you're otherwise assigning to or from _ENV, you may need to either [specify how all keys of a table are renamed](#controlling-renaming-of-all-keys-of-a-table), or [specify how specific usages of an identifier is renamed](#controlling-renaming-of-specific-identifier-usages) in order to tell Shrinko8 which table keys should be renamed as if they were globals.
+    
+    * Alternatively, you can always tell Shrinko8 to [rename table keys the same way as globals](#renaming-table-keys-the-same-way-as-globals), making it possible to mix _ENV and other tables freely. (Though if you index _ENV with strings, you still need to follow the 'mixing identifiers and strings' bullet point)
 
 ### Renaming specific strings
 
