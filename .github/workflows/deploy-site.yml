@@ -33,11 +33,14 @@ jobs:
       - name: Zip
         run: |
           zip site/shrinko8.zip `cat files.lst`
-          
-      - name: Update html
+
+      - name: Get tag
+        id: gettag
+        uses: "WyriHaximus/github-action-get-previous-tag@v1"
+
+      - name: Insert tag in html
         run: |
-          tag=`git describe --tags --abbrev=0`
-          sed -i "s/@@@VERSION@@@/$tag/g" site/index.html
+          sed -i "s/@@@VERSION@@@/${{ steps.gettag.outputs.tag }}/g" site/index.html
         
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
