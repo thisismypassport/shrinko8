@@ -89,6 +89,7 @@ pgroup.add_argument("--global-builtins-only", action="store_true", help="assume 
 pgroup.add_argument("--version", action="store_true", help="print version of cart")
 pgroup.add_argument("--bbs", action="store_true", help="interpret input as a bbs cart id, e.g. '#...' and download it from the bbs")
 pgroup.add_argument("--url", action="store_true", help="interpret input as a URL, and download it from the internet")
+pgroup.add_argument("--ignore-hints", action="store_true", help="ignore shrinko8 hint comments")
 pgroup.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
 
 def default_output_format(output):
@@ -208,7 +209,8 @@ def main_inner(raw_args):
         
     ctxt = PicoContext(extra_builtins=args.builtin, not_builtins=args.not_builtin, 
                        local_builtins=not args.global_builtins_only,
-                       srcmap=args.rename_map, sublang_getter=sublang_cb, version=cart.version_id)
+                       srcmap=args.rename_map, sublang_getter=sublang_cb, version=cart.version_id,
+                       hint_comments=not args.ignore_hints)
     if preproc_cb:
         preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args)
 

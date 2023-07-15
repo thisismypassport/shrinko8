@@ -140,7 +140,7 @@ class SubLanguageBase:
 class PicoContext:
     """Defines information for how pico8 code is to be processed, e.g. the supported builtins and the supported pico8 version"""
     def __init__(m, deprecated=True, undocumented=True, patterns=True, srcmap=False, extra_builtins=None, not_builtins=None, 
-                 local_builtins=True, sublang_getter=None, version=sys.maxsize):
+                 local_builtins=True, sublang_getter=None, version=sys.maxsize, hint_comments=True):
         builtins = set(main_builtins)
         local_builtins = set(builtins_copied_to_locals) if local_builtins else set()
         if deprecated:
@@ -160,6 +160,7 @@ class PicoContext:
 
         m.srcmap = [] if srcmap else None
         m.sublang_getter = sublang_getter
+        m.hint_comments = hint_comments
         m.version = version
 
 class ErrorFormat(Enum):

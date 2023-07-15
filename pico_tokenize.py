@@ -312,6 +312,7 @@ def tokenize(source, ctxt=None, all_comments=False):
     tokens = []
     errors = []
     next_mods = None
+    process_hints = ctxt and ctxt.hint_comments
 
     def peek(off=0):
         i = idx + off
@@ -382,36 +383,37 @@ def tokenize(source, ctxt=None, all_comments=False):
     def process_comment(orig_idx, comment, isblock):
         hint, hintdata = CommentHint.none, None
 
-        if comment.startswith(k_lint_prefix):
-            lints = k_hint_split_re.split(comment[len(k_lint_prefix):])
-            hint, hintdata = CommentHint.lint, lints
+        if process_hints:
+            if comment.startswith(k_lint_prefix):
+                lints = k_hint_split_re.split(comment[len(k_lint_prefix):])
+                hint, hintdata = CommentHint.lint, lints
 
-            for lint in lints:
-                if lint.startswith(k_lint_func_prefix):
-                    get_next_mods().func_kind = lint[len(k_lint_func_prefix):]
+                for lint in lints:
+                    if lint.startswith(k_lint_func_prefix):
+                        get_next_mods().func_kind = lint[len(k_lint_func_prefix):]
 
-        elif comment.startswith(k_preserve_prefix):
-            preserves = k_hint_split_re.split(comment[len(k_preserve_prefix):])
-            hint, hintdata = CommentHint.preserve, preserves
+            elif comment.startswith(k_preserve_prefix):
+                preserves = k_hint_split_re.split(comment[len(k_preserve_prefix):])
+                hint, hintdata = CommentHint.preserve, preserves
 
-        elif comment.startswith(k_keep_prefix):
-            hint = CommentHint.keep
+            elif comment.startswith(k_keep_prefix):
+                hint = CommentHint.keep
 
-        elif isblock:
-            if comment in ("global", "nameof"): # nameof is deprecated
-                get_next_mods().var_kind = VarKind.global_
-            elif comment in ("member", "memberof"): # memberof is deprecated
-                get_next_mods().var_kind = VarKind.member
-            elif comment in ("preserve", "string"):
-                get_next_mods().var_kind = False
-            elif comment == "global-keys":
-                get_next_mods().keys_kind = VarKind.global_
-            elif comment == "member-keys":
-                get_next_mods().keys_kind = VarKind.member
-            elif comment in ("preserve-keys", "string-keys"):
-                get_next_mods().keys_kind = False
-            elif comment.startswith(k_language_prefix) and not any(ch.isspace() for ch in comment):
-                get_next_mods().sublang = comment[len(k_language_prefix):]
+            elif isblock:
+                if comment in ("global", "nameof"): # nameof is deprecated
+                    get_next_mods().var_kind = VarKind.global_
+                elif comment in ("member", "memberof"): # memberof is deprecated
+                    get_next_mods().var_kind = VarKind.member
+                elif comment in ("preserve", "string"):
+                    get_next_mods().var_kind = False
+                elif comment == "global-keys":
+                    get_next_mods().keys_kind = VarKind.global_
+                elif comment == "member-keys":
+                    get_next_mods().keys_kind = VarKind.member
+                elif comment in ("preserve-keys", "string-keys"):
+                    get_next_mods().keys_kind = False
+                elif comment.startswith(k_language_prefix) and not any(ch.isspace() for ch in comment):
+                    get_next_mods().sublang = comment[len(k_language_prefix):]
         
         if all_comments or hint != CommentHint.none:
             get_next_mods().add_comment(Comment(hint, hintdata, source, orig_idx, idx))
