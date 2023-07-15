@@ -412,7 +412,7 @@ def minify_code(source, ctxt, root, minify):
 
             # merge assignments
 
-            if node.type in (NodeType.assign, NodeType.local):
+            if False: # node.type in (NodeType.assign, NodeType.local):
                 prev = node.prev_sibling()
                 while prev and prev.type == None: # skip erased
                     prev = prev.prev_sibling()

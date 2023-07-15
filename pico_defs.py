@@ -211,8 +211,13 @@ k_version_tuples = {
     41: (0,2,5,6),
 }
 
-k_default_version_id = maybe_int(os.getenv("PICO8_VERSION_ID"), 41) # TODO - update as newer versions get more common
-k_default_platform = os.getenv("PICO8_PLATFORM_CHAR", 'w' if os.name == 'nt' else 'x' if sys.platform == 'darwin' else 'l')
+def get_default_version_id():
+    version_id = 41 # TODO - update as newer versions get more common
+    return maybe_int(os.getenv("PICO8_VERSION_ID"), version_id)
+
+def get_default_platform():
+    platform = 'w' if os.name == 'nt' else 'x' if sys.platform == 'darwin' else 'l'
+    return os.getenv("PICO8_PLATFORM_CHAR", platform)
 
 def get_version_tuple(id):
     """Maps a pico8 version id to a tuple representing the actual version (e.g. (0,2,4,1) is v0.2.4b)"""
@@ -220,7 +225,7 @@ def get_version_tuple(id):
     if version is None:
         if id >= 29:
             eprint("warning - unknown version id %d, outputting wrong version number (should be benign)" % id)
-            version = k_version_tuples.get(k_default_version_id, (0,0,0,0)) # better than nothing?
+            version = k_version_tuples.get(get_default_version_id(), (0,0,0,0)) # better than nothing?
         elif id >= 19:
             version = (0,2,0,0)
         elif id >= 8:

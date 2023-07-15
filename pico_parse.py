@@ -263,8 +263,7 @@ def parse(source, tokens, ctxt=None):
         return False
 
     def add_error_at(msg, token, fail=False):
-        err = Error(msg, token)
-        errors.append(err)
+        errors.append(Error(msg, token))
         if fail:
             raise ParseError()
 

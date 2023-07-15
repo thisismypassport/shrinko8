@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from test_utils import *
 from pico_cart import get_bbs_cart_url
-import argparse, threading
+import argparse
 import multiprocessing as mp
 import multiprocessing.dummy as mt
 
@@ -258,4 +258,4 @@ if __name__ == "__main__":
     init_tests(g_opts.exe)
     dir_ensure_exists("test_bbs")
     run_all()
-    exit_tests()
+    sys.exit(end_tests())

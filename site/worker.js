@@ -12,16 +12,18 @@ let scriptFile = "script.py";
 let outputCapture = undefined;
 let initProgress = 0;
 
-function shrinko8(args, fail) {
+function run_main(main, args, fail) {
     try {
         outputCapture = "";
-        let exitCode = shrinko8_main(args);
-        if (!exitCode) {
-            exitCode = 0;
-        } else if (fail) {
-            throw new Error();
+        let exitCode = main(args);
+        if (fail) {
+            if (exitCode) {
+                throw new Error();
+            }
+            return outputCapture;
+        } else {
+            return [exitCode ? exitCode : 0, outputCapture];
         }
-        return [exitCode, outputCapture]
     } catch (e) {
         console.error(e);
         if (!e.message || (e instanceof pyodide.ffi.PythonError && e.type == "SystemExit")) {
@@ -33,6 +35,10 @@ function shrinko8(args, fail) {
     } finally {
         outputCapture = undefined
     }
+}
+
+function shrinko8(args, fail) {
+    return run_main(self.shrinko8_main, args, fail)
 }
 
 function onOutput(msg, loggerFunc) {
@@ -184,21 +190,15 @@ let api = {
         // (also, currently always throws SystemExit)
         await initPromise;
         
-        let response = await fetch("shrinko8_test.zip");
-        await pyodide.unpackArchive(await response.arrayBuffer(), "zip");
+        if (!self.shrinko8_run_tests) {
+            let response = await fetch("shrinko8_test.zip");
+            await pyodide.unpackArchive(await response.arrayBuffer(), "zip");
 
-        let runpy = pyodide.pyimport("runpy");
-        try {
-            outputCapture = "";
-            runpy.run_module("run_tests", undefined, "__main__");
-            throw new Error("shouldn't reach here"); // due to sys.exit
-        } catch (e) {
-            console.error(e);
-            e.message += "\n" + outputCapture;
-            throw e;
-        } finally {
-            outputCapture = null;
+            let run_tests = pyodide.pyimport("run_tests")
+            self.shrinko8_run_tests = run_tests.main
         }
+
+        return run_main(self.shrinko8_run_tests, [], true)
     },
 }
 

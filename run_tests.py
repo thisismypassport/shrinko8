@@ -11,7 +11,6 @@ parser.add_argument("-v", "--verbose", action="store_true", help="print test suc
 parser.add_argument("-x", "--exe", action="store_true", help="test a packaged exe instead of the python script")
 parser.add_argument("-p", "--pico8", action="append", help="specify a pico8 exe to test the results with")
 parser.add_argument("-P", "--no-pico8", action="store_true", help="disable running pico8 even if exe is supplied (for convenience)")
-g_opts = parser.parse_args()
 
 # for test consistency:
 os.environ["PICO8_PLATFORM_CHAR"] = 'w'
@@ -29,7 +28,7 @@ def measure(kind, path, input=False):
         print("MISSING!")
 
 def run_test(name, input, output, *args, private=False, from_temp=False, to_temp=False, from_output=False,
-             read_stdout=False, norm_stdout=None, exit_code=None, extra_outputs=None,
+             read_stdout=False, norm_stdout=nop, exit_code=None, extra_outputs=None, norm_output=nop,
              pico8_output_val=None, pico8_output=None):
     if g_opts.test and name not in g_opts.test:
         return None
@@ -49,10 +48,10 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
     stdouts = [run_stdout]
 
     if read_stdout:
-        file_write_text(outpath, norm_stdout(run_stdout) if norm_stdout else run_stdout)
+        file_write_text(outpath, norm_stdout(run_stdout))
 
     if run_success and not to_temp:
-        if try_file_read(outpath) != try_file_read(cmppath):
+        if norm_output(try_file_read(outpath)) != norm_output(try_file_read(cmppath)):
             stdouts.append("ERROR: File difference: %s, %s" % (outpath, cmppath))
             success = False
 
@@ -166,7 +165,9 @@ def run():
     run_test("notnil", "notnil.p8", "notnil.p8", "--minify", pico8_output_val="passed")
     run_test("wildcards", "wildcards.p8", "wildcards.p8", "--minify")
 
-if __name__ == "__main__":
+def main(raw_args):
+    global g_opts
+    g_opts = parser.parse_args(raw_args)
     init_tests(g_opts.exe)
     
     dir_ensure_exists("test_output")
@@ -181,4 +182,7 @@ if __name__ == "__main__":
         else:
             private_run(run_test, run_stdout_test)
     
-    exit_tests()
+    return end_tests()
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

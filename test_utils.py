@@ -23,9 +23,9 @@ def fail_test():
 def is_fail_test():
     return g_status != 0
 
-def exit_tests():
+def end_tests():
     print("\nAll passed" if g_status == 0 else "\nSome FAILED!")
-    sys.exit(g_status)
+    return g_status
 
 def run_code(*args, exit_code=None):
     actual_code = None

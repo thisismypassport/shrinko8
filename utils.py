@@ -1260,7 +1260,7 @@ class BinaryBuffer:
         m.w_fill(addr, 0, count)
 
 def nop(value):
-    """The identitiy function"""
+    """The identity function"""
     return value
 
 def find(items, filter):

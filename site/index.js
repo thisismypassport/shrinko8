@@ -622,6 +622,23 @@ function setUpAce(id, lang, cb) {
     }
 }
 
+function runTests(mode) {
+    async function endTest(ok, msg) {
+        if (mode == "post") {
+            await fetch(ok ? "test-ok" : "test-fail", {
+                method: "post",
+                headers: {"content-type": "text/plain"},
+                body: msg,
+            })
+            window.close();
+        } else {
+            alert(msg);
+        }
+    }
+
+    api.runTests().then(msg => endTest(true, msg)).catch(e => endTest(false, e.message));
+}
+
 $(() => {
     self.api = Comlink.wrap(new Worker("worker.js"));
 
@@ -640,7 +657,8 @@ $(() => {
     $("#lint-opts").change(onLintOptsChange); onLintOptsChange();
     $("#extra-args").change(OnExtraArgsChange);
     
-    if (new URLSearchParams(location.search).get("test")) {
-        api.runTests().then(alert).catch(alert);
+    let testMode = new URLSearchParams(location.search).get("test");
+    if (testMode) {
+        runTests(testMode)
     }
 })

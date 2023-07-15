@@ -22,9 +22,9 @@ class Cart:
     """A pico8 cart, including its code (as a p8str), rom (as a Memory), and more"""
 
     def __init__(m, code="", rom=None):
-        m.version_id = k_default_version_id
-        m.version_tuple = get_version_tuple(k_default_version_id)
-        m.platform = k_default_platform
+        m.version_id = get_default_version_id()
+        m.version_tuple = get_version_tuple(m.version_id)
+        m.platform = get_default_platform()
         m.rom = rom.copy() if rom else Memory(k_rom_size)
         m.path = ""
         m.code = code
@@ -552,17 +552,24 @@ def write_cart_to_url(cart, url_prefix=k_url_prefix, force_compress=False, size_
     check(len(url) - k_url_prefix_size <= k_url_size, "url has too many characters!")
     return url
 
-def read_cart_from_clip(clip, **opts):
-    prefix, suffix = "[cart]", "[/cart]"
-    if clip.startswith(prefix) and clip.endswith(suffix):
-        data = bytes.fromhex(clip[len(prefix):-len(suffix)])
-        return read_cart_from_image(data, **opts)
+k_clip_prefix = "[cart]"
+k_clip_suffix = "[/cart]"
+
+def read_raw_from_clip(clip):
+    if clip.startswith(k_clip_prefix) and clip.endswith(k_clip_suffix):
+        return bytes.fromhex(clip[len(k_clip_prefix):-len(k_clip_suffix)])        
     else:
         throw("Invalid clipboard tag")
 
+def read_cart_from_clip(clip, **opts):
+    data = read_raw_from_clip(clip)
+    return read_cart_from_image(data, **opts)
+
+def write_raw_to_clip(data):
+    return k_clip_prefix + data.hex() + k_clip_suffix
+
 def write_cart_to_clip(cart, **opts):
-    data = write_cart_to_image(cart, **opts)
-    return "[cart]%s[/cart]" % data.hex()
+    return write_raw_to_clip(write_cart_to_image(cart, **opts))
 
 def read_cart_autodetect(path, **opts):
     try:
@@ -575,7 +582,7 @@ def read_cart_autodetect(path, **opts):
         rtext = text.rstrip()
 
         # clip?
-        if rtext.startswith("[cart]"):
+        if rtext.startswith(k_clip_prefix):
             return read_cart_from_clip(rtext, path=path, **opts)
 
         # url?
