@@ -1,5 +1,4 @@
-# Simple workflow for deploying static content to GitHub Pages
-name: Deploy static content to Pages
+name: Deploy site to github pages
 
 on:
   push:
@@ -34,6 +33,11 @@ jobs:
       - name: Zip
         run: |
           zip site/shrinko8.zip `cat files.lst`
+          
+      - name: Update html
+        run: |
+          tag=`git describe --tags --abbrev=0`
+          sed -i "s/@@@VERSION@@@/$tag/g" site/index.html
         
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
