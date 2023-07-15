@@ -34,14 +34,6 @@ jobs:
         run: |
           zip site/shrinko8.zip `cat files.lst`
 
-      - name: Get tag
-        id: gettag
-        uses: "WyriHaximus/github-action-get-previous-tag@v1"
-
-      - name: Insert tag in html
-        run: |
-          sed -i "s/@@@VERSION@@@/${{ steps.gettag.outputs.tag }}/g" site/index.html
-        
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
