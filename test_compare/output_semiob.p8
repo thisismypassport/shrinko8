@@ -3,7 +3,7 @@ version 41
 __lua__
 print=printh 
 ?"hello ᶜ7there♥ら"
-🐱,d,r,h,x,s,o,o=11,12,13,14,15,16,17,17
+🐱,d,r,h,s,u,n,n=11,12,13,14,15,16,17,17
 
 t(stat(band()))
 
@@ -12,46 +12,46 @@ t()
 
 
 
-e=0 n=0
-n=0
+l=0 o=0
+o=0
 
 print"this is included"
 ?"#[disable[[this for now/ever]]]"
-local o={1,2,3}
+local n={1,2,3}
 print(
-#o
+#n
 )
 print(
 #[[#include notaninclude
 ]]
 )
 
-local o = "preserved_key"
-local n = {preserved_key=123}
-?n[o] 
-local o = "preserved_glob"
+local n = "preserved_key"
+local o = {preserved_key=123}
+?o[n] 
+local n = "preserved_glob"
 preserved_glob = 123
-?_ENV[o] 
-local o = {}
-o["whatever"] = 123
-?o.whatever 
-function o.subfunc() end
-function o:subfunc() end
-?o:subfunc()
+?_ENV[n] 
+local n = {}
+n["whatever"] = 123
+?n.whatever 
+function n.subfunc() end
+function n:subfunc() end
+?n:subfunc()
 
-local o = "key"
-local n = {key=123}
-?n[o]
+local n = "key"
+local o = {key=123}
+?o[n]
 
-local o = split "key1,key2,key3,123"
-local n = {key1=123,key2=234,key3=345}
-?n[o[2]]
+local n = split "key1,key2,key3,123"
+local o = {key1=123,key2=234,key3=345}
+?o[n[2]]
 
-local o = "f"
+local n = "f"
 f = 123
-?_ENV[o]
+?_ENV[n]
 
-local o = "key1:key2#~~key3,", "!key1_still$key2█ア+123-key123\nif\nif◝"
+local n = "key1:key2#~~key3,", "!key1_still$key2█ア+123-key123\nif\nif◝"
 
 do
   local _ENV = { assert=assert}
@@ -63,21 +63,21 @@ end
 function some_future_pico8_api() end
 some_future_pico8_api(1,2,3)
 
-local o = {preserved1=1, preserved2=2}
-o.preserved1 += 1
-?o["preserved1"]
-o = setmetatable( {preserved3=3}, c)
-?o["preserved3"]
+local n = {preserved1=1, preserved2=2}
+n.preserved1 += 1
+?n["preserved1"]
+n = setmetatable( {preserved3=3}, i)
+?n["preserved3"]
 
-l = {preserved1=1, preserved2=2}
-l.preserved1 += 1
-?l["preserved1"]
-l = setmetatable( {preserved3=3}, c)
-?l["preserved3"]
+e = {preserved1=1, preserved2=2}
+e.preserved1 += 1
+?e["preserved1"]
+e = setmetatable( {preserved3=3}, i)
+?e["preserved3"]
 
-local l = {assert=assert, add=add}
+local e = {assert=assert, add=add}
 do
-  local _ENV = l
+  local _ENV = e
   assert(add({}, 1) == 1)
 end
 do
@@ -85,14 +85,14 @@ do
   assert(add({}, 1) == 1)
 end
 
-local l
+local e
 for _ENV in all{{x=1,y=5}, {x=2,y=6}} do
   x += y + y*x
-  l = deli{2} 
+  e = deli{2} 
 end
-assert(l == 2) 
-local l = {key1=1,key2=2, other=3}
-l.key1 = l. other
+assert(e == 2) 
+local e = {key1=1,key2=2, other=3}
+e.key1 = e. other
 
 circfill, rectfill = circfill, rectfill
 circfill(120,126,3) circfill(126,120,3)
@@ -102,39 +102,47 @@ while (1==0);
 while (1==0) sin=cos cos=sin
 if (1 == 2);
 if (1 == 2) sin=cos cos=sin
-local l = {1}, {1,2,3,4}
+local e = {1}, {1,2,3,4}
 
-local l = 1 ~= 2
-local o = 1, 1.2345, 4660, 4660.33777, -1, -1.2345, -4660.33777, 32776, 0xf000.f, -39322, -65535.99999
-local o = "hi", "hello", '"hi"', "'hello'", '"hi"', "'hi'", "", "", "a\nb", "\\", "\0¹²³⁴⁵⁶", "¹²³⁴⁵⁶⁷", "\\\\\\\\\\\\", "\n\n\n\n\n\n", "¹²³⁴⁵⁶]]"
-local o = [[]], [[hi]], [['hi']], [["'hi'"]], [["""""'''''hi'''''"""""]], [[♥♥♥♥]], [[]], [[
+local e = 1 ~= 2
+local n = 1, 1.2345, 4660, 4660.33777, -1, -1.2345, -4660.33777, 32776, 0xf000.f, -39322, -65535.99999
+local n = "hi", "hello", '"hi"', "'hello'", '"hi"', "'hi'", "", "", "a\nb", "\\", "\0¹²³⁴⁵⁶", "¹²³⁴⁵⁶⁷", "\\\\\\\\\\\\", "\n\n\n\n\n\n", "¹²³⁴⁵⁶]]"
+local n = [[]], [[hi]], [['hi']], [["'hi'"]], [["""""'''''hi'''''"""""]], [[♥♥♥♥]], [[]], [[
 
 ]]
-local o = -256, -256*4, 65280^4, -65280, ~65280
-if (not l) l = -1
+local n = -256, -256*4, 65280^4, -65280, ~65280
+if (not e) e = -1
 
 ?1 or 1 or 2 and 3 == 4 >= 4 | 5 ~ 6 << 1 >>< 1 .. 2 .. 3 - -1^4^1 / 1 & 7
 ?((~(((((((tonum(((3 or 4) and 5) ~= 2) | 1) ~ 2) & 3) >> 1) .. 1) - (1 + 3)) * 3)) ^ 2) ^ 1
-local l = ({})[1], (function()end)()
-local o, n = sin(1,2), cos((cos()))
-local f, c = (cos((cos())))
-local l = {ord=ord, pal=pal}
-local l = ord"123", pal{1,2}, l:ord("ord"), l:pal({1,2}), sin(1)
+local e = ({})[1], (function()end)()
+local n, o = sin(1,2), cos((cos()))
+local f, i = (cos((cos())))
+local e = {ord=ord, pal=pal}
+local e = ord"123", pal{1,2}, e:ord("ord"), e:pal({1,2}), sin(1)
 local d = {ord"1",[2]=3,x=4,(ord"1")}
-l += 1
-o, n = sin(1,2), cos((cos()))
-f, c = (cos((cos())))
-function u() return 1, 2, ord"1", (ord"1") end
+e += 1
+n, o = sin(1,2), cos((cos()))
+f, i = (cos((cos())))
+function x() return 1, 2, ord"1", (ord"1") end
 if 1 == 2 then elseif 1 == 2 then else end
 while 1 == 2 do end
 repeat until 1 == 1
-for l in (all{}) do end
+for e in (all{}) do end
 print("test"..@16 .."str")
 
-a="renaming bug"
-function i()
-  local l,e,o,n,f,c,i,d,r,t,h,x,s,u,k,y,v,p,b,w,g,m,j,q,z,A,B
-  return a
+if(true) ?"sh1"
+if true then ?"sh2"
 end
-?i()
-e=0e=1
+if(true) if false then else print"sh3" end
+if true then if false then else print"sh4" end end
+
+c="renaming bug"
+function a()
+  local e,l,n,o,f,i,a,d,r,t,h,s,u,x,k,y,v,p,b,w,g,m,E,N,D,j,q
+  return c
+end
+?a()
+l=0l=1
+
+?"END!"

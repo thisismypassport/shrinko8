@@ -151,6 +151,13 @@ repeat until 1 == 1
 for a in (all{}) do end
 print("test"..@16 .."str")
 
+-- shorthands
+if(true) ?"sh1"
+if true then ?"sh2"
+end
+if(true) if false then else print"sh3" end
+if true then if false then else print"sh4" end end
+
 -- renaming bugs
 l="renaming bug"
 function fff()
@@ -159,3 +166,5 @@ function fff()
 end
 ?fff()
 x=0 x=1
+
+?"END!"

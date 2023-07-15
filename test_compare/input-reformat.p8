@@ -164,6 +164,25 @@ until (1 == 1)
 ;for a in (all({})) do
 end
 print("test" .. (@16) .. "str")
+-- shorthands
+if true then
+    ?"sh1"
+end
+if true then
+    ?"sh2"
+end
+if true then
+    if false then
+    else
+        print("sh3")
+    end
+end
+if true then
+    if false then
+    else
+        print("sh4")
+    end
+end
 -- renaming bugs
 l = "renaming bug"
 
@@ -175,3 +194,4 @@ end
 ?fff()
 x = 0.
 x = 1
+?"END!"

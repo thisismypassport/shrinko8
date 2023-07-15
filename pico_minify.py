@@ -157,23 +157,20 @@ def analyze_code_for_minify(root, focus):
 
             # can the node be converted to shorthand?
             if not is_short and not has_elseif:
-                has_shorthand, has_final_shorthand, has_empties = False, False, False
+                has_shorthand, has_empties = False, False
 
-                def is_shorthand(node):
-                    nonlocal has_shorthand, has_final_shorthand
-                    if has_final_shorthand:
-                        has_shorthand = True # not final after all
-                    if node.type == NodeType.print:
-                        has_final_shorthand = True # ok if it's the last node
-                    if node.type in (NodeType.if_, NodeType.while_) and (node.short or node in shortenables):
+                def check_shorthand(node):
+                    nonlocal has_shorthand
+                    # ideally, could allow last node in an 'if' to be a print...
+                    if node.type == NodeType.print or (node.type in (NodeType.if_, NodeType.while_) and (node.short or node in shortenables)):
                         has_shorthand = True
                     
                 # first check the parents
-                node.traverse_parents(is_shorthand)
+                node.traverse_parents(check_shorthand)
                 
                 # now check the children
                 for body in get_node_bodies(node):
-                    body.traverse_nodes(post=is_shorthand)
+                    body.traverse_nodes(post=check_shorthand)
                     if not body.children:
                         has_empties = True
                 
