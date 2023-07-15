@@ -106,26 +106,26 @@ thing.key1 = thing.--[[member]]other
 -- semi-automatic pico8 global renaming
 circfill, rectfill = --[[preserve]]circfill, --[[preserve]]rectfill
 circfill(120, 126, 3)
-;circfill(126, 120, 3)
+circfill(126, 120, 3)
 rectfill(120, 120, 123, 123)
-;rectfill(123, 123, 126, 126)
+rectfill(123, 123, 126, 126)
 -- punct removal
 while 1 == 0 do
-;end
+end
 while 1 == 0 do
     sin = cos
-;    cos = sin
-;end
+    cos = sin
+end
 if 1 == 2 then
-;end
+end
 if 1 == 2 then
-;;;    sin = cos
-;;;    cos = sin
-;;;end
+    sin = cos
+    cos = sin
+end
 local tbls = {1,}, {1; 2, 3; 4;}
 -- token replacement
 local nothing = 1 != 2
-;local nums = 1, 1.2345, 0x1234, 0x1234.5678, -1, -1.2345, -0x1234.5678, 0x8008, 0xf000.f000, -0x999a, -0xffff.ffff
+local nums = 1, 1.2345, 0x1234, 0x1234.5678, -1, -1.2345, -0x1234.5678, 0x8008, 0xf000.f000, -0x999a, -0xffff.ffff
 local strs = "hi", 'hello', '"hi"', "'hello'", "\"hi\"", '\'hi\'', "", '', "a\nb", "\\", "\0\1\2\3\4\5\6", "\1\2\3\4\5\6\7", "\\\\\\\\\\\\", "\n\n\n\n\n\n", "\1\2\3\4\5\6]]"
 local strs2 = [[]], [[hi]], [['hi']], [["'hi'"]], [["""""'''''hi'''''"""""]], [[♥♥♥♥]], [[
 ]], [[
@@ -161,7 +161,7 @@ while (1 == 2) do
 end
 repeat
 until (1 == 1)
-;for a in (all({})) do
+for a in (all({})) do
 end
 print("test" .. (@16) .. "str")
 -- shorthands

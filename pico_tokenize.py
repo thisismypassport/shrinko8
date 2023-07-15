@@ -20,6 +20,8 @@ k_language_prefix = "language::"
 class StopTraverse(BaseException):
     pass
 
+k_skip_children = True # value returnable from traverse's pre-function
+
 class TokenNodeBase:
     """Baseclass for both pico8 Tokens and pico8 Nodes.
     The syntax tree is comprised of these and can be traversed via traverse_nodes or traverse_tokens"""

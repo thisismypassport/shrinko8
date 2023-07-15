@@ -2,6 +2,10 @@ from utils import *
 from pico_defs import from_p8str
 from pico_cart import print_size, k_tab_break
 
+# when adding new globals:
+#   check whether to update builtins_copied_to_locals (find 'local ...=...' script inside pico8 binary)
+#   consider whether to update builtins_with_callbacks
+
 main_builtins = {
     "abs", "add", "all", "assert", "atan2", "btn", "btnp",
     "camera", "cartdata", "ceil", "chr", "circ", "circfill",
@@ -42,6 +46,10 @@ builtins_copied_to_locals = { # builtins listed here should also be listed elsew
     "pget", "pset", "sget", "sset", "fget", "fset",
     "circ", "circfill", "rect", "rectfill", "oval", "ovalfill",
     "line", "spr", "sspr"
+}
+
+builtins_with_callbacks = { # builtins listed here may call user code before returning, NOT including far-fetched stuff like metamethods
+    "coresume", "foreach", "yield",
 }
 
 def get_line_col(text, idx, start=0): # (0-based)
@@ -157,6 +165,7 @@ class PicoContext:
 
         m.builtins = builtins
         m.local_builtins = local_builtins
+        m.callback_builtins = builtins_with_callbacks
 
         m.srcmap = [] if srcmap else None
         m.sublang_getter = sublang_getter

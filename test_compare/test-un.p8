@@ -371,7 +371,7 @@ do
   ::n::
 end
 if 1 == 1 then
-;end
+end
 local n = 0
 
 function ord(e, d)

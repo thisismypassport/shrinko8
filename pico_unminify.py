@@ -3,7 +3,7 @@ from pico_tokenize import TokenType, Token
 from pico_parse import NodeType
 
 def is_node_function_stmt(node):
-    return (node.type == NodeType.function and node.target) or (node.type == NodeType.local and node.func_local)
+    return node.type == NodeType.function and node.target
 
 def unminify_code(root, unminify):
     
@@ -46,6 +46,10 @@ def unminify_code(root, unminify):
         # ignore shorthand parens, to avoid increasing token count as we convert shorthands to longhand
         gparent = token.parent.parent
         if gparent and gparent.short and token.parent == gparent.cond and token.value in ("(", ")"):
+            return
+        
+        # ignore semicolons inside blocks - our formatting makes them unneeded
+        if token.parent.type == NodeType.block and token.value == ";":
             return
 
         if prev_tight and prev_token.value not in k_tight_prefix_tokens and \

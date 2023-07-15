@@ -10,13 +10,18 @@ class VarBase():
         m.name = name
         m.keys_kind = None
         m.implicit = implicit
+        m.reassigned = False
 
 class Local(VarBase):
     def __init__(m, name, scope, implicit=False):
         super().__init__(name, implicit)
         m.scope = scope
+        m.captured = False
 
 class Global(VarBase):
+    pass
+
+class Member(VarBase):
     pass
 
 class Label(VarBase):
@@ -150,26 +155,50 @@ class Node(TokenNodeBase):
     def endvline(m):
         return m.last_token().vline
 
-    def append_token(m, type, value, near_next=False):
-        m.insert_token(len(m.children), type, value, near_next)
-
-    def insert_token(m, i, type, value, near_next=False):
+    def _create_for_insert(m, i, type, value, near_next):
         if near_next:
             if i < len(m.children):
-                m.children.insert(i, Token.synthetic(type, value, m.children[i], prepend=True))
+                return Token.synthetic(type, value, m.children[i], prepend=True)
             else:
-                m.children.append(Token.synthetic(type, value, m.next_token(), prepend=True))
+                return Token.synthetic(type, value, m.next_token(), prepend=True)
         else:
             if i > 0:
-                m.children.insert(i, Token.synthetic(type, value, m.children[i - 1], append=True))
+                return Token.synthetic(type, value, m.children[i - 1], append=True)
             else:
-                m.children.insert(0, Token.synthetic(type, value, m.prev_token(), append=True))
+                return Token.synthetic(type, value, m.prev_token(), append=True)
+
+    def insert_token(m, i, type, value, near_next=False):
+        m.children.insert(i, m._create_for_insert(i, type, value, near_next))
+        m.children[i].parent = m
+
+    def append_token(m, type, value, near_next=False):
+        m.children.append(m._create_for_insert(len(m.children), type, value, near_next))
+        m.children[-1].parent = m
 
     def erase_token(m, i, expected=None):
         m.children[i].erase(expected)
+    
+    def insert_existing(m, i, existing, near_next=False): # junks existing (so must be erased one way or another)
+        src = m._create_for_insert(i, None, None, near_next)
+        def reset_location(token):
+            token.idx, token.endidx = src.idx, src.endidx
+            token.modified = True
+            # vline cannot be just reset - it must be fully recreated... (but just leaving it alone seems OK?)
 
-    def replace_with(m, target):
+        existing.traverse_tokens(reset_location)
+        m.children.insert(i, existing)
+        m.children[i].parent = m
+
+    def erase_child(m, i):
+        m.children[i].erase()
+
+    def replace_with(m, target): # target must not reference m, but may reference copy(m)
+        old_parent = m.parent
         m.__dict__ = target.__dict__
+        m.parent = old_parent
+    
+    def erase(m):
+        m.replace_with(Node(None, []))
 
 class ParseError(Exception):
     pass
@@ -206,6 +235,7 @@ def parse(source, tokens, ctxt=None):
     unresolved_labels = None
     errors = []
     globals = LazyDict(lambda key: Global(key))
+    members = LazyDict(lambda key: Member(key))
     
     scope.add(Local("_ENV", scope, True))
 
@@ -264,6 +294,7 @@ def parse(source, tokens, ctxt=None):
         
         if member:
             kind = VarKind.member
+            var = members[name]
 
         elif label:
             kind = VarKind.label
@@ -282,6 +313,8 @@ def parse(source, tokens, ctxt=None):
                 var = Local(name, new)
             else:
                 var = scope.find(name)
+                if var and var.scope != scope:
+                    var.captured = True
             
             if not var:
                 kind = VarKind.global_
@@ -306,9 +339,15 @@ def parse(source, tokens, ctxt=None):
     
     def parse_function(stmt=False, local=False):
         nonlocal scope, funcdepth, unresolved_labels
-        tokens = [peek(-1)]
+        if local:
+            tokens = [peek(-2), peek(-1)]
+        else:
+            tokens = [peek(-1)]
         self_param = None
         func_kind = getattr(tokens[0], "func_kind", None)
+
+        if local:
+            scope = Scope(scope, depth, funcdepth)
         
         target, name = None, None
         funcscope = Scope(scope, depth + 1, funcdepth + 1)
@@ -319,6 +358,7 @@ def parse(source, tokens, ctxt=None):
                 target = parse_var(new=scope)
                 scope.add(target.var)
                 name = target.name
+                
             else:
                 target = parse_var()
                 name = target.name
@@ -338,6 +378,8 @@ def parse(source, tokens, ctxt=None):
                     self_token = Token.synthetic(TokenType.ident, "self", target, append=True)
                     self_param = parse_var(token=self_token, new=funcscope, implicit=True)
                     params.append(self_param)
+                
+                mark_reassign(target)
 
             tokens.append(target)
 
@@ -449,8 +491,8 @@ def parse(source, tokens, ctxt=None):
         return node
 
     def parse_core_expr():
-        token = peek()
-        value = take().value
+        token = take()
+        value = token.value
         if value == None:
             add_error("unexpected end of input", fail=True)
         elif value in ("nil", "true", "false") or token.type in (TokenType.number, TokenType.string):
@@ -480,8 +522,8 @@ def parse(source, tokens, ctxt=None):
         expr = parse_core_expr()
         while True:
             nonlocal idx
-            token = peek()
-            value = take().value
+            token = take()
+            value = token.value
             if value == ".":
                 var = parse_var(member=True)
                 expr = Node(NodeType.member, [expr, token, var], key=var, child=expr, method=False)
@@ -667,24 +709,20 @@ def parse(source, tokens, ctxt=None):
         tokens = [peek(-1)]
         newscope = Scope(scope, depth, funcdepth)
 
-        if accept("function"):
-            scope = newscope
-            func = parse_function(stmt=True, local=True)
-            tokens.append(func)
+        targets = parse_list(tokens, lambda: parse_var(new=newscope))
+        sources = []
+        if accept("=", tokens):
+            sources = parse_list(tokens, parse_expr)
+            
+        for target in targets:
+            newscope.add(target.var)
+        scope = newscope
 
-            return Node(NodeType.local, tokens, targets=[func.name], sources=[func], func_local=True)
+        return Node(NodeType.local, tokens, targets=targets, sources=sources)
 
-        else:
-            targets = parse_list(tokens, lambda: parse_var(new=newscope))
-            sources = []
-            if accept("=", tokens):
-                sources = parse_list(tokens, parse_expr)
-                
-            for target in targets:
-                newscope.add(target.var)
-            scope = newscope
-
-            return Node(NodeType.local, tokens, targets=targets, sources=sources, func_local=False)
+    def mark_reassign(target):
+        if target.type == NodeType.var and target.var:
+            target.var.reassigned = True
 
     def parse_assign(first):
         tokens = [first]
@@ -696,7 +734,19 @@ def parse(source, tokens, ctxt=None):
         require("=", tokens)
         sources = parse_list(tokens, parse_expr)
 
+        for target in targets:
+            mark_reassign(target)
+
         return Node(NodeType.assign, tokens, targets=targets, sources=sources)
+
+    def parse_opassign(first):
+        nonlocal idx
+        token = peek()
+        op = token.value[:-1]
+        idx += 1
+        source = parse_expr()
+        mark_reassign(first)
+        return Node(NodeType.op_assign, [first, token, source], target=first, source=source, op=op)
 
     def parse_misc_stmt():
         nonlocal idx
@@ -705,19 +755,15 @@ def parse(source, tokens, ctxt=None):
         if peek().value in (",", "="):
             return parse_assign(first)
         elif peek().value and peek().value.endswith("="):
-            token = peek()
-            op = token.value[:-1]
-            idx += 1
-            source = parse_expr()
-            return Node(NodeType.op_assign, [first, token, source], target=first, source=source, op=op)
+            return parse_opassign(first)
         elif first.type == NodeType.call:
             return first
         else:
             add_error("expression has no side-effect")
 
     def parse_stmt(vline):
-        token = peek()
-        value = take().value
+        token = take()
+        value = token.value
         if value == ";":
             return None
         elif value == "do":
@@ -737,7 +783,10 @@ def parse(source, tokens, ctxt=None):
         elif value == "return":
             return parse_return(vline)
         elif value == "local":
-            return parse_local()
+            if accept("function"):
+                return parse_function(stmt=True, local=True)
+            else:
+                return parse_local()
         elif value == "goto":
             label = parse_var(label=True)
             return Node(NodeType.goto, [token, label], label=label)
@@ -799,6 +848,8 @@ def parse(source, tokens, ctxt=None):
     def parse_root():
         root = parse_block()
         root.globals = globals
+        root.members = members
+
         late_resolve_labels()
         if peek().type != None:
             add_error("Expected end of input")

@@ -39,7 +39,7 @@ pgroup.add_argument("--no-minify-rename", action="store_true", help="disable var
 pgroup.add_argument("--no-minify-spaces", action="store_true", help="disable space removal in minification")
 pgroup.add_argument("--no-minify-lines", action="store_true", help="disable line removal in minification")
 pgroup.add_argument("--no-minify-comments", action="store_true", help="disable comment removal in minification (requires --no-minify-spaces)")
-pgroup.add_argument("--no-minify-tokens", action="store_true", help="disable token removal in minification")
+pgroup.add_argument("--no-minify-tokens", action="store_true", help="disable token removal/changes in minification")
 pgroup.add_argument("-p", "--preserve", type=SplitBySeps, action=extend_arg, help='preserve specific identifiers in minification, e.g. "global1, global2, *.member2, table3.*"')
 pgroup.add_argument("--no-preserve", type=SplitBySeps, action=extend_arg, help='do not preserve specific built-in identifiers in minification, e.g. "circfill, rectfill"')
 pgroup.add_argument("--rename-members-as-globals", action="store_true", help='rename globals and members the same way (same as --preserve "*=*.*")')
@@ -146,6 +146,7 @@ def main_inner(raw_args):
 
     if args.minify or args.minify_safe_only:
         args.minify = {
+            "safe-only": args.minify_safe_only,
             "lines": not args.no_minify_lines,
             "wspace": not args.no_minify_spaces,
             "comments": not args.no_minify_comments,

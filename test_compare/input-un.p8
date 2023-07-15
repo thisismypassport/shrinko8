@@ -88,13 +88,13 @@ circfill(126, 120, 3)
 rectfill(120, 120, 123, 123)
 rectfill(123, 123, 126, 126)
 while 1 == 0 do
-;end
+end
 while 1 == 0 do
   sin = cos
   cos = sin
 end
 if 1 == 2 then
-;end
+end
 if 1 == 2 then
   sin = cos
   cos = sin

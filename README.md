@@ -93,6 +93,8 @@ When using `--minify` without `--minify-safe-only`, Shrinko8 makes - by default 
 
 * Your cart doesn't mix identifiers and strings when indexing tables or _ENV. (E.g. it doesn't access both `some_table.x` and `some_table["x"]`)
 * Your cart does not use _ENV (except for some simple cases)
+TODO: cannot reassign builtins via _ENV
+TODO: metamethod stuff
 
 These assumptions allow it to freely rename identifiers used to index tables.
 
