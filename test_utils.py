@@ -62,9 +62,14 @@ def run_code(*args, exit_code=None):
         print("Exit with unexpected code %s" % actual_code)
         return False, stdout
 
-def run_pico8(p8_exe, cart_path, expected_printh=None, timeout=5.0, allow_timeout=False):
+def run_pico8(p8_exe, cart_path, expected_printh=None, timeout=5.0, allow_timeout=False, with_window=False):
     try:
-        stdout = subprocess.check_output([p8_exe, "-x", cart_path], encoding="utf8", errors='replace', stderr=subprocess.STDOUT, timeout=timeout)
+        if with_window:
+            args = [p8_exe, "-run", cart_path, "-home", "private_pico8_home", "-volume", "0", "-windowed", "1", "-width", "128", "-height", "128"]
+        else:
+            args = [p8_exe, "-x", cart_path]
+        
+        stdout = subprocess.check_output(args, encoding="utf8", errors='replace', stderr=subprocess.STDOUT, timeout=timeout)
     except subprocess.SubprocessError as e:
         if allow_timeout and isinstance(e, subprocess.TimeoutExpired):
             stdout = e.stdout

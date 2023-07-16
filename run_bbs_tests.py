@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from test_utils import *
 from pico_cart import get_bbs_cart_url
+from threading import Thread
 import argparse
 import multiprocessing as mp
 import multiprocessing.dummy as mt
@@ -27,10 +28,14 @@ parser.add_argument("-u", "--compare-unfocused", action="store_true", help="comp
 parser.add_argument("-v", "--verbose", action="store_true", help="print changes in individual carts")
 parser.add_argument("-x", "--exe", action="store_true", help="use a packaged exe instead of the python script")
 parser.add_argument("-p", "--pico8", action="append", help="specify a pico8 exe to test the results with")
-parser.add_argument("--pico8-time", type=float, help="how long to run pico8 carts for", default=2.0)
 parser.add_argument("-P", "--no-pico8", action="store_true", help="disable running pico8 even if exe is supplied (for convenience)")
+parser.add_argument("-t", "--pico8-time", type=float, help="how long to run pico8 carts for")
+parser.add_argument("-T", "--pico8-interact", action="store_true", help="show real pico8 windows and randomly interact with them (windows-only!)")
 parser.add_argument("-j", "--parallel-jobs", type=int, help="how many processes to run in parallel")
 g_opts = parser.parse_args()
+
+if not g_opts.pico8_time:
+    g_opts.pico8_time = 8.0 if g_opts.pico8_interact else 2.0
 
 if g_opts.carts_file and not g_opts.carts:
     g_opts.carts = file_read_text(g_opts.carts_file).splitlines()
@@ -190,6 +195,71 @@ def run_for_cart(args):
 
     return (cart, is_fail_test(), new_cart_input, cart_output, deltas, best_path_for_pico8)
 
+def interact_with_pico8s():
+    import win32api, win32gui, win32process, win32con as wc, pywintypes
+
+    pico8_paths = set(path_normalize(pico8) for pico8 in g_opts.pico8)
+
+    pico8_keys = [wc.VK_LEFT, wc.VK_RIGHT, wc.VK_UP, wc.VK_DOWN, ord('X'), ord('Z')]
+    pico8_key_counts = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 3, 4]
+    prev_hwnd_data = defaultdict(lambda: Dynamic(keys=[], pid=None))
+
+    wc_MAPVK_VK_TO_VSC_EX = 4 # missing...
+
+    def send_key(key, state):
+        scode = win32api.MapVirtualKey(key, wc_MAPVK_VK_TO_VSC_EX)
+        flags = 0 if state else wc.KEYEVENTF_KEYUP
+        if scode >= 0x100:
+            flags |= wc.KEYEVENTF_EXTENDEDKEY
+            scope >>= 8
+        win32api.keybd_event(key, scode, flags, 0)
+
+    while True:
+        # activate a random pico8 window
+        pico8_windows = []
+
+        def on_window(hwnd, _):
+            try:
+                _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                proc = win32api.OpenProcess(wc.PROCESS_QUERY_INFORMATION | wc.PROCESS_VM_READ, False, pid)
+                if proc:
+                    try:
+                        ppath = win32process.GetModuleFileNameEx(proc, None)
+                    finally:
+                        proc.close()
+
+                    if ppath and path_normalize(ppath) in pico8_paths:
+
+                        if prev_hwnd_data[hwnd].pid != pid: # just in case?
+                            prev_hwnd_data[hwnd].keys.clear()
+                            prev_hwnd_data[hwnd].pid = pid
+
+                        pico8_windows.append(hwnd)
+            except pywintypes.error:
+                pass # e.g. can't access hwnd, or hwnd/process died
+
+        win32gui.EnumWindows(on_window, None)
+
+        if pico8_windows:
+            hwnd = random.choice(pico8_windows)
+            try:
+                win32gui.SetForegroundWindow(hwnd)
+            except pywintypes.error:
+                pass # e.g. hwnd died
+            else:
+                key_count = random.choice(pico8_key_counts)
+                keys = random.sample(pico8_keys, k=key_count)
+                prev_keys = prev_hwnd_data[hwnd].keys
+
+                for key in prev_keys:
+                    if key not in keys:
+                        send_key(key, False)
+                for key in keys:
+                    if key not in prev_keys:
+                        send_key(key, True)
+
+        time.sleep(0.05)
+
 def run(focus):
     prefix = "%s_" % focus if focus else ""
 
@@ -202,6 +272,9 @@ def run(focus):
     compares = try_file_read_json(compare_json, {})
     unfocuseds = try_file_read_json(unfocused_json, {}) if unfocused_json else {}
     deltas = DeltaInfoDictionary()
+
+    if g_opts.pico8_interact:
+        Thread(target=interact_with_pico8s, daemon=True).start()
 
     with mp.Pool(g_opts.parallel_jobs, init_for_process, (g_opts,)) as mp_pool, \
          mt.Pool(g_opts.parallel_jobs) as mt_pool:
@@ -222,7 +295,10 @@ def run(focus):
             
             if cart_pico8_path and g_opts.pico8 and not g_opts.no_pico8:
                 for pico8 in g_opts.pico8:
-                    p8_results.append(mt_pool.apply_async(lambda: run_pico8(pico8, cart_pico8_path, timeout=g_opts.pico8_time, allow_timeout=True)))
+                    def run(pico8=pico8, path=cart_pico8_path):
+                        return run_pico8(pico8, path, allow_timeout=True, timeout=g_opts.pico8_time, with_window=g_opts.pico8_interact)
+
+                    p8_results.append(mt_pool.apply_async(run))
 
         for p8_result in p8_results:
             check_run("%s:p8-run" % cart, p8_result.get())
