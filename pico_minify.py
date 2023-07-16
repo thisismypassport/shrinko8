@@ -6,7 +6,7 @@ from pico_parse import Node, NodeType, VarKind
 from pico_parse import k_unary_ops_prec, k_binary_op_precs, k_right_binary_ops
 
 class Focus(Enum):
-    values = ("none", "chars", "compressed")
+    none = chars = compressed = ...
 
 # essentially only returns decvalue right now, given mostly non-fract. inputs
 # TODO: test with fract-ish inputs to see what's best to do.

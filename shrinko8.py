@@ -26,8 +26,8 @@ extend_arg = "extend" if sys.version_info >= (3,8) else None
 parser = argparse.ArgumentParser()
 parser.add_argument("input", help="input file, can be in any format. ('-' for stdin)")
 parser.add_argument("output", help="output file. ('-' for stdout)", nargs='?')
-parser.add_argument("-f", "--format", type=EnumFromStr(CartFormat), help="output cart format {%s}" % EnumList(CartFormat._output_names))
-parser.add_argument("-F", "--input-format", type=EnumFromStr(CartFormat), help="input cart format {%s}" % EnumList(CartFormat._input_names))
+parser.add_argument("-f", "--format", type=EnumFromStr(CartFormat), help="output cart format {%s}" % EnumList(CartFormat.output_names))
+parser.add_argument("-F", "--input-format", type=EnumFromStr(CartFormat), help="input cart format {%s}" % EnumList(CartFormat.input_names))
 parser.add_argument("-u", "--unicode-caps", action="store_true", help="write capitals as italicized unicode characters (better for copy/paste)")
 
 pgroup = parser.add_argument_group("minify options")
@@ -68,8 +68,8 @@ pgroup.add_argument("--unminify-indent", type=int, help="indentation size when u
 pgroup = parser.add_argument_group("misc. options")
 pgroup.add_argument("-s", "--script", help="manipulate the cart via a custom python script - see README for api details")
 pgroup.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
-pgroup.add_argument("--list", action="store_true", help="list all cart names inside a cart package (%s)" % EnumList(CartFormat._pack_names))
-pgroup.add_argument("--cart", help="name of cart to extract from cart package (%s)" % EnumList(CartFormat._pack_names))
+pgroup.add_argument("--list", action="store_true", help="list all cart names inside a cart package (%s)" % EnumList(CartFormat.pack_names))
+pgroup.add_argument("--cart", help="name of cart to extract from cart package (%s)" % EnumList(CartFormat.pack_names))
 pgroup.add_argument("--label", help="path to image to use as the label when creating png carts (default: taken from __label__ like pico8 does)")
 pgroup.add_argument("--title", help="title to use when creating png carts (default: taken from first two comments like pico8 does)")
 pgroup.add_argument("--extra-output", nargs='+', action="append", metavar=("OUTPUT", "FORMAT"), help="Additional output file to produce (and optionally, the format to use)")
@@ -94,7 +94,7 @@ pgroup.add_argument("--custom-preprocessor", action="store_true", help="enable a
 
 def default_output_format(output):
     ext = path_extension(output)[1:].lower()
-    if ext in CartFormat._ext_names:
+    if ext in CartFormat.ext_names:
         return CartFormat(ext)
     else:
         return CartFormat.p8
@@ -133,7 +133,7 @@ def main_inner(raw_args):
 
     if not args.input_format and args.input:
         ext = path_extension(args.input)[1:].lower()
-        if ext in CartFormat._ext_names:
+        if ext in CartFormat.ext_names:
             args.input_format = CartFormat(ext)
 
     if args.lint:
@@ -234,7 +234,7 @@ def main_inner(raw_args):
 
     if args.count:
         write_code_size(cart, handler=args.count)
-        if not (args.output and str(args.format) not in CartFormat._src_names) and not args.no_count_compress: # else, will be done in write_cart
+        if not (args.output and str(args.format) not in CartFormat.src_names) and not args.no_count_compress: # else, will be done in write_cart
             write_compressed_size(cart, handler=args.count, fast_compress=args.fast_compression)
 
     if args.output:

@@ -7,7 +7,7 @@ test_input/bad.p8 (tab 0, line 6, col 6): Identifier 'y' not found - did you mea
 test_input/bad.p8 (tab 0, line 6, col 9): Built-in global 't' assigned outside _init - did you mean to use 'local'?
 test_input/bad.p8 (tab 0, line 7, col 12): Identifier 'f1' not found - did you mean to use 'local function' to define it?
 test_input/bad.p8 (tab 0, line 8, col 18): Local 'f12' isn't used
-test_input/bad.p8 (tab 0, line 14, col 12): Built-in global 'band' assigned outside _init - did you mean to use 'local function'?
+test_input/bad.p8 (tab 0, line 15, col 12): Built-in global 'band' assigned outside _init - did you mean to use 'local function'?
 test_input/bad.p8 (tab 1, line 4, col 9): Local 'a' isn't used
 test_input/bad.p8 (tab 1, line 4, col 12): Local 'b' is only ever assigned to, never used
 test_input/bad.p8 (tab 1, line 8, col 13): Local 'd' is only ever assigned to, never used

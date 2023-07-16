@@ -51,16 +51,16 @@ if not g_opts.parallel_jobs:
 
 g_opts.all = not g_opts.only_compress and not g_opts.only_safe_minify and not g_opts.only_unsafe_minify and not g_opts.none
 
-class DeltaInfoDictionary(defaultdict): # keeps sum, min, max
-    class Info:
-        __slots__ = ('sum', 'min', 'max', 'count')
-        def __init__(m):
-            m.sum = m.min = m.max = m.count = 0
+class DeltaInfoDictionary(defaultdict):
+    class Info(Struct):
+        sum = min = max = count = 0
+        
         def apply(m, value):
             m.sum += value
             m.count += 1
             m.min = min(m.min, value)
             m.max = max(m.max, value)
+
         def apply_info(m, info):
             m.sum += info.sum
             m.count += info.count

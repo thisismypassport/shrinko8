@@ -82,7 +82,9 @@ def lint_code(ctxt, root, lint_rules):
                         if node.name in custom_globals:
                             add_error("Local '%s' has the same name as a global" % node.name, node)
                     elif prev_var.scope.funcdepth < node.var.scope.funcdepth:
-                        if prev_var.scope.funcdepth == 0:
+                        if prev_var.scope.funcdepth < 0:
+                            pass # local builtin
+                        elif prev_var.scope.funcdepth == 0:
                             add_error("Local '%s' has the same name as a local declared at the top level" % node.name, node)
                         else:
                             add_error("Local '%s' has the same name as a local declared in a parent function" % node.name, node)
@@ -103,7 +105,7 @@ def lint_code(ctxt, root, lint_rules):
                     prev_var = node.scope.parent.find(node.name, crossfunc=True)
                     if prev_var != None:
                         if prev_var.scope.funcdepth < node.var.scope.funcdepth:
-                            if prev_var.scope.funcdepth == 0:
+                            if prev_var.scope.funcdepth <= 0:
                                 add_error("Label '%s' has the same name as a label declared at the top level" % node.name, node)
                             else:
                                 add_error("Label '%s' has the same name as a label declared in a parent function" % node.name, node)

@@ -3,7 +3,7 @@ from pico_tokenize import TokenNodeBase, Token, TokenType
 from pico_tokenize import is_identifier, parse_string_literal, k_identifier_split_re
 
 class VarKind(Enum):
-    values = ("local", "global_", "member", "label")
+    local = global_ = member = label = ...
     
 class VarBase():
     def __init__(m, name, implicit=False):
@@ -111,11 +111,11 @@ class LabelScope:
         return False
 
 class NodeType(Enum):
-    values = ("var", "index", "member", "const", "group", "unary_op", "binary_op", "call",
-              "table", "table_index", "table_member", "varargs", "assign", "op_assign",
-              "local", "function", "if_", "elseif", "else_", "while_", "repeat", "until",
-              "for_", "for_in", "return_", "break_", "goto", "label", "print", "block", "do",
-              "sublang") # special
+    var = index = member = const = group = unary_op = binary_op = call = ...
+    table = table_index = table_member = varargs = assign = op_assign = ...
+    local = function = if_ = elseif = else_ = while_ = repeat = until = ...
+    for_ = for_in = return_ = break_ = goto = label = print = block = do = ...
+    sublang = ... # special
 
 class Node(TokenNodeBase):
     """A pico8 syntax tree node, spanning 'source'.text['idx':'endidx']. Its 'type' is a NodeType
@@ -228,8 +228,8 @@ k_block_ends = ("end", "else", "elseif", "until")
 
 def parse(source, tokens, ctxt=None):
     idx = 0
-    depth = -1
-    funcdepth = 0
+    depth = -1 # incremented in parse_block
+    funcdepth = -1 # incremented in parse_root
     scope = Scope(None, depth, funcdepth)
     labelscope = LabelScope(None, funcdepth)
     unresolved_labels = None
@@ -845,9 +845,14 @@ def parse(source, tokens, ctxt=None):
                     add_error_at("Unknown label %s" % node.name, node.children[0])
 
     def parse_root():
+        nonlocal funcdepth
+        funcdepth += 1
+
         root = parse_block()
         root.globals = globals
         root.members = members
+
+        funcdepth -= 1
 
         late_resolve_labels()
         if peek().type != None:

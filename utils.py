@@ -70,8 +70,55 @@ class DefaultDynamic(Dynamic):
     def __getattr__(m, name):
         return None
 
+def isdescriptor(obj):
+    """Return whether the value is a descriptor"""
+    return hasattr(obj, "__get__") or hasattr(obj, "__set__") or hasattr(obj, "__del__")
+
+class ProcessValue:
+    """When defining an Enum/Tuple/etc, forces the value to be processed, despite being a function/descriptor/..."""
+    def __init__(m, value):
+        m.value = value
+
+class KeepValue:
+    """When defining an Enum/Tuple/etc, forces the value to be left alone, despite not being a function/descriptor/..."""
+    def __init__(m, value):
+        m.value = value
+
+def _metaclass_collect_values(cls_dict, values, prefirst, next):
+    prev_value = prefirst
+    for key, value in default(values, cls_dict).items():
+        if key.startswith("__") and key.endswith("__"):
+            continue
+        elif isinstance(value, ProcessValue):
+            value = value.value
+        elif callable(value) or isdescriptor(value) or isinstance(value, KeepValue):
+            continue
+        elif value is ...:
+            value = next(prev_value)
+        prev_value = value
+        yield key, value
+
+def _metaclass_collect_fields(cls_dict, values):
+    fields = []
+    defaults = []
+
+    has_default = True # unless next_no_default is called
+    def next_no_default(_):
+        nonlocal has_default
+        has_default = False
+
+    for k, v in _metaclass_collect_values(cls_dict, values, None, next_no_default):
+        fields.append(k)
+        if has_default:
+            defaults.append(v)
+        elif defaults:
+            raise Exception("Cannot specify required field %s after optional fields" % k)
+        has_default = True # unless next_no_default is called
+    
+    return tuple(fields), tuple(defaults)
+
 class EnumMetaclass(type):    
-    def __new__(meta, cls_name, cls_bases, cls_dict):
+    def __new__(meta, cls_name, cls_bases, cls_dict, values=None):
         if not cls_bases or Enum not in cls_bases:
             return super().__new__(meta, cls_name, cls_bases, cls_dict)
         
@@ -79,18 +126,14 @@ class EnumMetaclass(type):
         cls_bases = tuple(base for base in cls_bases if base != Enum)        
         enum_bases = tuple(base for base in cls_bases if base.__class__ == EnumMetaclass)
         
-        values = cls_dict.get("values")
-        if isinstance(values, str):
-            values = (values,)
-        if values is None:
-            raise Exception("Enum has no 'values'")
-                
-        if not isinstance(values, dict):
+        def next_auto(prev):
             if enum_bases:
                 raise Exception("Enum with bases must use explicit values") # TODO
-            values = {name: i for i, name in enumerate(values)}
-            
-        name_value_map = values
+            if not isinstance(prev, (int, float)):
+                raise Exception("Cannot follow %s with ..." % prev)
+            return prev + 1
+
+        name_value_map = dict(_metaclass_collect_values(cls_dict, values, 0, next_auto))
                 
         full_name_value_map = name_value_map.copy() if enum_bases else name_value_map
         for base in enum_bases:
@@ -141,11 +184,14 @@ class EnumMetaclass(type):
         enum_dict["_values"] = full_name_value_map
         
         for k, v in cls_dict.items():
-            if k == "values":
-                pass
+            if isinstance(v, KeepValue):
+                v = v.value
+            
+            if k in name_value_map:
+                continue
             elif k == "__slots__":
                 enum_dict[k] = enum_dict[k] + (v if isinstance(v, tuple) else (v,))
-            elif k in enum_dict or k in name_value_map:
+            elif k in enum_dict:
                 raise Exception(f"Cannot set {k} in Enum (but can override in inherited classes)")
             else:
                 enum_dict[k] = v
@@ -160,12 +206,14 @@ class EnumMetaclass(type):
 
 class Enum(metaclass=EnumMetaclass):
     """If a class has Enum as a baseclass, it's transformed into an enum.
-    The class should have a 'values' attribute - either a list of value names, or a {name: value} dictionary.
+    All non-private attributes of the class other than functions and descriptors become enum members.
+    Atributes with a value of ... receive values automatically.
     Inherited classes behave like regular classes unless they have Enum as a direct baseclass.
+    Advanced: PlainValue, values keyword parameter
     """
 
 class BitmaskMetaclass(type):
-    def __new__(meta, cls_name, cls_bases, cls_dict):
+    def __new__(meta, cls_name, cls_bases, cls_dict, values=None):
         if not cls_bases or Bitmask not in cls_bases:
             return super().__new__(meta, cls_name, cls_bases, cls_dict)
         
@@ -173,18 +221,14 @@ class BitmaskMetaclass(type):
         cls_bases = tuple(base for base in cls_bases if base != Bitmask)
         bitmask_bases = tuple(base for base in cls_bases if base.__class__ == BitmaskMetaclass)
         
-        fields = cls_dict.get("fields")
-        if fields is None:
-            raise Exception("Bitmask has no 'fields'")
-        
-        if not isinstance(fields, dict):
+        def next_auto(prev):
             if bitmask_bases:
-                raise Exception("Bitmask with bases must use explicit values") # TODO
-            if isinstance(fields, str):
-                fields = (fields,)
-            fields = {name: 1 << i for i, name in enumerate(fields)}
-            
-        name_mask_map = fields
+                raise Exception("Bitmasks with bases must use explicit values") # TODO
+            if not isinstance(prev, int) or (prev != 0 and not is_pow2(prev)):
+                raise Exception("Cannot follow %s with ..." % prev)
+            return prev << 1 if prev != 0 else 1
+
+        name_mask_map = dict(_metaclass_collect_values(cls_dict, values, 0, next_auto))
         
         full_name_mask_map = name_mask_map.copy() if bitmask_bases else name_mask_map
         for base in bitmask_bases:
@@ -308,8 +352,11 @@ class BitmaskMetaclass(type):
                 bitmask_dict[name] = bitfield_property(mask)
     
         for k, v in cls_dict.items():
-            if k == "fields":
-                pass
+            if isinstance(v, KeepValue):
+                v = v.value
+            
+            if k in name_mask_map:
+                continue
             elif k == "__slots__":
                 bitmask_dict[k] = bitmask_dict[k] + (v if isinstance(v, tuple) else (v,))
             elif k in bitmask_dict:
@@ -321,14 +368,16 @@ class BitmaskMetaclass(type):
 
 class Bitmask(metaclass=BitmaskMetaclass):
     """If a class has Bitmask as a baseclass, it's transformed into a bitmask.
-    The class should have a 'fields' attribute - either a list of field names, or a {name: bitmask} dictionary.
+    All non-private attributes of the class other than functions and descriptors become bitmask fields.
+    Atributes with a value of ... receive bits automatically.
     A bitmask is like a struct, but with its fields mapped into a single bitmask integer.
     Bitmasks can also be manipulated via: & | ^
     Inherited classes behave like regular classes unless they have Bitmask as a direct baseclass.
+    Advanced: PlainValue, values keyword parameter
     """
     
 class TupleMetaclass(type):
-    def __new__(meta, cls_name, cls_bases, cls_dict):
+    def __new__(meta, cls_name, cls_bases, cls_dict, values=None):
         if not cls_bases or Tuple not in cls_bases:
             return super().__new__(meta, cls_name, cls_bases, cls_dict)
         
@@ -337,17 +386,7 @@ class TupleMetaclass(type):
         tuple_bases = tuple(base for base in cls_bases if base.__class__ == TupleMetaclass)
         cls_bases = (tuple,) + cls_bases
         
-        fields = cls_dict.get("fields")
-        if isinstance(fields, str):
-            fields = (fields,)
-        if fields is None:
-            raise Exception("Tuple has no 'fields'")
-               
-        defaults = cls_dict.get("defaults") or ()
-        if isinstance(defaults, str):
-            defaults = (defaults,)
-        if len(defaults) > len(fields):
-            raise Exception("Tuple has too many 'defaults'")
+        fields, defaults = _metaclass_collect_fields(cls_dict, values)
                 
         if tuple_bases:
             if defaults:
@@ -385,9 +424,14 @@ class TupleMetaclass(type):
         for i, field in enumerate(fields):
             tuple_dict[field] = property(operator.itemgetter(start + i))
         
+        fields_set = set(fields)
+
         for k, v in cls_dict.items():
-            if k == "fields" or k == "defaults":
-                pass
+            if isinstance(v, KeepValue):
+                v = v.value
+            
+            if k in fields_set:
+                continue
             elif k == "__slots__":
                 tuple_dict[k] = tuple_dict[k] + (v if isinstance(v, tuple) else (v,))
             elif k in tuple_dict:
@@ -399,14 +443,15 @@ class TupleMetaclass(type):
     
 class Tuple(metaclass=TupleMetaclass):
     """If a class has Tuple as a baseclass, it's transformed into a named tuple.
-    The class should have a 'fields' attribute with a list of field names.
-    It can optionally have a 'defaults' attribute with a list of default values.
+    All non-private attributes of the class other than functions and descriptors become tuple fields.
+    Atributes with a value of ... are required, otherwise - optional with the given default value.
     The tuple behaves similarly to collections.namedtuple
     Inherited classes behave like regular classes unless they have Tuple as a direct baseclass.
+    Advanced: PlainValue, values keyword parameter
     """
         
 class StructMetaclass(type):
-    def __new__(meta, cls_name, cls_bases, cls_dict):
+    def __new__(meta, cls_name, cls_bases, cls_dict, values=None):
         if not cls_bases or Struct not in cls_bases:
             return super().__new__(meta, cls_name, cls_bases, cls_dict)
         
@@ -414,18 +459,8 @@ class StructMetaclass(type):
         cls_bases = tuple(base for base in cls_bases if base != Struct)
         struct_bases = tuple(base for base in cls_bases if base.__class__ == StructMetaclass)
         
-        fields = cls_dict.get("fields")
-        if isinstance(fields, str):
-            fields = (fields,)
-        if fields is None:
-            raise Exception("Struct has no 'fields'")
-               
-        defaults = cls_dict.get("defaults") or ()
-        if isinstance(defaults, str):
-            defaults = (defaults,)
-        if len(defaults) > len(fields):
-            raise Exception("Struct has too many 'defaults'")
-               
+        fields, defaults = _metaclass_collect_fields(cls_dict, values)
+        
         if struct_bases:
             if defaults:
                 raise Exception("Cannot use defaults with bases")
@@ -455,9 +490,14 @@ class StructMetaclass(type):
         struct_dict["__slots__"] = fields
         struct_dict["_fields"] = all_fields
         
+        fields_set = set(fields)
+        
         for k, v in cls_dict.items():
-            if k == "fields" or k == "defaults":
-                pass
+            if isinstance(v, KeepValue):
+                v = v.value
+            
+            if k in fields_set:
+                continue
             elif k == "__slots__":
                 struct_dict[k] = struct_dict[k] + (v if isinstance(v, tuple) else (v,))
             elif k in struct_dict:
@@ -469,10 +509,11 @@ class StructMetaclass(type):
 
 class Struct(metaclass=StructMetaclass):
     """If a class has Struct as a baseclass, it's transformed into a struct.
-    The class should have a 'fields' attribute with a list of field names.
-    It can optionally have a 'defaults' attribute with a list of default values.
+    All non-private attributes of the class other than functions and descriptors become struct fields.
+    Atributes with a value of ... are required, otherwise - optional with the given default value.
     A struct is like a mutable named tuple, except equality goes by identity.
     Inherited classes behave like regular classes unless they have Struct as a direct baseclass.
+    Advanced: PlainValue, values keyword parameter
     """
 
 def SymbolClass(name):
@@ -587,10 +628,12 @@ class post_property_change(post_property_set):
             m.post_func(obj, old_value, value)
                 
 def staticclass(cls):
-    """Class decorator that turns all methods into static methods"""
+    """Class decorator that turns all methods into static methods, and properties into static properties"""
     for name, value in getattrs(cls):
         if callable(value):
             setattr(cls, name, staticmethod(value))
+        elif isinstance(value, property):
+            setattr(cls, name, staticproperty(value.fget))
     return cls
 
 defaultdict = collections.defaultdict
@@ -1259,6 +1302,14 @@ class BinaryBuffer:
     def w_zero(m, addr, count):
         m.w_fill(addr, 0, count)
 
+def e(value):
+    """Return if 'value' is not None (for my sanity)"""
+    return value is not None
+
+def default(value, defval):
+    """Return 'defval' if 'value' is None"""
+    return value if e(value) else defval
+
 def nop(value):
     """The identity function"""
     return value
@@ -1441,7 +1492,7 @@ def getattrs(obj, private = True, magic = False):
 
 class Point(Tuple):
     """An (x,y) tuple representing a 2d point and supporting arithmetic operations"""
-    fields = ("x", "y")
+    x = y = ...
 
     def __add__(m, other):
         assert isinstance(other, Point)
@@ -1554,7 +1605,7 @@ Point.zero = Point(0, 0)
 
 class Rect(Tuple):
     """An (x,y,w,h) tuple representing a 2d rectangle"""
-    fields = ("x", "y", "w", "h")
+    x = y = w = h = ...
 
     @property
     def x2(m):
@@ -1798,7 +1849,7 @@ class PartialIO(io.RawIOBase):
 class SegmentedIO(io.RawIOBase):
     """A stream that combines several existing streams"""
     class Segment(Tuple):
-        fields = ("start", "file", "offset", "size")
+        start = file = offset = size = ...
     
     def __init__(m):
         m.segments = []
@@ -2258,14 +2309,6 @@ bound = clamp # old/dup name
 def lerp(start, end, portion):
     """Return the linear interpolation between 'start' and 'end'"""
     return start + portion * (end - start)
-
-def e(value):
-    """Return if 'value' is not None (for my sanity)"""
-    return value is not None
-
-def default(value, defval):
-    """Return 'defval' if 'value' is None"""
-    return value if e(value) else defval
 
 def closure(__func, *args, **kwargs):
     """Create a lambda that applies the given arguments to 'func'"""

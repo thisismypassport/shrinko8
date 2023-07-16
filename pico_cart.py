@@ -6,17 +6,17 @@ import hashlib, base64
 
 class CartFormat(Enum):
     """An enum representing the supported cart formats"""
-    values = ("auto", "p8", "png", "lua", "rom", "tiny_rom", "clip", "url", "code", "js", "pod")
+    auto = p8 = png = lua = rom = tiny_rom = clip = url = code = js = pod = ...
 
-    _input_names = values
-    _output_names = tuple(value for value in values if value not in ("auto", "js", "pod"))
-    _ext_names = tuple(value for value in values if value not in ("auto", "tiny_rom", "code"))
-    _src_names = ("p8", "lua", "code")
-    _pack_names = ("js", "pod")
+CartFormat.input_names = tuple(CartFormat._values.keys())
+CartFormat.output_names = tuple(name for name in CartFormat.input_names if name not in ("auto", "js", "pod"))
+CartFormat.ext_names = tuple(name for name in CartFormat.input_names if name not in ("auto", "tiny_rom", "code"))
+CartFormat.src_names = ("p8", "lua", "code")
+CartFormat.pack_names = ("js", "pod")
 
 class CodeMapping(Tuple):
     """Specifies that code starting at index 'idx' maps to the given source starting at index 'src_idx'"""
-    fields = ("idx", "src_path", "src_code", "src_idx", "src_line")
+    idx = src_path = src_code = src_idx = src_line = ...
 
 class Cart:
     """A pico8 cart, including its code (as a p8str), rom (as a Memory), and more"""
@@ -653,8 +653,9 @@ def trim_cart_to_tab(cart, target_tab):
 class PicoPreprocessor:
     """The standard pico8 preprocessor (supporting #include and nothing else)"""
 
-    def __init__(m, strict=True):
+    def __init__(m, strict=True, include_notifier=None):
         m.strict = strict
+        m.include_notifier = include_notifier
         
     def start(m, path, code):
         pass
@@ -673,6 +674,9 @@ class PicoPreprocessor:
             inc_path = inc_path.replace("\\", "/")
             if not path_exists(inc_path):
                 throw("cannot open included cart at: %s" % inc_path)
+        
+        if m.include_notifier:
+            m.include_notifier(inc_path)
 
         inc_cart = read_cart(inc_path, preprocessor=m)
         if e(tab_idx):

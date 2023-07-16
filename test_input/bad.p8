@@ -8,7 +8,8 @@ function f0()
   local function f12() end
 end
 function f2()
-  return t()
+  local line = 1
+  return t(line)
 end
 function f2d1()
   function band() end

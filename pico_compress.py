@@ -167,10 +167,10 @@ def get_compressed_size(r):
         return len(r.zbytes(k_code_size))
 
 class Lz77Tuple(Tuple):
-    fields = ("off", "cnt") # the subtracted values, not the real values
+    off = cnt = ... # the subtracted values, not the real values
 
 class Lz77Advance(Tuple):
-    fields = ("i", "cost", "ctxt", "item", "prev")
+    i = cost = ctxt = item = prev = ...
 
 def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, max_o_steps=None, fast_c=None, no_repeat=False, litblock_idxs=None):
     min_matches = defaultdict(list)

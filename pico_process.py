@@ -79,7 +79,7 @@ def get_tab_line_col(text, idx, start=0): # (0-based)
 
 class SourceLocation(Tuple):
     """A location in a source file (optionally with a tab)"""
-    fields = ("path", "tab", "line", "col") # (0-based)
+    path = tab = line = col = ... # (0-based)
 
 def get_source_location(path, text, idx, start_line=0, tabs=False):
     if tabs:
@@ -90,7 +90,7 @@ def get_source_location(path, text, idx, start_line=0, tabs=False):
 
 class PicoSource: # keep this light - created for temp. tokenizations
     """A pico8 source file - e.g. either the main one or an included file"""
-    __slots__ = ("path", "text")
+    path = text = ...
 
     def __init__(m, path, text):
         m.path, m.text = path, text
@@ -173,7 +173,7 @@ class PicoContext:
         m.version = version
 
 class ErrorFormat(Enum):
-    values = ("common", "absolute", "tabbed")
+    common = absolute = tabbed = ...
 
 class Error:
     """An error (or warning) to be reported together with where in the source it occured"""

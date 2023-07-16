@@ -3,11 +3,10 @@ from utils import *
 # dummy file, without sdl2 dependency
 
 class BlendMode(Enum):
-    values = ("none", "blend")
+    none = blend = ...
 
 class Color(Tuple):
-    fields = ("r", "g", "b", "a")
-    defaults = (0xff,)
+    r = g = b = ...; a = 0xff
 
 def _to_pil_tuple(obj):
     if obj is None:

@@ -107,7 +107,7 @@ class TokenNodeBase:
         m.extra_children.append(child)
 
 class TokenType(Enum):
-    values = ("number", "string", "ident", "keyword", "punct")
+    number = string = ident = keyword = punct = ...
 
 class Token(TokenNodeBase):
     """A pico8 token, at 'source'.text['idx':'endidx'] (which is equal to its 'value'). Its 'type' is a TokenType.
@@ -148,7 +148,7 @@ class Token(TokenNodeBase):
 Token.none = Token.dummy(None)
 
 class CommentHint(Enum):
-    values = ("none", "preserve", "lint", "keep")
+    none = preserve = lint = keep = ...
 
 class Comment(TokenNodeBase):
     """A pico8 comment, optionally holding some kind of hint"""

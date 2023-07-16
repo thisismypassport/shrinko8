@@ -7,34 +7,34 @@ test_input/bad.p8:6:6: Identifier 'y' not found - did you mean to use 'local' to
 test_input/bad.p8:6:9: Built-in global 't' assigned outside _init - did you mean to use 'local'?
 test_input/bad.p8:7:12: Identifier 'f1' not found - did you mean to use 'local function' to define it?
 test_input/bad.p8:8:18: Local 'f12' isn't used
-test_input/bad.p8:14:12: Built-in global 'band' assigned outside _init - did you mean to use 'local function'?
-test_input/bad.p8:21:9: Local 'a' isn't used
-test_input/bad.p8:21:12: Local 'b' is only ever assigned to, never used
-test_input/bad.p8:25:13: Local 'd' is only ever assigned to, never used
-test_input/bad.p8:25:17: Local 'f' isn't used
-test_input/bad.p8:27:5: Label 'lbl' isn't used
-test_input/bad.p8:28:24: Label 'lbl' has the same name as a label declared in a parent scope
-test_input/bad.p8:33:7: Local 'uu' isn't used
-test_input/bad.p8:36:14: Label 'dup' has the same name as a label declared at the top level
-test_input/bad.p8:37:9: Local 'z' isn't used
-test_input/bad.p8:37:12: Local 'g_a' has the same name as a global
-test_input/bad.p8:37:12: Local 'g_a' isn't used
-test_input/bad.p8:37:17: Local 'uu' has the same name as a local declared at the top level
-test_input/bad.p8:37:17: Local 'uu' isn't used
-test_input/bad.p8:38:7: Local 'i' isn't used
-test_input/bad.p8:39:7: Local 'i' has the same name as a local declared in a parent scope
+test_input/bad.p8:15:12: Built-in global 'band' assigned outside _init - did you mean to use 'local function'?
+test_input/bad.p8:22:9: Local 'a' isn't used
+test_input/bad.p8:22:12: Local 'b' is only ever assigned to, never used
+test_input/bad.p8:26:13: Local 'd' is only ever assigned to, never used
+test_input/bad.p8:26:17: Local 'f' isn't used
+test_input/bad.p8:28:5: Label 'lbl' isn't used
+test_input/bad.p8:29:24: Label 'lbl' has the same name as a label declared in a parent scope
+test_input/bad.p8:34:7: Local 'uu' isn't used
+test_input/bad.p8:37:14: Label 'dup' has the same name as a label declared at the top level
+test_input/bad.p8:38:9: Local 'z' isn't used
+test_input/bad.p8:38:12: Local 'g_a' has the same name as a global
+test_input/bad.p8:38:12: Local 'g_a' isn't used
+test_input/bad.p8:38:17: Local 'uu' has the same name as a local declared at the top level
+test_input/bad.p8:38:17: Local 'uu' isn't used
 test_input/bad.p8:39:7: Local 'i' isn't used
-test_input/bad.p8:40:16: Label 'dup' has the same name as a label declared in a parent scope
-test_input/bad.p8:41:11: Local 'i' has the same name as a local declared in the same scope
-test_input/bad.p8:41:11: Local 'i' isn't used
-test_input/bad.p8:42:20: Local 'finner' isn't used
-test_input/bad.p8:42:27: Local 'z' has the same name as a local declared in a parent function
-test_input/bad.p8:42:27: Local 'z' isn't used
-test_input/bad.p8:43:18: Label 'dup' has the same name as a label declared in a parent function
-test_input/bad.p8:54:18: Local 'unused' isn't used
+test_input/bad.p8:40:7: Local 'i' has the same name as a local declared in a parent scope
+test_input/bad.p8:40:7: Local 'i' isn't used
+test_input/bad.p8:41:16: Label 'dup' has the same name as a label declared in a parent scope
+test_input/bad.p8:42:11: Local 'i' has the same name as a local declared in the same scope
+test_input/bad.p8:42:11: Local 'i' isn't used
+test_input/bad.p8:43:20: Local 'finner' isn't used
+test_input/bad.p8:43:27: Local 'z' has the same name as a local declared in a parent function
+test_input/bad.p8:43:27: Local 'z' isn't used
+test_input/bad.p8:44:18: Label 'dup' has the same name as a label declared in a parent function
+test_input/bad.p8:55:18: Local 'unused' isn't used
 test_input/badinc.p8.png:2:7: Local 'from_include' has the same name as a local declared in the same scope
 test_input/badinc.p8.png:2:7: Local 'from_include' isn't used
 test_input/badinc.lua:29:7: Local 'inc_tab_e' isn't used
 test_input/badinc.lua:19:7: Local 'inc_tab_9' isn't used
-test_input/bad.p8:80:7: Local 'tab_b' isn't used
-test_input/bad.p8:90:7: Local 'tab_still_f' isn't used
+test_input/bad.p8:81:7: Local 'tab_b' isn't used
+test_input/bad.p8:91:7: Local 'tab_still_f' isn't used

@@ -46,8 +46,8 @@ k_ctrl_cmds = Dynamic(
 k_ctrl_flag_cmds = (k_ctrl_cmds.wide, k_ctrl_cmds.tall, k_ctrl_cmds.stripe, k_ctrl_cmds.pinball, k_ctrl_cmds.invert, k_ctrl_cmds.border, k_ctrl_cmds.solid)
 
 class PicoFont(Tuple):
-    fields = ("width", "height", "wide_width", "tab_width", "char_widths", "default_attrs", "is_custom")
-    defaults = (4, 6, 8, 16, None, None, True)
+    width = 4; height = 6; wide_width = 8; tab_width = 16
+    char_widths = None; default_attrs = None; is_custom = True
 
 k_pico_font = PicoFont(is_custom=False)
 
