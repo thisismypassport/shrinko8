@@ -112,9 +112,9 @@ def run():
              "--focus-chars", pico8_output="output.p8.printh")
     run_test("auto_minrename-ob", "input.p8", "output_minrename-ob.p8", "--minify-safe-only",
              "--focus-compressed", pico8_output="output.p8.printh")
-    run_test("minminify", "input.p8", "output_min.p8", "--minify-safe-only",
+    run_test("minminify", "input.p8", "output_min.p8", "--minify-safe-only", "--focus-tokens",
              "--no-minify-rename", "--no-minify-lines", pico8_output="output.p8.printh")
-    run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify",
+    run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify", "--focus-tokens", "--focus-chars",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename")
              # pico8_output="output.p8.printh" - broken by comment bug in pico8 v0.2.5g...
     if run_test("test", "test.p8", "test.p8", "--minify", pico8_output_val="DONE"):

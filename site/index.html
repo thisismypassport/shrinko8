@@ -214,11 +214,14 @@ It can be a .p8 file, a .png cart, and more."></div>
                 for what can go wrong with aggresive minification and how to resolve it.
               </div>
 
-              <label style="display: block; margin-top: 10px">Focus on minifying:
+              <label style="display: block; margin-top: 10px">Focus on reducing:
                 <select id="minify-focus">
                   <option value="">(Balanced)</option>
+                  <option value="--focus-tokens">Tokens</option>
                   <option value="--focus-chars">Character count</option>
                   <option value="--focus-compressed">Compressed size</option>
+                  <option value="--focus-tokens --focus-chars">Tokens & Character count</option>
+                  <option value="--focus-tokens --focus-compressed">Tokens & Compressed size</option>
                 </select>
               </label>
             </div>

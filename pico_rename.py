@@ -92,13 +92,11 @@ class TableMemberPairIncludeExcludeMapping:
         
         return bool(value)
 
-def rename_tokens(ctxt, root, rename):
+def rename_tokens(ctxt, root, rename_opts):
     global_strings_cpy = ctxt.builtins | global_callbacks
     preserved_globals = IncludeExcludeMapping(global_strings_cpy)
     preserved_members = TableMemberPairIncludeExcludeMapping(members=member_strings)
-    members_as_globals = safe_only = False
-    focus = Focus.none
-
+    
     # read rename options (e.g. what to preserve)
 
     def add_rule(rule):
@@ -117,13 +115,11 @@ def rename_tokens(ctxt, root, rename):
         else:
             preserved_globals.set(rule, value)
 
-    if isinstance(rename, dict):
-        safe_only = rename.get("safe-only", False)
-        focus = Focus(rename.get("focus", "none"))
-        rules_input = rename.get("rules")
-        if rules_input:
-            for rule in rules_input:
-                add_rule(rule)
+    members_as_globals = False
+    safe_only = rename_opts.get("safe-only", False)
+    focus = Focus(rename_opts.get("focus"))
+    for rule in rename_opts.get("rules", ()):
+        add_rule(rule)
 
     # collect char histogram
     # (reusing commonly used chars in our new identifiers lowers compressed size)
@@ -154,12 +150,12 @@ def rename_tokens(ctxt, root, rename):
     root.traverse_tokens(collect_chars)
 
     # TODO: something must still be unoptimal with char_uses collection, as hardcoding k_identifier_chars is more helpful than going by uses...
-    if focus == Focus.chars:
+    if focus.chars:
         k_identifier_chars = string.ascii_letters + string.digits + "_\x1e\x1f" + "".join(chr(x) for x in range(0x80,0x100))
-    elif focus == Focus.none:
-        k_identifier_chars = string.ascii_letters + string.digits + "_"
-    else:
+    elif focus.compressed:
         k_identifier_chars = string.ascii_lowercase + string.digits + "_"
+    else:
+        k_identifier_chars = string.ascii_letters + string.digits + "_"
     
     ident_chars = []
     for ch in sorted(char_uses, key=lambda k: char_uses[k], reverse=True):

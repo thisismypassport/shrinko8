@@ -20,6 +20,7 @@ parser.add_argument("--only-safe-minify", action="store_true", help="only test s
 parser.add_argument("--only-unsafe-minify", action="store_true", help="only test unsafe minification")
 parser.add_argument("--none", action="store_true", help="do not test anything (allows running pico8 against input)")
 parser.add_argument("--unminify", action="store_true", help="test unminify instead of minify")
+parser.add_argument("-ot", "--focus-tokens", action="store_true", help="focus on token count")
 parser.add_argument("-oc", "--focus-chars", action="store_true", help="focus on char count")
 parser.add_argument("-ob", "--focus-compressed", action="store_true", help="focus on compressed size")
 parser.add_argument("-oa", "--focus-all", action="store_true", help="test all focuses")
@@ -110,7 +111,7 @@ def init_for_process(opts):
 def run_for_cart(args):
     (cart, cart_input, cart_output, cart_compare, cart_unfocused, focus) = args
     
-    short_prefix = "c" if focus == "chars" else "b" if focus == "compressed" else ""
+    short_prefix = "c" if focus == "chars" else "b" if focus == "compressed" else "t" if focus == "tokens" else ""
 
     basepath = path_join("test_bbs", cart)
     download_path = basepath + ".dl.png"
@@ -323,11 +324,11 @@ def run(focus):
 
 def run_all():
     if g_opts.focus_all:
-        for focus in [None, "chars", "compressed"]:
+        for focus in [None, "tokens", "chars", "compressed"]:
             print("Focus %s:" % focus)
             run(focus)
     else:
-        focus = "chars" if g_opts.focus_chars else "compressed" if g_opts.focus_compressed else None
+        focus = "chars" if g_opts.focus_chars else "compressed" if g_opts.focus_compressed else "tokens" if g_opts.focus_tokens else None
         run(focus)
 
 if __name__ == "__main__":

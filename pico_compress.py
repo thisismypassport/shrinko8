@@ -21,8 +21,9 @@ def print_compressed_size(size, **kwargs):
 def write_code_size(cart, handler=None, input=False):
     print_code_size(len(cart.code), prefix="input" if input else None, handler=handler)
 
-def write_compressed_size(cart, handler=True, **opts):
-    compress_code(BinaryWriter(BytesIO()), cart.code, size_handler=handler, force_compress=True, fail_on_error=False, **opts)
+def write_compressed_size(cart, handler=True, debug_handler=None, **opts):
+    compress_code(BinaryWriter(BytesIO()), cart.code, size_handler=handler, debug_handler=debug_handler,
+                  force_compress=True, fail_on_error=False, **opts)
 
 k_old_code_table = [
     None, '\n', ' ', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', # 00

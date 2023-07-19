@@ -5,8 +5,9 @@ from pico_tokenize import StopTraverse, k_skip_children
 from pico_parse import Node, NodeType, VarKind
 from pico_parse import k_unary_ops_prec, k_binary_op_precs, k_right_binary_ops
 
-class Focus(Enum):
-    none = chars = compressed = ...
+class Focus(Bitmask):
+    chars = compressed = tokens = ...
+    none = 0
 
 # essentially only returns decvalue right now, given mostly non-fract. inputs
 # TODO: test with fract-ish inputs to see what's best to do.
@@ -100,7 +101,7 @@ def minify_string_literal(token, focus, value=None):
     if value is None:
         value = parse_string_literal(token.value)
     
-    if focus == Focus.chars:
+    if focus.chars:
         return format_string_literal(value)
     else:
         # haven't found a good balanced heuristic for 'long' yet
@@ -123,7 +124,7 @@ def is_vararg_expr(node):
 
 def minify_needs_comments(minify):
     # returns whether minify_code makes use of the tokens' comments
-    return isinstance(minify, dict) and not minify.get("wspace", True)
+    return not minify.get("wspace", True)
     
 def next_vline(vline):
     # in py3.9, could use math.nextafter...
@@ -176,7 +177,7 @@ def analyze_code_for_minify(root, focus):
                         has_empties = True
                 
                 # empty bodies require extra ';'s to shorten, which worsens compression
-                is_short = not has_shorthand and not (has_empties and focus != Focus.chars)
+                is_short = not has_shorthand and not (has_empties and not focus.chars)
                 if is_short:
                     shortenables.add(node)
             
@@ -189,9 +190,11 @@ def analyze_code_for_minify(root, focus):
 
     new_shorts = {}
     for type in (NodeType.if_, NodeType.while_):
-        if focus == Focus.chars or not longs[type] or (focus == Focus.none and longs[type] * 1.5 <= shorts[type]):
+        # if everything can be made short, that's always best.
+        # else, consistency is better for compression while more shorts are better for chars
+        if focus.chars or not longs[type] or (not focus.compressed and longs[type] * 1.5 <= shorts[type]):
             new_shorts[type] = True
-        elif focus == Focus.compressed:
+        elif focus.compressed:
             new_shorts[type] = False
         else:
             new_shorts[type] = None # leave alone
@@ -375,26 +378,21 @@ def minify_merge_assignments(prev, next, ctxt, safe_only):
 
     next.erase()
 
-def minify_code(source, ctxt, root, minify):
-
-    safe_only = False
-    minify_lines = minify_wspace = minify_tokens = minify_comments = True
-    focus = Focus.none
-    if isinstance(minify, dict):
-        safe_only = minify.get("safe-only", False)
-        minify_lines = minify.get("lines", True)
-        minify_wspace = minify.get("wspace", True)
-        minify_tokens = minify.get("tokens", True)
-        minify_comments = minify.get("comments", True)
-        focus = Focus(minify.get("focus", "none"))
+def minify_code(ctxt, root, minify_opts):
+    safe_only = minify_opts.get("safe-only", False)
+    minify_lines = minify_opts.get("lines", True)
+    minify_wspace = minify_opts.get("wspace", True)
+    minify_tokens = minify_opts.get("tokens", True)
+    minify_comments = minify_opts.get("comments", True)
+    minify_reorder = minify_opts.get("reorder", True)
+    focus = Focus(minify_opts.get("focus"))
 
     analysis = analyze_code_for_minify(root, focus)
 
     shorthand_vlines = set()
         
     def fixup_nodes_pre(node):
-        if minify_tokens:  
-
+        if minify_tokens:
             # remove shorthands
 
             if node.type in (NodeType.if_, NodeType.while_) and node.short and (analysis.new_shorts[node.type] == False):
@@ -402,7 +400,6 @@ def minify_code(source, ctxt, root, minify):
         
     def fixup_nodes_post(node):
         if minify_tokens:
-
             # create shorthands
             
             if node.type in (NodeType.if_, NodeType.while_) and not node.short and \
@@ -410,9 +407,10 @@ def minify_code(source, ctxt, root, minify):
                 vline = minify_change_shorthand(node, True)
                 shorthand_vlines.add(vline)
 
+        if minify_reorder:
             # merge assignments
 
-            if False: # node.type in (NodeType.assign, NodeType.local):
+            if node.type == NodeType.local or (focus.tokens and node.type == NodeType.assign):
                 prev = node.prev_sibling()
                 while prev and prev.type == None: # skip erased
                     prev = prev.prev_sibling()
@@ -528,7 +526,7 @@ def output_min_wspace(root, shorthand_vlines, minify_lines=True):
 
         # (modified tokens may require whitespace not previously required - e.g. 0b/0x)
         if (prev_token.endidx < token.idx or prev_token.modified or token.modified) and prev_token.value:
-            # TODO: always adding \n before if/while won a few bytes on my code - check if this is consistent & helpful.
+            # TODO: can we systemtically add whitespace to imrpove compression? (failed so far)
 
             if prev_token.vline != token.vline and (not minify_lines or prev_token.vline in shorthand_vlines):
                 output.append("\n")

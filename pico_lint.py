@@ -2,19 +2,14 @@ from utils import *
 from pico_tokenize import CommentHint, is_identifier
 from pico_parse import VarKind, NodeType, Global
 
-def lint_code(ctxt, root, lint_rules):
+def lint_code(ctxt, root, lint_opts):
     errors = []
     builtin_globals = ctxt.builtins
-    custom_globals = set()
 
-    lint_undefined = lint_unused = lint_duplicate = True
-    if isinstance(lint_rules, dict):
-        lint_undefined = lint_rules.get("undefined", True)
-        lint_unused = lint_rules.get("unused", True)
-        lint_duplicate = lint_rules.get("duplicate", True)
-        globals = lint_rules.get("globals")
-        if globals:
-            custom_globals.update(globals)
+    lint_undefined = lint_opts.get("undefined", True)
+    lint_unused = lint_opts.get("unused", True)
+    lint_duplicate = lint_opts.get("duplicate", True)
+    custom_globals = set(lint_opts.get("globals", ()))
 
     def add_error(msg, node):
         err = Error(msg, node)

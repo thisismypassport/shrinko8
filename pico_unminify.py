@@ -5,11 +5,8 @@ from pico_parse import NodeType
 def is_node_function_stmt(node):
     return node.type == NodeType.function and node.target
 
-def unminify_code(root, unminify):
-    
-    indent_delta = 2
-    if isinstance(unminify, dict):
-        indent_delta = unminify.get("indent", indent_delta)
+def unminify_code(root, unminify_opts):    
+    indent_delta = unminify_opts.get("indent", 2)
 
     output = []
     prev_token = Token.none

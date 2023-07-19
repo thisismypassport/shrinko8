@@ -200,12 +200,18 @@ class Error:
 def print_token_count(num_tokens, **kwargs):
     print_size("tokens", num_tokens, 8192, **kwargs)
 
+def fixup_process_args(args):
+    if args is True:
+        args = {}
+    args_set = isinstance(args, dict)
+    return args_set, args
+
 def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, rename=False, unminify=False, 
                  stop_on_lint=True, fail=True, want_count=True):
-    need_lint = lint not in (None, False)
-    need_minify = minify not in (None, False)
-    need_rename = rename not in (None, False)
-    need_unminify = unminify not in (None, False)
+    need_lint, lint = fixup_process_args(lint)
+    need_minify, minify = fixup_process_args(minify)
+    need_rename, rename = fixup_process_args(rename)
+    need_unminify, unminify = fixup_process_args(unminify)
 
     if not need_lint and not need_minify and not need_unminify and not (want_count and (count or input_count)):
         return True, ()
@@ -233,7 +239,7 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
                 if need_rename:
                     rename_tokens(ctxt, root, rename)
 
-                new_text = minify_code(source, ctxt, root, minify)
+                new_text = minify_code(ctxt, root, minify)
             
             if need_unminify:
                 new_text = unminify_code(root, unminify)

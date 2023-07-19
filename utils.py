@@ -241,8 +241,12 @@ class BitmaskMetaclass(type):
         def __init__(m, value = None):
             if value is None:
                 m.value = 0
-            elif (value & full_mask) == value:
+            elif isinstance(value, int) and (value & full_mask) == value:
                 m.value = value
+            elif isinstance(value, str) and value in full_name_mask_map:
+                m.value = full_name_mask_map[value]
+            elif isinstance(value, (tuple, list)):
+                m.value = reduce(lambda x,y:x|y, (full_name_mask_map[part] for part in value), 0)
             else:
                 raise ValueError("%s not value of %s" % (value, cls_name))
     

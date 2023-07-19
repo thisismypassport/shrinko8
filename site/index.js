@@ -469,7 +469,7 @@ async function doMinify() {
 
         let focus = $("#minify-focus").val();
         if (focus) {
-            args.push(focus);
+            args.push(...focus.split(" "));
         }
 
         let encoding = isFormatText(format) ? "utf8" : "binary";

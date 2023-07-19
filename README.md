@@ -54,8 +54,9 @@ You can also minify to a p8 file (or a lua file), e.g:
 
 You can specify what the minification should focus on reducing via additional command-line options:
 
-* `--focus-chars` : Focus on reducing the amount of uncompressed characters, even if the compressed size grows
-* `--focus-compressed` : Focus on reducing the compressed size of the code, even if the amount of characters grows
+* `--focus-tokens` : Focus on reducing the amount of tokens, even if the compressed size or amount of characters grow. Can be combined with the below.
+* `--focus-chars` : Focus on reducing the amount of uncompressed characters, even if the compressed size grows.
+* `--focus-compressed` : Focus on reducing the compressed size of the code, even if the amount of characters grows.
 * By default, the minification is balanced for both metrics.
 
 You can disable parts of the minification process via additional command-line options:
@@ -65,6 +66,7 @@ You can disable parts of the minification process via additional command-line op
 * `--no-minify-lines` : Disable removal of line breaks
 * `--no-minify-comments` : Disable removal of comments (requires `--no-minify-spaces`)
 * `--no-minify-tokens` : Disable removal and alteration of tokens (not including identifier renaming)
+* `--no-minify-reoder` : Disable reordering of statements
 
 You can configure how identifier renaming is done:
 
