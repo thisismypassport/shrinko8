@@ -114,7 +114,7 @@ class Token(TokenNodeBase):
     For number/string tokens, the actual value can be read via parse_fixnum/parse_string_literal
     Its children are the comments *before* it, if any."""
 
-    def __init__(m, type, value, source, idx, endidx, vline, modified=False):
+    def __init__(m, type, value, source, idx, endidx, vline=None, modified=False):
         super().__init__()
         m.type, m.value, m.source, m.idx, m.endidx, m.vline, m.modified = type, value, source, idx, endidx, vline, modified
     
@@ -125,11 +125,7 @@ class Token(TokenNodeBase):
     def erase(m, expected=None):
         if expected != None:
             assert m.value == expected
-        m.modify(None)
-
-    @property
-    def endvline(m): # compat. with Node
-        return m.vline
+        m.type, m.value, m.modified = None, None, True
 
     @classmethod
     def dummy(m, source, idx=None, vline=None):
@@ -138,12 +134,13 @@ class Token(TokenNodeBase):
             vline = sys.maxsize if source else 0
         return Token(None, None, source, idx, idx, vline)
 
+    # note: vline is kept only for initial parsing and is not to be relied upon
+
     @classmethod
     def synthetic(m, type, value, other, append=False, prepend=False):
         idx = other.endidx if append else other.idx
         endidx = other.idx if prepend else other.endidx
-        vline = other.endvline if append else other.vline
-        return Token(type, value, other.source, idx, endidx, vline, modified=True)
+        return Token(type, value, other.source, idx, endidx, modified=True)
 
 Token.none = Token.dummy(None)
 

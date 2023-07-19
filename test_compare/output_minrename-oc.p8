@@ -18,7 +18,7 @@ local e={assert=assert,add=add}do local _ENV=e assert(add({},1)==1)end do local 
 while(1==0)sin=cos cos=sin
 if(1==2);
 if(1==2)sin=cos cos=sin
-local e={1},{1,2,3,4}local e=1~=2local n=1,1.2345,4660,4660.33777,-1,-1.2345,-4660.33777,32776,0xf000.f,-39322,-65535.99999local n="hi","hello",'"hi"',"'hello'",'"hi"',"'hi'","","","a\nb","\\","\0¹²³⁴⁵⁶","¹²³⁴⁵⁶⁷",[[\\\\\\]],[[
+local e={1},{1,2,3,4}local e,n=1~=2,1,1.2345,4660,4660.33777,-1,-1.2345,-4660.33777,32776,0xf000.f,-39322,-65535.99999local n="hi","hello",'"hi"',"'hello'",'"hi"',"'hi'","","","a\nb","\\","\0¹²³⁴⁵⁶","¹²³⁴⁵⁶⁷",[[\\\\\\]],[[
 
 
 

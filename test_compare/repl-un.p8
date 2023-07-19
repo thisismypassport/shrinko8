@@ -29,8 +29,7 @@ function e(e, n)
   return sub(e, n, n)
 end
 
-local nm, n7 = split "a,b,f,n,r,t,v,\\,\",',\n,*,#,-,|,+,^", split "⁷,⁸,ᶜ,\n,\r,	,ᵇ,\\,\",',\n,¹,²,³,⁴,⁵,⁶"
-local nx = {}
+local nm, n7, nx = split "a,b,f,n,r,t,v,\\,\",',\n,*,#,-,|,+,^", split "⁷,⁸,ᶜ,\n,\r,	,ᵇ,\\,\",',\n,¹,²,³,⁴,⁵,⁶", {}
 for n = 1, #nm do
   nx[nm[n]] = n7[n]
 end
@@ -136,8 +135,7 @@ function Y(t, n, l, r)
 end
 
 function nn(l, c)
-  local n, s, i = 1, 1
-  local o, h, b, p, u = {}, {}, {}, {}
+  local n, s, o, h, b, p, u, i = 1, 1, {}, {}, {}, {}
 
   local function d(n, e)
     if c then
@@ -148,8 +146,7 @@ function nn(l, c)
 
   while n <= #l do
     i = n
-    local t = e(l, n)
-    local a, r
+    local t, a, r = e(l, n)
     if f(t, " \r	ᶜᵇ\n") then
       n += 1
       a = true
@@ -278,9 +275,7 @@ nt = split "end,else,elseif,until"
 
 function nl(n, j)
   local o, F, l = nn(n, true)
-  local n, f, s, y, h, Z = 1, 0, 0
-  local t, b
-  local v, d, p, x = {}
+  local n, f, s, v, d, p, x, t, b, y, h, Z = 1, 0, 0, {}
 
   local function i(e)
     ne(e, l[n - 1] or 1)
@@ -377,8 +372,7 @@ function nl(n, j)
   end
 
   local function m(l, t)
-    local e = {}
-    local n = #t
+    local e, n = {}, #t
     for n = 1, n - 1 do
       e[n] = t[n](l)
     end
@@ -437,8 +431,7 @@ function nl(n, j)
   end
 
   local function G()
-    local r, d = {}, {}
-    local c, a = 1
+    local r, d, c, a = {}, {}, 1
     while not e "}" do
       a = nil
       local i, f
@@ -559,8 +552,7 @@ function nl(n, j)
       local l = nu(e)
       local i = #l
       local n = function(...)
-        local t = pack(...)
-        local e = l
+        local t, e = pack(...), l
         if #e ~= i then
           local n = {}
           for t = 0, i do
@@ -948,8 +940,7 @@ function nl(n, j)
     if e "function" then
       return E(true, true)
     else
-      local n = k(u)
-      local e = e "=" and k(t) or {}
+      local n, e = k(u), e "=" and k(t) or {}
       A()
       for e = 1, #n do
         d[n[e]] = f
@@ -960,8 +951,7 @@ function nl(n, j)
         end
       else
         return function(t)
-          local l = {}
-          local r = m(t, e)
+          local l, r = {}, m(t, e)
           for e = 1, #n do
             l[n[e]] = r[e]
           end
@@ -982,9 +972,7 @@ function nl(n, j)
   end
 
   local function F()
-    local r = o[n] == "("
-    local o = t()
-    local t, n
+    local r, o, t, n = o[n] == "(", t()
     if e "then" then
       t, n = b()
       if e "else" then
@@ -1028,9 +1016,7 @@ function nl(n, j)
   end
 
   local function I()
-    local r = o[n] == "("
-    local t = t()
-    local n
+    local r, t, n = o[n] == "(", t()
     if e "do" then
       n = Z()
       l "end"
@@ -1053,8 +1039,7 @@ function nl(n, j)
   end
 
   local function D()
-    local r = f
-    local e = Z(true)
+    local r, e = f, Z(true)
     l "until"
     local l = t()
     while f > r do
@@ -1085,8 +1070,7 @@ function nl(n, j)
       l "="
       local o = t()
       l ","
-      local i = t()
-      local e = e "," and t() or g(1)
+      local i, e = t(), e "," and t() or g(1)
       l "do"
       A()
       d[r] = f
@@ -1121,8 +1105,7 @@ function nl(n, j)
       return function(n)
         local e = m(n, e)
         while true do
-          local l = {}
-          local t = {e[1](e[2], e[3])}
+          local l, t = {}, {e[1](e[2], e[3])}
           if t[1] == nil then
             break
           end
@@ -1195,8 +1178,7 @@ function nl(n, j)
   end
 
   local function Z()
-    local t = u()
-    local e, l, n = p, f
+    local t, e, l, n = u(), p, f
     add(v, function()
       n = e[t]
       if not n then
@@ -1266,8 +1248,7 @@ function nl(n, j)
       end
     end
     n -= 1
-    local r = n
-    local t, f, l = t()
+    local r, t, f, l = n, t()
     if e "," or e "=" then
       n = r
       return q()
@@ -1295,9 +1276,7 @@ function nl(n, j)
     p = setmetatable({}, {__index = p})
     p[s] = f
     s += 1
-    local d = s
-    local i = t and 32767 or f
-    local l = {}
+    local d, i, l = s, t and 32767 or f, {}
     while n <= #o and not r(o[n], nt) and not (x and x()) do
       local n, t = u(l)
       if n then
@@ -1314,8 +1293,7 @@ function nl(n, j)
     s -= 1
     p = getmetatable(p).__index
     return function(e)
-      local t, n
-      local r, o = 1, #l
+      local r, o, t, n = 1, #l
       while r <= o do
         t, n = l[r](e)
         if t then
@@ -1407,9 +1385,7 @@ function Z(e, t)
   elseif n == "string" then
     return n1(e)
   elseif n == "table" and not t then
-    local n = "{"
-    local t = 0
-    local r = 0
+    local n, t, r = "{", 0, 0
     for e, l in next, e do
       if t == O then
         n = n .. ",<...>"
@@ -1498,8 +1474,7 @@ function no()
 end
 
 function Q(r, o)
-  local t = 1
-  local n, l = 0, 0
+  local t, n, l = 1, 0, 0
   if not r then
     return t, n, l
   end
@@ -1541,8 +1516,7 @@ function C(t, l)
 end
 
 function D(l, r, e)
-  local t = 1
-  local n = false
+  local t, n = 1, false
   local r, o, l = Q(l, function(o, f, i, l)
     if e == l and r == i and not n then
       t = o
@@ -1602,8 +1576,7 @@ function n0(n, o, f)
 end
 
 function _draw()
-  local u = peek(24357)
-  local c, p = peek2(24360), peek2(24362)
+  local u, c, p = peek(24357), peek2(24360), peek2(24362)
   camera()
 
   local function e(n)
@@ -1707,8 +1680,7 @@ function _draw()
     f(not b)
   end
   if b then
-    local u = sub(b, r)
-    local r = min(t - h, 20)
+    local u, r = sub(b, r), min(t - h, 20)
     e(r)
     R(u, 0, (o - r) * 6, i[1])
     if r < t - h then
@@ -1792,10 +1764,9 @@ end
 function ni(e, l)
   a, X, m = {}, false, false
   L, E, F = false, false, false
-  local t = cocreate(function()
+  local t, r, n = cocreate(function()
     S(e)
   end)
-  local r, n
   while true do
     r, n = coresume(t)
     if costatus(t) == "dead" then
@@ -2078,9 +2049,7 @@ function _update()
     t = true
   end
 
-  local i = stat(28, 224) or stat(28, 228)
-  local h = stat(28, 225) or stat(28, 229)
-  local e = -1
+  local i, h, e = stat(28, 224) or stat(28, 228), stat(28, 225) or stat(28, 229), -1
   if p(80) then
     if l > 1 then
       l -= 1

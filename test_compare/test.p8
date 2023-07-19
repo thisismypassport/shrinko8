@@ -17,8 +17,7 @@ end::d::assert(a()==3and a()==4and e()==2and a()==5and e()==3,67)do goto n local
 local n=0function ord(e,d)assert(n==e,68)n+=1return d end local n={}ord(0,n).f,ord(1,n).f=ord(2,2),ord(3,function()return 3end)(ord(4,1),ord(5,1))assert(n.f==2,69)local o,n=1,2assert(n==2,70)function d(e,n)assert(n==2,71)end d(1,2)g=0u={10,20}function e()g+=1return g end u[e()]+=1assert(u[1]==11and u[2]==20,72)n=0n+=16assert(n==16,73)assert([[[[]]=="[[",73.5)if(1==1)if(2==3)n=1else n=2
 assert(n==2,74)if(1==2)c=1else if(1==3)c=2else c=3
 assert(c==3,76)if(1==1)if 2==2then n=4else n=5end else n=6
-assert(n==4,77)do n=0if(1==2)end n=123
-assert(n==123,78)do local n print=function(e)n=e end?1
+assert(n==4,77)do n=0if(1==2)end n=123assert(n==123,78)do local n print=function(e)n=e end?1
 assert(n==1,79)end do local n local print=function(e)n=e end?2
 assert(n==2,80)end printh"DONE"
 __gfx__

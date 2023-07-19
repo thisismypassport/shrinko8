@@ -18,8 +18,7 @@ t()
   (also, testing comment removal)
 ]]
 
-x=0--[[]]b=0--
-b=0
+x,b=0,0--[[]]b=0
 
 -- include
 -- no header needed
@@ -35,8 +34,7 @@ print(
 )
 
 -- preserve
-local my_key = "preserved_key"
-local my_obj = {preserved_key=123}
+local my_key,my_obj = "preserved_key",{preserved_key=123}
 ?my_obj[my_key] -- requires preserve of '*.preserved_key'
 
 local my_key = "preserved_glob"
@@ -51,12 +49,10 @@ function preserving_obj:subfunc() end
 ?preserving_obj:subfunc()
 
 -- member/global on string
-local my_key = --[[member]]"key"
-local my_obj = {key=123}
+local my_key,my_obj = --[[member]]"key",{key=123}
 ?my_obj[my_key]
 
-local my_keys = split --[[member]]"key1,key2,key3,123"
-local my_obj = {key1=123,key2=234,key3=345}
+local my_keys,my_obj = split --[[member]]"key1,key2,key3,123",{key1=123,key2=234,key3=345}
 ?my_obj[my_keys[2]]
 
 local my_key = --[[global]]"glob"
@@ -108,10 +104,9 @@ assert(deli_result == 2) -- (but assert wouldn't work inside)
 
 -- overrides
 local --[[preserve-keys]]thing = {key1=1,key2=2,--[[member]]other=3}
-thing.key1 = thing.--[[member]]other
+thing.key1,circfill,rectfill = thing.--[[member]]other,circfill,rectfill
 
 -- semi-automatic pico8 global renaming
-circfill, rectfill = --[[preserve]]circfill, --[[preserve]]rectfill
 circfill(120,126,3) circfill(126,120,3)
 rectfill(120,120,123,123) rectfill(123,123,126,126)
 
@@ -123,8 +118,7 @@ if (1 == 2) sin=cos cos=sin
 local tbls = {1}, {1,2,3,4}
 
 -- token replacement
-local nothing = 1 ~= 2
-local nums = 1, 1.2345, 4660, 4660.33777, -1, -1.2345, -4660.33777, 32776, 0xf000.f, -39322, -65535.99999
+local nothing,nums = 1 ~= 2,1,1.2345,4660,4660.33777,-1,-1.2345,-4660.33777,32776,0xf000.f,-39322,-65535.99999
 local strs = "hi", "hello", '"hi"', "'hello'", '"hi"', "'hi'", "", "", "a\nb", "\\", "\0¹²³⁴⁵⁶", "¹²³⁴⁵⁶⁷", "\\\\\\\\\\\\", "\n\n\n\n\n\n", "¹²³⁴⁵⁶]]"
 local strs2 = [[]], [[hi]], [['hi']], [["'hi'"]], [["""""'''''hi'''''"""""]], [[♥♥♥♥]], [[]], [[
 
@@ -136,9 +130,7 @@ if (not nothing) nothing = -1
 ?1 or 1 or 2 and 3 == 4 >= 4 | 5 ~ 6 << 1 >>< 1 .. 2 .. 3 - -1^4^1 / 1 & 7
 ?((~(((((((tonum(((3 or 4) and 5) ~= 2) | 1) ~ 2) & 3) >> 1) .. 1) - (1 + 3)) * 3)) ^ 2) ^ 1
 local prefix = ({})[1], (function()end)()
-local calls1, calls2 = sin(1,2), cos((cos()))
-local calls1_, calls2_ = (cos((cos())))
-local obj = {ord=ord, pal=pal}
+local calls1, calls2,calls1_,obj,calls2_ = sin(1,2), cos((cos())),(cos((cos()))),{ord=ord,pal=pal}
 local calls3 = ord"123", pal{1,2}, obj:ord("ord"), obj:pal({1,2}), sin(1)
 local moretests = {ord"1",[2]=3,x=4,(ord"1")}
 calls3 += 1

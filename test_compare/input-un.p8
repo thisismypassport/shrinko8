@@ -16,8 +16,7 @@ local n = {1, 2, 3}
 print(#n)
 print(#[[#include notaninclude
 ]])
-local n = "preserved_key"
-local o = {preserved_key = 123}
+local n, o = "preserved_key", {preserved_key = 123}
 ?o[n]
 local n = "preserved_glob"
 preserved_glob = 123
@@ -33,11 +32,9 @@ function n:subfunc()
 end
 
 ?n:subfunc()
-local n = "c"
-local o = {c = 123}
+local n, o = "c", {c = 123}
 ?o[n]
-local n = split "o,f,i,123"
-local o = {o = 123, f = 234, i = 345}
+local n, o = split "o,f,i,123", {o = 123, f = 234, i = 345}
 ?o[n[2]]
 local n = "f"
 f = 123
@@ -100,8 +97,7 @@ if 1 == 2 then
   cos = sin
 end
 local e = {1}, {1, 2, 3, 4}
-local e = 1 ~= 2
-local n = 1, 1.2345, 4660, 4660.33777, -1, -1.2345, -4660.33777, 32776, 0xf000.f, -39322, -65535.99999
+local e, n = 1 ~= 2, 1, 1.2345, 4660, 4660.33777, -1, -1.2345, -4660.33777, 32776, 0xf000.f, -39322, -65535.99999
 local n = "hi", "hello", '"hi"', "'hello'", '"hi"', "'hi'", "", "", "a\nb", "\\", "\0¹²³⁴⁵⁶", "¹²³⁴⁵⁶⁷", "\\\\\\\\\\\\", "\n\n\n\n\n\n", "¹²³⁴⁵⁶]]"
 local n = [[]], [[hi]], [['hi']], [["'hi'"]], [["""""'''''hi'''''"""""]], [[♥♥♥♥]], [[]], [[
 
@@ -114,9 +110,7 @@ end
 ?((~(((((((tonum(((3 or 4) and 5) ~= 2) | 1) ~ 2) & 3) >> 1) .. 1) - (1 + 3)) * 3)) ^ 2) ^ 1
 local e = ({})[1], (function()
 end)()
-local n, o = sin(1, 2), cos((cos()))
-local f, i = (cos((cos())))
-local e = {d = ord, r = pal}
+local n, o, f, e, i = sin(1, 2), cos((cos())), (cos((cos()))), {d = ord, r = pal}
 local e = ord "123", pal {1, 2}, e:d("ord"), e:r({1, 2}), sin(1)
 local d = {ord "1", [2] = 3, e = 4, (ord "1")}
 e += 1

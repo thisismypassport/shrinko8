@@ -2,7 +2,7 @@ from utils import *
 from pico_tokenize import TokenType, tokenize, Token, k_char_escapes, CommentHint
 from pico_tokenize import parse_string_literal, parse_fixnum, k_keep_prefix
 from pico_tokenize import StopTraverse, k_skip_children
-from pico_parse import Node, NodeType, VarKind
+from pico_parse import Node, NodeType, VarKind, k_invalid
 from pico_parse import k_unary_ops_prec, k_binary_op_precs, k_right_binary_ops
 
 class Focus(Bitmask):
@@ -126,11 +126,6 @@ def minify_needs_comments(minify):
     # returns whether minify_code makes use of the tokens' comments
     return not minify.get("wspace", True)
     
-def next_vline(vline):
-    # in py3.9, could use math.nextafter...
-    m, e = math.frexp(vline)
-    return math.ldexp(m + sys.float_info.epsilon / 2, e)
-
 def get_node_bodies(node):
     if node.type in (NodeType.if_, NodeType.elseif):
         yield node.then
@@ -223,20 +218,6 @@ def minify_change_shorthand(node, new_short):
             if not body.children:
                 body.append_token(TokenType.punct, ";")
 
-        vline = node.children[0].vline
-        
-        # ensure entire shorthand is on the same line
-        def set_vline(token):
-            token.vline = vline
-        node.traverse_tokens(set_vline)
-
-        # avoid further use of our vline...
-        next = node.next_token()
-        while next.vline == vline:
-            next.vline = next_vline(vline)
-            next = next.next_token()
-        return vline
-
     else:
         node.short = False
         node.insert_token(2, TokenType.keyword, "then" if node.type == NodeType.if_ else "do")
@@ -325,56 +306,48 @@ def minify_merge_assignments(prev, next, ctxt, safe_only):
         if require_trivial and not expr_is_trivial(node, ctxt, safe_only, allow_member, allow_index):
             return
     
+    # when reordering local declarations, ensure we don't change which local wins out among identically-named locals
+    # (this relies on rename being done already!)
+        
+    if len(prev.targets) > len(prev.sources) and prev.type == NodeType.local:
+        for target in prev.targets[len(prev.sources):]:
+            for next_target in next.targets:
+                if target.name == next_target.name:
+                    return
+    
     # do the merge: (TODO: eww...)
 
-    def move_array_items(dst_node, dst_arr, dst_arr_i, src_node, src_arr, src_arr_i, count):        
-        dst_arr_i = default(dst_arr_i, len(dst_arr))
-        count = default(count, len(src_arr) - src_arr_i)
-        
+    def insert_array_items(dst_node, dst_arr, dst_arr_i, src_arr, src_arr_i, count):
+        count = default(count, len(src_arr) - src_arr_i)        
         if not count:
             return
 
+        need_end_comma = False
         if dst_arr_i < len(dst_arr):
             dst_i = dst_node.children.index(dst_arr[dst_arr_i])
-            if dst_arr_i > 0:
-                dst_i -= 1 # prev comma
+            need_end_comma = True
         elif len(dst_arr):
             dst_i = dst_node.children.index(dst_arr[dst_arr_i - 1]) + 1
-        elif dst_arr is dst_node.sources:
+            dst_node.insert_token(dst_i, TokenType.punct, ",")
+            dst_i += 1
+        else:
+            assert dst_arr is dst_node.sources
             dst_node.append_token(TokenType.punct, "=")
             dst_i = len(dst_node.children)
-        else:
-            # (this can happen as we move extra targets from 'prev' to 'next')
-            assert dst_arr is dst_node.targets and not dst_node.sources
-            dst_i = len(dst_node.children)
-
-        src_i = src_node.children.index(src_arr[src_arr_i])
-        if src_arr_i > 0:
-            src_i -= 1 # prev comma
 
         for i in range(count):
-            src_elem = src_arr[src_arr_i] # no + i, since deleted below
+            src_elem = src_arr[src_arr_i + i]
             dst_arr.insert(dst_arr_i + i, src_elem)
-
-            if dst_arr_i + i > 0:
-                dst_node.insert_token(dst_i, TokenType.punct, ",")
-                dst_i += 1
 
             dst_node.insert_existing(dst_i, src_elem)
             dst_i += 1
             
-            # we can directly modify src_node.children since we modify src_arr as well to match it
-            del src_arr[src_arr_i]
-            if src_arr_i + i > 0:
-                del src_node.children[src_i]
-            del src_node.children[src_i]
+            if i < count - 1 or need_end_comma:
+                dst_node.insert_token(dst_i, TokenType.punct, ",")
+                dst_i += 1
 
-    if len(prev.targets) > len(prev.sources):
-        # move the extra targets to set to nil - to the end (will get moved from next back to prev below)
-        move_array_items(next, next.targets, None, prev, prev.targets, len(prev.sources), None)
-    
-    move_array_items(prev, prev.targets, None, next, next.targets, 0, None)
-    move_array_items(prev, prev.sources, None, next, next.sources, 0, None)
+    insert_array_items(prev, prev.targets, len(prev.sources), next.targets, 0, None)
+    insert_array_items(prev, prev.sources, len(prev.sources), next.sources, 0, None)
 
     next.erase()
 
@@ -389,8 +362,6 @@ def minify_code(ctxt, root, minify_opts):
 
     analysis = analyze_code_for_minify(root, focus)
 
-    shorthand_vlines = set()
-        
     def fixup_nodes_pre(node):
         if minify_tokens:
             # remove shorthands
@@ -404,8 +375,7 @@ def minify_code(ctxt, root, minify_opts):
             
             if node.type in (NodeType.if_, NodeType.while_) and not node.short and \
                (analysis.new_shorts[node.type] == True) and node in analysis.shortenables:
-                vline = minify_change_shorthand(node, True)
-                shorthand_vlines.add(vline)
+                minify_change_shorthand(node, True)
 
         if minify_reorder:
             # merge assignments
@@ -416,12 +386,7 @@ def minify_code(ctxt, root, minify_opts):
                     prev = prev.prev_sibling()
                 if prev and prev.type == node.type:
                     minify_merge_assignments(prev, node, ctxt, safe_only)
-
-        # find shorthands
-
-        if node.type == NodeType.print or (node.type in (NodeType.if_, NodeType.while_) and node.short):
-            shorthand_vlines.add(node.children[0].vline)
-                        
+          
     def remove_parens(token):
         token.erase("(")
         token.parent.erase_token(-1, ")")
@@ -499,7 +464,7 @@ def minify_code(ctxt, root, minify_opts):
     root.traverse_nodes(fixup_nodes_pre, fixup_nodes_post, tokens=fixup_tokens)
 
     if minify_wspace:
-        return output_min_wspace(root, shorthand_vlines, minify_lines)
+        return output_min_wspace(root, minify_lines)
     else:
         return output_original_wspace(root, minify_comments)
 
@@ -508,13 +473,19 @@ def need_whitespace_between(prev_token, token):
     ct, ce = tokenize(PicoSource(None, combined))
     return ce or len(ct) != 2 or (ct[0].type, ct[0].value, ct[1].type, ct[1].value) != (prev_token.type, prev_token.value, token.type, token.value)
 
-def output_min_wspace(root, shorthand_vlines, minify_lines=True):
+def need_newline_after(node):
+    # (k_invalid is set for shorthands used in the middle of a line - we don't generate this ourselves (unclear how legal), but we do preserve it)
+    return node.type == NodeType.print or (node.type in (NodeType.if_, NodeType.while_) and node.short and node.short is not k_invalid)
+
+def output_min_wspace(root, minify_lines=True):
     """convert a root back to a string, inserting as little whitespace as possible"""
     output = []
     prev_token = Token.none
+    prev_vline = 0
+    need_linebreak = False
 
     def output_tokens(token):
-        nonlocal prev_token
+        nonlocal prev_token, prev_vline, need_linebreak
 
         if token.children:
             for comment in token.children:
@@ -528,15 +499,23 @@ def output_min_wspace(root, shorthand_vlines, minify_lines=True):
         if (prev_token.endidx < token.idx or prev_token.modified or token.modified) and prev_token.value:
             # TODO: can we systemtically add whitespace to imrpove compression? (failed so far)
 
-            if prev_token.vline != token.vline and (not minify_lines or prev_token.vline in shorthand_vlines):
+            if need_linebreak or (not minify_lines and e(token.vline) and token.vline != prev_vline):
                 output.append("\n")
+                need_linebreak = False
             elif need_whitespace_between(prev_token, token):
                 output.append(" ")
 
         output.append(token.value)
         prev_token = token
+        if e(token.vline):
+            prev_vline = token.vline
 
-    root.traverse_tokens(output_tokens)
+    def post_node_output(node):
+        nonlocal need_linebreak
+        if need_newline_after(node):
+            need_linebreak = True
+    
+    root.traverse_nodes(tokens=output_tokens, post=post_node_output)
     return "".join(output)
 
 def output_original_wspace(root, exclude_comments=False):
@@ -545,14 +524,23 @@ def output_original_wspace(root, exclude_comments=False):
     prev_token = Token.none
     prev_welded_token = None
 
+    def get_wspace(pre, post):
+        text = pre.source.text[pre.endidx:post.idx]
+        if not text.isspace():
+            # verify this range contains only whitespace/comments (may contain more due to reorders/removes)
+            tokens, _ = tokenize(PicoSource(None, text))
+            if tokens:
+                text = text[:tokens[0].idx]
+        return text
+
     def output_tokens(token):
         nonlocal prev_token, prev_welded_token
         if prev_token.endidx != token.idx:
-            wspace = token.source.text[prev_token.endidx:token.idx]
+            wspace = get_wspace(prev_token, token)
             if exclude_comments and token.children:
                 # only output spacing before and after the comments between the tokens
-                prespace = token.source.text[prev_token.endidx:token.children[0].idx]
-                postspace = token.source.text[token.children[-1].endidx:token.idx]
+                prespace = get_wspace(prev_token, token.children[0])
+                postspace = get_wspace(token.children[-1], token)
                 output.append(prespace)
                 if "\n" in wspace and "\n" not in prespace and "\n" not in postspace:
                     output.append("\n")
@@ -574,7 +562,7 @@ def output_original_wspace(root, exclude_comments=False):
             
         prev_token = token
     
-    root.traverse_tokens(output_tokens)
+    root.traverse_nodes(tokens=output_tokens)
     return "".join(output)
 
 from pico_process import PicoSource

@@ -114,7 +114,7 @@ def run():
              "--focus-compressed", pico8_output="output.p8.printh")
     run_test("minminify", "input.p8", "output_min.p8", "--minify-safe-only", "--focus-tokens",
              "--no-minify-rename", "--no-minify-lines", pico8_output="output.p8.printh")
-    run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify", "--focus-tokens", "--focus-chars",
+    run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify", "--focus-tokens",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename")
              # pico8_output="output.p8.printh" - broken by comment bug in pico8 v0.2.5g...
     if run_test("test", "test.p8", "test.p8", "--minify", pico8_output_val="DONE"):
@@ -164,6 +164,8 @@ def run():
     run_test("reformat", "input.p8", "input-reformat.p8", "--unminify", "--unminify-indent", "4")
     run_test("notnil", "notnil.p8", "notnil.p8", "--minify", pico8_output_val="passed")
     run_test("wildcards", "wildcards.p8", "wildcards.p8", "--minify")
+    run_test("reorder", "reorder.p8", "reorder.p8", "-m", "--focus-tokens", "--no-minify-lines", 
+             pico8_output="reorder.p8.printh")
 
 def main(raw_args):
     global g_opts

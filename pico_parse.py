@@ -2,6 +2,8 @@ from utils import *
 from pico_tokenize import TokenNodeBase, Token, TokenType
 from pico_tokenize import is_identifier, parse_string_literal, k_identifier_split_re
 
+k_invalid = object()
+
 class VarKind(Enum):
     local = global_ = member = label = ...
     
@@ -148,12 +150,6 @@ class Node(TokenNodeBase):
     @property
     def endidx(m):
         return m.last_token().endidx
-    @property
-    def vline(m):
-        return m.first_token().vline
-    @property
-    def endvline(m):
-        return m.last_token().vline
 
     def _create_for_insert(m, i, type, value, near_next):
         if near_next:
@@ -182,8 +178,7 @@ class Node(TokenNodeBase):
         src = m._create_for_insert(i, None, None, near_next)
         def reset_location(token):
             token.idx, token.endidx = src.idx, src.endidx
-            token.modified = True
-            # vline cannot be just reset - it must be fully recreated... (but just leaving it alone seems OK?)
+            token.vline, token.modified = None, True
 
         existing.traverse_tokens(reset_location)
         m.children.insert(i, existing)
@@ -590,7 +585,6 @@ def parse(source, tokens, ctxt=None):
             vline = peek(-1).vline
             then = parse_block(vline=vline)
             tokens.append(then)
-            short = True
 
             if peek().vline == vline and accept("else"):
                 else_tokens = [peek(-1)]
@@ -598,6 +592,8 @@ def parse(source, tokens, ctxt=None):
                 else_tokens.append(else_body)
                 else_ = Node(NodeType.else_, else_tokens, body=else_body, short=True)
                 tokens.append(else_)
+                
+            short = k_invalid if peek().vline == vline else True
 
         else:
             add_error("then or shorthand required", fail=True)
@@ -615,9 +611,10 @@ def parse(source, tokens, ctxt=None):
             tokens.append(body)
             require("end", tokens)
         elif peek(-1).value == ")":
-            body = parse_block(vline=peek(-1).vline)
+            vline = peek(-1).vline
+            body = parse_block(vline=vline)
             tokens.append(body)
-            short = True
+            short = k_invalid if peek().vline == vline else True
         else:
             add_error("do or shorthand required", fail=True)
 
