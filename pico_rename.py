@@ -228,7 +228,7 @@ def rename_tokens(ctxt, root, rename_opts):
 
         elif kind == VarKind.global_:
             if not explicit:
-                env_var = node.scope.find("_ENV")
+                env_var = node.extra_children[0].var
                 if env_var and env_var.keys_kind != None:
                     return compute_effective_kind(node, env_var.keys_kind, explicit=True)
 

@@ -134,8 +134,7 @@ local calls1, calls2,calls1_,obj,calls2_ = sin(1,2), cos((cos())),(cos((cos())))
 local calls3 = ord"123", pal{1,2}, obj:ord("ord"), obj:pal({1,2}), sin(1)
 local moretests = {ord"1",[2]=3,x=4,(ord"1")}
 calls3 += 1
-calls1, calls2 = sin(1,2), cos((cos()))
-calls1_, calls2_ = (cos((cos())))
+calls1, calls2,calls1_,calls2_ = sin(1,2), cos((cos())),(cos((cos())))
 function xxx() return 1, 2, ord"1", (ord"1") end
 if 1 == 2 then elseif 1 == 2 then else end
 while 1 == 2 do end

@@ -296,7 +296,7 @@ k_hint_split_re = re.compile(r"[\s,]+")
 
 class NextTokenMods:
     def __init__(m):
-        m.var_kind, m.keys_kind, m.func_kind, m.sublang = None, None, None, None
+        m.var_kind = m.keys_kind = m.func_kind = m.merge_prev = m.sublang = None
         m.comments = None
         
     def add_comment(m, cmt):
@@ -376,6 +376,8 @@ def tokenize(source, ctxt=None, all_comments=False):
             token.keys_kind = mods.keys_kind
         if mods.func_kind != None:
             token.func_kind = mods.func_kind
+        if mods.merge_prev != None:
+            token.merge_prev = mods.merge_prev
         if mods.sublang != None:
             add_sublang(token, mods.sublang)
 
@@ -411,6 +413,8 @@ def tokenize(source, ctxt=None, all_comments=False):
                     get_next_mods().keys_kind = VarKind.member
                 elif comment in ("preserve-keys", "string-keys"):
                     get_next_mods().keys_kind = False
+                elif comment == "no-merge":
+                    get_next_mods().merge_prev = False
                 elif comment.startswith(k_language_prefix) and not any(ch.isspace() for ch in comment):
                     get_next_mods().sublang = comment[len(k_language_prefix):]
         

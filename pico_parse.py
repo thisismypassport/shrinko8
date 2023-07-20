@@ -307,7 +307,7 @@ def parse(source, tokens, ctxt=None):
                 var = Local(name, new)
             else:
                 var = scope.find(name)
-                if var and var.scope != scope:
+                if var and var.scope.funcdepth != scope.funcdepth:
                     var.captured = True
             
             if not var:
@@ -328,6 +328,10 @@ def parse(source, tokens, ctxt=None):
             if unresolved_labels is None:
                 unresolved_labels = []
             unresolved_labels.append(node)
+        
+        if kind == VarKind.global_:
+            env_token = Token.synthetic(TokenType.ident, "_ENV", token)
+            node.add_extra_child(parse_var(token=env_token))
 
         return node
     

@@ -233,7 +233,7 @@ def node_contains_vars(root, vars):
             raise StopTraverse()
 
     try:
-        root.traverse_nodes(visitor)
+        root.traverse_nodes(visitor, extra=True)
         return False
     except StopTraverse:
         return True
@@ -279,6 +279,10 @@ def minify_merge_assignments(prev, next, ctxt, safe_only):
             ((prev.sources and is_vararg_expr(prev.sources[-1])) or (next.sources and is_vararg_expr(next.sources[-1])) or len(next.targets) < len(next.sources)):
         return
     
+    merge_prev = getattr(next.first_token(), "merge_prev", None)
+    if merge_prev is False:
+        return
+    
     # check if prev's targets are used in next's sources or targets
 
     require_trivial = False # True when prev.targets may be accessed indirectly from functions that may be called by next.soources
@@ -287,6 +291,7 @@ def minify_merge_assignments(prev, next, ctxt, safe_only):
     for target in prev.targets:
         if target.type == NodeType.var:
             target_vars.append(target.var)
+            # is it possible for 'next' to access 'target' without refering to it directly? (via function call)
             if target.kind == VarKind.global_ or (prev.type == NodeType.assign and target.var.captured):
                 require_trivial = True
         elif target.type == NodeType.member:

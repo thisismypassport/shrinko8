@@ -107,13 +107,13 @@ def run():
              "--no-minify-spaces", "--no-minify-lines", pico8_output="output.p8.printh")
     run_test("minrename", "input.p8", "output_minrename.p8", "--minify",
              "--preserve", "*,*.*", pico8_output="output.p8.printh")
-    run_test("auto_minrename", "input.p8", "output_minrename.p8", "--minify-safe-only")
+    run_test("auto_minrename", "input.p8", "output_minrename.p8", "--minify-safe-only", "--ignore-hints")
     run_test("auto_minrename-oc", "input.p8", "output_minrename-oc.p8", "--minify-safe-only",
-             "--focus-chars", pico8_output="output.p8.printh")
+             "--ignore-hints", "--focus-chars", pico8_output="output.p8.printh")
     run_test("auto_minrename-ob", "input.p8", "output_minrename-ob.p8", "--minify-safe-only",
-             "--focus-compressed", pico8_output="output.p8.printh")
+             "--ignore-hints", "--focus-compressed", pico8_output="output.p8.printh")
     run_test("minminify", "input.p8", "output_min.p8", "--minify-safe-only", "--focus-tokens",
-             "--no-minify-rename", "--no-minify-lines", pico8_output="output.p8.printh")
+             "--ignore-hints", "--no-minify-rename", "--no-minify-lines", pico8_output="output.p8.printh")
     run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify", "--focus-tokens",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename")
              # pico8_output="output.p8.printh" - broken by comment bug in pico8 v0.2.5g...
@@ -166,6 +166,8 @@ def run():
     run_test("wildcards", "wildcards.p8", "wildcards.p8", "--minify")
     run_test("reorder", "reorder.p8", "reorder.p8", "-m", "--focus-tokens", "--no-minify-lines", 
              pico8_output="reorder.p8.printh")
+    run_test("reorder_safe", "reorder.p8", "reorder_safe.p8", "-M", "--focus-tokens", "--no-minify-lines", 
+             "--ignore-hints", pico8_output="reorder.p8.printh")
 
 def main(raw_args):
     global g_opts
