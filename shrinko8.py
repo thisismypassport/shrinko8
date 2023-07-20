@@ -6,6 +6,8 @@ from pico_cart import CartFormat, read_cart, write_cart, read_cart_package, get_
 from pico_tokenize import k_hint_split_re
 import argparse, importlib.util
 
+k_version = 'v1.1'
+
 def SplitBySeps(val):
     return k_hint_split_re.split(val)
 
@@ -24,7 +26,7 @@ def ParsableCountHandler(prefix, name, size, limit):
 extend_arg = "extend" if sys.version_info >= (3,8) else None
 
 parser = argparse.ArgumentParser()
-parser.add_argument("input", help="input file, can be in any format. ('-' for stdin)")
+parser.add_argument("input", help="input file, can be in any format. ('-' for stdin)", nargs='?')
 parser.add_argument("output", help="output file. ('-' for stdout)", nargs='?')
 parser.add_argument("-f", "--format", type=EnumFromStr(CartFormat), help="output cart format {%s}" % EnumList(CartFormat.output_names))
 parser.add_argument("-F", "--input-format", type=EnumFromStr(CartFormat), help="input cart format {%s}" % EnumList(CartFormat.input_names))
@@ -90,7 +92,7 @@ pgroup = parser.add_argument_group("other semi-undocumented options")
 pgroup.add_argument("--builtin", type=SplitBySeps, action=extend_arg, help="treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
 pgroup.add_argument("--not-builtin", type=SplitBySeps, action=extend_arg, help="do not treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
 pgroup.add_argument("--global-builtins-only", action="store_true", help="assume all builtins are global, equivalent to pico8's -global_api option")
-pgroup.add_argument("--version", action="store_true", help="print version of cart")
+pgroup.add_argument("--version", action="store_true", help="print version of cart. (if no cart is provided - print shrinko8 version and exit)")
 pgroup.add_argument("--bbs", action="store_true", help="interpret input as a bbs cart id, e.g. '#...' and download it from the bbs")
 pgroup.add_argument("--url", action="store_true", help="interpret input as a URL, and download it from the internet")
 pgroup.add_argument("--ignore-hints", action="store_true", help="ignore shrinko8 hint comments")
@@ -109,6 +111,13 @@ def main_inner(raw_args):
         return 1
 
     args = parser.parse_args(raw_args)
+
+    if args.version and not args.input:
+        print(k_version)
+        return
+        
+    if not args.input:
+        throw("No input file specified")
 
     if args.input == "-":
         args.input = StdPath("-")
