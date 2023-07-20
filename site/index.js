@@ -602,7 +602,7 @@ function onMinifyFormatChange(event) {
     $("#minify-image").toggle(isFormatImg(format));
     $("#row-compressed").toggle(!isFormatText(format));
     $("#no-row-compressed").toggle(isFormatText(format));
-    $("#minify-error-overlay").toggle(outputMap[format] == false);
+    $("#minify-error-overlay").toggle(outputMap[format] === false);
     if (event) {
         doShrinkoAction();
     }
