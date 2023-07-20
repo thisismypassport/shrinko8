@@ -38,10 +38,19 @@ local l,_ENV=printh,{z=13}
 local o=z
 l(o..z)
 end
-x=setmetatable({},{__add=function()return a end})t()
+t={}
+t.a=3t.b=4printh(t.a..t.b)
+t.a=3t.a=4printh(t.a)
+t.a=5t.b=t["a"]printh(t.a..t.b)
+t["a"]=6t.a=7printh(t.a)
+x=setmetatable({},{__add=function()return a end})time()
 a=20b=x+x printh(a..b)
 do
 local l,_ENV=printh,setmetatable({a=0},{__newindex=function(l,o,n)rawset(l,o,n+l.a)end})
 a=3b=4l(a..b)
+end
+do
+local l=setmetatable({a=0},{__newindex=function(l,o,n)rawset(l,o,n+l.a)end})
+l.a=7l.b=8printh(l.a..l.b)
 end
 printh"over..."

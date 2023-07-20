@@ -107,10 +107,10 @@ def run():
              "--no-minify-spaces", "--no-minify-lines", pico8_output="output.p8.printh")
     run_test("minrename", "input.p8", "output_minrename.p8", "--minify",
              "--preserve", "*,*.*", pico8_output="output.p8.printh")
-    run_test("auto_minrename", "input.p8", "output_minrename.p8", "--minify-safe-only", "--ignore-hints")
-    run_test("auto_minrename-oc", "input.p8", "output_minrename-oc.p8", "--minify-safe-only",
+    run_test("auto_minrename", "input.p8", "output_minrename.p8", "--minify", "--rename-safe-only", "--ignore-hints")
+    run_test("auto_minrename-oc", "input.p8", "output_minrename-oc.p8", "--minify", "--rename-safe-only",
              "--ignore-hints", "--focus-chars", pico8_output="output.p8.printh")
-    run_test("auto_minrename-ob", "input.p8", "output_minrename-ob.p8", "--minify-safe-only",
+    run_test("auto_minrename-ob", "input.p8", "output_minrename-ob.p8", "--minify", "--rename-safe-only",
              "--ignore-hints", "--focus-compressed", pico8_output="output.p8.printh")
     run_test("minminify", "input.p8", "output_min.p8", "--minify-safe-only", "--focus-tokens",
              "--ignore-hints", "--no-minify-rename", "--no-minify-lines", pico8_output="output.p8.printh")
@@ -168,6 +168,8 @@ def run():
              pico8_output="reorder.p8.printh")
     run_test("reorder_safe", "reorder.p8", "reorder_safe.p8", "-M", "--focus-tokens", "--no-minify-lines", 
              "--ignore-hints", pico8_output="reorder.p8.printh")
+    run_test("reorder_safe_2", "reorder.p8", "reorder_safe_2.p8", "-m", "--focus-tokens", "--no-minify-lines", 
+             "--reorder-safe-only", pico8_output="reorder.p8.printh")
 
 def main(raw_args):
     global g_opts

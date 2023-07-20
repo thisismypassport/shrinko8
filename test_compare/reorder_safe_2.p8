@@ -21,11 +21,11 @@ end
 do local o,l local function n()return l end
 l=3o=n()printh(l..o)
 end
-l,o,c=4,5,6printh(l..o..c)
-l,o=o-4,2c=l+1printh(l..o..c)
+l=4o=5c=6printh(l..o..c)
+l=o-4o=2c=l+1printh(l..o..c)
 function n()return l end
 l=10o=n()printh(l..o)
-l,o=11,function()return n()end o=o()printh(l..o)
+l=11o=function()return n()end o=o()printh(l..o)
 do
 local l
 local print=function(o)l=o end
@@ -39,7 +39,7 @@ local o=d
 l(o..d)
 end
 t={}
-t.l,t.o=3,4printh(t.l..t.o)
+t.l=3t.o=4printh(t.l..t.o)
 t.l=3t.l=4printh(t.l)
 t.l=5t.o=t["l"]printh(t.l..t.o)
 t["a"]=6t.l=7printh(t.l)

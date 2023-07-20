@@ -357,7 +357,7 @@ def minify_merge_assignments(prev, next, ctxt, safe_only):
     next.erase()
 
 def minify_code(ctxt, root, minify_opts):
-    safe_only = minify_opts.get("safe-only", False)
+    safe_reorder = minify_opts.get("safe-reorder", False)
     minify_lines = minify_opts.get("lines", True)
     minify_wspace = minify_opts.get("wspace", True)
     minify_tokens = minify_opts.get("tokens", True)
@@ -390,7 +390,7 @@ def minify_code(ctxt, root, minify_opts):
                 while prev and prev.type == None: # skip erased
                     prev = prev.prev_sibling()
                 if prev and prev.type == node.type:
-                    minify_merge_assignments(prev, node, ctxt, safe_only)
+                    minify_merge_assignments(prev, node, ctxt, safe_reorder)
           
     def remove_parens(token):
         token.erase("(")

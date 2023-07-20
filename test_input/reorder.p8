@@ -48,15 +48,26 @@ do
     printh(y..z)
 end
 
+t={}
+t.a=3;t.b=4;printh(t.a..t.b)
+t.a=3;t.a=4;printh(t.a)
+t.a=5;t.b=t[--[[member]]'a'];printh(t.a..t.b)
+t['a']=6;t.a=7;printh(t.a)
+
 -- cases requiring hint (unless safe-only)
 
-x=setmetatable({},{__add=function() return a end}); t()
+x=setmetatable({},{__add=function() return a end}); time()
 a=20;--[[no-merge]]b=x+x; printh(a..b)
 
 do
     local printh=printh
     local _ENV = setmetatable({a=0},{__newindex=function(t,k,v) rawset(t, k, v + t.a) end})
     a=3;--[[no-merge]]b=4; printh(a..b)
+end
+
+do
+    local t=setmetatable({a=0},{__newindex=function(t,k,v) rawset(t, k, v + t.a) end})
+    t.a=7;--[[no-merge]]t.b=8;printh(t.a..t.b)
 end
 
 printh("over...")
