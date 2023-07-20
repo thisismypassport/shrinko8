@@ -36,7 +36,7 @@ The simplest approach, which gives good results and works on any cart:
 
 `python shrinko8.py path-to-input.p8 path-to-output.png --minify-safe-only`
 
-You can also add `--focus-chars` or `--focus-compressed` to the command, depending on what you want Shrinko8 to focus on.
+You can also add `--focus-tokens`, `--focus-chars`, or `--focus-compressed` to the command - depending on what you want Shrinko8 to focus on reducing.
 
 The most aggressive approach, which gives the best results, but sometimes requires you to [give additional information to shrinko8](#pitfalls-of-full-minification) to ensure it minifies your cart correctly:
 
@@ -89,6 +89,8 @@ Additional options:
     * By default, they're converted to shorthand if deemed to have a positive impact on compression
     * Under `--focus-chars`, they're always converted to shorthand when possible
     * Under `--focus-compressed`, they're always converted to either all shorthands or all longhands
+* Multiple successive local declarations are merged into one when safe to do so, saving tokens.
+    * under `--focus-tokens`, the same is done for multiple successive assignments. (Especially effective *without* `--minify-safe-only`)
 
 ## Pitfalls of full minification
 
