@@ -13,8 +13,7 @@ function showLoading() {
     $("#loading-overlay").show();
 
     function updateProgress() {
-        api.getProgress().then (progress =>
-        {
+        api.getProgress().then(progress => {
             console.log(progress);
             if (progress < 0) {
                 $("#loading-failed").show();
@@ -30,6 +29,15 @@ function showLoading() {
     }
 
     updateProgress();
+}
+
+// Show shrinko8 version
+function showVersion() {
+    api.getVersion().then(version => {
+        $("#version").text(version);
+    }).catch(e => {
+        $("#version").text("v???");
+    });
 }
 
 // Give a download to the user
@@ -249,24 +257,24 @@ function isFileDrag(event) {
     return true;
 }
 
-function onDragEnter(elem, event) {
+function onDragEnter(event) {
     if (isFileDrag(event)) {
         event.preventDefault();
         event.dataTransfer.dropEffect = "copy";
-        $(elem).addClass("dragover");
+        $("#input-code").addClass("dragover");
     }
 }
 
-function onDragLeave(elem, event) {
+function onDragLeave(event) {
     if (isFileDrag(event)) {
-        $(elem).removeClass("dragover");
+        $("#input-code").removeClass("dragover");
     }
 }
 
-function loadDroppedFiles(elem, event) {
+function loadDroppedFiles(event) {
     if (isFileDrag(event)) {
         event.preventDefault();
-        onDragLeave(elem, event);
+        onDragLeave(event);
         loadInputFiles(event.dataTransfer.items);
     }
 }
@@ -662,6 +670,7 @@ $(() => {
     self.api = Comlink.wrap(new Worker("worker.js"));
 
     showLoading();
+    showVersion();
     setUpAce("#input-code", "lua", onInputChange);
     setUpAce("#minify-code", "lua");
     setUpAce("#minify-preview", "lua");

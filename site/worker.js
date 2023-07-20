@@ -150,6 +150,10 @@ let api = {
         fs.writeFile(scriptFile, text);
     },
     getProgress: () => initProgress,
+    getVersion: async () => {
+        await initPromise;
+        return shrinko8(["--version"], true);
+    },
 
     runShrinko: async (args, argStr, useScript, encoding) => {
         await initPromise;
