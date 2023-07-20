@@ -1,4 +1,6 @@
 __lua__
+sep = time -- just used as a "separator" to avoid merging
+
 do local a;local b,c=1,2;local d=4 assert(a==nil);printh(b..c..d) end
 do local a,b,c=1;local d,e,f=2;assert(b==nil and c==nil and e==nil and f==nil);printh(a..d); end
 
@@ -51,12 +53,22 @@ end
 t={}
 t.a=3;t.b=4;printh(t.a..t.b)
 t.a=3;t.a=4;printh(t.a)
+t.b=t.a+1;t.a=3;printh(t.a..t.b)
 t.a=5;t.b=t[--[[member]]'a'];printh(t.a..t.b)
 t['a']=6;t.a=7;printh(t.a)
 
+-- note: the _u/_v are just to avoid requiring semicolons. (which would also currently prevent merge - but this isn't intended)
+_u,(printh("one") or {}).x = 0,printh("two")
+_v,(printh("three") or {}).y = 0,printh("four")
+sep()
+
+a=sqrt(4);b=sqrt(9);printh(a..b)
+function max() return a end
+a=4;b=max(5,6);printh(a..a)
+
 -- cases requiring hint (unless safe-only)
 
-x=setmetatable({},{__add=function() return a end}); time()
+x=setmetatable({},{__add=function() return a end}); sep()
 a=20;--[[no-merge]]b=x+x; printh(a..b)
 
 do

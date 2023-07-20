@@ -1,4 +1,10 @@
 'use strict';
+
+$.fn.extend({
+    isShown: function() { return this.css("display") != "none"; },
+    isChecked: function() { return this.prop("checked"); },
+})
+
 let isLoading = true;
 
 // Show shrinko8 loading
@@ -472,6 +478,15 @@ async function doMinify() {
             args.push(...focus.split(" "));
         }
 
+        if ($("#minify-max-table").isShown()) {
+            if (!$("#minify-rename-max").isChecked()) {
+                args.push("--rename-safe-only");
+            }
+            if (!$("#minify-reorder-max").isChecked()) {
+                args.push("--reorder-safe-only");
+            }
+        }
+
         let encoding = isFormatText(format) ? "utf8" : "binary";
         let [code, stdouterr, output, preview] = await doShrinko(args, encoding);
 
@@ -508,13 +523,13 @@ async function doLint() {
     try {
         let args = ["--lint", "--no-lint-fail"];
 
-        if (!$("#lint-undef").prop("checked")) {
+        if (!$("#lint-undef").isChecked()) {
             args.push("--no-lint-undefined");
         }
-        if (!$("#lint-dup").prop("checked")) {
+        if (!$("#lint-dup").isChecked()) {
             args.push("--no-lint-duplicate");
         }
-        if (!$("#lint-unused").prop("checked")) {
+        if (!$("#lint-unused").isChecked()) {
             args.push("--no-lint-unused");
         }
 
@@ -557,8 +572,12 @@ function doShrinkoAction() {
 
 // called when the minify options change
 function onMinifyOptsChange(event) {
-    let aggressive = $("#minify-agg").prop("checked");
-    $("#minify-max-warn").toggle(aggressive);
+    let aggressive = $("#minify-agg").isChecked();
+    $("#minify-max-div").toggle(aggressive);
+
+    let needTable = $("#minify-focus").val().includes("--focus-tokens");
+    $("#minify-max-table").toggle(aggressive && needTable);
+
     if (event) {
         $("#minify-format option").each(function () {
             delete outputMap[this.value];

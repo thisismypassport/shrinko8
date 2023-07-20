@@ -1,6 +1,7 @@
 pico-8 cartridge // http://www.pico-8.com
 version 41
 __lua__
+sep=time
 do local o,n,c,l=1,2,4assert(l==nil)printh(o..n..c)end
 do local l,c,d,a,o,n=1,2assert(o==nil and n==nil and d==nil and a==nil)printh(l..c)end
 function f()return 1,2,3end
@@ -41,9 +42,16 @@ end
 t={}
 t.a=3t.b=4printh(t.a..t.b)
 t.a=3t.a=4printh(t.a)
+t.b=t.a+1t.a=3printh(t.a..t.b)
 t.a=5t.b=t["a"]printh(t.a..t.b)
 t["a"]=6t.a=7printh(t.a)
-x=setmetatable({},{__add=function()return a end})time()
+_u,(printh"one"or{}).x=0,printh"two"
+_v,(printh"three"or{}).y=0,printh"four"
+sep()
+a=sqrt(4)b=sqrt(9)printh(a..b)
+function max()return a end
+a=4b=max(5,6)printh(a..a)
+x=setmetatable({},{__add=function()return a end})sep()
 a=20b=x+x printh(a..b)
 do
 local l,_ENV=printh,setmetatable({a=0},{__newindex=function(l,o,n)rawset(l,o,n+l.a)end})

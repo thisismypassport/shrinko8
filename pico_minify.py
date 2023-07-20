@@ -238,7 +238,7 @@ def node_contains_vars(root, vars):
     except StopTraverse:
         return True
 
-def expr_is_trivial(root, ctxt, safe_only, allow_member, allow_index):
+def expr_is_trivial(root, ctxt, safe_only, allow_member=True, allow_index=True, allow_call=True):
     def visitor(expr):
         # nodes that cannot call user-defined code in any case
         if expr.type in (NodeType.const, NodeType.varargs, NodeType.group,
@@ -256,7 +256,8 @@ def expr_is_trivial(root, ctxt, safe_only, allow_member, allow_index):
         # nodes that may call user-defined code
         elif expr.type == NodeType.call:
             func = expr.func
-            if safe_only or not (func.type == NodeType.var and func.kind == VarKind.global_ and not func.var.reassigned and func.name not in ctxt.callback_builtins):
+            if safe_only or not allow_call or \
+                    not (func.type == NodeType.var and func.kind == VarKind.global_ and not func.var.reassigned and func.name not in ctxt.callback_builtins):
                 raise StopTraverse()
         elif expr.type == NodeType.member and not allow_member:
             raise StopTraverse()
@@ -305,10 +306,16 @@ def minify_merge_assignments(prev, next, ctxt, safe_only):
         else: # just in case...
             return
     
-    for node in next.sources + next.targets:
+    for node in next.sources:
         if target_vars and node_contains_vars(node, target_vars):
             return
         if require_trivial and not expr_is_trivial(node, ctxt, safe_only, allow_member, allow_index):
+            return
+        
+    for node in next.targets:
+        if target_vars and node_contains_vars(node, target_vars):
+            return
+        if require_trivial and not expr_is_trivial(node, ctxt, safe_only, allow_member, allow_index, allow_call=False):
             return
     
     # when reordering local declarations, ensure we don't change which local wins out among identically-named locals
@@ -364,6 +371,9 @@ def minify_code(ctxt, root, minify_opts):
     minify_comments = minify_opts.get("comments", True)
     minify_reorder = minify_opts.get("reorder", True)
     focus = Focus(minify_opts.get("focus"))
+
+    if not focus.tokens:
+        safe_reorder = True # nothing gained with False here, so set it to True just in case.
 
     analysis = analyze_code_for_minify(root, focus)
 

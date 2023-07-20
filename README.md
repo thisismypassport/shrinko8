@@ -68,14 +68,15 @@ You can disable parts of the minification process via additional command-line op
 * `--no-minify-tokens` : Disable removal and alteration of tokens (not including identifier renaming)
 * `--no-minify-reoder` : Disable reordering of statements
 
-You can configure how identifier renaming is done:
+You can control how safe the minification is (see [details about unsafe minifications](#pitfalls-of-full-minification)):
+* `--minify-safe-only` : Do only safe minification. Equivalent to specifying all of the below.
+* `--rename-safe-only` : Do only safe renaming (equivalent to preserving all table keys, and - if _ENV is used in the cart - all globals)
+* `--reorder-safe-only` : Do only safe statement reordering.
 
-* `--minify-safe-only` : Do only safe renaming (equivalent to preserving all table keys, and - if _ENV is used in the cart - all globals)
+Additional options:
+
 * `--preserve` :  Equivalent to specifying `--preserve:` in the cart itself. Described [here](#preserving-identifiers-across-the-entire-cart).
-
-You can also generate a file telling you how the identifiers were renamed: (This can be useful for debugging) 
-
-* `--rename-map <file>`
+* `--rename-map <file>` : Generate a file telling you how the identifiers were renamed. (This can be useful for debugging) 
 
 ## Operation details
 
@@ -93,12 +94,15 @@ You can also generate a file telling you how the identifiers were renamed: (This
 
 When using `--minify` without `--minify-safe-only`, Shrinko8 makes - by default - some assumptions about your cart:
 
-* Your cart doesn't mix identifiers and strings when indexing tables or _ENV. (E.g. it doesn't access both `some_table.x` and `some_table["x"]`)
-* Your cart does not use _ENV (except for some simple cases)
-TODO: cannot reassign builtins via _ENV
-TODO: metamethod stuff
+* Renaming assumptions: (`--rename-safe-only` also disables them):
+    * Your cart doesn't mix identifiers and strings when indexing tables or _ENV. (E.g. it doesn't access both `some_table.x` and `some_table["x"]`).
+    * Your cart does not use _ENV (except for some simple cases)
 
-These assumptions allow it to freely rename identifiers used to index tables.
+* Reordering assumptions: (Only active under `--focus-tokens`; `--reorder-safe-only` also disables them; these are complex to describe but hard to break):
+    * Your cart does not implicitly access freshly-assigned variables or table members inside meta-methods. (See example [here](#prevent-merging-of-specific-statements))
+    * Your cart does not implicitly access freshly-assigned variables or table members inside builtins overridden via _ENV.
+
+These assumptions allow it - for example - to freely rename identifiers used to index tables.
 
 If these assumptions don't hold, the minified cart won't work properly, e.g:
 
@@ -126,6 +130,10 @@ In such cases, you have multiple ways to tell Shrinko8 precisely how your cart b
     * If you're otherwise assigning to or from _ENV, you may need to either [specify how all keys of a table are renamed](#controlling-renaming-of-all-keys-of-a-table), or [specify how specific usages of an identifier is renamed](#controlling-renaming-of-specific-identifier-usages) in order to tell Shrinko8 which table keys should be renamed as if they were globals.
     
     * Alternatively, you can always tell Shrinko8 to [rename table keys the same way as globals](#renaming-table-keys-the-same-way-as-globals), making it possible to mix _ENV and other tables freely. (Though if you index _ENV with strings, you still need to follow the 'mixing identifiers and strings' bullet point)
+
+* Reordering assumptions:
+
+    * You can [prevent merging of specific statements](#prevent-merging-of-specific-statements).
 
 ### Renaming specific strings
 
@@ -249,6 +257,23 @@ rectfill(0,0,100,100); rectfill(20,20,40,40)
 Above, all uses of circfill and rectfill are renamed except for the ones preceded by `--[[preserve]]`
 
 Be aware that doing this won't reduce the compressed size of the cart, and will increases the token count (due to the assignment), so it's only for when you care about character count above all else.
+
+## Prevent merging of specific statements
+
+You can insert `--[[no-merge]]` between two statements to ensure they're not merged, e.g:
+
+```lua
+-- note: this example requires --focus-tokens to see the effect
+local weird_table = setmetatable({add_me=0}, {
+    __newindex=function(tbl, key, val) rawset(tbl, key, val + t.add_me) end
+})
+-- the following statements do not do the same thing if combined into one
+-- aka: weird_table.add_me, weird_table.new_key = 3, 4
+-- so we can add --[[no-merge]] between them to ensure they're not merged.
+weird_table.add_me = 3
+--[[no-merge]]
+weird_table.new_key = 4
+```
 
 ## Keeping comments
 

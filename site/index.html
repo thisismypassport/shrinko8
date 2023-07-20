@@ -200,7 +200,7 @@ It can be a .p8 file, a .png cart, and more."></div>
               </div>
             </div>
           </div>
-          <div id="minify-opts" style="flex: 0 0 20%; margin-left: 10px" class="flex-column">
+          <div id="minify-opts" style="flex: 0 0 20%; padding-left: 10px; border-left: 1px solid black" class="flex-column">
             <div style="flex: 1">
               <label><input type="radio" name="minify" value="--unminify">Undo Minification (Reformat)</label><br/>
               <label><input type="radio" name="minify" value="">No Minification</label><br/>
@@ -209,9 +209,15 @@ It can be a .p8 file, a .png cart, and more."></div>
               <label><input type="radio" name="minify" value="--minify-safe-only" checked>Safe Minification</label><br/>
               <label><input type="radio" name="minify" value="--minify" id="minify-agg">Aggressive Minification</label><br/>
 
-              <div id="minify-max-warn" style="color: darkorange; margin-top: 10px; width: 100%">
-                See <a href="https://github.com/thisismypassport/shrinko8/blob/main/README.md#pitfalls-of-full-minification" target="_blank">readme</a>
-                for what can go wrong with aggresive minification and how to resolve it.
+              <div id="minify-max-div">
+                <div style="color: darkorange; margin-top: 10px; width: 100%">
+                  See <a href="https://github.com/thisismypassport/shrinko8/blob/main/README.md#pitfalls-of-full-minification" target="_blank">readme</a>
+                  for what can go wrong with aggresive minification and how to resolve it.
+                </div>
+                <div id="minify-max-table" class=border>
+                  <label><input type="checkbox" id="minify-rename-max" checked>Rename aggressively</label><br/>
+                  <label><input type="checkbox" id="minify-reorder-max" checked>Reorder aggressively</label><br/>
+                </div>
               </div>
 
               <label style="display: block; margin-top: 10px">Focus on reducing:
