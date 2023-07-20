@@ -34,4 +34,4 @@ if true then?"sh2"
 end if(true)if false then else print"sh3"end
 if true then if(false);else print"sh4"
 end l="renaming bug"function fff()local e,n,o,f,i,c,a,d,r,t,h,s,u,x,k,y,v,p,♥,b,w,g,ら,m,E,N,D return l end?fff()
-x=0 x=1?"END!"
+x=0 x=1done=?"END!"

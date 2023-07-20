@@ -28,4 +28,4 @@ local e=({})[1],(function()end)()local n,o,f,e,i=sin(1,2),cos((cos())),(cos((cos
 if true then?"sh2"
 end if(true)if false then else print"sh3"end
 if true then if false then else print"sh4"end end c="renaming bug"function a()local e,l,n,o,f,i,a,d,r,t,h,s,u,x,k,y,v,p,b,w,g,m,E,N,D,j,q return c end?a()
-l=0l=1?"END!"
+l=0l=1k=?"END!"

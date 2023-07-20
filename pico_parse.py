@@ -504,6 +504,8 @@ def parse(source, tokens, ctxt=None):
         elif value in k_unary_ops:
             expr = parse_expr(k_unary_ops_prec)
             return Node(NodeType.unary_op, [token, expr], child=expr, op=value)
+        elif value == "?":
+            return parse_print()
         elif value == "function":
             return parse_function()
         elif value == "...":
