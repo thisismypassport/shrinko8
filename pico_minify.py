@@ -215,6 +215,12 @@ def minify_change_shorthand(node, new_short):
         for body in get_node_bodies(node):
             if not body.children:
                 body.append_token(TokenType.punct, ";")
+        
+        # remove line breaks originally in the source
+        vline = node.first_token().vline
+        def fix_vlines(token):
+            token.vline = vline
+        node.traverse_tokens(fix_vlines)
 
     else:
         node.short = False
@@ -536,24 +542,34 @@ def output_original_wspace(root, exclude_comments=False):
     output = []
     prev_token = Token.none
     prev_welded_token = None
+    prev_vline = 0
 
-    def get_wspace(pre, post):
-        text = pre.source.text[pre.endidx:post.idx]
+    def get_wspace(pre, post, allow_linebreaks):
+        source = default(pre.source, post.source)
+        text = source.text[pre.endidx:post.idx]
+        
         if not text.isspace():
             # verify this range contains only whitespace/comments (may contain more due to reorders/removes)
             tokens, _ = tokenize(PicoSource(None, text))
             if tokens:
                 text = text[:tokens[0].idx]
+
+        if not allow_linebreaks and "\n" in text:
+            text = text[:text.index("\n")] + " "
+
         return text
 
     def output_tokens(token):
-        nonlocal prev_token, prev_welded_token
+        nonlocal prev_token, prev_welded_token, prev_vline
+        
         if prev_token.endidx != token.idx:
-            wspace = get_wspace(prev_token, token)
+            allow_linebreaks = e(token.vline) and token.vline != prev_vline
+            wspace = get_wspace(prev_token, token, allow_linebreaks)
+
             if exclude_comments and token.children:
                 # only output spacing before and after the comments between the tokens
-                prespace = get_wspace(prev_token, token.children[0])
-                postspace = get_wspace(token.children[-1], token)
+                prespace = get_wspace(prev_token, token.children[0], allow_linebreaks)
+                postspace = get_wspace(token.children[-1], token, allow_linebreaks)
                 output.append(prespace)
                 if "\n" in wspace and "\n" not in prespace and "\n" not in postspace:
                     output.append("\n")
@@ -562,6 +578,7 @@ def output_original_wspace(root, exclude_comments=False):
                 output.append(postspace)
             else:
                 output.append(wspace)
+            
             prev_welded_token = None
         
         # extra whitespace may be needed due to modified or deleted tokens
@@ -574,6 +591,8 @@ def output_original_wspace(root, exclude_comments=False):
             prev_welded_token = token
             
         prev_token = token
+        if e(token.vline):
+            prev_vline = token.vline
     
     root.traverse_nodes(tokens=output_tokens)
     return "".join(output)

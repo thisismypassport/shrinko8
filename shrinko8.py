@@ -6,7 +6,7 @@ from pico_cart import CartFormat, read_cart, write_cart, read_cart_package, get_
 from pico_tokenize import k_hint_split_re
 import argparse, importlib.util
 
-k_version = 'v1.1b'
+k_version = 'v1.1c'
 
 def SplitBySeps(val):
     return k_hint_split_re.split(val)

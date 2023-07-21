@@ -471,7 +471,9 @@ async function doMinify() {
     activeMinifies++;
 
     try {
-        let args = ["--count", "--parsable-count", "--no-count-compress"]
+        // people are likely to copy stuff from the output/preview, so --unicode-caps helps there
+        // (they're legal in p8 files, so shouldn't be a problem)
+        let args = ["--count", "--parsable-count", "--no-count-compress", "--unicode-caps"]
 
         let format = $("#minify-format").val();
         args.push("--format", format);
