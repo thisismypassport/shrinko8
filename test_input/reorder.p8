@@ -11,6 +11,9 @@ do local a=3; local b,c=(f()); local d=4; assert(c==nil); printh(a..b..d); end
 do local a,b=3; local c,d=f(); local e=4; assert(b==nil); printh(a..c..d..e); end
 do local a,b=3; local c=4,9; assert(b==nil); printh(a..c); end
 
+do local a,b=3; local c,d=?"w/e"
+   local e=4; assert(b==nil and c!=nil and d!=nil); printh(a..e); end
+
 -- (the output might look like a problem, but it isn't - while assign order gets reversed, this doesn't affect which local ends up ahead in scope)
 do local a=3;local b=4; printh(b)end
 do local a=3;local a=4; printh(a)end

@@ -1,6 +1,7 @@
 from utils import *
 from pico_tokenize import CommentHint, is_identifier
-from pico_parse import VarKind, NodeType, Global
+from pico_parse import VarKind, NodeType
+from pico_parse import is_assign_target, is_function_target, is_any_assign_target
 
 def lint_code(ctxt, root, lint_opts):
     errors = []
@@ -20,13 +21,6 @@ def lint_code(ctxt, root, lint_opts):
     used_locals = set()
     used_labels = set()
     assigned_locals = set()
-
-    def is_assign_target(node):
-        return node.parent.type == NodeType.assign and node in node.parent.targets
-    def is_op_assign_target(node):
-        return node.parent.type == NodeType.op_assign and node == node.parent.target
-    def is_function_target(node):
-        return node.parent.type == NodeType.function and node == node.parent.target
 
     def preprocess_tokens(token):
         if token.children:
@@ -51,7 +45,7 @@ def lint_code(ctxt, root, lint_opts):
                     custom_globals.add(node.name)
 
             if node.kind == VarKind.local and not node.new:
-                if is_assign_target(node) or is_op_assign_target(node) or is_function_target(node):
+                if is_any_assign_target(node):
                     assigned_locals.add(node.var)
                 else:
                     used_locals.add(node.var)

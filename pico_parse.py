@@ -116,7 +116,7 @@ class NodeType(Enum):
     var = index = member = const = group = unary_op = binary_op = call = ...
     table = table_index = table_member = varargs = assign = op_assign = ...
     local = function = if_ = elseif = else_ = while_ = repeat = until = ...
-    for_ = for_in = return_ = break_ = goto = label = print = block = do = ...
+    for_ = for_in = return_ = break_ = goto = label = block = do = ...
     sublang = ... # special
 
 class Node(TokenNodeBase):
@@ -700,10 +700,11 @@ def parse(source, tokens, ctxt=None):
     def parse_print():
         tokens = [peek(-1)]
         args = parse_list(tokens, parse_expr)
-        node = Node(NodeType.print, tokens, args=args)
-        # best to represent the implicit global access explicitly
+        # explicitly represent the implicit use of print
         print_token = Token.synthetic(TokenType.ident, "print", tokens[0])
-        node.add_extra_child(parse_var(token=print_token, implicit=True))
+        func = parse_var(token=print_token, implicit=True)
+        node = Node(NodeType.call, tokens, func=func, args=args, short=True)
+        node.add_extra_child(func)
         return node
 
     def parse_local():
@@ -799,8 +800,6 @@ def parse(source, tokens, ctxt=None):
             return Node(NodeType.label, [token, label, end], label=label)
         elif value == "function":
             return parse_function(stmt=True)
-        elif value == "?":
-            return parse_print()
         else:
             return parse_misc_stmt()
 
@@ -881,5 +880,23 @@ def parse(source, tokens, ctxt=None):
         return parse_root(), errors
     except ParseError:
         return None, errors
+
+# node utils
+
+def is_assign_target(node):
+    return node.parent.type == NodeType.assign and node in node.parent.targets
+def is_op_assign_target(node):
+    return node.parent.type == NodeType.op_assign and node == node.parent.target
+def is_function_target(node):
+    return node.parent.type == NodeType.function and node == node.parent.target
+def is_any_assign_target(node):
+    return is_assign_target(node) or is_op_assign_target(node) or is_function_target(node)
+
+def is_vararg_expr(node):
+    return node.type in (NodeType.call, NodeType.varargs)
+def is_short_block_stmt(node):
+    return node.short and node.type in (NodeType.if_, NodeType.else_, NodeType.while_)
+def is_function_stmt(node):
+    return node.type == NodeType.function and node.target
 
 from pico_process import Error

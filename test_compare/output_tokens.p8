@@ -156,5 +156,6 @@ function fff()
   return l
 end
 ?fff()
-x=0 x,done=1,?"END!"
+x=0 x=1
 
+done=?"END!"

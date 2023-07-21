@@ -1,9 +1,6 @@
 from utils import *
 from pico_tokenize import TokenType, Token
-from pico_parse import NodeType
-
-def is_node_function_stmt(node):
-    return node.type == NodeType.function and node.target
+from pico_parse import NodeType, is_function_stmt, is_short_block_stmt
 
 def unminify_code(root, unminify_opts):    
     indent_delta = unminify_opts.get("indent", 2)
@@ -42,7 +39,7 @@ def unminify_code(root, unminify_opts):
 
         # ignore shorthand parens, to avoid increasing token count as we convert shorthands to longhand
         gparent = token.parent.parent
-        if gparent and gparent.short and token.parent == gparent.cond and token.value in ("(", ")"):
+        if gparent and is_short_block_stmt(gparent) and token.parent == gparent.cond and token.value in ("(", ")"):
             return
         
         # ignore semicolons inside blocks - our formatting makes them unneeded
@@ -67,7 +64,7 @@ def unminify_code(root, unminify_opts):
             if node.parent:
                 indent += indent_delta
                 # shorthand -> longhand
-                if node.parent.short and node.parent.type != NodeType.else_:
+                if is_short_block_stmt(node.parent) and node.parent.type != NodeType.else_:
                     output.append(" then" if node.parent.type == NodeType.if_ else " do")
 
             stmt_stack.append(curr_stmt)
@@ -76,9 +73,9 @@ def unminify_code(root, unminify_opts):
             prev_tight = False
 
         elif curr_stmt is None:
-            if is_node_function_stmt(node):
+            if is_function_stmt(node):
                 child_i = node.parent.children.index(node)
-                if child_i > 0 and not is_node_function_stmt(node.parent.children[child_i - 1]):
+                if child_i > 0 and not is_function_stmt(node.parent.children[child_i - 1]):
                     output.append("\n")
 
             curr_stmt = node
@@ -97,7 +94,7 @@ def unminify_code(root, unminify_opts):
             prev_tight = False
             
             # shorthand -> longhand
-            if node.parent and node.parent.short and not (node.parent.type == NodeType.if_ and node.parent.else_):
+            if node.parent and is_short_block_stmt(node.parent) and not (node.parent.type == NodeType.if_ and node.parent.else_):
                 output.append("end")
 
         elif node is curr_stmt:
@@ -105,7 +102,7 @@ def unminify_code(root, unminify_opts):
             output.append("\n")
             prev_tight = False
                 
-            if is_node_function_stmt(node):
+            if is_function_stmt(node):
                 output.append("\n")
 
     root.traverse_nodes(visit_node, end_visit_node, tokens=visit_token)

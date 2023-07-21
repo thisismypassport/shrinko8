@@ -10,6 +10,8 @@ do local l,o,n=3,f()local c=4printh(l..o..n..c)end
 do local l,o,c,n=3,(f()),4assert(n==nil)printh(l..o..c)end
 do local l,o=3local n,c=f()local d=4assert(o==nil)printh(l..n..c..d)end
 do local l,o=3local n=4,9assert(o==nil)printh(l..n)end
+do local l,o=3local n,c=?"w/e"
+local d=4assert(o==nil and n~=nil and c~=nil)printh(l..d)end
 do local l,l=3,4printh(l)end
 do local l,l=3,4printh(l)end
 do local l local l=3printh(l)end

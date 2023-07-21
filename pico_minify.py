@@ -4,6 +4,7 @@ from pico_tokenize import parse_string_literal, parse_fixnum, k_keep_prefix
 from pico_tokenize import StopTraverse, k_skip_children
 from pico_parse import Node, NodeType, VarKind, k_invalid
 from pico_parse import k_unary_ops_prec, k_binary_op_precs, k_right_binary_ops
+from pico_parse import is_vararg_expr, is_short_block_stmt
 
 class Focus(Bitmask):
     chars = compressed = tokens = ...
@@ -119,9 +120,6 @@ def is_right_assoc(node):
     else:
         return False
 
-def is_vararg_expr(node):
-    return node.type in (NodeType.call, NodeType.varargs)
-
 def minify_needs_comments(minify):
     # returns whether minify_code makes use of the tokens' comments
     return not minify.get("wspace", True)
@@ -159,7 +157,7 @@ def analyze_code_for_minify(root, focus):
                 def check_shorthand(node):
                     nonlocal has_shorthand
                     # ideally, could allow last node in an 'if' to be a print...
-                    if node.type == NodeType.print or (node.type in (NodeType.if_, NodeType.while_) and (node.short or node in shortenables)):
+                    if node.short or node in shortenables:
                         has_shorthand = True
                     
                 # first check the parents
@@ -420,7 +418,7 @@ def minify_code(ctxt, root, minify_opts):
 
             if token.value == ";" and token.parent.type == NodeType.block and token.next_token().value != "(":
                 gparent = token.parent.parent
-                if not (gparent and gparent.short and not token.parent.stmts):
+                if not (gparent and is_short_block_stmt(gparent) and not token.parent.stmts):
                     token.erase()
                     return
 
@@ -441,7 +439,7 @@ def minify_code(ctxt, root, minify_opts):
                     return remove_parens(token)
                 if outer.type in (NodeType.group, NodeType.table_member, NodeType.table_index, NodeType.op_assign):
                     return remove_parens(token)
-                if outer.type in (NodeType.call, NodeType.print) and (token.parent in outer.args[:-1] or 
+                if outer.type == NodeType.call and (token.parent in outer.args[:-1] or 
                         (outer.args and token.parent == outer.args[-1] and not is_vararg_expr(inner))):
                     return remove_parens(token)
                 if outer.type in (NodeType.assign, NodeType.local) and (token.parent in outer.sources[:-1] or 
@@ -490,7 +488,7 @@ def need_whitespace_between(prev_token, token):
 
 def need_newline_after(node):
     # (k_invalid is set for shorthands used in the middle of a line - we don't generate this ourselves (unclear how legal), but we do preserve it)
-    return node.type == NodeType.print or (node.type in (NodeType.if_, NodeType.while_) and node.short and node.short is not k_invalid)
+    return node.short and node.short is not k_invalid
 
 def output_min_wspace(root, minify_lines=True):
     """convert a root back to a string, inserting as little whitespace as possible"""

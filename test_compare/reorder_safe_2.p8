@@ -10,6 +10,8 @@ do local l,o,n=3,n()local c=4printh(l..o..n..c)end
 do local l,o,c,n=3,(n()),4assert(n==nil)printh(l..o..c)end
 do local l,o=3local n,c=n()local d=4assert(o==nil)printh(l..n..c..d)end
 do local l,o=3local n=4,9assert(o==nil)printh(l..n)end
+do local l,o=3local n,c=?"w/e"
+local d=4assert(o==nil and n~=nil and c~=nil)printh(l..d)end
 do local l,l=3,4printh(l)end
 do local l,l=3,4printh(l)end
 do local l local l=3printh(l)end
@@ -45,8 +47,8 @@ t.l=3t.l=4printh(t.l)
 t.o=t.l+1t.l=3printh(t.l..t.o)
 t.l=5t.o=t["l"]printh(t.l..t.o)
 t["a"]=6t.l=7printh(t.l)
-u,(printh"one"or{}).c=0,printh"two"
-r,(printh"three"or{}).d=0,printh"four"
+i,(printh"one"or{}).c=0,printh"two"
+u,(printh"three"or{}).d=0,printh"four"
 d()
 l=sqrt(4)o=sqrt(9)printh(l..o)
 function max()return l end
