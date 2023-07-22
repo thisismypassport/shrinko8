@@ -69,25 +69,25 @@ def lint_code(ctxt, root, lint_opts):
                     prev_var = node.scope.parent.find(node.name)
                     if prev_var is None:
                         if node.name in custom_globals:
-                            add_error("Local '%s' has the same name as a global" % node.name, node)
+                            add_error(f"Local '{node.name}' has the same name as a global", node)
                     elif prev_var.scope.funcdepth < node.var.scope.funcdepth:
                         if prev_var.scope.funcdepth < 0:
                             pass # local builtin
                         elif prev_var.scope.funcdepth == 0:
-                            add_error("Local '%s' has the same name as a local declared at the top level" % node.name, node)
+                            add_error(f"Local '{node.name}' has the same name as a local declared at the top level", node)
                         else:
-                            add_error("Local '%s' has the same name as a local declared in a parent function" % node.name, node)
+                            add_error(f"Local '{node.name}' has the same name as a local declared in a parent function", node)
                     elif prev_var.scope.depth < node.var.scope.depth:
-                        add_error("Local '%s' has the same name as a local declared in a parent scope" % node.name, node)
+                        add_error(f"Local '{node.name}' has the same name as a local declared in a parent scope", node)
                     else:
-                        add_error("Local '%s' has the same name as a local declared in the same scope" % node.name, node)
+                        add_error(f"Local '{node.name}' has the same name as a local declared in the same scope", node)
                 
                 if lint_unused and node.var not in used_locals and not node.name.startswith("_"):
                     if node.var in assigned_locals:
-                        add_error("Local '%s' is only ever assigned to, never used" % node.name, node)
+                        add_error(f"Local '{node.name}' is only ever assigned to, never used", node)
                     elif not (node.parent.type == NodeType.function and node in node.parent.params and 
                               (node != node.parent.params[-1] or node not in node.parent.children)): # don't warn for non-last or implicit params
-                        add_error("Local '%s' isn't used" % node.name, node)
+                        add_error(f"Local '{node.name}' isn't used", node)
 
             elif node.kind == VarKind.label and node.new:
                 if lint_duplicate and node.name != '_':
@@ -95,32 +95,32 @@ def lint_code(ctxt, root, lint_opts):
                     if prev_var != None:
                         if prev_var.scope.funcdepth < node.var.scope.funcdepth:
                             if prev_var.scope.funcdepth <= 0:
-                                add_error("Label '%s' has the same name as a label declared at the top level" % node.name, node)
+                                add_error(f"Label '{node.name}' has the same name as a label declared at the top level", node)
                             else:
-                                add_error("Label '%s' has the same name as a label declared in a parent function" % node.name, node)
+                                add_error(f"Label '{node.name}' has the same name as a label declared in a parent function", node)
                         else:
-                            add_error("Label '%s' has the same name as a label declared in a parent scope" % node.name, node)
+                            add_error(f"Label '{node.name}' has the same name as a label declared in a parent scope", node)
                 
                 if lint_unused and node.var not in used_labels and not node.name.startswith("_"):
-                    add_error("Label '%s' isn't used" % node.name, node)
+                    add_error(f"Label '{node.name}' isn't used", node)
 
             elif node.kind == VarKind.global_:
                 if lint_undefined and node.name not in custom_globals:
                     if node.name in builtin_globals:
                         if is_assign_target(node):
-                            add_error("Built-in global '%s' assigned outside _init - did you mean to use 'local'?" % node.name, node)
+                            add_error(f"Built-in global '{node.name}' assigned outside _init - did you mean to use 'local'?", node)
                         elif is_function_target(node):
-                            add_error("Built-in global '%s' assigned outside _init - did you mean to use 'local function'?" % node.name, node)
+                            add_error(f"Built-in global '{node.name}' assigned outside _init - did you mean to use 'local function'?", node)
                     else:
                         if is_assign_target(node):
-                            add_error("Identifier '%s' not found - did you mean to use 'local' to define it?" % node.name, node)
+                            add_error(f"Identifier '{node.name}' not found - did you mean to use 'local' to define it?", node)
                         elif is_function_target(node):
-                            add_error("Identifier '%s' not found - did you mean to use 'local function' to define it?" % node.name, node)
+                            add_error(f"Identifier '{node.name}' not found - did you mean to use 'local function' to define it?", node)
                         else:
-                            add_error("Identifier '%s' not found" % node.name, node)
+                            add_error(f"Identifier '{node.name}' not found", node)
                             
         elif node.type == NodeType.sublang:
-            add_lang_error = lambda msg: add_error("%s: %s" % (node.name, msg), node)
+            add_lang_error = lambda msg: add_error(f"{node.name}: {msg}", node)
             node.lang.lint(on_error=add_lang_error, builtins=builtin_globals, globals=custom_globals)
 
     root.traverse_nodes(lint_pre, extra=True)

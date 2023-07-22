@@ -467,15 +467,26 @@ Normally, shrinko8 will take the label and title (if any) from the input cart, s
 
 However, it is also possible to override the label from a custom 128x128 screenshot via `--label <path>` and the title via `--title "some title"`
 
-## Reading exported formats
+## Reading and modifying exported formats
 
-Shrinko8 can also read (but only read) exported carts:
-* js - Pico-8 carts exported to html+js - supply the js file as input to shrinko8.
-* pod - Pico-8 carts exported as (any) executables - supply the pod file as input to shrinko8.
+Shrinko8 can also read and modify exported carts:
+* js - Pico-8 carts exported to html+js - supply the .js file to shrinko8.
+* pod - Pico-8 carts exported as (any) executables - supply the .pod file to shrinko8.
+
+Note that Shrinko8 cannot create such exports from scratch - it can only read and modify carts inside an existing export.
+
+When you pass an export as the input parameter to Shrinko8, it will read the first cart inside by default.
 
 If the export contains more than one cart, you can use:
 * `--list` to list the names of the carts in the export
-* `--cart <name>` to select which cart to read from the export (default: the 'first' cart)
+* `--cart <name>` to select which cart to read from the export
+
+When you pass an export as the output parameter to Shrinko8, it will replace the first cart inside by default.
+
+If the export contains (or you want it to contain) more than one cart, you can use:
+* `--replace-cart <name>` to replace the cart with the given name
+* `--insert-cart <name>` to insert a new cart, giving it the given name
+* `--delete-cart <name>` to delete the cart with the given name (no need to pass input cart)
 
 # Unminification
 

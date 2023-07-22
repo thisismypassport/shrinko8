@@ -267,7 +267,7 @@ def parse(source, tokens, ctxt=None):
 
     def require(value, tokens=None):
         if not accept(value, tokens):
-            add_error("expected '%s'" % value, fail=True)
+            add_error(f"expected '{value}'", fail=True)
         return peek(-1)
 
     def require_ident(tokens=None):
@@ -844,7 +844,7 @@ def parse(source, tokens, ctxt=None):
             for node in unresolved_labels:
                 node.var = node.scope.find(node.name)
                 if not node.var:
-                    add_error_at("Unknown label %s" % node.name, node.children[0])
+                    add_error_at(f"Unknown label {node.name}", node.children[0])
 
     def parse_root():
         nonlocal funcdepth

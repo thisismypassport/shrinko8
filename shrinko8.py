@@ -2,7 +2,7 @@
 from utils import *
 from pico_process import PicoContext, process_code, CartSource, CustomPreprocessor, ErrorFormat
 from pico_compress import write_code_size, write_compressed_size, CompressionTracer
-from pico_cart import CartFormat, read_cart, write_cart, read_cart_package, get_bbs_cart_url
+from pico_cart import Cart, CartFormat, read_cart, write_cart, read_cart_package, get_bbs_cart_url, ListOp
 from pico_tokenize import k_hint_split_re
 import argparse, importlib.util
 
@@ -21,7 +21,7 @@ def EnumList(list):
     return ", ".join(str.replace("_", "-") for str in list)
 
 def ParsableCountHandler(prefix, name, size, limit):
-    print("count:%s:%s:%d:%d" % (prefix, name, size, limit))
+    print(f"count:{prefix}:{name}:{size}:{limit}")
 
 extend_arg = "extend" if sys.version_info >= (3,8) else None
 
@@ -74,11 +74,16 @@ pgroup.add_argument("--unminify-indent", type=int, help="indentation size when u
 pgroup = parser.add_argument_group("misc. options")
 pgroup.add_argument("-s", "--script", help="manipulate the cart via a custom python script - see README for api details")
 pgroup.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
-pgroup.add_argument("--list", action="store_true", help="list all cart names inside a cart package (%s)" % EnumList(CartFormat.pack_names))
-pgroup.add_argument("--cart", help="name of cart to extract from cart package (%s)" % EnumList(CartFormat.pack_names))
 pgroup.add_argument("--label", help="path to image to use as the label when creating png carts (default: taken from __label__ like pico8 does)")
 pgroup.add_argument("--title", help="title to use when creating png carts (default: taken from first two comments like pico8 does)")
 pgroup.add_argument("--extra-output", nargs='+', action="append", metavar=("OUTPUT", "FORMAT"), help="Additional output file to produce (and optionally, the format to use)")
+
+pgroup = parser.add_argument_group("cart package options")
+pgroup.add_argument("--list", action="store_true", help="list all cart names inside a cart package (%s)" % EnumList(CartFormat.pack_names))
+pgroup.add_argument("--cart", help="name of cart to extract from input cart package (%s)" % EnumList(CartFormat.pack_names))
+pgroup.add_argument("--replace-cart", help="name of cart to replace in output cart package (%s)" % EnumList(CartFormat.pack_names))
+pgroup.add_argument("--insert-cart", help="name of cart to insert into output cart package (%s)" % EnumList(CartFormat.pack_names))
+pgroup.add_argument("--delete-cart", help="name of cart to delete from output cart package (%s)" % EnumList(CartFormat.pack_names))
 
 pgroup = parser.add_argument_group("compression options (semi-undocumented)")
 pgroup.add_argument("--keep-compression", action="store_true", help="keep existing compression, instead of re-compressing")
@@ -118,6 +123,9 @@ def main_inner(raw_args):
         
     if not args.input:
         throw("No input file specified")
+    
+    if args.delete_cart and not args.output:
+        args.input, args.output = None, args.input
 
     if args.input == "-":
         args.input = StdPath("-")
@@ -140,6 +148,8 @@ def main_inner(raw_args):
         throw("Can't modify code and keep compression")
     if args.list and (args.output or args.lint or args.count):
         throw("--list can't be combined with most other options")
+    if (bool(args.delete_cart) + bool(args.insert_cart) + bool(args.replace_cart)) > 1:
+        throw("Can only specify one of --insert/replace/delete-cart")
         
     if not args.format and args.output:
         args.format = default_output_format(args.output)
@@ -179,7 +189,7 @@ def main_inner(raw_args):
     args.rename = bool(args.minify) and not args.no_minify_rename
     if args.rename:
         if args.no_preserve:
-            args.preserve = (args.preserve or []) + ["!%s" % item for item in args.no_preserve]
+            args.preserve = (args.preserve or []) + [f"!{item}" for item in args.no_preserve]
         if args.rename_members_as_globals:
             args.preserve = (args.preserve or []) + ["*=*.*"]
         args.rename = {
@@ -213,53 +223,65 @@ def main_inner(raw_args):
     if args.trace_compression:
         args.trace_compression = CompressionTracer(args.trace_compression)
 
-    try:
-        if args.list:
-            for entry in read_cart_package(args.input, args.input_format).list():
-                print(entry)
-            return 0
+    if args.input:
+        try:
+            if args.list:
+                for entry in read_cart_package(args.input, args.input_format).list():
+                    print(entry)
+                return 0
 
-        preprocessor = CustomPreprocessor() if args.custom_preprocessor else None
-        cart = read_cart(args.input, args.input_format, size_handler=args.input_count, 
-                         debug_handler=args.trace_input_compression, cart_name=args.cart,
-                         keep_compression=args.keep_compression, preprocessor=preprocessor)
-        src = CartSource(cart)
-    except OSError as e:
-        throw("cannot read cart: %s" % e)
+            preprocessor = CustomPreprocessor() if args.custom_preprocessor else None
+            cart = read_cart(args.input, args.input_format, size_handler=args.input_count, 
+                            debug_handler=args.trace_input_compression, cart_name=args.cart,
+                            keep_compression=args.keep_compression, preprocessor=preprocessor)
+            src = CartSource(cart)
+        except OSError as err:
+            throw(f"cannot read cart: {err}")
 
-    if args.input_count:
-        write_code_size(cart, handler=args.input_count, input=True)
+        if args.input_count:
+            write_code_size(cart, handler=args.input_count, input=True)
+            
+        ctxt = PicoContext(extra_builtins=args.builtin, not_builtins=args.not_builtin, 
+                        local_builtins=not args.global_builtins_only,
+                        srcmap=args.rename_map, sublang_getter=sublang_cb, version=cart.version_id,
+                        hint_comments=not args.ignore_hints)
+        if preproc_cb:
+            preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args)
+
+        ok, errors = process_code(ctxt, src, input_count=args.input_count, count=args.count,
+                                lint=args.lint, minify=args.minify, rename=args.rename,
+                                unminify=args.unminify, stop_on_lint=not args.no_lint_fail,
+                                fail=False, want_count=not args.no_count_tokenize)
+        if errors:
+            print("Lint warnings:" if ok else "Compilation errors:")
+            for error in sorted(errors):
+                print(error.format(args.error_format))
+            if not ok or not args.no_lint_fail:
+                return 2 if ok else 1
+
+        if args.rename_map:
+            file_write_text(args.rename_map, "\n".join(ctxt.srcmap))
+            
+        if postproc_cb:
+            postproc_cb(cart=cart, args=args)
         
-    ctxt = PicoContext(extra_builtins=args.builtin, not_builtins=args.not_builtin, 
-                       local_builtins=not args.global_builtins_only,
-                       srcmap=args.rename_map, sublang_getter=sublang_cb, version=cart.version_id,
-                       hint_comments=not args.ignore_hints)
-    if preproc_cb:
-        preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args)
-
-    ok, errors = process_code(ctxt, src, input_count=args.input_count, count=args.count,
-                              lint=args.lint, minify=args.minify, rename=args.rename,
-                              unminify=args.unminify, stop_on_lint=not args.no_lint_fail,
-                              fail=False, want_count=not args.no_count_tokenize)
-    if errors:
-        print("Lint warnings:" if ok else "Compilation errors:")
-        for error in sorted(errors):
-            print(error.format(args.error_format))
-        if not ok or not args.no_lint_fail:
-            return 2 if ok else 1
-
-    if args.rename_map:
-        file_write_text(args.rename_map, "\n".join(ctxt.srcmap))
+        if args.count:
+            write_code_size(cart, handler=args.count)
+            if not (args.output and str(args.format) not in CartFormat.src_names) and not args.no_count_compress: # else, will be done in write_cart
+                write_compressed_size(cart, handler=args.count, fast_compress=args.fast_compression, debug_handler=args.trace_compression)
         
-    if postproc_cb:
-        postproc_cb(cart=cart, args=args)
+        if args.version:
+            print("version: %d, v%d.%d.%d:%d, %c" % (cart.version_id, *cart.version_tuple, cart.platform))
 
-    if args.count:
-        write_code_size(cart, handler=args.count)
-        if not (args.output and str(args.format) not in CartFormat.src_names) and not args.no_count_compress: # else, will be done in write_cart
-            write_compressed_size(cart, handler=args.count, fast_compress=args.fast_compression, debug_handler=args.trace_compression)
+    else:
+        # output-only operations
+        cart = Cart() # just to avoid exceptions
+        errors = ()
 
     if args.output:
+        output_cart = default(args.insert_cart, default(args.replace_cart, args.delete_cart))
+        output_cart_op = ListOp.insert if e(args.insert_cart) else ListOp.delete if e(args.delete_cart) else ListOp.replace
+
         all_outputs = [(args.output, args.format)]
         if args.extra_output:
             for extra_output in args.extra_output:
@@ -271,18 +293,19 @@ def main_inner(raw_args):
                     throw("too many arguments to --extra-output")
         
         for output, format in all_outputs:
+            if str(format) in CartFormat.pack_names and not path_exists(output):
+                throw(f"cannot write to non-existing {format} at {output}")
+
             try:
                 write_cart(output, cart, format, size_handler=args.count,
-                        debug_handler=args.trace_compression,
-                        unicode_caps=args.unicode_caps, old_compress=args.old_compression,
-                        force_compress=args.count or args.force_compression,
-                        fast_compress=args.fast_compression, keep_compression=args.keep_compression,
-                        screenshot_path=args.label, title=args.title)
-            except OSError as e:
-                throw("cannot write cart: %s" % e)
-
-    if args.version:
-        print("version: %d, v%d.%d.%d:%d, %c" % (cart.version_id, *cart.version_tuple, cart.platform))
+                           debug_handler=args.trace_compression,
+                           unicode_caps=args.unicode_caps, old_compress=args.old_compression,
+                           force_compress=args.count or args.force_compression,
+                           fast_compress=args.fast_compression, keep_compression=args.keep_compression,
+                           screenshot_path=args.label, title=args.title,
+                           cart_name=output_cart, cart_op=output_cart_op)
+            except OSError as err:
+                throw(f"cannot write cart: {err}")
 
     if errors:
         return 2

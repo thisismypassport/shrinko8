@@ -8,7 +8,7 @@ def print_size(name, size, limit, prefix=None, handler=None):
         percent = size / limit * 100
         fmt = "%.2f%%" if percent >= 95 else "%.0f%%"
         if prefix:
-            name = "%s %s" % (prefix, name)
+            name = f"{prefix} {name}"
         name += ":"
         print(name, size, fmt % percent)
 
@@ -165,7 +165,7 @@ def get_compressed_size(r):
 
     else:
         r.addpos(-len(header))
-        return len(r.zbytes(k_code_size))
+        return len(r.zbytes(k_code_size, allow_eof=True))
 
 class Lz77Tuple(Tuple):
     off = cnt = ... # the subtracted values, not the real values
@@ -540,12 +540,12 @@ class CompressionTracer:
             for _ in range(count):
                 m.code.append(m.code[-offset])
             str = "".join(m.code[-count:])
-            m.file.write("%d,%s,%d:%d\n" % (bitsize, m.escape(str), offset, count))
+            m.file.write(f"{bitsize},{m.escape(str)},{offset}:{count}\n")
 
         else:
             for ch in item:
                 m.code.append(ch)
-            m.file.write("%d,%s\n" % (bitsize, m.escape(item)))
+            m.file.write(f"{bitsize},{m.escape(item)}\n")
 
         m.old_bitpos = bitpos
 

@@ -89,7 +89,7 @@ def check_run(name, result, parse_meta=False):
     if "SHORT" in stdout:
         print(name, stdout)
     if not success:
-        print("Run %s failed. Stdout:\n%s" % (name, stdout))
+        print(f"Run {name} failed. Stdout:\n{stdout}")
         fail_test()
         return None
     
@@ -117,8 +117,8 @@ def run_for_cart(args):
     download_path = basepath + ".dl.png"
     uncompress_path = basepath + ".dp.p8"
     compress_path = basepath + ".c.png"
-    safe_minify_path = basepath + ".%ssm.png" % short_prefix
-    unsafe_minify_path = basepath + ".%sum.png" % short_prefix
+    safe_minify_path = basepath + f".{short_prefix}sm.png" 
+    unsafe_minify_path = basepath + f".{short_prefix}um.png"
     unminify_path = basepath + ".un.p8"
 
     if g_opts.input_redownload or not path_exists(download_path):
@@ -129,7 +129,7 @@ def run_for_cart(args):
     new_cart_input = None
     if g_opts.input_reprocess or not cart_input:
         process_results = run_code(download_path, uncompress_path, "--input-count", "--parsable-count", "--version")
-        new_cart_input = cart_input = check_run("%s.process" % cart, process_results, parse_meta=True)
+        new_cart_input = cart_input = check_run(f"{cart}.process", process_results, parse_meta=True)
     
     if not cart_output:
         cart_output = {}
@@ -140,18 +140,18 @@ def run_for_cart(args):
             outval, cmpval = output.get(key), compare.get(key)
             if outval is None:
                 if not ignore_partial:
-                    print("Missing key %s in output of %s:%s" % (key, cart, kind))
+                    print(f"Missing key {key} in output of {cart}:{kind}")
                     fail_test()
             elif cmpval is None:
                 if not ignore_partial:
-                    print("New key %s in output of %s:%s" % (key, cart, kind))
+                    print(f"New key {key} in output of {cart}:{kind}")
             else:
                 if g_opts.verbose and outval != cmpval:
                     if outval < cmpval:
-                        print("Improvement of %d in %s:%s:%s" % (cmpval - outval, cart, kind, key))
+                        print(f"Improvement of {cmpval - outval} in {cart}:{kind}:{key}")
                     else:
-                        print("Regression of %d in %s:%s:%s" % (outval - cmpval, cart, kind, key))
-                deltas.apply("%s.%s" % (kind, key), outval - cmpval)
+                        print(f"Regression of {outval - cmpval} in {cart}:{kind}:{key}")
+                deltas.apply(f"{kind}.{key}", outval - cmpval)
 
     def process_output(kind, output):
         if output is None:
@@ -161,7 +161,7 @@ def run_for_cart(args):
         if cart_compare and kind in cart_compare:
             process_compare(kind, output, cart_compare[kind])
         else:
-            print("No comparison info of %s.%s" % (cart, kind))
+            print(f"No comparison info of {cart}.{kind}")
             fail_test()
         
         if g_opts.compare_input:
@@ -174,25 +174,25 @@ def run_for_cart(args):
 
     if g_opts.unminify:
         unminify_results = run_code(uncompress_path, unminify_path, "--unminify")
-        check_run("%s:unminify" % cart, unminify_results)
+        check_run(f"{cart}:unminify", unminify_results)
         best_path_for_pico8 = unminify_path
     
     else:
         if g_opts.all or g_opts.only_compress:
             compress_results = run_code(uncompress_path, compress_path, "--count", "--parsable-count", "--no-count-tokenize")
-            process_output("compress", check_run("%s:compress" % cart, compress_results, parse_meta=True))
+            process_output("compress", check_run(f"{cart}:compress", compress_results, parse_meta=True))
             best_path_for_pico8 = compress_path
 
-        minify_opts = ["--focus-%s" % focus] if focus else []
+        minify_opts = [f"--focus-{focus}"] if focus else []
         
         if g_opts.all or g_opts.only_safe_minify:
             safe_minify_results = run_code(uncompress_path, safe_minify_path, "--minify-safe-only", "--count", "--parsable-count", *minify_opts)
-            process_output("safe_minify", check_run("%s:safe_minify" % cart, safe_minify_results, parse_meta=True))
+            process_output("safe_minify", check_run(f"{cart}:safe_minify", safe_minify_results, parse_meta=True))
             best_path_for_pico8 = safe_minify_path
         
         if g_opts.all or g_opts.only_unsafe_minify:
             unsafe_minify_results = run_code(uncompress_path, unsafe_minify_path, "--minify", "--count", "--parsable-count", *minify_opts)
-            process_output("unsafe_minify", check_run("%s:unsafe_minify" % cart, unsafe_minify_results, parse_meta=True))
+            process_output("unsafe_minify", check_run(f"{cart}:unsafe_minify", unsafe_minify_results, parse_meta=True))
 
     return (cart, is_fail_test(), new_cart_input, cart_output, deltas, best_path_for_pico8)
 
@@ -262,7 +262,7 @@ def interact_with_pico8s():
         time.sleep(0.05)
 
 def run(focus):
-    prefix = "%s_" % focus if focus else ""
+    prefix = f"{focus}_" if focus else ""
 
     input_json = path_join("test_bbs", "input.json")
     output_json = path_join("test_bbs", prefix + "output.json")
@@ -302,7 +302,7 @@ def run(focus):
                     p8_results.append(mt_pool.apply_async(run))
 
         for p8_result in p8_results:
-            check_run("%s:p8-run" % cart, p8_result.get())
+            check_run(f"{cart}:p8-run", p8_result.get())
 
     file_write_json(input_json, inputs, sort_keys=True, indent=4)
     file_write_json(output_json, outputs, sort_keys=True, indent=4)
@@ -313,19 +313,19 @@ def run(focus):
 
         extra_print = []
         if info.min:
-            extra_print.append("%d max improvement" % -info.min)
+            extra_print.append(f"{-info.min} max improvement")
         if info.max:
-            extra_print.append("WARNING: %d max regression" % info.max)
+            extra_print.append(f"WARNING: {info.max} max regression")
         
         if info.sum <= 0:
-            print("%s improved by %d in total (%f average, %s)" % (key, -info.sum, -info.average, ", ".join(extra_print)))
+            print(f"{key} improved by {-info.sum} in total ({-info.average} average, {', '.join(extra_print)})")
         else:
-            print("WARNING: %s regressed by %d in total (%f average, %s)" % (key, info.sum, info.average, ", ".join(extra_print)))
+            print(f"WARNING: {key} regressed by {info.sum} in total ({info.average} average, {', '.join(extra_print)})")
 
 def run_all():
     if g_opts.focus_all:
         for focus in [None, "tokens", "chars", "compressed"]:
-            print("Focus %s:" % focus)
+            print(f"Focus {focus}:")
             run(focus)
     else:
         focus = "chars" if g_opts.focus_chars else "compressed" if g_opts.focus_compressed else "tokens" if g_opts.focus_tokens else None

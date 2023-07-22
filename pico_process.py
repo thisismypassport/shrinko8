@@ -190,9 +190,9 @@ class Error:
         loc = token.source.get_location(token.idx, tabs=tabbed) if token.source else SourceLocation("???", 0, 0, 0)
         path = path_absolute(loc.path) if fmt == ErrorFormat.absolute else path_relative(loc.path, fallback=True)
         if tabbed:
-            return "%s (tab %X, line %d, col %d): %s" % (path, loc.tab, loc.line + 1, loc.col + 1, m.msg)
+            return f"{path} (tab {loc.tab:X}, line {loc.line + 1}, col {loc.col + 1}): {m.msg}"
         else:
-            return "%s:%d:%d: %s" % (path, loc.line + 1, loc.col + 1, m.msg)
+            return f"{path}:{loc.line + 1}:{loc.col + 1}: {m.msg}"
 
     def __str__(m):
         return m.format()

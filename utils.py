@@ -112,7 +112,7 @@ def _metaclass_collect_fields(cls_dict, values):
         if has_default:
             defaults.append(v)
         elif defaults:
-            raise Exception("Cannot specify required field %s after optional fields" % k)
+            raise Exception(f"Cannot specify required field {k} after optional fields")
         has_default = True # unless next_no_default is called
     
     return tuple(fields), tuple(defaults)
@@ -130,7 +130,7 @@ class EnumMetaclass(type):
             if enum_bases:
                 raise Exception("Enum with bases must use explicit values") # TODO
             if not isinstance(prev, (int, float)):
-                raise Exception("Cannot follow %s with ..." % prev)
+                raise Exception(f"Cannot follow {prev} with ...")
             return prev + 1
 
         name_value_map = dict(_metaclass_collect_values(cls_dict, values, 0, next_auto))
@@ -148,7 +148,7 @@ class EnumMetaclass(type):
             elif value in full_name_value_map:
                 m.value = full_name_value_map[value]
             else:
-                raise ValueError("%s not value of %s" % (value, cls_name))
+                raise ValueError(f"{value} not value of {cls_name}")
     
         def __eq__(m, other):
             if m.__class__ != other.__class__:
@@ -164,7 +164,7 @@ class EnumMetaclass(type):
             return full_value_name_map[m.value]
     
         def __repr__(m):
-            return "%s.%s" % (cls_name, full_value_name_map[m.value])
+            return f"{cls_name}.{full_value_name_map[m.value]}"
     
         def __int__(m):
             return m.value
@@ -225,7 +225,7 @@ class BitmaskMetaclass(type):
             if bitmask_bases:
                 raise Exception("Bitmasks with bases must use explicit values") # TODO
             if not isinstance(prev, int) or (prev != 0 and not is_pow2(prev)):
-                raise Exception("Cannot follow %s with ..." % prev)
+                raise Exception(f"Cannot follow {prev} with ...")
             return prev << 1 if prev != 0 else 1
 
         name_mask_map = dict(_metaclass_collect_values(cls_dict, values, 0, next_auto))
@@ -248,7 +248,7 @@ class BitmaskMetaclass(type):
             elif isinstance(value, (tuple, list)):
                 m.value = reduce(lambda x,y:x|y, (full_name_mask_map[part] for part in value), 0)
             else:
-                raise ValueError("%s not value of %s" % (value, cls_name))
+                raise ValueError(f"{value} not value of {cls_name}")
     
         def __eq__(m, other):
             if m.__class__ != other.__class__:
@@ -263,11 +263,11 @@ class BitmaskMetaclass(type):
                 values = []
                 for mask, name in full_mask_name_map.items():
                     if m.value & mask:
-                        values.append("%s.%s" % (cls_name, name))
+                        values.append(f"{cls_name}.{name}")
     
                 return " | ".join(values)
             else:
-                return "%s(0)" % cls_name
+                return f"{cls_name}(0)"
     
         def __int__(m):
             return m.value
@@ -399,9 +399,11 @@ class TupleMetaclass(type):
         else:
             all_fields = fields
 
-        # dict                    
-        new_def = "def __new__(__cls, %s):\n" % ", ".join(all_fields)
-        new_def += "    return tuple.__new__(__cls, (%s))\n" % (", ".join(all_fields) + ("," if len(all_fields) == 1 else ""))
+        # dict
+        all_fields_str = ', '.join(all_fields)
+        all_fields_tupstr = all_fields_str + ("," if len(all_fields) == 1 else "")
+        new_def = f"def __new__(__cls, {all_fields_str}):\n"
+        new_def += f"    return tuple.__new__(__cls, ({all_fields_tupstr}))\n"
         __new__ = exec_def("__new__", new_def)
         __new__.__defaults__ = defaults
 
@@ -473,9 +475,9 @@ class StructMetaclass(type):
             all_fields = fields
         
         # dict                    
-        init_def = "def __init__(__m, %s):\n" % ", ".join(all_fields)
+        init_def = f"def __init__(__m, {', '.join(all_fields)}):\n"
         for field in all_fields:
-            init_def += "    __m.%s = %s\n" % (field, field)
+            init_def += f"    __m.{field} = {field}\n"
         if not all_fields:
             init_def += "    pass"
         __init__ = exec_def("__init__", init_def)
@@ -539,7 +541,7 @@ def SymbolClass(name):
         def __bytes__(m):
             return bytes(m.value)
         def __repr__(m):
-            return "`%s" % m.value
+            return f"`{m.value}"
         
     cls.__name__ = name
     return cls
@@ -1083,11 +1085,17 @@ class BinaryWriter(BinaryBase):
         m.bytes(v.encode(enc or m.wenc))
             
     def zbytes(m, v, size=None, count=1):
-        m.bytes(v)
+        assert not (count > 1 and len(v) % count)
+        zero = b"\0" * count
         if size is None:
-            m.bytes(b"\0" * count)
+            m.bytes(v)
+            m.bytes(zero)
         else:
-            raise NotImplementedError() # yet
+            if len(v) > size * count:
+                raise struct.error("input too large for zbytes with fixed size")
+            m.bytes(v)
+            for i in range(size - len(v) // count):
+                m.bytes(zero)
         
     def zstr(m, v, size=None, enc=None):
         m.zbytes(v.encode(enc or m.enc), size)
@@ -1340,9 +1348,17 @@ def str_replace_at(str, at, count, what):
     """Return a string based on 'str' with 'what' replacing 'count' chars at position 'at'"""
     return str[:at] + what + str[at + count:]
 
+def str_replace_between(str, start, end, what):
+    """Return a string based on 'str' with 'what' replacing chars between 'start' and 'end'"""
+    return str[:start] + what + str[end:]
+
 def str_remove_at(str, at, count):
     """Return a string based on 'str' with 'count' chars removed at position 'at'"""
     return str[:at] + str[at + count:]
+
+def str_remove_between(str, start, end):
+    """Return a string based on 'str' with chars removed between 'start' and 'end"""
+    return str[:start] + str[end:]
 
 def str_trunc(str, count):
     """Truncates a string if larger than 'count' characters"""
@@ -1406,9 +1422,9 @@ def str_split_last(str, match, s=None, e=None):
 def str_replace_batch(val, batch):
     """Return a string based on 'val' that contains replacements defined in 'batch'.
     'batch' is a dict or list of pairs, with each pair being:
-      (str, str or callable) - simple replacement (callable is called with no args)
-      (regex, str or callable) - regex replacement (with regex pre-compilation)
-      ((re, str), str or callable) - regex replacement without pre-compilation"""
+      (str, str or (lambda: str)) - simple replacement
+      (regex, str) - regex replacement (with regex pre-compilation)
+      ((re, str), str) - regex replacement without pre-compilation"""
     if isinstance(batch, dict):
         batch = batch.items()
         
@@ -1807,7 +1823,18 @@ class HeapQueue:
     def __repr__(m):
         return f"HeapQueue({repr(m.list)})"
 
-class PartialIO(io.RawIOBase):
+class RawIOBaseWSeek(io.RawIOBase):
+    """Like RawIOBase, but allows seeking"""
+    def seek(m, position, whence=io.SEEK_SET):
+        if whence == io.SEEK_SET:
+            m.position = position
+        elif whence == io.SEEK_CUR:
+            m.position += position
+        elif whence == io.SEEK_END:
+            m.position = m.length + position
+        return m.position
+
+class PartialIO(RawIOBaseWSeek):
     """Exposes a region of an existing stream as a stream"""
     def __init__(m, io, offset, length=None):
         length = length if e(length) else io.length - offset 
@@ -1819,15 +1846,6 @@ class PartialIO(io.RawIOBase):
     def flush(m):
         return m.io.flush()
           
-    def seek(m, position, whence=io.SEEK_SET):
-        if whence == io.SEEK_SET:
-            m.position = position
-        elif whence == io.SEEK_CUR:
-            m.position += position
-        elif whence == io.SEEK_END:
-            m.position = m.length + position
-        return m.position
-
     def readinto(m, target):
         size = len(target)
         view = memoryview(target)
@@ -1850,7 +1868,7 @@ class PartialIO(io.RawIOBase):
         m.position += count
         return count
 
-class SegmentedIO(io.RawIOBase):
+class SegmentedIO(RawIOBaseWSeek):
     """A stream that combines several existing streams"""
     class Segment(Tuple):
         start = file = offset = size = ...
@@ -1868,15 +1886,6 @@ class SegmentedIO(io.RawIOBase):
     def flush(m):
         for segment in m.segments:
             segment.file.flush()
-            
-    def seek(m, position, whence=io.SEEK_SET):
-        if whence == io.SEEK_SET:
-            m.position = position
-        elif whence == io.SEEK_CUR:
-            m.position += position
-        elif whence == io.SEEK_END:
-            m.position = m.length + position
-        return m.position
             
     def _find(m, offset):
         segment = m.last_segment
@@ -1938,6 +1947,33 @@ class SegmentedIO(io.RawIOBase):
             
         return offset
     
+class ByteArrayIO(RawIOBaseWSeek):
+    """Exposes a bytearray as a stream""" # did I miss this in the stdlib?
+    def __init__(m, arr):
+        m.arr = arr
+        m.position = 0
+    
+    @property
+    def length(m):
+        return len(m.arr)
+    
+    def readinto(m, target):
+        pos = m.position
+        slice = m.arr[pos:pos + len(target)]
+        count = len(slice)
+        target[:count] = slice
+        m.position += count
+        return count
+        
+    def write(m, data):
+        pos = m.position
+        if pos > len(m.arr): # slice syntax doesn't handle this case...
+            m.arr += bytearray(pos - len(m.arr))
+        size = len(data)
+        m.arr[pos:pos + size] = data
+        m.position += size
+        return size
+
 class IOWrapper:
     def __init__(m, stream):
         m.stream = stream
@@ -2369,7 +2405,7 @@ def measure_execution_time(func):
         start = time.time()
         result = func(*args, **kwargs)
         end = time.time()
-        print("%s took %f seconds" % (func, end - start))
+        print(f"{func} took {end - start:f} seconds")
         return result
     return decorator
     

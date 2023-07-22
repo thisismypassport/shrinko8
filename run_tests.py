@@ -20,7 +20,7 @@ def norm_paths(output):
     return output.replace("\\", "/")
 
 def measure(kind, path, input=False):
-    print("Measuring %s..." % kind)
+    print(f"Measuring {kind}...")
     if path_exists(path):
         _, stdout = run_code(path, "--input-count" if input else "--count")
         print(stdout, end="")
@@ -52,7 +52,7 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
 
     if run_success and not to_temp:
         if norm_output(try_file_read(outpath)) != norm_output(try_file_read(cmppath)):
-            stdouts.append("ERROR: File difference: %s, %s" % (outpath, cmppath))
+            stdouts.append(f"ERROR: File difference: {outpath}, {cmppath}")
             success = False
 
     if run_success and extra_outputs:
@@ -60,7 +60,7 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
             extra_outpath = path_join(prefix + "test_output", extra_output)
             extra_cmppath = path_join(prefix + "test_compare", extra_output)
             if try_file_read(extra_outpath) != try_file_read(extra_cmppath):
-                stdouts.append("ERROR: Extra file difference: %s, %s" % (extra_outpath, extra_cmppath))
+                stdouts.append(f"ERROR: Extra file difference: {extra_outpath}, {extra_cmppath}")
                 success = False
 
     if run_success and g_opts.pico8 and not g_opts.no_pico8 and (pico8_output != None or pico8_output_val != None):
@@ -69,14 +69,14 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
         for pico8_exe in g_opts.pico8:
             p8_success, p8_stdout = run_pico8(pico8_exe, outpath, expected_printh=pico8_output_val)
             if not p8_success:
-                stdouts.append("ERROR: Pico8 run failure with %s" % pico8_exe)
+                stdouts.append(f"ERROR: Pico8 run failure with {pico8_exe}")
                 stdouts.append(p8_stdout)
                 success = False
 
     stdout = "\n".join(stdouts)
 
     if not success:
-        print("\nERROR - test %s failed" % name)
+        print(f"\nERROR - test {name} failed")
         print(stdout)
         if not read_stdout:
             measure("new", outpath)
@@ -84,11 +84,11 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
         fail_test()
         return False
     elif g_opts.measure:
-        print("\nMeasuring %s" % name)
+        print(f"\nMeasuring {name}")
         measure("in", inpath, input=True)
         measure("out", outpath)
     elif g_opts.verbose:
-        print("\nTest %s succeeded" % name)
+        print(f"\nTest {name} succeeded")
     if g_opts.stdout:
         print(stdout)
     return True

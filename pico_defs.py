@@ -176,7 +176,7 @@ def to_p8str(text):
         elif ch == k_variant_char:
             pass
         else:
-            throw("invalid char: %s (%s)" % (ch, ord(ch)))
+            throw(f"invalid char: {ch} ({ord(ch)})")
     return "".join(result)
 
 def from_p8str(text, unicaps=False):
@@ -224,7 +224,7 @@ def get_version_tuple(id):
     version = k_version_tuples.get(id)
     if version is None:
         if id >= 29:
-            eprint("warning - unknown version id %d, outputting wrong version number (should be benign)" % id)
+            eprint(f"warning - unknown version id {id}, outputting wrong version number (should be benign)")
             version = k_version_tuples.get(get_default_version_id(), (0,0,0,0)) # better than nothing?
         elif id >= 19:
             version = (0,2,0,0)

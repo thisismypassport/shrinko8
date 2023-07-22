@@ -9,7 +9,7 @@ class CartFormat(Enum):
     auto = p8 = png = lua = rom = tiny_rom = clip = url = code = js = pod = ...
 
 CartFormat.input_names = tuple(CartFormat._values.keys())
-CartFormat.output_names = tuple(name for name in CartFormat.input_names if name not in ("auto", "js", "pod"))
+CartFormat.output_names = tuple(name for name in CartFormat.input_names if name != "auto")
 CartFormat.ext_names = tuple(name for name in CartFormat.input_names if name not in ("auto", "tiny_rom", "code"))
 CartFormat.src_names = ("p8", "lua", "code")
 CartFormat.pack_names = ("js", "pod")
@@ -96,7 +96,7 @@ def read_cart_from_rom(buffer, path=None, allow_tiny=False, **opts):
     return cart
 
 def write_cart_to_rom(cart, with_trailer=False, keep_compression=False, **opts):
-    io = BytesIO(bytearray(k_cart_size + (k_trailer_size if with_trailer else 0)))
+    io = BytesIO(bytes(k_cart_size + (k_trailer_size if with_trailer else 0)))
 
     with BinaryWriter(io, big_end = True) as w:
         w.bytes(cart.rom)
@@ -363,14 +363,14 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
                 cart.version_tuple = get_version_tuple(cart.version_id)
 
         except Exception:
-            throw("Invalid %s line in p8 file (line #%d)" % (header, line_i + 1))
+            throw(f"Invalid {header} line in p8 file (line #{line_i + 1})")
             
     cart.code, cart.code_map = preprocess_code(path, "".join(code), code_line, preprocessor=preprocessor)
     return cart
 
 def write_cart_to_source(cart, unicode_caps=False, **_):
-    lines = ["%s // http://www.pico-8.com" % k_p8_prefix]
-    lines.append("version %d" % cart.version_id)
+    lines = [k_p8_prefix + " // http://www.pico-8.com"]
+    lines.append(f"version {cart.version_id}")
 
     def nybbles(data):
         return "".join('%01x' % b for b in data)
@@ -436,7 +436,7 @@ def write_cart_to_source(cart, unicode_caps=False, **_):
         remove_empty_section_lines()
     
     for meta, metalines in cart.meta.items():
-        lines.append("__%s__" % (k_meta_prefix + meta))
+        lines.append(f"__{k_meta_prefix + meta}__")
         lines += metalines
 
     return "\n".join(lines)
@@ -471,7 +471,7 @@ def read_cart_from_url(url, size_handler=None, **opts):
     url_params = url.split("?", 1)[1]
     for url_param in url_params.split("&"):
         if "=" not in url_param:
-            throw("Invalid url param: %s" % url_param)
+            throw(f"Invalid url param: {url_param}")
         
         key, value = url_param.split("=", 1)
         if key == "c":
@@ -479,7 +479,7 @@ def read_cart_from_url(url, size_handler=None, **opts):
         elif key == "g":
             gfx = value
         else:
-            throw("Unknown url param: %s" % key)
+            throw(f"Unknown url param: {key}")
 
     cart = Cart()
 
@@ -614,7 +614,7 @@ def read_cart(path, format=None, **opts):
     elif format in (None, CartFormat.auto):
         return read_cart_autodetect(path, **opts)
     else:
-        throw("invalid format for reading: %s" % format)
+        throw(f"invalid format for reading: {format}")
 
 k_tab_break = "\n-->8\n" # yes, pico8 doesn't accept consecutive/initial/final tab breaks
 
@@ -632,7 +632,7 @@ def trim_cart_to_tab(cart, target_tab):
         tab += 1
         start = end + len(k_tab_break)
     else:
-        throw("Couldn't find tab %d in cart: %s" % (target_tab, cart.path))
+        throw(f"Couldn't find tab {target_tab} in cart: {cart.path}")
 
     cart.code = cart.code[start:end]
 
@@ -673,7 +673,7 @@ class PicoPreprocessor:
             # windows path outside windows, maybe?
             inc_path = inc_path.replace("\\", "/")
             if not path_exists(inc_path):
-                throw("cannot open included cart at: %s" % inc_path)
+                throw(f"cannot open included cart at: {inc_path}")
         
         if m.include_notifier:
             m.include_notifier(inc_path)
@@ -802,8 +802,10 @@ def write_cart(path, cart, format, **opts):
         file_write_text(path, write_cart_to_raw_source(cart, **opts))
     elif format == CartFormat.code:
         file_write_text(path, write_cart_to_raw_source(cart, with_header=True, **opts))
+    elif format in (CartFormat.js, CartFormat.pod):
+        write_cart_package(path, read_cart_package(path, format).write_cart(cart, **opts))
     else:
-        throw("invalid format for writing: %s" % format)
+        throw(f"invalid format for writing: {format}")
 
 def get_bbs_cart_url(id):
     if not id.startswith("#"):
@@ -812,85 +814,199 @@ def get_bbs_cart_url(id):
     from urllib.parse import urlencode
     params = {"lid": id[1:], "cat": 7}
 
-    return "https://www.lexaloffle.com/bbs/get_cart.php?%s" % urlencode(params)
+    return "https://www.lexaloffle.com/bbs/get_cart.php?" + urlencode(params)
+
+class ListOp(Enum):
+    insert = replace = delete = ...
 
 class CartPackage:
     """A container of multiple carts"""
 
-    def __init__(m, reader, carts, default_name):
-        m.carts = carts # name -> <obj>
-        m.default_name = default_name
-        m.reader = reader # (<obj>, **opts) -> cart
+    # read_impl: (<obj>, **opts) -> cart
+    # insert_impl: (name, cart, **opts) -> <obj>
+    # replace_impl: (<obj>, cart, **opts) -> <obj>
+    # delete_impl: (<obj>, **opts) -> <obj>
+
+    def __init__(m):
+        m.carts = {} # name -> <obj>
+        m.default_name = None # str
+    
+    def add_cart(m, name, obj):
+        m.carts[name] = obj
+        if m.default_name is None:
+            m.default_name = name
 
     def list(m):
-        return sorted(m.carts.keys())
+        return m.carts.keys()
 
     def read_cart(m, cart_name=None, **opts):
         if cart_name is None:
             cart_name = m.default_name
         if cart_name not in m.carts:
-            throw("cart %s not found in package" % cart_name)
-        return m.reader(m.carts[cart_name], path=cart_name, **opts)
-
-def read_js_package(text):
-    cartnames_raw = re.search("var\s+_cartname\s*=\s*\[(.*?)\]", text, re.S)
-    if not cartnames_raw:
-        throw("can't find _cartname var in js")
-
-    carts = {}
-    default_name = None
-    for i, cartname in enumerate(cartnames_raw.group(1).split(",")):
-        cartname = cartname.strip()[1:-1] # may fail if using special chars...
-        carts[cartname] = i
-        if default_name is None:
-            default_name = cartname
-
-    cartdata_raw = re.search("var\s+_cartdat\s*=\s*\[(.*?)\]", text, re.S)
-    if not cartdata_raw:
-        throw("can't find _cartdat var in js")
+            throw(f"cart {cart_name} not found in package")
+        return m.read_impl(m.carts[cart_name], path=cart_name, **opts)
     
-    cartdata = bytearray(k_cart_size * len(carts))
-    for i, b in enumerate(cartdata_raw.group(1).split(",")):
-        cartdata[i] = int(b.strip())
+    def write_cart(m, cart, cart_name=None, cart_op=ListOp.replace, **opts):
+        if cart_op == ListOp.insert:
+            if cart_name is None:
+                throw("cart name must be specified for insert")
+            if cart_name in m.carts:
+                throw(f"cart {cart_name} already found in package")
+            obj = m.insert_impl(cart_name, cart, **opts)
+            m.carts[cart_name] = obj
 
-    def reader(cartidx, **opts):
-        return read_cart_from_rom(cartdata[k_cart_size * cartidx : k_cart_size * (cartidx + 1)], **opts)
+        else:
+            if cart_name is None:
+                cart_name = m.default_name
+            if cart_name not in m.carts:
+                throw(f"cart {cart_name} not found in package")
+            
+            if cart_op == ListOp.replace:
+                obj = m.replace_impl(m.carts[cart_name], cart, **opts)
+                m.carts[cart_name] = obj
+            else:
+                m.delete_impl(m.carts[cart_name], **opts)
+                del m.carts[cart_name]
+        return m
 
-    return CartPackage(reader, carts, default_name)
+class JsPackage(CartPackage):
+    def __init__(m, text):
+        super().__init__()
+        m.text = text
+        m.init()
+    
+    def find_cartnames(m):
+        match = re.search("var\s+_cartname\s*=\s*\[(.*?)\]", m.text, re.S)
+        if not match:
+            throw("can't find _cartname var in js")
+        return match
+    
+    def find_cartdata(m):
+        match = re.search("var\s+_cartdat\s*=\s*\[(.*?)\]", m.text, re.S)
+        if not match:
+            throw("can't find _cartdat var in js")
+        return match
 
-def read_pod_package(r):
-    with r:
-        assert r.str(4) == "CPOD"
-        assert r.u32() == 0x44 # size of header?
-        assert r.u32() == 1 # ???
-        r.addpos(0x20) # junk/name?
-        count = r.u32()
-        r.addpos(0x1c)
+    def init(m):
+        m.cartnames = []
+        cartnames_text = m.find_cartnames().group(1)
+        if cartnames_text.strip():
+            for i, cartname in enumerate(cartnames_text.split(",")):
+                cartname = cartname.strip()[1:-1] # may fail if using special chars...
+                m.cartnames.append(cartname)
+                m.add_cart(cartname, i)
 
-        carts = {}
-        default_name = None
-        for i in range(count):
-            assert r.str(4) == "CFIL"
-            assert r.u32() == 0 # ???
-            size = r.u32()
-            name = r.zstr(0x40)
-            data = r.bytes(size)
+        m.cartdata = bytearray(k_cart_size * len(m.carts))
+        cartdata_text = m.find_cartdata().group(1)
+        if cartdata_text.strip():
+            for i, b in enumerate(cartdata_text.split(",")):
+                m.cartdata[i] = int(b.strip())
 
-            if name: # there are 3 unnamed files - 2 sub-pods with custom-format bitmaps and 1 template(?) cart
-                carts[name] = data
-                if default_name is None:
-                    default_name = name
+    def read_impl(m, i, **opts):
+        return read_cart_from_rom(m.cartdata[k_cart_size * i : k_cart_size * (i + 1)], **opts)
 
-    def reader(data, **opts):
-        return read_cart_from_rom(data, **opts)
+    def insert_impl(m, name, cart, **opts):
+        m.cartdata += write_cart_to_rom(cart, **opts)
+        m.cartnames.append(name)
+        m.finish_write()
 
-    return CartPackage(reader, carts, default_name)
+    def replace_impl(m, i, cart, **opts):
+        new_bytes = write_cart_to_rom(cart, **opts)
+        m.cartdata[k_cart_size * i : k_cart_size * (i + 1)] = new_bytes
+        m.finish_write()
+    
+    def delete_impl(m, i, **opts):
+        del m.cartdata[k_cart_size * i : k_cart_size * (i + 1)]
+        del m.cartnames[i]
+        m.finish_write()
+
+    def finish_write(m):
+        m.text = str_replace_between(m.text, *m.find_cartnames().span(1), ", ".join(f"`{name}`" for name in m.cartnames))
+        m.text = str_replace_between(m.text, *m.find_cartdata().span(1), ",".join("%d" % b for b in  m.cartdata))
+
+k_pod_header = "CPOD"
+k_pod_file_header = "CFIL"
+
+class PodPackage(CartPackage):
+    def __init__(m, data):
+        super().__init__()
+        m.data = data
+        m.init()
+
+    def init(m):
+        with BinaryReader(BytesIO(m.data)) as r:
+            assert r.str(4) == k_pod_header
+            assert r.u32() == 0x44 # size of header?
+            assert r.u32() == 1 # ???
+            r.addpos(0x20) # junk/name?
+            m.count = r.u32()
+            r.addpos(0x1c)
+
+            for i in range(m.count):
+                assert r.str(4) == k_pod_file_header
+                assert r.u32() == 0 # ???
+                size = r.u32()
+                name = r.zstr(0x40)
+                pos = r.pos()
+                bytes = r.bytes(size)
+
+                if name: # there are 3 unnamed files - 2 sub-pods with custom-format bitmaps and 1 template(?) cart
+                    m.add_cart(name, (pos, bytes))
+
+    def read_impl(m, tuple, **opts):
+        _, bytes = tuple
+        return read_cart_from_rom(bytes, **opts)
+    
+    def update_count(m, delta):
+        m.count += delta
+        buf = BinaryBuffer(m.data)
+        buf.w_u32(0x2c, m.count)
+    
+    def init_write(m):
+        if not isinstance(m.data, bytearray):
+            m.data = bytearray(m.data)
+
+    def insert_impl(m, name, cart, **opts):
+        m.init_write()
+        new_bytes = write_cart_to_rom(cart, **opts)
+
+        with BinaryWriter(ByteArrayIO(m.data)) as w:
+            w.unwind()
+            w.str(k_pod_file_header)
+            w.u32(0)
+            w.u32(len(new_bytes))
+            w.zstr(name, 0x40)
+            w.bytes(new_bytes)
+        m.update_count(1)
+
+    def replace_impl(m, tuple, cart, **opts):
+        m.init_write()
+        pos, bytes = tuple
+        new_bytes = write_cart_to_rom(cart, **opts)
+
+        if len(new_bytes) != len(bytes):
+            throw(f"existing cart has size {len(bytes):#x} vs expected {len(new_bytes):#x}")        
+        m.data[pos:pos+len(new_bytes)] = new_bytes
+
+    def delete_impl(m, tuple, **opts):
+        m.init_write()
+        pos, bytes = tuple
+        del m.data[pos-0x4c:pos+len(bytes)]
+        m.update_count(-1)
 
 def read_cart_package(path, format):
     """Read a CartPackage from the given path, assuming it is in the given format"""
     if format == CartFormat.js:
-        return read_js_package(file_read_text(path))
+        return JsPackage(file_read_text(path))
     if format == CartFormat.pod:
-        return read_pod_package(BinaryReader(path))
+        return PodPackage(file_read(path))
     else:
-        throw("invalid format for listing: %s" % format)
+        throw(f"invalid format for listing: {format}")
+
+def write_cart_package(path, package):
+    if isinstance(package, JsPackage):
+        file_write_text(path, package.text)
+    elif isinstance(package, PodPackage):
+        file_write(path, package.data)
+    else:
+        fail("invalid cart package")

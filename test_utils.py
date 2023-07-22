@@ -59,7 +59,7 @@ def run_code(*args, exit_code=None):
     if exit_code == actual_code:
         return True, stdout
     else:
-        print("Exit with unexpected code %s" % actual_code)
+        print(f"Exit with unexpected code {actual_code}")
         return False, stdout
 
 def run_pico8(p8_exe, cart_path, expected_printh=None, timeout=5.0, allow_timeout=False, with_window=False):
@@ -74,7 +74,7 @@ def run_pico8(p8_exe, cart_path, expected_printh=None, timeout=5.0, allow_timeou
         if allow_timeout and isinstance(e, subprocess.TimeoutExpired):
             stdout = e.stdout
         else:
-            return False, "Exception: %s\n%s" % (e, e.stdout)
+            return False, f"Exception: {e}\n{e.stdout}"
     
     actual_printh_lines = []
     success = True

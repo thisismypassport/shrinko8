@@ -219,7 +219,7 @@ class CustomPreprocessor(PicoPreprocessor):
             m.active = m.get_active()
 
         elif not (m.pp_handler and m.pp_handler(op=op, args=args, ppline=line, active=m.active, outparts=outparts)):
-            throw("Invalid custom preprocessor line: %s" % line)
+            throw(f"Invalid custom preprocessor line: {line}")
 
         # (do not keep empty lines, unlike PicoPreprocessor)
         return m.active, end_i + 1, end_i + 1, out_i
@@ -248,7 +248,7 @@ class CustomPreprocessor(PicoPreprocessor):
                 if key in m.defines:
                     value = m.defines[key]
                 else:
-                    throw("Undefined custom preprocessor variable: %s" % key)
+                    throw(f"Undefined custom preprocessor variable: {key}")
 
         elif list_get(code, i) == '[':
             cond_args = []
@@ -264,18 +264,18 @@ class CustomPreprocessor(PicoPreprocessor):
             if list_get(code, i) == ']':
                 end_i = i + 1
             else:
-                throw("Invalid inline custom preprocesor directive: %s" % inline)
+                throw(f"Invalid inline custom preprocesor directive: {inline}")
 
             value = m.pp_handler(op=op, args=cond_args, ppline=inline, active=True, outparts=outparts) if m.pp_handler else None
             if value is None:
                 if len(cond_args) > 2:
-                    throw("Too many inline custom preprocessor directive params: %s" % inline)
+                    throw(f"Too many inline custom preprocessor directive params: {inline}")
                 if (key in m.defines) ^ negate:
                     value = list_get(cond_args, 0, "")
                 else:
                     value = list_get(cond_args, 1, "")
         else:
-            throw("Invalid inline custom preprocesor directive: %s" % op)
+            throw(f"Invalid inline custom preprocesor directive: {op}")
 
         outparts.append(value)
         return True, end_i, end_i, out_i + len(value)
@@ -362,7 +362,7 @@ def tokenize(source, ctxt=None, all_comments=False):
         if ctxt and ctxt.sublang_getter and token.type == TokenType.string:
             sublang_cls = ctxt.sublang_getter(sublang_name)
             if sublang_cls:
-                add_lang_error = lambda msg: add_error("%s: %s" % (sublang_name, msg))
+                add_lang_error = lambda msg: add_error(f"{sublang_name}: {msg}")
                 tokens[-1].sublang_name = sublang_name
                 tokens[-1].sublang = sublang_cls(parse_string_literal(token.value), on_error=add_lang_error)
                 return
@@ -441,7 +441,7 @@ def tokenize(source, ctxt=None, all_comments=False):
 
             if accept('['):
                 start_i = idx
-                end_i = text.find("]%s]" % pad, idx)
+                end_i = text.find(f"]{pad}]", idx)
                 if end_i >= 0:
                     idx = end_i + len(pad) + 2
                 else:
@@ -703,7 +703,7 @@ def parse_string_literal(str):
                 hex_esc = str[end + 2 : start]
                 value = maybe_int(hex_esc, base=16)
                 if value is None:
-                    throw("Invalid hex escape: %s" % hex_esc)
+                    throw(f"Invalid hex escape: {hex_esc}")
                 litparts.append(chr(value))
 
             elif '0' <= esc <= '9':
@@ -713,11 +713,11 @@ def parse_string_literal(str):
                 dec_esc = str[end + 1 : start]
                 value = maybe_int(dec_esc)
                 if value is None or value >= 256:
-                    throw("Invalid dec escape: %s" % dec_esc)
+                    throw(f"Invalid dec escape: {dec_esc}")
                 litparts.append(chr(value))
 
             else:
-                throw("Invalid escape: %s" % esc)
+                throw(f"Invalid escape: {esc}")
                 
         return "".join(litparts)
 
