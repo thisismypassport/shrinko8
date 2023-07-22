@@ -167,8 +167,8 @@ def get_compressed_size(r):
         r.addpos(-len(header))
         return len(r.zbytes(k_code_size, allow_eof=True))
 
-class Lz77Tuple(Tuple):
-    off = cnt = ... # the subtracted values, not the real values
+class Lz77Entry(Tuple):
+    offset = count = ... # (not pre-subtracted!)
 
 class Lz77Advance(Tuple):
     i = cost = ctxt = item = prev = ...
@@ -185,11 +185,11 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, max_o_step
         return c
 
     def find_match(i, max_o=max_o):
-        best_c, best_j = -1, -1
-        best_slice = ""
+        best_c, best_j = 0, -1
+        best_slice = type(code)() # e.g. "" if code is an str
         for j in reversed(min_matches[code[i:i+min_c]]):
             if best_slice == code[j:j+best_c]: # some speed-up, esp. for cpython
-                c = get_match_length(code, i, code, j, best_c if best_c >= 0 else min_c)
+                c = get_match_length(code, i, code, j, best_c if best_c > 0 else min_c)
             else:
                 continue
                 
@@ -208,7 +208,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, max_o_step
         return best_c, best_j
 
     def mktuple(i, j, count):
-        return Lz77Tuple(i - j - 1, count - min_c)
+        return Lz77Entry(i - j, count)
 
     i = 0
     prev_i = 0
@@ -270,7 +270,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, max_o_step
 
                 # try using a match
                 best_c, best_j = find_match(i)
-                if best_c >= 0:
+                if best_c > 0:
                     lz_item = mktuple(i, best_j, best_c)
                     lz_cost, lz_ctxt = measure(curr_ctxt, lz_item)
                     add_advance(curr_cost + lz_cost, lz_ctxt, best_c, lz_item)
@@ -282,7 +282,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, max_o_step
                             break
 
                         sh_best_c, sh_best_j = find_match(i, max_o=step)
-                        if sh_best_c >= 0:
+                        if sh_best_c > 0:
                             sh_item = mktuple(i, sh_best_j, sh_best_c)
                             sh_cost, sh_ctxt = measure(curr_ctxt, sh_item)
                             add_advance(curr_cost + sh_cost, sh_ctxt, sh_best_c, sh_item)
@@ -297,13 +297,13 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, max_o_step
 
             else:
                 best_c, best_j = find_match(i)
-                if best_c >= 0:
+                if best_c > 0:
                     yield i, mktuple(i, best_j, best_c)
                     i += best_c
                 else:
                     yield i, code[i]
                     i += 1
-            
+        
         if not (fast_c != None and best_c >= fast_c):
             for j in range(prev_i, i):
                 min_matches[code[j:j+min_c]].append(j)
@@ -339,9 +339,9 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
                 return count
 
             def measure(ctxt_mtf, item):
-                if isinstance(item, Lz77Tuple):
-                    offset_bits = max(round_up(count_significant_bits(item.off), 5), 5)
-                    count_bits = ((item.cnt // 7) + 1) * 3
+                if isinstance(item, Lz77Entry):
+                    offset_bits = max(round_up(count_significant_bits(item.offset - 1), 5), 5)
+                    count_bits = (((item.count - min_c) // 7) + 1) * 3
                     cost = 2 + (offset_bits < 15) + offset_bits + count_bits
 
                 else:
@@ -382,11 +382,10 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
 
                         litblock_idxs.append(i - best_j)
 
-                for i, item in get_lz77(code, min_c=pre_min_c, fast_c=0):
-                    if isinstance(item, Lz77Tuple):
-                        count = item.cnt + pre_min_c
-                        cost = (20 - count * 8) // count
-                        for j in range(count):
+                for i, item in get_lz77(code, min_c=pre_min_c, fast_c=1):
+                    if isinstance(item, Lz77Entry):
+                        cost = (20 - item.count * 8) // item.count
+                        for j in range(item.count):
                             add_last_cost(i + j, cost)
                     else:
                         ch_i = premtf.index(item)
@@ -399,8 +398,10 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
 
                 return litblock_idxs
                     
-            def write_match(offset_val, count_val):
+            def write_match(item):
                 bw.bit(0)
+                offset_val = item.offset - 1
+                count_val = item.count - min_c
                 
                 offset_bits = max(round_up(count_significant_bits(offset_val), 5), 5)
                 assert offset_bits in (5, 10, 15)
@@ -445,9 +446,9 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
                                  max_o_steps=(0x20, 0x400), litblock_idxs=preprocess_litblock_idxs())
 
             for i, item in items:
-                if isinstance(item, Lz77Tuple):
-                    write_match(item.off, item.cnt)
-                    if debug_handler: debug_handler.update((item.off + 1, item.cnt + min_c))
+                if isinstance(item, Lz77Entry):
+                    write_match(item)
+                    if debug_handler: debug_handler.update(item)
                 elif len(item) == 1:
                     write_literal(item)
                     if debug_handler: debug_handler.update(item)
@@ -462,16 +463,16 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
             if debug_handler: debug_handler.init(w)
 
             def measure(ctxt, item):
-                if isinstance(item, Lz77Tuple):
+                if isinstance(item, Lz77Entry):
                     return 2, ctxt
                 elif item in k_old_inv_code_table:
                     return 1, ctxt
                 else:
                     return 2, ctxt
 
-            def write_match(offset_val, count_val):
-                offset_val += 1
-                count_val += 1
+            def write_match(item):
+                offset_val = item.offset
+                count_val = item.count - 2
                 w.u8(0x3c + (offset_val >> 4))
                 w.u8((offset_val & 0xf) + (count_val << 4))
 
@@ -487,9 +488,9 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
 
             for i, item in get_lz77(code, min_c=min_c, max_c=0x11, max_o=0xc3f, no_repeat=True,
                                     measure=None if fast_compress else measure):
-                if isinstance(item, Lz77Tuple):
-                    write_match(item.off, item.cnt)
-                    if debug_handler: debug_handler.update((item.off + 1, item.cnt + min_c))
+                if isinstance(item, Lz77Entry):
+                    write_match(item)
+                    if debug_handler: debug_handler.update((item.offset, item.count))
                 else:
                     write_literal(item)
                     if debug_handler: debug_handler.update(item)
@@ -535,12 +536,11 @@ class CompressionTracer:
         bitpos = m.curr_bitpos()
         bitsize = bitpos - m.old_bitpos
 
-        if isinstance(item, tuple):
-            offset, count = item
-            for _ in range(count):
-                m.code.append(m.code[-offset])
-            str = "".join(m.code[-count:])
-            m.file.write(f"{bitsize},{m.escape(str)},{offset}:{count}\n")
+        if isinstance(item, Lz77Entry):
+            for _ in range(item.count):
+                m.code.append(m.code[-item.offset])
+            str = "".join(m.code[-item.count:])
+            m.file.write(f"{bitsize},{m.escape(str)},{item.offset}:{item.count}\n")
 
         else:
             for ch in item:

@@ -1,5 +1,5 @@
 from utils import *
-from sdl2_utils import Surface, BlendMode
+from sdl2_utils import Surface, BlendMode, Color
 from pico_defs import *
 from pico_compress import compress_code, uncompress_code, get_compressed_size, print_size
 import hashlib, base64
@@ -12,7 +12,7 @@ CartFormat.input_names = tuple(CartFormat._values.keys())
 CartFormat.output_names = tuple(name for name in CartFormat.input_names if name != "auto")
 CartFormat.ext_names = tuple(name for name in CartFormat.input_names if name not in ("auto", "tiny_rom", "code"))
 CartFormat.src_names = ("p8", "lua", "code")
-CartFormat.pack_names = ("js", "pod")
+CartFormat.export_names = ("js", "pod")
 
 class CodeMapping(Tuple):
     """Specifies that code starting at index 'idx' maps to the given source starting at index 'src_idx'"""
@@ -25,7 +25,7 @@ class Cart:
         m.version_id = get_default_version_id()
         m.version_tuple = get_version_tuple(m.version_id)
         m.platform = get_default_platform()
-        m.rom = rom.copy() if rom else Memory(k_rom_size)
+        m.rom = rom.copy() if rom else mem_create_rom()
         m.path = ""
         m.code = code
         m.code_map = ()
@@ -162,20 +162,18 @@ def read_cart_from_image(data, **opts):
 
     data = bytearray()
     screenshot = MultidimArray(k_screenshot_rect.size, 0)
-    image.lock()
+    pixels = image.pixels
 
     for y in range(height):
         for x in range(width):
-            r, g, b, a = image.get_at((x,y))
+            r, g, b, a = pixels[x, y]
             byte = ((b & 3) << 0) | ((g & 3) << 2) | ((r & 3) << 4) | ((a & 3) << 6)
             data.append(byte)
 
     for y in range(k_screenshot_rect.h):
         for x in range(k_screenshot_rect.w):
-            r, g, b, a = image.get_at(Point(x, y) + k_screenshot_offset)
+            r, g, b, a = pixels[Point(x, y) + k_screenshot_offset]
             screenshot[x, y] = k_palette_map_6bpp.get((r & ~3, g & ~3, b & ~3, a & ~3), 0)
-
-    image.unlock()
 
     cart = read_cart_from_rom(data, **opts)
     cart.screenshot = screenshot
@@ -203,7 +201,15 @@ def draw_text_on_image(image, text, offset, size, spacing=Point.zero, wrap=False
             if new_x <= size.x:
                 image.draw(font_surf, offset + Point(x, y), chrect)
             x = new_x
-    
+
+def create_screenshot_surface(screenshot):
+    screenshot_surf = Surface.create(*k_screenshot_rect.size)
+    screenshot_pixels = screenshot_surf.pixels
+    for y in range(k_screenshot_rect.h):
+        for x in range(k_screenshot_rect.w):
+            screenshot_pixels[x, y] = k_palette[screenshot[x, y]]
+    return screenshot_surf
+
 def write_cart_to_image(cart, screenshot_path=None, title=None, **opts):
     output = write_cart_to_rom(cart, with_trailer=True, **opts)
 
@@ -216,13 +222,9 @@ def write_cart_to_image(cart, screenshot_path=None, title=None, **opts):
                 screenshot_surf = Surface.load(screenshot_f)
                 screenshot_surf.blend_mode = BlendMode.none
                 image.draw(screenshot_surf, k_screenshot_offset, k_screenshot_rect)
+        
         elif cart.screenshot:
-            screenshot_surf = Surface.create(*k_screenshot_rect.size)
-            screenshot_surf.lock()
-            for y in range(k_screenshot_rect.h):
-                for x in range(k_screenshot_rect.w):
-                    screenshot_surf.set_at((x, y), k_palette[cart.screenshot[x, y]])
-            screenshot_surf.unlock()
+            screenshot_surf = create_screenshot_surface(cart.screenshot)
             image.draw(screenshot_surf, k_screenshot_offset, k_screenshot_rect)
         
         wrap = True
@@ -232,18 +234,18 @@ def write_cart_to_image(cart, screenshot_path=None, title=None, **opts):
         if title:
             draw_text_on_image(image, title, k_title_offset, k_title_size, k_title_spacing, wrap=wrap)
         
-        image.lock()
+        pixels = image.pixels
+
         for y in range(height):
             for x in range(width):
                 i = x + y * width
                 byte = output[i]
-                r, g, b, a = image.get_at((x,y))
+                r, g, b, a = pixels[x,y]
                 b = (b & ~3) | (byte & 3)
                 g = (g & ~3) | ((byte >> 2) & 3)
                 r = (r & ~3) | ((byte >> 4) & 3)
                 a = (a & ~3) | ((byte >> 6) & 3)
-                image.set_at((x, y), (r, g, b, a))
-        image.unlock()
+                pixels[x, y] = (r, g, b, a)
 
         f = BytesIO()
         image.save(f)
@@ -262,11 +264,11 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
     
     def nybble_groups(line, n):
         for i in range(0, len(line), n):
-            yield nybbles(line[i:i+n])
+            yield nybbles(line[i:i+n].ljust(n, "0"))
     
     def bytes(line):
         for i in range(0, len(line), 2):
-            yield int(line[i] + line[i + 1], 16)
+            yield int(line[i:i+2].ljust(2, "0"), 16)
     
     def ext_nybbles(line):
         for b in line:
@@ -285,7 +287,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
     for line_i, line in enumerate(data.split("\n")): # not splitlines, that eats a trailing empty line
         try:
             clean = line.strip()
-                
+            
             if line.startswith("__") and clean.endswith("__") and not raw: # may end with whitespace
                 header = clean[2:-2]
                 y = 0
@@ -298,61 +300,61 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
                 code.append(to_p8str(line))
                 y += 1
                 
-            elif header == "gfx" and clean:
-                assert len(clean) == 0x80
+            elif header == "gfx" and clean and y < 0x80:
                 x = 0
                 for b in nybbles(clean):
-                    cart.rom.set4(mem_tile_addr(x, y), b)
-                    x += 1
+                    if x < 0x80:
+                        cart.rom.set4(mem_tile_addr(x, y), b)
+                        x += 1
                 y += 1
                     
-            elif header == "map" and clean:
-                assert len(clean) == 0x100
+            elif header == "map" and clean and y < 0x40: # usually 0x20
                 x = 0
                 for b in bytes(clean):
-                    cart.rom.set8(mem_map_addr(x, y), b)
-                    x += 1
+                    if x < 0x80:
+                        cart.rom.set8(mem_map_addr(x, y), b)
+                        x += 1
                 y += 1
                     
-            elif header == "gff" and clean:
-                assert len(clean) == 0x100
+            elif header == "gff" and clean and y < 2:
                 x = 0
                 for b in bytes(clean):
-                    cart.rom.set8(mem_flag_addr(x, y), b)
-                    x += 1
+                    if x < 0x80:
+                        cart.rom.set8(mem_flag_addr(x, y), b)
+                        x += 1
                 y += 1
                 
-            elif header == "sfx" and clean:
-                assert len(clean) == 0xa8
+            elif header == "sfx" and clean and y < 0x40:
                 x = 0
                 for b in bytes(clean[:8]):
                     cart.rom.set8(mem_sfx_info_addr(y, x), b)
                     x += 1
                 x = 0
                 for bph, bpl, bw, bv, be in nybble_groups(clean[8:], 5):
-                    value = bpl | ((bph & 0x3) << 4) | ((bw & 0x7) << 6) | ((bv & 0x7) << 9) | ((be & 0x7) << 12) | ((bw & 0x8) << 12) 
-                    cart.rom.set16(mem_sfx_addr(y, x), value)
-                    x += 1
+                    if x < 0x20:
+                        value = bpl | ((bph & 0x3) << 4) | ((bw & 0x7) << 6) | ((bv & 0x7) << 9) | ((be & 0x7) << 12) | ((bw & 0x8) << 12) 
+                        cart.rom.set16(mem_sfx_addr(y, x), value)
+                        x += 1
                 y += 1
                 
-            elif header == "music" and clean:
-                assert len(clean) == 0xb and clean[2] == ' '
+            elif header == "music" and clean and y < 0x40:
                 x = 0
                 flags = next(bytes(clean[:2]))
                 for b in bytes(clean[3:]):
-                    value = b | (((flags >> x) & 1) << 7) 
-                    cart.rom.set8(mem_music_addr(y, x), value)
-                    x += 1
+                    if x < 4:
+                        value = b | (((flags >> x) & 1) << 7) 
+                        cart.rom.set8(mem_music_addr(y, x), value)
+                        x += 1
                 y += 1
 
-            elif header == "label" and clean:
-                assert len(clean) == 0x80
+            elif header == "label" and clean and y < 0x80:
                 if cart.screenshot is None:
                     cart.screenshot = MultidimArray(k_screenshot_rect.size, 0)
                 x = 0
                 for b in ext_nybbles(clean):
-                    cart.screenshot[x, y] = b
-                    x += 1
+                    if x < 0x80:
+                        cart.screenshot[x, y] = b
+                        x += 1
                 y += 1
 
             elif header and header.startswith(k_meta_prefix):
@@ -362,7 +364,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
                 cart.version_id = int(clean.split()[1])
                 cart.version_tuple = get_version_tuple(cart.version_id)
 
-        except Exception:
+        except Exception as e:
             throw(f"Invalid {header} line in p8 file (line #{line_i + 1})")
             
     cart.code, cart.code_map = preprocess_code(path, "".join(code), code_line, preprocessor=preprocessor)
@@ -371,6 +373,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
 def write_cart_to_source(cart, unicode_caps=False, **_):
     lines = [k_p8_prefix + " // http://www.pico-8.com"]
     lines.append(f"version {cart.version_id}")
+    defrom = mem_create_rom()
 
     def nybbles(data):
         return "".join('%01x' % b for b in data)
@@ -384,56 +387,58 @@ def write_cart_to_source(cart, unicode_caps=False, **_):
     def ext_nybbles(data):
         return "".join(('%01x' % b if b < 16 else chr(b - 16 + ord('g'))) for b in data)
 
-    def remove_empty_section_lines(num_spaces=0):
-        while True:
-            line = lines[-1]
-            if line.startswith("__"):
-                lines.pop()
-                break
-            elif line.count('0') == len(line) - num_spaces:
-                lines.pop()
+    def get_needed_lines(max_lines, addr_func, size):
+        lines = max_lines
+        for y in reversed(range(max_lines)):
+            if cart.rom.cmpeqwith8(addr_func(y), size, defrom):
+                lines -= 1
             else:
                 break
-    
+        return lines
+
     lines.append("__lua__")
     lines.append(from_p8str(cart.code, unicaps=unicode_caps))
 
-    lines.append("__gfx__")
-    for y in range(128):
-        lines.append(nybbles(cart.rom.get4(mem_tile_addr(x, y)) for x in range(128)))
-    remove_empty_section_lines()
+    gfx_lines = get_needed_lines(0x80, lambda y: mem_tile_addr(0, y)[0], 0x40)
+    if gfx_lines:
+        lines.append("__gfx__")
+        for y in range(gfx_lines):
+            lines.append(nybbles(cart.rom.get4(mem_tile_addr(x, y)) for x in range(128)))
 
-    lines.append("__map__")
-    for y in range(32):
-        lines.append(bytes(cart.rom.get8(mem_map_addr(x, y)) for x in range(128)))
-    remove_empty_section_lines()
+    map_lines = get_needed_lines(0x20, lambda y: mem_map_addr(0, y), 0x80)
+    if map_lines:
+        lines.append("__map__")
+        for y in range(map_lines):
+            lines.append(bytes(cart.rom.get8(mem_map_addr(x, y)) for x in range(128)))
 
-    lines.append("__gff__")
-    for y in range(2):
-        lines.append(bytes(cart.rom.get8(mem_flag_addr(x, y)) for x in range(128)))
-    remove_empty_section_lines() 
+    gff_lines = get_needed_lines(2, lambda y: mem_flag_addr(0, y), 0x80)
+    if gff_lines:
+        lines.append("__gff__")
+        for y in range(gff_lines):
+            lines.append(bytes(cart.rom.get8(mem_flag_addr(x, y)) for x in range(128)))
 
-    lines.append("__sfx__")
-    for y in range(64):
-        info = bytes(cart.rom.get8(mem_sfx_info_addr(y, x)) for x in range(4))
-        notes = (cart.rom.get16(mem_sfx_addr(y, x)) for x in range(32))
-        note_groups = nybble_groups(((n >> 4) & 0x3, n & 0xf, ((n >> 6) & 0x7) | (n >> 12) & 0x8, (n >> 9) & 0x7, (n >> 12) & 0x7) for n in notes)
-        lines.append(info + note_groups)
-    remove_empty_section_lines()
+    sfx_lines = get_needed_lines(0x40, lambda y: mem_sfx_addr(y, 0), 0x44)
+    if sfx_lines:
+        lines.append("__sfx__")
+        for y in range(sfx_lines):
+            info = bytes(cart.rom.get8(mem_sfx_info_addr(y, x)) for x in range(4))
+            notes = (cart.rom.get16(mem_sfx_addr(y, x)) for x in range(32))
+            note_groups = nybble_groups(((n >> 4) & 0x3, n & 0xf, ((n >> 6) & 0x7) | (n >> 12) & 0x8, (n >> 9) & 0x7, (n >> 12) & 0x7) for n in notes)
+            lines.append(info + note_groups)
 
-    lines.append("__music__")
-    for y in range(64):
-        chans = [cart.rom.get8(mem_music_addr(y, x)) for x in range(4)]
-        flags = bytes((sum(((ch >> 7) & 1) << i for i, ch in enumerate(chans)),))
-        ids = bytes(ch & 0x7f for ch in chans)
-        lines.append(flags + " " + ids)
-    remove_empty_section_lines(num_spaces=1)
+    music_lines = get_needed_lines(0x40, lambda y: mem_music_addr(y, 0), 0x4)
+    if music_lines:
+        lines.append("__music__")
+        for y in range(music_lines):
+            chans = [cart.rom.get8(mem_music_addr(y, x)) for x in range(4)]
+            flags = bytes((sum(((ch >> 7) & 1) << i for i, ch in enumerate(chans)),))
+            ids = bytes(ch & 0x7f for ch in chans)
+            lines.append(flags + " " + ids)
     
-    if cart.screenshot:
+    if cart.screenshot and any(cart.screenshot.array):
         lines.append("__label__")
         for y in range(128):
             lines.append(ext_nybbles(cart.screenshot[x, y] for x in range(128)))
-        remove_empty_section_lines()
     
     for meta, metalines in cart.meta.items():
         lines.append(f"__{k_meta_prefix + meta}__")
@@ -610,7 +615,7 @@ def read_cart(path, format=None, **opts):
     elif format == CartFormat.lua:
         return read_cart_from_source(file_read_text(path), raw=True, path=path, **opts)
     elif format in (CartFormat.js, CartFormat.pod):
-        return read_cart_package(path, format).read_cart(**opts)
+        return read_cart_export(path, format).read_cart(**opts)
     elif format in (None, CartFormat.auto):
         return read_cart_autodetect(path, **opts)
     else:
@@ -803,7 +808,7 @@ def write_cart(path, cart, format, **opts):
     elif format == CartFormat.code:
         file_write_text(path, write_cart_to_raw_source(cart, with_header=True, **opts))
     elif format in (CartFormat.js, CartFormat.pod):
-        write_cart_package(path, read_cart_package(path, format).write_cart(cart, **opts))
+        write_or_edit_cart_export(path, cart, format, **opts)
     else:
         throw(f"invalid format for writing: {format}")
 
@@ -816,197 +821,4 @@ def get_bbs_cart_url(id):
 
     return "https://www.lexaloffle.com/bbs/get_cart.php?" + urlencode(params)
 
-class ListOp(Enum):
-    insert = replace = delete = ...
-
-class CartPackage:
-    """A container of multiple carts"""
-
-    # read_impl: (<obj>, **opts) -> cart
-    # insert_impl: (name, cart, **opts) -> <obj>
-    # replace_impl: (<obj>, cart, **opts) -> <obj>
-    # delete_impl: (<obj>, **opts) -> <obj>
-
-    def __init__(m):
-        m.carts = {} # name -> <obj>
-        m.default_name = None # str
-    
-    def add_cart(m, name, obj):
-        m.carts[name] = obj
-        if m.default_name is None:
-            m.default_name = name
-
-    def list(m):
-        return m.carts.keys()
-
-    def read_cart(m, cart_name=None, **opts):
-        if cart_name is None:
-            cart_name = m.default_name
-        if cart_name not in m.carts:
-            throw(f"cart {cart_name} not found in package")
-        return m.read_impl(m.carts[cart_name], path=cart_name, **opts)
-    
-    def write_cart(m, cart, cart_name=None, cart_op=ListOp.replace, **opts):
-        if cart_op == ListOp.insert:
-            if cart_name is None:
-                throw("cart name must be specified for insert")
-            if cart_name in m.carts:
-                throw(f"cart {cart_name} already found in package")
-            obj = m.insert_impl(cart_name, cart, **opts)
-            m.carts[cart_name] = obj
-
-        else:
-            if cart_name is None:
-                cart_name = m.default_name
-            if cart_name not in m.carts:
-                throw(f"cart {cart_name} not found in package")
-            
-            if cart_op == ListOp.replace:
-                obj = m.replace_impl(m.carts[cart_name], cart, **opts)
-                m.carts[cart_name] = obj
-            else:
-                m.delete_impl(m.carts[cart_name], **opts)
-                del m.carts[cart_name]
-        return m
-
-class JsPackage(CartPackage):
-    def __init__(m, text):
-        super().__init__()
-        m.text = text
-        m.init()
-    
-    def find_cartnames(m):
-        match = re.search("var\s+_cartname\s*=\s*\[(.*?)\]", m.text, re.S)
-        if not match:
-            throw("can't find _cartname var in js")
-        return match
-    
-    def find_cartdata(m):
-        match = re.search("var\s+_cartdat\s*=\s*\[(.*?)\]", m.text, re.S)
-        if not match:
-            throw("can't find _cartdat var in js")
-        return match
-
-    def init(m):
-        m.cartnames = []
-        cartnames_text = m.find_cartnames().group(1)
-        if cartnames_text.strip():
-            for i, cartname in enumerate(cartnames_text.split(",")):
-                cartname = cartname.strip()[1:-1] # may fail if using special chars...
-                m.cartnames.append(cartname)
-                m.add_cart(cartname, i)
-
-        m.cartdata = bytearray(k_cart_size * len(m.carts))
-        cartdata_text = m.find_cartdata().group(1)
-        if cartdata_text.strip():
-            for i, b in enumerate(cartdata_text.split(",")):
-                m.cartdata[i] = int(b.strip())
-
-    def read_impl(m, i, **opts):
-        return read_cart_from_rom(m.cartdata[k_cart_size * i : k_cart_size * (i + 1)], **opts)
-
-    def insert_impl(m, name, cart, **opts):
-        m.cartdata += write_cart_to_rom(cart, **opts)
-        m.cartnames.append(name)
-        m.finish_write()
-
-    def replace_impl(m, i, cart, **opts):
-        new_bytes = write_cart_to_rom(cart, **opts)
-        m.cartdata[k_cart_size * i : k_cart_size * (i + 1)] = new_bytes
-        m.finish_write()
-    
-    def delete_impl(m, i, **opts):
-        del m.cartdata[k_cart_size * i : k_cart_size * (i + 1)]
-        del m.cartnames[i]
-        m.finish_write()
-
-    def finish_write(m):
-        m.text = str_replace_between(m.text, *m.find_cartnames().span(1), ", ".join(f"`{name}`" for name in m.cartnames))
-        m.text = str_replace_between(m.text, *m.find_cartdata().span(1), ",".join("%d" % b for b in  m.cartdata))
-
-k_pod_header = "CPOD"
-k_pod_file_header = "CFIL"
-
-class PodPackage(CartPackage):
-    def __init__(m, data):
-        super().__init__()
-        m.data = data
-        m.init()
-
-    def init(m):
-        with BinaryReader(BytesIO(m.data)) as r:
-            assert r.str(4) == k_pod_header
-            assert r.u32() == 0x44 # size of header?
-            assert r.u32() == 1 # ???
-            r.addpos(0x20) # junk/name?
-            m.count = r.u32()
-            r.addpos(0x1c)
-
-            for i in range(m.count):
-                assert r.str(4) == k_pod_file_header
-                assert r.u32() == 0 # ???
-                size = r.u32()
-                name = r.zstr(0x40)
-                pos = r.pos()
-                bytes = r.bytes(size)
-
-                if name: # there are 3 unnamed files - 2 sub-pods with custom-format bitmaps and 1 template(?) cart
-                    m.add_cart(name, (pos, bytes))
-
-    def read_impl(m, tuple, **opts):
-        _, bytes = tuple
-        return read_cart_from_rom(bytes, **opts)
-    
-    def update_count(m, delta):
-        m.count += delta
-        buf = BinaryBuffer(m.data)
-        buf.w_u32(0x2c, m.count)
-    
-    def init_write(m):
-        if not isinstance(m.data, bytearray):
-            m.data = bytearray(m.data)
-
-    def insert_impl(m, name, cart, **opts):
-        m.init_write()
-        new_bytes = write_cart_to_rom(cart, **opts)
-
-        with BinaryWriter(ByteArrayIO(m.data)) as w:
-            w.unwind()
-            w.str(k_pod_file_header)
-            w.u32(0)
-            w.u32(len(new_bytes))
-            w.zstr(name, 0x40)
-            w.bytes(new_bytes)
-        m.update_count(1)
-
-    def replace_impl(m, tuple, cart, **opts):
-        m.init_write()
-        pos, bytes = tuple
-        new_bytes = write_cart_to_rom(cart, **opts)
-
-        if len(new_bytes) != len(bytes):
-            throw(f"existing cart has size {len(bytes):#x} vs expected {len(new_bytes):#x}")        
-        m.data[pos:pos+len(new_bytes)] = new_bytes
-
-    def delete_impl(m, tuple, **opts):
-        m.init_write()
-        pos, bytes = tuple
-        del m.data[pos-0x4c:pos+len(bytes)]
-        m.update_count(-1)
-
-def read_cart_package(path, format):
-    """Read a CartPackage from the given path, assuming it is in the given format"""
-    if format == CartFormat.js:
-        return JsPackage(file_read_text(path))
-    if format == CartFormat.pod:
-        return PodPackage(file_read(path))
-    else:
-        throw(f"invalid format for listing: {format}")
-
-def write_cart_package(path, package):
-    if isinstance(package, JsPackage):
-        file_write_text(path, package.text)
-    elif isinstance(package, PodPackage):
-        file_write(path, package.data)
-    else:
-        fail("invalid cart package")
+from pico_export import read_cart_export, write_or_edit_cart_export

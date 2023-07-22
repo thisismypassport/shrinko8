@@ -8,9 +8,11 @@ let inputSrcDir = "input.dir";
 let outputFile = "output.unk";
 let previewFile = "preview.p8";
 let scriptFile = "script.py";
+let pico8Dat = "pico8.dat";
 
 let outputCapture = undefined;
 let initProgress = 0;
+let hasPico8Dat = false;
 
 function run_main(main, args, fail) {
     try {
@@ -114,31 +116,45 @@ function mkdirParentRec(path) {
     }
 }
 
+function copyInputs(files, main) {
+    if (fs.analyzePath(inputSrcDir).exists) {
+        rmdirRec(inputSrcDir);
+    }
+    for (let [relpath, data] of files) {
+        let path = joinPath(inputSrcDir, relpath);
+        mkdirParentRec(path);
+        fs.writeFile(path, new Uint8Array(data));
+    }
+
+    return joinPath(inputSrcDir, main);
+}
+
 let api = {
-    loadInputFiles: async (files, main) => {
+    loadInputFiles: async (files, main, subfile) => {
         await initPromise;
 
         let mainExt = getLowExt(main);
-        if (isFormatText(mainExt) && files.length == 1) {
+        if (isFormatText(mainExt) && files.size == 1 && subfile == null) {
             // simple case - no conversion/preprocessing is needed or wanted.
-            let [_, data] = files[0];
+            let data = files.values().next().value;
             fs.writeFile(inputFile, new Uint8Array(data));
             return fs.readFile(inputFile, {encoding: "utf8"});
         } else {
             // copy entire files list and convert/preprocess to p8
-            if (fs.analyzePath(inputSrcDir).exists) {
-                rmdirRec(inputSrcDir);
+            let mainPath = copyInputs(files, main);
+            let args = [mainPath, inputFile];
+            if (subfile != null) {
+                args.push("--cart", subfile)
             }
-            for (let [relpath, data] of files) {
-                let path = joinPath(inputSrcDir, relpath);
-                mkdirParentRec(path);
-                fs.writeFile(path, new Uint8Array(data));
-            }
-        
-            let mainPath = joinPath(inputSrcDir, main);
-            shrinko8([mainPath, inputFile], true);
+            shrinko8(args, true);
             return fs.readFile(inputFile, {encoding: "utf8"});
         }
+    },
+    listInputFile: async (files, main) => {
+        await initPromise;
+        let mainPath = copyInputs(files, main);
+        let output = shrinko8([mainPath, "--list"], true);
+        return output.split("\n").filter(l => l);
     },
 
     updateInputFile: async (text) => {
@@ -149,6 +165,12 @@ let api = {
         await initPromise; // includes fs init
         fs.writeFile(scriptFile, text);
     },
+    updatePico8Dat: async (data) => {
+        await initPromise; // includes fs init
+        fs.writeFile(pico8Dat, new Uint8Array(data));
+        hasPico8Dat = true;
+    },
+    
     getProgress: () => initProgress,
     getVersion: async () => {
         await initPromise;
@@ -171,6 +193,9 @@ let api = {
         }
         if (encoding == "binary") {
             cmdline.push("--extra-output", previewFile);
+        }
+        if (hasPico8Dat) {
+            cmdline.push("--pico8-dat", pico8Dat); // won't hurt to always pass - only read if needed
         }
 
         let [code, stdout] = shrinko8(cmdline);

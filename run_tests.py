@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 from test_utils import *
-import argparse
+import argparse, fnmatch
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--measure", action="store_true", help="print the input/output counts for successful tests")
+parser.add_argument("--no-measure", action="store_true", help="don't print the input/output counts for failed tests")
 parser.add_argument("--stdout", action="store_true", help="print the stdout of shrinko8 while running the tests")
-parser.add_argument("-t", "--test", action="append", help="specify a specific test to run")
+parser.add_argument("-t", "--test", action="append", help="specify a specific test to run, optionally with wildcards")
 parser.add_argument("--no-private", action="store_true", help="do not run private tests, if they exist")
 parser.add_argument("-v", "--verbose", action="store_true", help="print test successes")
 parser.add_argument("-x", "--exe", action="store_true", help="test a packaged exe instead of the python script")
@@ -27,18 +28,27 @@ def measure(kind, path, input=False):
     else:
         print("MISSING!")
 
-def run_test(name, input, output, *args, private=False, from_temp=False, to_temp=False, from_output=False,
-             read_stdout=False, norm_stdout=nop, exit_code=None, extra_outputs=None, norm_output=nop,
-             pico8_output_val=None, pico8_output=None):
-    if g_opts.test and name not in g_opts.test:
-        return None
+def run_test(name, input, output, *args, private=False, check_output=True, from_output=False,
+             read_stdout=False, norm_stdout=nop, exit_code=0, extra_outputs=None, norm_output=nop,
+             pico8_output_val=None, pico8_output=None, copy_in_to_out=False):
+    if g_opts.test:
+        for wanted_test in g_opts.test:
+            if fnmatch.fnmatch(name, wanted_test):
+                break
+        else:
+            return None
 
     prefix = "private_" if private else ""
-    inpath = path_join(prefix + ("test_temp" if from_temp else "test_output" if from_output else "test_input"), input)
-    outpath = path_join(prefix + ("test_temp" if to_temp else "test_output"), output)
+    inpath = path_join(prefix + ("test_output" if from_output else "test_input"), input)
+    outpath = path_join(prefix + "test_output", output)
     cmppath = path_join(prefix + "test_compare", output)
 
-    if read_stdout:
+    if copy_in_to_out:
+        file_write(outpath, file_read(path_join(path_dirname(inpath), output)))
+
+    if not input:
+        args = (outpath,) + args
+    elif read_stdout:
         args = (inpath,) + args
     else:
         args = (inpath, outpath) + args
@@ -50,7 +60,7 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
     if read_stdout:
         file_write_text(outpath, norm_stdout(run_stdout))
 
-    if run_success and not to_temp:
+    if run_success and check_output:
         if norm_output(try_file_read(outpath)) != norm_output(try_file_read(cmppath)):
             stdouts.append(f"ERROR: File difference: {outpath}, {cmppath}")
             success = False
@@ -77,8 +87,9 @@ def run_test(name, input, output, *args, private=False, from_temp=False, to_temp
 
     if not success:
         print(f"\nERROR - test {name} failed")
+        print(f"Args: {args}")
         print(stdout)
-        if not read_stdout:
+        if not read_stdout and not g_opts.no_measure:
             measure("new", outpath)
             measure("old", cmppath)
         fail_test()
@@ -125,11 +136,11 @@ def run():
     run_test("p82png", "testcvt.p8", "testcvt.png")
     run_test("test_png", "test.png", "test.png", "--minify")
     run_test("png2p8", "test.png", "testcvt.p8")
-    if run_test("compress", "testcvt.p8", "testtmp.png", "--force-compression", to_temp=True):
-        run_test("compress_check", "testtmp.png", "test_post_compress.p8", from_temp=True)
-    if run_test("old_compress", "testcvt.p8", "testtmp_old.png", "--force-compression", "--old-compression", to_temp=True):
-        run_test("old_compress_check", "testtmp_old.png", "test_post_compress_old.p8", from_temp=True)
-        run_test("old_compress_keep", "testtmp_old.png", "testtmp_old.png", "--keep-compression", from_temp=True)
+    if run_test("compress", "testcvt.p8", "testtmp.png", "--force-compression", check_output=False):
+        run_test("compress_check", "testtmp.png", "test_post_compress.p8", from_output=True)
+    if run_test("old_compress", "testcvt.p8", "testtmp_old.png", "--force-compression", "--old-compression", check_output=False):
+        run_test("old_compress_check", "testtmp_old.png", "test_post_compress_old.p8", from_output=True)
+        run_test("old_compress_keep", "testtmp_old.png", "testtmp_old.png", "--keep-compression", from_output=True)
     run_test("lua2p8", "included.lua", "testlua.p8")
     run_test("rom2p8", "test.rom", "test.rom.p8")
     run_test("p82rom", "testcvt.p8", "test.p8.rom")
@@ -137,6 +148,8 @@ def run():
     run_test("p82clip", "testcvt.p8", "testcvt.clip")
     if run_test("url2p8", "test.url", "test.url.p8"):
         run_test("p82url", "test.url.p8", "test.url", from_output=True)
+    run_test("default", "default.p8", "default.rom")
+    run_test("default2", "default2.p8", "default2.rom")
     run_test("genend", "genend.p8.png", "genend.p8")
     run_stdout_test("lint", "bad.p8", "--lint", output="bad.txt", norm_stdout=norm_paths, exit_code=2)
     run_stdout_test("linttab", "bad.p8", "--lint", "--error-format", "tabbed",
@@ -180,7 +193,6 @@ def main(raw_args):
     init_tests(g_opts.exe)
     
     dir_ensure_exists("test_output")
-    dir_ensure_exists("test_temp")
     run()
 
     if not g_opts.no_private:
@@ -189,7 +201,7 @@ def main(raw_args):
         except ImportError:
             pass
         else:
-            private_run(run_test, run_stdout_test)
+            private_run(g_opts, run_test, run_stdout_test)
     
     return end_tests()
 

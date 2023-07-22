@@ -8,6 +8,25 @@ class BlendMode(Enum):
 class Color(Tuple):
     r = g = b = ...; a = 0xff
 
+class PixelFormat(Enum):
+    rgba8 = "RGBA"
+    bgra8 = ("RGBA", "BGRA")
+    i8 = "P"
+
+    @property
+    def _pil_fmt(m):
+        return m.value[0] if isinstance(m.value, tuple) else m.value
+    @property
+    def _pil_raw_fmt(m):
+        return m.value[1] if isinstance(m.value, tuple) else m.value
+
+    @property
+    def bpp(m):
+        if m == m.i8:
+            return 8
+        else:
+            return 32
+
 def _to_pil_tuple(obj):
     if obj is None:
         return None
@@ -18,26 +37,38 @@ def _to_pil_tuple(obj):
         return x, y, x + w, y + h
     else:
         fail(obj)
+        
+@staticmethod
+def _pil_module():
+    try:
+        from PIL import Image # type: ignore
+    except:
+        throw("ERROR: You need pillow (or PIL) to read/write PNGs (do 'python -m pip install pillow')")
+    return Image
 
 class Surface:
     @staticmethod
-    def _module():
-        try:
-            from PIL import Image # type: ignore
-        except:
-            throw("ERROR: You need pillow (or PIL) to read/write PNGs (do 'python -m pip install pillow')")
-        return Image
-
-    @staticmethod
     def load(f):
-        return Surface(Surface._module().open(f))
+        return Surface(_pil_module().open(f))
 
     @staticmethod
-    def create(w, h):
-        return Surface(Surface._module().new("RGBA", (w, h)))
+    def create(w, h, fmt=PixelFormat.rgba8):
+        return Surface(_pil_module().new(fmt._pil_fmt, (w, h)), fmt)
+    
+    @staticmethod
+    def from_data(w, h, fmt, data, pitch=None):
+        return Surface(_pil_module().frombytes(fmt._pil_fmt, (w, h), data, "raw", fmt._pil_raw_fmt, pitch or 0), fmt)
 
-    def __init__(m, pil):
+    def __init__(m, pil, fmt=None):
         m.pil = pil
+        m.fmt = fmt
+    
+    def to_data(m, fmt=None):
+        if fmt is None:
+            fmt = m.format
+        else:
+            assert fmt._pil_fmt == m.format._pil_fmt
+        return m.pil.tobytes("raw", fmt._pil_raw_fmt)
 
     def save(m, f):
         m.pil.save(f, "png")
@@ -51,17 +82,45 @@ class Surface:
     @property
     def size(m):
         return Point(m.width, m.height)
+    
+    @property
+    def format(m):
+        if m.fmt is None:
+            m.fmt = PixelFormat(m.pil.mode)
+        return m.fmt
 
-    def get_at(m, pos):
-        return m.pa[pos]
-    def set_at(m, pos, color):
-        m.pa[pos] = color
-
-    def lock(m):
-        m.pa = m.pil.load()
-    def unlock(m):
-        m.pa = None
+    @property
+    def pixels(m):
+        return SurfacePixels(m.pil.load())
 
     def draw(m, src, dest=None, srcpos=None):
         src = src.pil.crop(_to_pil_tuple(srcpos)) if e(srcpos) else src
         m.pil.alpha_composite(src, _to_pil_tuple(dest))
+    
+    @writeonly_property
+    def palette(m, pal):
+        m.pil.putpalette(pal.raw, "RGBA")
+
+class SurfacePixels:
+    def __init__(m, pa):
+        m.pa = pa
+    
+    def __getitem__(m, pos):
+        return m.pa[pos]
+    
+    def __setitem__(m, pos, color):
+        m.pa[pos] = color
+
+class Palette: # (pil's ImagePalette doesn't seem fit for purpose)
+    @staticmethod
+    def create(n):
+        return Palette([0] * (4 * n))
+
+    def __init__(m, raw):
+        m.raw = raw
+    
+    def __getitem__(m, i):
+        return m.raw[4 * i : 4 * (i + 1)]
+    
+    def __setitem__(m, i, v):
+        m.raw[4 * i : 4 * (i + 1)] = v

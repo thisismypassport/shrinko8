@@ -27,8 +27,8 @@ def end_tests():
     print("\nAll passed" if g_status == 0 else "\nSome FAILED!")
     return g_status
 
-def run_code(*args, exit_code=None):
-    actual_code = None
+def run_code(*args, exit_code=0):
+    actual_code = 0
     stdout = ""
 
     try:
@@ -45,7 +45,7 @@ def run_code(*args, exit_code=None):
                     with patch.object(sys, "stdout", stdout_io):
                         exec(g_code, {"__file__": g_code_file, "__name__": "__main__"})
             except SystemExit as e:
-                actual_code = e.code
+                actual_code = e.code or 0
             except Exception:
                 traceback.print_exc()
                 actual_code = -1
@@ -55,7 +55,7 @@ def run_code(*args, exit_code=None):
     except Exception:
         traceback.print_exc()
         return False, stdout
-            
+    
     if exit_code == actual_code:
         return True, stdout
     else:

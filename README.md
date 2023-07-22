@@ -435,6 +435,7 @@ Shrinko8 supports multiple cart formats, and allows converting between them:
 * lua - raw lua code, with no headers
 * clip - Pico-8 clipboard format (i.e. [cart]...[/cart])
 * url - Pico-8 education version url (code & gfx only)
+* js, pod - Exported formats, see [section on how to read or write them](#reading-and-writing-exported-formats).
 * auto - try to determine automatically from content
 
 E.g:
@@ -442,6 +443,7 @@ E.g:
 python shrinko8.py path-to-input.p8 path-to-output.png
 python shrinko8.py path-to-input.png path-to-output.rom
 python shrinko8.py path-to-input.rom path-to-output.lua
+python shrinko8.py path-to-export/windows/data.pod path-to-output.p8
 ```
 
 By default, the format is determined by the file extension, but you can specify it explicitly via:
@@ -467,26 +469,33 @@ Normally, shrinko8 will take the label and title (if any) from the input cart, s
 
 However, it is also possible to override the label from a custom 128x128 screenshot via `--label <path>` and the title via `--title "some title"`
 
-## Reading and modifying exported formats
+## Reading and writing exported formats
 
-Shrinko8 can also read and modify exported carts:
+Shrinko8 can also read, write and modify exported carts:
 * js - Pico-8 carts exported to html+js - supply the .js file to shrinko8.
 * pod - Pico-8 carts exported as (any) executables - supply the .pod file to shrinko8.
 
-Note that Shrinko8 cannot create such exports from scratch - it can only read and modify carts inside an existing export.
-
-When you pass an export as the input parameter to Shrinko8, it will read the first cart inside by default.
+When you pass an export as the input parameter to Shrinko8, it will - by default - read the main cart inside.
 
 If the export contains more than one cart, you can use:
-* `--list` to list the names of the carts in the export
-* `--cart <name>` to select which cart to read from the export
+* `--list` to list the names of the carts in the export (the first cart listed is the main cart)
+* `--dump <folder>` to dump all the carts in the export into the given folder
+* `--cart <name>` to select which cart to read from the export, instead of the main cart
 
-When you pass an export as the output parameter to Shrinko8, it will replace the first cart inside by default.
+When you pass an export as the output parameter to Shrinko8, it will - by default - try to create a new export containing a single cart.
 
-If the export contains (or you want it to contain) more than one cart, you can use:
-* `--replace-cart <name>` to replace the cart with the given name
-* `--insert-cart <name>` to insert a new cart, giving it the given name
-* `--delete-cart <name>` to delete the cart with the given name (no need to pass input cart)
+However, for that to work, you must to also supply `--pico8-dat <path to pico8.dat file inside pico8 directory>` to Shrinko8, e.g:
+`python shrinko8.py path-to-input.p8 path-to-output.js --pico8-dat c:/pico8/pico8.dat`
+Also note that Shrinko8 only creates the js or pod files which contain the cart data (among other stuff) - you need to use pico8 to create the rest of the files.
+
+Alternatively, you can modify an existing export, e.g. to add additional carts, resulting in a multi-cart export:
+* `--insert-cart` to insert a new cart to the export. (The name is taken from the input cart)
+* `--insert-cart <name>` to insert a new cart to the export and give it a specific name.
+* `--replace-cart <name>` to replace the cart with the specified name
+* `--replace-cart` to replace the main cart
+* `--delete-cart <name>` to delete the cart with the specified name (no need to pass input cart)
+* `--rename-cart <name> <newname>` to rename the cart to the specified name (no need to pass input cart)
+Note that modifying existing exports doesn't require `--pico8-dat` - only creating exports does.
 
 # Unminification
 

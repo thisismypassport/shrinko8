@@ -599,6 +599,28 @@ class lazy_property(object):
     def is_set(obj, name):
         return name in obj.__dict__
 
+class lazy_classproperty(object):
+    """Method decorator that turns it into a lazily-evaluated class property"""
+
+    def __init__(m, func):
+        m.func = func
+        
+    def __get__(m, _, cls):
+        value = m.func(cls)
+        setattr(cls, m.func.__name__, value) # won't be called again for this obj
+        return value
+
+class lazy_staticproperty(object):
+    """Method decorator that turns it into a lazily-evaluated static property"""
+
+    def __init__(m, func):
+        m.func = func
+        
+    def __get__(m, _, cls):
+        value = m.func()
+        setattr(cls, m.func.__name__, value) # won't be called again for this obj
+        return value
+
 class post_property_set(object):
     """Method decorator that creates a field-backed read-write property that calls the
     decorated method when set, with the old and new values"""
@@ -640,6 +662,8 @@ def staticclass(cls):
             setattr(cls, name, staticmethod(value))
         elif isinstance(value, property):
             setattr(cls, name, staticproperty(value.fget))
+        elif isinstance(value, lazy_property):
+            setattr(cls, name, lazy_staticproperty(value.func))
     return cls
 
 defaultdict = collections.defaultdict
@@ -1021,10 +1045,12 @@ class BinaryBitReader(BinaryBase):
 class BinaryWriter(BinaryBase):
     """Wraps a stream, allowing to easily write binary data to it"""
 
-    def __init__(m, path, big_end = False, enc = "utf-8", wenc = "utf-16"):
+    def __init__(m, path = None, big_end = False, enc = "utf-8", wenc = "utf-16"):
         m.big_end, m.enc, m.wenc = big_end, enc, wenc
         
-        if isinstance(path, (str, CustomPath)):
+        if path is None:
+            m.f = BytesIO()
+        elif isinstance(path, (str, CustomPath)):
             m.f = file_create(path)
         else:
             m.f = path
@@ -1209,6 +1235,7 @@ class BinaryBitWriter(BinaryBase):
 
 class BinaryBuffer:
     """Wraps a bytearray, allowing to easily read & write binary data in it"""
+    # TODO: make more consistent with BinaryReader/Writer (big_end, enc, wenc)
 
     def __init__(m, src):
         if isinstance(src, bytearray):
@@ -1269,38 +1296,62 @@ class BinaryBuffer:
     def w_f64(m, addr, val):
         f64.struct_le.pack_into(m.buf, addr, val)
         
-    def r_bytes(m, addr, count):
-        return m.buf[addr:addr+count]
+    def r_bytes(m, addr, count, allow_eof=False):
+        data = m.buf[addr:addr+count]
+        if not allow_eof and len(data) < count:
+            raise struct.error("end of buffer")
+        return data
         
-    def r_zbytes(m, addr, count = 1):
+    def r_zbytes(m, addr, size=None, count = 1):
         zero = b"\0" * count
         
-        result = b""
-        while True:
-            char = m.r_bytes(addr, count)
-            if char == zero:
-                break
-            else:
-                result += char
-                addr += count
+        if size is None:
+            result = b""
+            while True:
+                char = m.r_bytes(addr, count)
+                if char == zero:
+                    break
+                else:
+                    result += char
+                    addr += count
+        else:
+            result = m.r_bytes(addr, size * count)
+            # TODO: any better way? (can't search/split if count > 1)
+            for i in range(0, size, count):
+                if result[i:i+count] == zero:
+                    result = result[:i]
+                    break
         return result
         
-    def r_zstr(m, addr, enc="utf-8"):
-        return m.r_zbytes(addr).decode(enc)
-    def r_wzstr(m, addr, enc="utf-16"):
-        return m.r_zbytes(addr, 2).decode(enc)
+    def r_zstr(m, addr, size=None, enc="utf-8"):
+        return m.r_zbytes(addr, size).decode(enc)
+    def r_wzstr(m, addr, size=None, enc="utf-16"):
+        return m.r_zbytes(addr, size, 2).decode(enc)
     
     def w_bytes(m, addr, val):
         m.buf[addr:addr+len(val)] = val
     
-    def w_zbytes(m, addr, val, count=1):
-        m.w_bytes(addr, val)
-        m.w_bytes(addr + len(val), b"\0" * count)
+    def w_zbytes(m, addr, val, size=None, count=1):
+        zero = b"\0" * count
+        assert not (count > 1 and len(val) % count)
+
+        if size is None:
+            m.w_bytes(addr, val)
+            m.w_bytes(addr + len(val), zero)
+        else:
+            if len(val) > size * count:
+                raise struct.error("input too large for zbytes with fixed size")
+            m.w_bytes(addr, val)
+            end_addr = addr + size * count
+            addr += len(val)
+            while addr < end_addr:
+                m.w_bytes(addr, zero)
+                addr += count
         
-    def w_zstr(m, addr, val, enc="utf-8"):
-        m.w_zbytes(addr, val.encode(enc))
-    def w_wzstr(m, addr, val, enc='utf-16'):
-        m.w_zbytes(addr, val.encode(enc), 2)
+    def w_zstr(m, addr, val, size=None, enc="utf-8"):
+        m.w_zbytes(addr, val.encode(enc), size)
+    def w_wzstr(m, addr, val, size=None, enc='utf-16'):
+        m.w_zbytes(addr, val.encode(enc), size, 2)
 
     def r_struct(m, addr, struct):
         return struct.unpack_from(m.buf, addr)
@@ -1500,6 +1551,18 @@ def tuple_replace_at(tuple, i, newval):
 def tuple_remove_at(tuple, i, count=1):
     """Return a new tuple based on 'tuple' with 'count' elements removed at index 'i'"""
     return tuple[:i] + tuple[i+count:]
+
+def dict_first_key(dict):
+    for key in dict:
+        return key
+
+def iter_chunk(src, count):
+    it = iter(src)
+    while True:
+        chunk = tuple(itertools.islice(it, count))
+        if not chunk:
+            break
+        yield chunk
 
 def getattrs(obj, private = True, magic = False):
     """Get all attributes of 'obj' (By default, including _privates but excluding __magic__)"""
@@ -2235,7 +2298,10 @@ dir_set_current = os.chdir
     
 def filename_fixup(filename):
     """Fixup a filename to be valid"""
-    return "".join([ch if ch not in r"\/:*?<>|" else "_" for ch in filename])
+    fixed = "".join([ch if ch not in r"\/:*?<>|" else "_" for ch in filename])
+    if not fixed or fixed.endswith("."):
+        fixed += "_"
+    return fixed
 
 def try_cast(value, ctor, defval=None):
     """Try converting 'value' via constructor 'ctor', return 'defval' on failure"""

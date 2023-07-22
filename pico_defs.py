@@ -27,9 +27,18 @@ class Memory(bytearray):
 
     def copy8(m, dest, src, size, src_memory = None):
         m.set_block(dest, (src_memory or m).get_block(src, size))
+    
+    def copyfrom8(m, addr, size, src_memory):
+        m.copy8(addr, addr, size, src_memory)
         
     def fill8(m, dest, value, size):
         m.set_block(dest, bytearray((value,)) * size)
+        
+    def cmpeq8(m, src1, src2, size, other_memory = None):
+        return m.get_block(src1, size) == (other_memory or m).get_block(src2, size)
+    
+    def cmpeqwith8(m, src, size, other_memory = None):
+        return m.cmpeq8(src, src, size, other_memory)
         
     def get16(m, i):
         return m.get8(i) | (m.get8(i + 1) << 8)
@@ -68,9 +77,9 @@ def mem_map_addr(x, y):
     if y >= 0x20: y -= 0x40  # in effect
     return 0x2000 + y * 0x80 + x
 
-def mem_flag_addr(x, y):
-    """Convert an (x,y) coord to the tile's flags address"""
-    return 0x3000 + y * 0x80 + x
+def mem_flag_addr(tile, y=0):
+    """Convert a tile number to the tile's flags address"""
+    return 0x3000 + y * 0x80 + tile
 
 def mem_music_addr(music, ch):
     """Returns the address of the given channel of the given music"""
@@ -83,6 +92,14 @@ def mem_sfx_addr(sound, note):
 def mem_sfx_info_addr(sound, i):
     """Return the address of the i-th info byte of the given sfx"""
     return mem_sfx_addr(sound, 0x20) + i
+
+def mem_create_rom():
+    rom = Memory(k_rom_size)
+    for i in range(0x40):
+        rom.set8(mem_sfx_info_addr(i, 1), 0x1 if i == 0 else 0x10)
+        for ch in range(4):
+            rom.set8(mem_music_addr(i, ch), 0x41 + ch)
+    return rom
 
 k_rom_size = 0x4300 # size of the part of the pico8 cart that gets copied to the pico8 Memory
 k_cart_size = 0x8000 # size of the entire pico8 cart

@@ -168,13 +168,13 @@ async function loadInputFiles(inputs) {
         applyErrors(-1, text, "#input-error-output");
     }
 
-    let allFiles = [];
+    let allFiles = new Map();
     let foundP8 = undefined;
     async function processFile(file, relpath) {
         try {
             let path = joinPath(relpath, file.name);
             let data = await readFile(file);
-            allFiles.push([path, data]);
+            allFiles.set(path, data);
 
             if (getLowExt(file.name) == "p8") {
                 if (foundP8 == undefined) {
@@ -214,19 +214,29 @@ async function loadInputFiles(inputs) {
     }));
 
     let mainPath;
-    if (allFiles.length == 0) {
+    if (allFiles.size == 0) {
         onerror("Failed reading any files from your local machine");
         return;
-    } else if (allFiles.length == 1) {
-        [mainPath] = allFiles[0];
+    } else if (allFiles.size == 1) {
+        mainPath = allFiles.keys().next().value;
     } else if (foundP8) {
         mainPath = foundP8;
     } else {
-        mainPath = await beginInputSelectMain(allFiles);
+        mainPath = await beginInputSelect(allFiles.keys(), "main");
+    }
+
+    let subfile = undefined;
+    if (isFormatExport(getLowExt(mainPath))) {
+        let subfiles = await api.listInputFile(allFiles, mainPath);
+        if (subfiles.length == 1) {
+            subfile = subfiles[0];
+        } else {
+            subfile = await beginInputSelect(subfiles, "export");
+        }
     }
     
     try {
-        let code = await api.loadInputFiles(allFiles, mainPath);
+        let code = await api.loadInputFiles(allFiles, mainPath, subfile);
         inputMgr.setValue(code); // calls onInputChange
         $("#input-overlay").hide();
         doShrinkoAction();
@@ -257,25 +267,36 @@ function isFileDrag(event) {
     return true;
 }
 
-function onDragEnter(event) {
+function getDragTarget(elem) {
+    let jqelem = $(elem);
+    let selector = jqelem.data("droptarget");
+    if (selector) {
+        jqelem = $(selector);
+    }
+    return jqelem;
+}
+
+function onDragEnter(elem, event) {
     if (isFileDrag(event)) {
         event.preventDefault();
         event.dataTransfer.dropEffect = "copy";
-        $("#input-code").addClass("dragover");
+        getDragTarget(elem).addClass("dragover");
     }
 }
 
-function onDragLeave(event) {
+function onDragLeave(elem, event) {
     if (isFileDrag(event)) {
-        $("#input-code").removeClass("dragover");
+        getDragTarget(elem).removeClass("dragover");
     }
 }
 
-function loadDroppedFiles(event) {
+function onDrop(elem, event, type) {
     if (isFileDrag(event)) {
         event.preventDefault();
-        onDragLeave(event);
-        loadInputFiles(event.dataTransfer.items);
+        onDragLeave(elem, event);
+        if (type == "input") {
+            loadInputFiles(event.dataTransfer.items);
+        }
     }
 }
 
@@ -286,16 +307,19 @@ function onInputErrorClose() {
 
 let inputSelectResolve;
 
-// create ui to select the main file, return promise for the ui's end (may never resolve)
-async function beginInputSelectMain(allFiles) {
+// create ui to select a file, return promise for the ui's end (may never resolve)
+async function beginInputSelect(paths, reason) {
     $('#input-select-overlay').show();
     $("#input-overlay").hide();
+    
+    $("#input-select-main-label").toggle(reason == "main")
+    $("#input-select-export-label").toggle(reason == "export")
 
     let elem = $('#input-select-list');
     elem.empty();
 
     let selDiv;
-    for (let [path] of allFiles) {
+    for (let path of paths) {
         let div = $("<div/>");
         div.text(path);
         div.css("cursor", "pointer");
@@ -326,13 +350,25 @@ async function beginInputSelectMain(allFiles) {
     return selDiv.text();
 }
 
-// called to finish selecting the main file
-function onInputSelectMain() {
+// called to finish selecting a file
+function onInputSelect() {
     inputSelectResolve();
 }
 
-function onInputSelectMainClose() {
+function onInputSelectClose() {
     $('#input-select-overlay').hide();
+}
+
+let hasPico8Dat = false;
+
+async function loadPico8Dat(file) {
+    let data = await readFile(file);
+    await api.updatePico8Dat(data);
+    
+    hasPico8Dat = true;
+    $("#minify-pico8dat-overlay").hide();
+    outputMap = {}
+    doShrinkoAction();
 }
 
 let scriptMgr = new InputChangeMgr("#script-code", "updateScriptFile");
@@ -605,6 +641,7 @@ function onMinifyFormatChange(event) {
     $("#row-compressed").toggle(!isFormatText(format));
     $("#no-row-compressed").toggle(isFormatText(format));
     $("#minify-error-overlay").toggle(outputMap[format] === false);
+    $("#minify-pico8dat-overlay").toggle(isFormatExport(format) && !hasPico8Dat);
     if (event) {
         doShrinkoAction();
     }

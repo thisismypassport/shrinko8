@@ -25,3 +25,6 @@ function isFormatText(fmt) {
 function isFormatImg(fmt) {
     return fmt == "png";
 }
+function isFormatExport(fmt) {
+    return fmt == "pod" || fmt == "js";
+}

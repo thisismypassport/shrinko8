@@ -27,6 +27,11 @@
         display: none;
       }
 
+      .minioverlay { /* for use with overlay */
+        background: white;
+        z-index: 50;
+      }
+
       .full {
         position: absolute;
         top: 0;
@@ -104,16 +109,15 @@
       }
     </style>
   </head>
-  <body style="height: 100%; margin: 0;"
-        ondragover="onDragEnter(event)" ondragleave="onDragLeave(event)"
-        ondrop="loadDroppedFiles(event)">
+  <body style="height: 100%; margin: 0;" data-droptarget="#input-code"
+        ondragover="onDragEnter(this, event)" ondragleave="onDragLeave(this, event)" ondrop="onDrop(this, event, 'input')">
     <form class="flex-column" style="height: 100%" autocomplete="off"> <!--here to disable autocomplete-->
 
       <div class="flex-column margin" style="flex: 1">
         <div class="flex-row">
           <div style="flex: 1">
             <label style="font-weight: bold;">Open your Pico-8 file:
-              <input id="input-file" type="file" multiple style="margin-bottom: 10px;" accept=".p8,.lua,.png,.rom"
+              <input id="input-file" type="file" multiple style="margin-bottom: 10px;" accept=".p8,.lua,.png,.rom,.js,.pod"
                     onchange="loadSelectedFiles(this)" />
             </label>
           </div>
@@ -141,14 +145,15 @@ It can be a .p8 file, a .png cart, and more."></div>
           </div>
           <div id="input-select-overlay" class="overlay">
             <div class="center flex-column">
-              <div>Which is the main file to open? (The others will be used as includes)</div>
+              <div id="input-select-main-label">Which is the main file to open? (The others will be used as includes)</div>
+              <div id="input-select-export-label">This file contains multiple carts, which one do you want to open?</div>
               <div class="base" style="flex: 1">
                 <div id="input-select-list" class="scroll border asis" style="max-height: 30vh"></div>
               </div>
               <div class="margin">
                 <span class="hcenter">
-                  <button type="button" onclick="onInputSelectMain()">Open</button>
-                  <button type="button" onclick="onInputSelectMainClose()">Cancel</button>
+                  <button type="button" onclick="onInputSelect()">Open</button>
+                  <button type="button" onclick="onInputSelectClose()">Cancel</button>
                 </span>
               </div>
             </div>
@@ -167,11 +172,13 @@ It can be a .p8 file, a .png cart, and more."></div>
           <div class="flex-column" style="flex: 1">
             <label style="display: block; margin-bottom: 10px;">Target format:
               <select id="minify-format">
-                <option value="png">PNG cart</option>
-                <option value="p8">P8 file</option>
-                <option value="rom">ROM file</option>
-                <option value="lua">LUA file (Code only)</option>
-                <option value="tiny-rom">Tiny ROM file (Code only)</option>
+                <option value="png">.png cart</option>
+                <option value="p8">.p8 file</option>
+                <option value="rom">.rom file</option>
+                <option value="lua">.lua file (Code only)</option>
+                <option value="tiny-rom">Tiny .rom file (Code only)</option>
+                <option value="js">.js file (For HTML export)</option>
+                <option value="pod">.pod file (For binary export)</option>
               </select>
             </label>
             
@@ -180,6 +187,7 @@ It can be a .p8 file, a .png cart, and more."></div>
                 <div id="minify-code" class="ace-textarea" style="flex: 1" readonly></div>
                 <div><button type="button" style="margin-top: 10px" onclick="saveOutputFile()">Download</button></div>
               </div>
+
               <div id="minify-binary-div" class="full flex-row">
                 <div>
                   <img id="minify-image" width="160" height="205" style="margin: 10px 0"></img><br/>
@@ -190,11 +198,20 @@ It can be a .p8 file, a .png cart, and more."></div>
                   <div id="minify-preview" class="ace-textarea" style="flex: 1; margin-top: 10px" readonly></div>
                 </div>
               </div>
+
               <div id="minify-overlay" class="overlay">
                 <div class="center">Minifying...</div>
               </div>
-              <div id="minify-error-overlay" class="overlay flex-column" style="background: white; z-index: 50">
+              <div id="minify-error-overlay" class="overlay minioverlay flex-column">
                 <div id="minify-error-output" class="scroll border asis" style="flex: 1"></div>
+              </div>
+              <div id="minify-pico8dat-overlay" class="overlay flex-column">
+                <div class="center">
+                  Creating exports requires the pico8.dat file from your pico8 folder.<br/>
+                  <label style="font-weight: bold;">Open pico8.dat:
+                    <input id="pico8dat-file" type="file" accept=".dat" onchange="loadPico8Dat(this.files[0])" />
+                  </label>
+                </div>
               </div>
               <div id="loading-overlay" class="overlay">
                 <div class="center">
@@ -205,6 +222,7 @@ It can be a .p8 file, a .png cart, and more."></div>
               </div>
             </div>
           </div>
+
           <div id="minify-opts" style="flex: 0 0 20%; padding-left: 10px; border-left: 1px solid black" class="flex-column">
             <div style="flex: 1">
               <label><input type="radio" name="minify" value="--unminify">Undo Minification (Reformat)</label><br/>
@@ -270,6 +288,7 @@ It can be a .p8 file, a .png cart, and more."></div>
               <div class="center">Linting...</div>
             </div>
           </div>
+
           <div id="lint-opts" style="flex: 0 0 10%; margin-left: 10px">
             Show lint warnings for:<br/>
             <label><input type="checkbox" id="lint-undef" checked>Undefined vars</label><br/>
