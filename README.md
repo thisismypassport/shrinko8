@@ -485,7 +485,9 @@ If the export contains more than one cart, you can use:
 When you pass an export as the output parameter to Shrinko8, it will - by default - try to create a new export containing a single cart.
 
 However, for that to work, you must to also supply `--pico8-dat <path to pico8.dat file inside pico8 directory>` to Shrinko8, e.g:
+
 `python shrinko8.py path-to-input.p8 path-to-output.js --pico8-dat c:/pico8/pico8.dat`
+
 Also note that Shrinko8 only creates the js or pod files which contain the cart data (among other stuff) - you need to use pico8 to create the rest of the files.
 
 Alternatively, you can modify an existing export, e.g. to add additional carts, resulting in a multi-cart export:
