@@ -37,8 +37,7 @@ def _to_pil_tuple(obj):
         return x, y, x + w, y + h
     else:
         fail(obj)
-        
-@staticmethod
+
 def _pil_module():
     try:
         from PIL import Image # type: ignore
