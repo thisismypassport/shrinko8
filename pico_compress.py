@@ -168,12 +168,14 @@ def get_compressed_size(r):
         return len(r.zbytes(k_code_size, allow_eof=True))
 
 class Lz77Entry(Tuple):
-    offset = count = ... # (not pre-subtracted!)
+    """A copy of 'count' bytes starting from an 'offset' to the left of the current position."""
+    offset = count = ...
 
 class Lz77Advance(Tuple):
+    """A strategy that ends at position 'i' with a given 'cost', using a linked list of lz77/literal/etc items."""
     i = cost = ctxt = item = prev = ...
 
-def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, max_o_steps=None, fast_c=None, no_repeat=False, litblock_idxs=None):
+def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=None, max_o_steps=None, fast_c=None, no_repeat=False, litblock_idxs=None):
     min_matches = defaultdict(list)
     next_litblock = litblock_idxs.popleft() if litblock_idxs else len(code)
 
@@ -185,6 +187,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, max_o_step
         return c
 
     def find_match(i, max_o=max_o):
+        """find the longest lz77 match at a given position"""
         best_c, best_j = 0, -1
         best_slice = type(code)() # e.g. "" if code is an str
         for j in reversed(min_matches[code[i:i+min_c]]):
@@ -212,10 +215,11 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, max_o_step
 
     i = 0
     prev_i = 0
-    advances = deque() if measure else None
+    advances = deque() if measure else None # potentially worthwhile ways to go from the current or past positions
     curr_adv = None
 
     def add_advance(cost, ctxt, c, item):
+        """add an Lz77Advance if it's worthwhile compared to existing ones"""
         next_i = i + c
         adv_idx = 0
         insert_idx = None
@@ -227,8 +231,13 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, max_o_step
                 elif next_i < adv.i:
                     insert_idx = adv_idx
 
-            if insert_idx != None and cost >= adv.cost:
-                return
+            if insert_idx != None:
+                adv_cost = adv.cost
+                if min_cost:
+                    adv_cost -= min_cost(adv.i - next_i)
+
+                if cost >= adv_cost:
+                    return
             adv_idx += 1
         
         next_adv = Lz77Advance(next_i, cost, ctxt, item, curr_adv)
@@ -354,6 +363,11 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
 
                 return cost, ctxt_mtf
 
+            def min_cost(dist):
+                # assume dist can be covered by an Lz77Entry without any overhead
+                # plus subtract possible overhead *savings* of an Lz77Entry (due to diff. in offset_bits)
+                return max((((dist - min_c) // 7) + 1) * 3 - 11, 0)
+
             # heuristicly find at which indices we should enter/leave literal blocks
             def preprocess_litblock_idxs():
                 premtf = [chr(i) for i in range(0x100)]
@@ -442,7 +456,7 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
             if fast_compress:
                 items = get_lz77(code, min_c=min_c, max_c=None, fast_c=16)
             else:
-                items = get_lz77(code, min_c=min_c, max_c=None, measure=measure,
+                items = get_lz77(code, min_c=min_c, max_c=None, measure=measure, min_cost=min_cost,
                                  max_o_steps=(0x20, 0x400), litblock_idxs=preprocess_litblock_idxs())
 
             for i, item in items:
