@@ -145,8 +145,8 @@ def main_inner(raw_args):
         args.input = URLPath(get_bbs_cart_url(args.input))
         args.input_format = CartFormat.png
 
-    if not args.lint and not args.count and not args.output and not args.input_count and not args.version and not args.list and not args.dump:
-        throw("No operation (--lint/--count) or output file specified")
+    if not args.lint and not args.count and not args.output and not args.input_count and not args.version and not args.list and not args.dump and not args.script:
+        throw("No operation (--lint/--count/--script) or output file specified")
     if args.format and not args.output and not args.dump:
         throw("Output should be specified under --format")
     if args.minify and not args.output and not args.count:
