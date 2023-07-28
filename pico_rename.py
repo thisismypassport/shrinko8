@@ -20,6 +20,8 @@ member_strings = {
 }
 
 class IncludeExcludeMapping:
+    """Defines which strings are included or excluded, through dicts & regexes"""
+
     def __init__(m, keys=None):
         m.dict = dict.fromkeys(keys, True) if e(keys) else {}
         m.default = None
@@ -50,6 +52,8 @@ class IncludeExcludeMapping:
         return bool(value)
     
 class TableMemberPairIncludeExcludeMapping:
+    """Defines which string-pairs are included or excluded, through dicts & regexes"""
+
     def __init__(m, tables=None, members=None, pairs=None):
         m.table_dict = dict.fromkeys(tables, True) if e(tables) else {}
         m.member_dict = dict.fromkeys(members, True) if e(members) else {}

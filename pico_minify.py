@@ -60,14 +60,19 @@ k_char_escapes_rev.update({"\0": "0", "\x0e": "14", "\x0f": "15"})
 
 k_char_escapes_rev_min = {k: v for k, v in k_char_escapes_rev.items() if k in "\0\n\r\"'\\"}
 
-def format_string_literal(value, use_ctrl_chars=True, long=None, quote=None):
+def format_string_literal(value, use_ctrl_chars=True, use_complex_long=True, long=None, quote=None):
     """format a pico8 string to a pico8 string literal"""
 
     if long != False:
-        if "\0" not in value and "\r" not in value and "]]" not in value:
-            long_prefix = "\n" if value.startswith("\n") else ""
-            # note: we never generate [=[]=] and the like, as pico doesn't like it much
-            strlong = "[[%s%s]]" % (long_prefix, value)
+        if "\0" not in value and "\r" not in value and (use_complex_long or "]]" not in value):
+            newline = "\n" if value.startswith("\n") else ""
+
+            for i in itertools.count():
+                eqs = "=" * i
+                if f"]{eqs}]" not in value:
+                    break
+            
+            strlong = f"[{eqs}[{newline}{value}]{eqs}]"
             if long == True:
                 return strlong
         else:
@@ -98,12 +103,12 @@ def format_string_literal(value, use_ctrl_chars=True, long=None, quote=None):
 
     return strlong if len(strlong) < len(strlit) else strlit
 
-def minify_string_literal(token, focus, value=None):
+def minify_string_literal(ctxt, token, focus, value=None):
     if value is None:
         value = parse_string_literal(token.value)
     
     if focus.chars:
-        return format_string_literal(value)
+        return format_string_literal(value, use_complex_long=ctxt.version >= 40)
     else:
         # haven't found a good balanced heuristic for 'long' yet
         return format_string_literal(value, long=token.value.startswith('['))
@@ -416,7 +421,7 @@ def minify_code(ctxt, root, minify_opts):
 
         sublang = getattr(token, "sublang", None)
         if sublang and sublang.minify:
-            token.modify(minify_string_literal(token, focus, value=sublang.minify()))
+            token.modify(minify_string_literal(ctxt, token, focus, value=sublang.minify()))
 
         if minify_tokens:
             
@@ -469,7 +474,7 @@ def minify_code(ctxt, root, minify_opts):
                 token.modify("~")
 
             if token.type == TokenType.string:
-                token.modify(minify_string_literal(token, focus))
+                token.modify(minify_string_literal(ctxt, token, focus))
 
             if token.type == TokenType.number:
                 outer_prec = get_precedence(token.parent.parent) if token.parent.type == NodeType.const else None

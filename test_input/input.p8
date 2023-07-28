@@ -127,7 +127,9 @@ local strs = "hi", 'hello', '"hi"', "'hello'", "\"hi\"", '\'hi\'', "", '', "a\nb
 local strs2 = [[]], [[hi]], [['hi']], [["'hi'"]], [["""""'''''hi'''''"""""]], [[♥♥♥♥]], [[
 ]], [[
 
-]]
+]], [==[\\\\\\\\\
+
+]]]=]]===]]==]
 local numbug = 0xff00, 0xff00*4, 0xff00^4, -0xff00, ~0xff00
 if (not nothing) nothing = 0xffff
 

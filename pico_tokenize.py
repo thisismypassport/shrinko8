@@ -405,13 +405,13 @@ def tokenize(source, ctxt=None, all_comments=False):
                     get_next_mods().var_kind = VarKind.global_
                 elif comment in ("member", "memberof"): # memberof is deprecated
                     get_next_mods().var_kind = VarKind.member
-                elif comment in ("preserve", "string"):
+                elif comment in ("preserve", "string"): # string is deprecated
                     get_next_mods().var_kind = False
                 elif comment == "global-keys":
                     get_next_mods().keys_kind = VarKind.global_
                 elif comment == "member-keys":
                     get_next_mods().keys_kind = VarKind.member
-                elif comment in ("preserve-keys", "string-keys"):
+                elif comment in ("preserve-keys", "string-keys"): # string-keys is deprecated
                     get_next_mods().keys_kind = False
                 elif comment == "no-merge":
                     get_next_mods().merge_prev = False

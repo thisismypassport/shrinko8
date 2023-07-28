@@ -5,9 +5,12 @@ __lua__
 
 -- assert(false)
 // assert(false)
---[[
+--[==[
     assert(false)
-]] x=1
+    [[assert(false)]]
+    [=[assert(false)]=]
+    assert(false)]===]
+]==] x=1
 assert(true,1)
 assert(x==1,2)
 assert("\0\0123\n\t\+\z    \x41\x61"=="\000\x0c\x33\

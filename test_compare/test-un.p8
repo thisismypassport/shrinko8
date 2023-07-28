@@ -7,7 +7,7 @@ assert(true, 1)
 assert(f == 1, 2)
 assert("\0ᶜ3\n	⁵Aa" == "\0ᶜ3\n	⁵Aa")
 assert("'\"\\'" == [['"\']], 3)
-assert("]]" == "]]", 4)
+assert([=[]]]=] == "]]", 4)
 f = 1
 m = 1
 assert(f == 1 and m == 1, 5)
