@@ -471,7 +471,7 @@ However, it is also possible to override the label from a custom 128x128 screens
 
 ## Reading and writing exported formats
 
-Shrinko8 can also read, write and modify exported carts:
+Shrinko8 can also read, create (with some limitations) and modify exported carts:
 * js - Pico-8 carts exported to html+js - supply the .js file to shrinko8.
 * pod - Pico-8 carts exported as (any) executables - supply the .pod file to shrinko8.
 
@@ -484,19 +484,20 @@ If the export contains more than one cart, you can use:
 
 When you pass an export as the output parameter to Shrinko8, it will - by default - try to create a new export containing a single cart.
 
-However, for that to work, you must to also supply `--pico8-dat <path to pico8.dat file inside pico8 directory>` to Shrinko8, e.g:
+However, for that to work, you need to also supply `--pico8-dat <path to pico8.dat file inside your pico8 directory>` to Shrinko8, e.g:
 
 `python shrinko8.py path-to-input.p8 path-to-output.js --pico8-dat c:/pico8/pico8.dat`
 
-Also note that Shrinko8 only creates the js or pod files which contain the cart data (among other stuff) - you need to use pico8 to create the rest of the files.
+Also, note that Shrinko8 only creates the js or pod files which contain the cart data (among other stuff) - you need to use pico8 to create the rest of the files (e.g. htmls, executables).
 
-Alternatively, you can modify an existing export, e.g. to add additional carts, resulting in a multi-cart export:
+Instead of creating an export, you can pass one of the below options to instead modify an existing export - e.g. to add additional carts, resulting in a multi-cart export.
 * `--insert-cart` to insert a new cart to the export. (The name is taken from the input cart)
 * `--insert-cart <name>` to insert a new cart to the export and give it a specific name.
 * `--replace-cart <name>` to replace the cart with the specified name
 * `--replace-cart` to replace the main cart
 * `--delete-cart <name>` to delete the cart with the specified name (no need to pass input cart)
 * `--rename-cart <name> <newname>` to rename the cart to the specified name (no need to pass input cart)
+
 Note that modifying existing exports doesn't require `--pico8-dat` - only creating exports does.
 
 # Unminification
