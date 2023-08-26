@@ -9,6 +9,9 @@ class Memory(bytearray):
 
     def replace(m, src):
         m[:] = src
+    
+    def clear(m):
+        m.fill8(0, 0, len(m))
 
     def size(m):
         return len(m)

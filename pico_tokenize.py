@@ -1,5 +1,5 @@
 from utils import *
-from pico_cart import k_long_brackets_re, k_wspace, PicoPreprocessor
+from pico_preprocess import k_wspace
 
 keywords = {
     "and", "break", "do", "else", "elseif", "end", "false", 
@@ -161,129 +161,6 @@ class Comment(TokenNodeBase):
         else:
             return None
 
-class CustomPreprocessor(PicoPreprocessor):
-    """A custom preprocessor that isn't enabled by default (and is quite quirky & weird)"""
-
-    def __init__(m, defines=None, pp_handler=None, **kwargs):
-        super().__init__(**kwargs)
-        m.defines = defines.copy() if defines else {}
-        m.pp_handler = pp_handler
-        m.ppstack = []
-        m.active = True
-        
-    def get_active(m):
-        return m.ppstack[-1] if m.ppstack else True
-        
-    def start(m, path, code):
-        pass
-
-    def handle(m, path, code, i, start_i, out_i, outparts, outmappings):
-        end_i = code.find("\n", i)
-        while end_i >= 0 and code[end_i - 1] == '\\':
-            end_i = code.find("\n", end_i + 1)
-
-        end_i = end_i if end_i >= 0 else len(code)
-        line = code[i:end_i].replace("\\\n", "")
-        args = line.split()
-        
-        op = args[0] if args else ""
-
-        if op == "#include" and len(args) == 2:
-            if m.active:
-                out_i = m.read_included_cart(path, args[1], out_i, outparts, outmappings)
-
-        elif op == "#define" and len(args) >= 2:
-            if m.active:
-                value = line.split(maxsplit=2)[2].rstrip() if len(args) > 2 else ""
-                m.defines[args[1]] = value
-
-        elif op == "#undef" and len(args) == 2:
-            if m.active:
-                del m.defines[args[1]]
-
-        elif op == "#ifdef" and len(args) == 2:
-            m.active &= args[1] in m.defines
-            m.ppstack.append(m.active)
-
-        elif op == "#ifndef" and len(args) == 2:
-            m.active &= args[1] not in m.defines
-            m.ppstack.append(m.active)
-
-        elif op == "#else" and len(args) == 1 and m.ppstack:
-            old_active = m.ppstack.pop()
-            m.active = m.get_active() and not old_active
-            m.ppstack.append(m.active)
-
-        elif op == "#endif" and len(args) == 1 and m.ppstack:
-            m.ppstack.pop()
-            m.active = m.get_active()
-
-        elif not (m.pp_handler and m.pp_handler(op=op, args=args, ppline=line, active=m.active, outparts=outparts)):
-            throw(f"Invalid custom preprocessor line: {line}")
-
-        # (do not keep empty lines, unlike PicoPreprocessor)
-        return m.active, end_i + 1, end_i + 1, out_i
-        
-    def handle_inline(m, path, code, i, start_i, out_i, outparts, outmappings):
-        if not m.active:
-            return False, i + 1, start_i, out_i
-
-        orig_i = i
-        i += 2
-        negate = False
-        if list_get(code, i) == '!':
-            i += 1
-            negate = True
-        key_i = i
-        while is_ident_char(list_get(code, i, '')):
-            i += 1
-        key = code[key_i:i]
-        op = code[orig_i:i + 1]
-
-        if list_get(code, i) == ']' and not negate:
-            end_i = i + 1
-
-            value = m.pp_handler(op=op, args=(), ppline=op, active=True, outparts=outparts) if m.pp_handler else None
-            if value is None:
-                if key in m.defines:
-                    value = m.defines[key]
-                else:
-                    throw(f"Undefined custom preprocessor variable: {key}")
-
-        elif list_get(code, i) == '[':
-            cond_args = []
-            while list_get(code, i) == '[':
-                match = k_long_brackets_re.match(code, i)
-                if not match:
-                    throw("Unterminated custom preprocessor long brackets")
-
-                i = match.end()
-                inline = code[orig_i:i + 1]
-                cond_args.append(match.group(2))
-
-            if list_get(code, i) == ']':
-                end_i = i + 1
-            else:
-                throw(f"Invalid inline custom preprocesor directive: {inline}")
-
-            value = m.pp_handler(op=op, args=cond_args, ppline=inline, active=True, outparts=outparts) if m.pp_handler else None
-            if value is None:
-                if len(cond_args) > 2:
-                    throw(f"Too many inline custom preprocessor directive params: {inline}")
-                if (key in m.defines) ^ negate:
-                    value = list_get(cond_args, 0, "")
-                else:
-                    value = list_get(cond_args, 1, "")
-        else:
-            throw(f"Invalid inline custom preprocesor directive: {op}")
-
-        outparts.append(value)
-        return True, end_i, end_i, out_i + len(value)
-
-    def finish(m, path, code):
-        if m.ppstack:
-            throw("Unterminated custom preprocessor ifs")
-
 def is_ident_char(ch):
     return '0' <= ch <= '9' or 'a' <= ch <= 'z' or 'A' <= ch <= 'Z' or ch in ('_', '\x1e', '\x1f') or ch >= '\x80'
 
@@ -356,7 +233,8 @@ def tokenize(source, ctxt=None, all_comments=False):
             next_mods = None
 
     def add_error(msg, off=-1):
-        errors.append(Error(msg, Token.dummy(source, idx + off)))
+        add_token(None, idx + off) # error token
+        errors.append(Error(msg, tokens[-1]))
 
     def add_sublang(token, sublang_name):
         if ctxt and ctxt.sublang_getter and token.type == TokenType.string:

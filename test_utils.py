@@ -12,9 +12,8 @@ def init_tests(use_exe=False):
         global g_exe_path
         g_exe_path = "dist/shrinko8/shrinko8.exe"
     else:
-        global g_code_file, g_code
+        global g_code_file
         g_code_file = "shrinko8.py"
-        g_code = file_read_text(g_code_file)
 
 def fail_test():
     global g_status
@@ -43,7 +42,7 @@ def run_code(*args, exit_code=0):
             try:
                 with patch.object(sys, "argv", ["dontcare", *args]):
                     with patch.object(sys, "stdout", stdout_io):
-                        exec(g_code, {"__file__": g_code_file, "__name__": "__main__"})
+                        exec_script_by_path(g_code_file, name="__main__")
             except SystemExit as e:
                 actual_code = e.code or 0
             except Exception:

@@ -1,6 +1,7 @@
 from utils import *
 from pico_defs import from_p8str
-from pico_cart import print_size, k_tab_break
+from pico_compress import print_size
+from pico_preprocess import k_tab_break
 
 # when adding new globals:
 #   check whether to update builtins_copied_to_locals (find 'local ...=...' script inside pico8 binary)
@@ -272,5 +273,6 @@ from pico_unminify import unminify_code
 from pico_rename import rename_tokens
 
 # re-export some things for examples/etc.
-from pico_tokenize import is_identifier, is_ident_char, CustomPreprocessor
+from pico_tokenize import is_identifier, is_ident_char
 from pico_parse import Local, Global, Scope
+from pico_preprocess import CustomPreprocessor

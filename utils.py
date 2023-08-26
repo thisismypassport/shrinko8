@@ -41,17 +41,24 @@ def context_manager(method_name = "close"):
         return cls
     return decorator
 
-def exec_def(name, src):
-    """execute 'src' and extract a definition named 'name' from it"""
+def exec_def(name, code):
+    """execute 'code' and extract a definition named 'name' from it"""
     namespace = {}
-    exec(src, namespace)
+    exec(code, namespace)
     return namespace[name]
-    
-def exec_opt_defs(src, *names):
-    """execute 'src' and extract the definition(s) named in 'names' from it, if available"""
-    namespace = {}
-    exec(src, namespace)
-    return tuple(namespace.get(name) for name in names)
+
+def exec_script_by_path(path, name=None):
+    """executes script at 'path', returning its module object"""
+    import importlib.util
+    script_spec = importlib.util.spec_from_file_location(default(name, path_basename_no_extension(path)), path)
+    script_mod = importlib.util.module_from_spec(script_spec)
+    script_spec.loader.exec_module(script_mod)
+    return script_mod
+
+def import_from_script_by_path(path, *func_names):
+    """executes script at 'path', importing the requested funcs from it - if they exist"""
+    script_mod = exec_script_by_path(path)
+    return tuple(getattr(script_mod, name, None) for name in func_names)
 
 class Dynamic(object):
     """An anonymous dynamic class with keyword-args-style initialization"""

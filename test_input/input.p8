@@ -20,7 +20,7 @@ x=0--[[]]b=0--
 b=0
 
 -- include
-#include included.lua
+  #include included space.lua
 ?"#[disable[[this for now/ever]]]"
 local include={1,2,3}
 print(

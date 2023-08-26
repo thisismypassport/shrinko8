@@ -5,7 +5,7 @@ from pico_compress import write_code_size, write_compressed_size, CompressionTra
 from pico_cart import Cart, CartFormat, read_cart, write_cart, get_bbs_cart_url
 from pico_export import read_cart_export, read_pod_file, ListOp
 from pico_tokenize import k_hint_split_re
-import argparse, importlib.util
+import argparse
 
 k_version = 'v1.1d'
 
@@ -212,12 +212,7 @@ def main_inner(raw_args):
 
     preproc_cb, postproc_cb, sublang_cb = None, None, None
     if args.script:
-        script_spec = importlib.util.spec_from_file_location(path_basename_no_extension(args.script), args.script)
-        script_mod = importlib.util.module_from_spec(script_spec)
-        script_spec.loader.exec_module(script_mod)
-        preproc_cb = getattr(script_mod, "preprocess_main", None)
-        postproc_cb = getattr(script_mod, "postprocess_main", None)
-        sublang_cb = getattr(script_mod, "sublanguage_main", None)
+        preproc_cb, postproc_cb, sublang_cb = import_from_script_by_path(args.script, "preprocess_main", "postprocess_main", "sublanguage_main")
 
     base_count_handler = ParsableCountHandler if args.parsable_count else True
     if args.input_count:

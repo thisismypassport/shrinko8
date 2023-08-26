@@ -141,7 +141,7 @@ def run():
     if run_test("old_compress", "testcvt.p8", "testtmp_old.png", "--force-compression", "--old-compression", check_output=False):
         run_test("old_compress_check", "testtmp_old.png", "test_post_compress_old.p8", from_output=True)
         run_test("old_compress_keep", "testtmp_old.png", "testtmp_old.png", "--keep-compression", from_output=True)
-    run_test("lua2p8", "included.lua", "testlua.p8")
+    run_test("lua2p8", "included space.lua", "testlua.p8")
     run_test("rom2p8", "test.rom", "test.rom.p8")
     run_test("p82rom", "testcvt.p8", "test.p8.rom")
     run_test("clip2p8", "test.clip", "test.clip.p8")

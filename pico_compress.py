@@ -66,7 +66,7 @@ def uncompress_code(r, size_handler=None, debug_handler=None, **_):
                     extra += 1
                 idx = br.bits(4 + extra) + make_mask(4, extra)
                 
-                if debug_handler: debug_handler.update(mtf[idx])                    
+                if debug_handler: debug_handler.update(mtf[idx])
                 code.append(mtf[idx])
                 
                 update_mtf(mtf, idx, code[-1])
@@ -84,7 +84,7 @@ def uncompress_code(r, size_handler=None, debug_handler=None, **_):
                         else:
                             break
                         
-                    if debug_handler: debug_handler.update(code[startlen:])
+                    if debug_handler: debug_handler.update("".join(code[startlen:]))
                 else:
                     count = 3
                     while True:
@@ -93,7 +93,7 @@ def uncompress_code(r, size_handler=None, debug_handler=None, **_):
                         if part != 7:
                             break
                     
-                    if debug_handler: debug_handler.update((offset, count))
+                    if debug_handler: debug_handler.update(Lz77Entry(offset, count))
                     for _ in range(count):
                         code.append(code[-offset])
         
@@ -125,7 +125,7 @@ def uncompress_code(r, size_handler=None, debug_handler=None, **_):
                 count = (ch2 >> 4) + 2
                 offset = ((ch - 0x3c) << 4) + (ch2 & 0xf)
                 assert count <= offset
-                if debug_handler: debug_handler.update((offset, count))                
+                if debug_handler: debug_handler.update(Lz77Entry(offset, count))                
                 for _ in range(count):
                     code.append(code[-offset])
 
@@ -462,13 +462,11 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
             for i, item in items:
                 if isinstance(item, Lz77Entry):
                     write_match(item)
-                    if debug_handler: debug_handler.update(item)
                 elif len(item) == 1:
                     write_literal(item)
-                    if debug_handler: debug_handler.update(item)
                 else:
                     write_litblock(item)
-                    if debug_handler: debug_handler.update(item)
+                if debug_handler: debug_handler.update(item)
                     
             if debug_handler: debug_handler.end()
             bw.flush()
@@ -504,10 +502,9 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
                                     measure=None if fast_compress else measure):
                 if isinstance(item, Lz77Entry):
                     write_match(item)
-                    if debug_handler: debug_handler.update((item.offset, item.count))
                 else:
                     write_literal(item)
-                    if debug_handler: debug_handler.update(item)
+                if debug_handler: debug_handler.update(item)
                     
             if debug_handler: debug_handler.end()
 
