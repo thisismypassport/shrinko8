@@ -307,8 +307,14 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
             else:
                 best_c, best_j = find_match(i)
                 if best_c > 0:
-                    yield i, mktuple(i, best_j, best_c)
-                    i += best_c
+                    # check for obvious wins of not using matches
+                    skip_best_c, skip_best_j = find_match(i+1)
+                    if skip_best_c > best_c:
+                        yield i, code[i]
+                        i += 1
+                    else:
+                        yield i, mktuple(i, best_j, best_c)
+                        i += best_c
                 else:
                     yield i, code[i]
                     i += 1
