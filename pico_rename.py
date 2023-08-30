@@ -148,6 +148,9 @@ def rename_tokens(ctxt, root, rename_opts):
                 for ch in sublang.get_unminified_chars():
                     char_uses[ch] += 1
             else:
+                if token.type == TokenType.string and len(set(token.value)) >= 0x80: # ignore compressed strings (heuristic)
+                    return
+
                 for ch in token.value:
                     char_uses[ch] += 1
 
