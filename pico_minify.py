@@ -575,6 +575,10 @@ def output_original_wspace(root, exclude_comments=False):
                 # only output spacing before and after the comments between the tokens
                 prespace = get_wspace(prev_token, token.children[0], allow_linebreaks)
                 postspace = get_wspace(token.children[-1], token, allow_linebreaks)
+                for comment in token.children:
+                    if comment.hint == CommentHint.keep:
+                        prespace += comment.value.replace(k_keep_prefix, "", 1)
+                
                 output.append(prespace)
                 if "\n" in wspace and "\n" not in prespace and "\n" not in postspace:
                     output.append("\n")

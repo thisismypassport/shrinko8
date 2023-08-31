@@ -2,7 +2,8 @@ pico-8 cartridge // http://www.pico-8.com
 version 41
 __lua__
 print=printh?"hello ᶜ7there♥ら"
-🐱,d,r,h,s,u,n,n=11,12,13,14,15,16,17,17t(stat(band()))t()l=0o=0o=0print"this is included"?"#[disable[[this for now/ever]]]"
+🐱,d,r,h,s,u,n,n=11,12,13,14,15,16,17,17t(stat(band()))-- this one comment, i do want!
+t()l=0o=0o=0print"this is included"?"#[disable[[this for now/ever]]]"
 local n={1,2,3}print(#n)print(#[[#include notaninclude
 ]])local n,o="preserved_key",{preserved_key=123}?o[n]
 local n="preserved_glob"preserved_glob=123?_ENV[n]

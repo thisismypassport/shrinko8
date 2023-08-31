@@ -118,7 +118,7 @@ def run():
              "--no-minify-spaces", "--no-minify-lines", pico8_output="output.p8.printh")
     run_test("minrename", "input.p8", "output_minrename.p8", "--minify",
              "--preserve", "*,*.*", pico8_output="output.p8.printh")
-    run_test("auto_minrename", "input.p8", "output_minrename.p8", "--minify", "--rename-safe-only", "--ignore-hints")
+    run_test("auto_minrename", "input.p8", "output_minrename-ih.p8", "--minify", "--rename-safe-only", "--ignore-hints")
     run_test("auto_minrename-oc", "input.p8", "output_minrename-oc.p8", "--minify", "--rename-safe-only",
              "--ignore-hints", "--focus-chars", pico8_output="output.p8.printh")
     run_test("auto_minrename-ob", "input.p8", "output_minrename-ob.p8", "--minify", "--rename-safe-only",

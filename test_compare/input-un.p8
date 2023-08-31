@@ -6,6 +6,7 @@ print = printh
 ?"hello ᶜ7there♥ら"
 🐱, d, r, h, s, u, n, n = 11, 12, 13, 14, 15, 16, 17, 17
 t(stat(band()))
+-- this one comment, i do want!
 t()
 l = 0
 o = 0

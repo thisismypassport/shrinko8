@@ -173,7 +173,7 @@ def trim_cart_to_tab(cart, target_tab):
         new_code_map.append(CodeMapping(new_idx, map.src_path, map.src_code, new_src_idx, map.src_line))
     cart.code_map = new_code_map
 
-k_custom_pp_inline_delims = k_wspace + "]"
+k_custom_pp_inline_delims = k_wspace + "[]"
     
 class CustomPreprocessor(PicoPreprocessor):
     """A custom preprocessor that isn't enabled by default (and is quite quirky & weird)"""

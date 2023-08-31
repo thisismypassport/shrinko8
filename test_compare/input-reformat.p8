@@ -10,6 +10,7 @@ print = printh
 -- various globals
 t(stat(band()))
 -- comment removal
+--keep: this one comment, i do want!
 t()
 --[[
   (also, testing comment removal)

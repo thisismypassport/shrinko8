@@ -11,7 +11,7 @@ print=printh -- note: most of this test is NOT covered in print/printh - check o
 t(stat(band()))
 
 -- comment removal
-
+--keep: this one comment, i do want!
 t()
 
 --[[
