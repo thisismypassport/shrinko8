@@ -162,8 +162,8 @@ do local r; print = function(x) r=x end; ?1
    assert(r==1,79) end
 do local r; local print = function(x) r=x end; ?2
    assert(r==2,80) end
+--[[ -- this is treated as a line comment by good old pico-8
 printh("DONE")
-
 __music__
 07 12345678
 00 00000000

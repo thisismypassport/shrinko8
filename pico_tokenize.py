@@ -322,12 +322,10 @@ def tokenize(source, ctxt=None, all_comments=False):
                 end_i = text.find(f"]{pad}]", idx)
                 if end_i >= 0:
                     idx = end_i + len(pad) + 2
-                else:
-                    idx = len(text)
-                    add_error("Unterminated long brackets", orig_idx - idx)
-
-                return True, orig_idx, start_i, end_i
+                    return True, orig_idx, start_i, end_i
                 
+                # unterminated long brackets currently ignored by pico8
+        
         return False, orig_idx, None, None
 
     def tokenize_long_comment():
