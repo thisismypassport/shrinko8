@@ -892,6 +892,10 @@ def is_function_target(node):
 def is_any_assign_target(node):
     return is_assign_target(node) or is_op_assign_target(node) or is_function_target(node)
 
+def is_global_or_builtin_local(node):
+    """global or built-in local"""
+    return node.kind == VarKind.global_ or (node.kind == VarKind.local and node.var.scope.funcdepth < 0 and node.name != "_ENV")
+
 def is_vararg_expr(node):
     return node.type in (NodeType.call, NodeType.varargs)
 def is_short_block_stmt(node):

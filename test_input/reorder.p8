@@ -66,8 +66,11 @@ _v,(printh("three") or {}).y = 0,printh("four")
 sep()
 
 a=sqrt(4);b=sqrt(9);printh(a..b)
+a=flr(2.3);b=flr(3.9);printh(a..b)
 function max() return a end
 a=4;b=max(5,6);printh(a..a)
+function custom() return a end
+a=6;b=custom();printh(a..a)
 
 -- cases requiring hint (unless safe-only)
 

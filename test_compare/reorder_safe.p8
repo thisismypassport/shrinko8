@@ -51,8 +51,11 @@ _u,(printh"one"or{}).x=0,printh"two"
 _v,(printh"three"or{}).y=0,printh"four"
 sep()
 a=sqrt(4)b=sqrt(9)printh(a..b)
+a=flr(2.3)b=flr(3.9)printh(a..b)
 function max()return a end
 a=4b=max(5,6)printh(a..a)
+function custom()return a end
+a=6b=custom()printh(a..a)
 x=setmetatable({},{__add=function()return a end})sep()
 a=20b=x+x printh(a..b)
 do

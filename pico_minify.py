@@ -4,7 +4,7 @@ from pico_tokenize import parse_string_literal, parse_fixnum, k_keep_prefix
 from pico_tokenize import StopTraverse, k_skip_children
 from pico_parse import Node, NodeType, VarKind, k_invalid
 from pico_parse import k_unary_ops_prec, k_binary_op_precs, k_right_binary_ops
-from pico_parse import is_vararg_expr, is_short_block_stmt
+from pico_parse import is_vararg_expr, is_short_block_stmt, is_global_or_builtin_local
 
 class Focus(Bitmask):
     chars = compressed = tokens = ...
@@ -266,7 +266,7 @@ def expr_is_trivial(root, ctxt, safe_only, allow_member=True, allow_index=True, 
         elif expr.type == NodeType.call:
             func = expr.func
             if safe_only or not allow_call or \
-                    not (func.type == NodeType.var and func.kind == VarKind.global_ and not func.var.reassigned and func.name not in ctxt.callback_builtins):
+                    not (func.type == NodeType.var and is_global_or_builtin_local(func) and not func.var.reassigned and func.name not in ctxt.callback_builtins):
                 raise StopTraverse()
         elif expr.type == NodeType.member and not allow_member:
             raise StopTraverse()

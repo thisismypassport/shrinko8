@@ -47,12 +47,15 @@ t.l=3t.l=4printh(t.l)
 t.o,t.l=t.l+1,3printh(t.l..t.o)
 t.l=5t.o=t["l"]printh(t.l..t.o)
 t["a"]=6t.l=7printh(t.l)
-i,(printh"one"or{}).c=0,printh"two"
-u,(printh"three"or{}).d=0,printh"four"
+u,(printh"one"or{}).c=0,printh"two"
+r,(printh"three"or{}).d=0,printh"four"
 d()
 l,o=sqrt(4),sqrt(9)printh(l..o)
+l,o=flr(2.3),flr(3.9)printh(l..o)
 function max()return l end
 l=4o=max(5,6)printh(l..l)
+function i()return l end
+l=6o=i()printh(l..l)
 e=setmetatable({},{__add=function()return l end})d()
 l=20o=e+e printh(l..o)
 do

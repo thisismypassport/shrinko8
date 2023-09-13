@@ -1,11 +1,7 @@
 from utils import *
 from pico_tokenize import CommentHint, is_identifier
 from pico_parse import VarKind, NodeType
-from pico_parse import is_assign_target, is_function_target, is_any_assign_target
-
-def is_node_global_like(node):
-    """including globals and built-in locals"""
-    return node.kind == VarKind.global_ or (node.kind == VarKind.local and node.var.scope.funcdepth < 0 and node.name != "_ENV")
+from pico_parse import is_assign_target, is_function_target, is_any_assign_target, is_global_or_builtin_local
 
 def lint_code(ctxt, root, lint_opts):
     errors = []
@@ -36,7 +32,7 @@ def lint_code(ctxt, root, lint_opts):
 
     def preprocess_vars(node):
         if node.type == NodeType.var:
-            if is_node_global_like(node) and node.name not in custom_globals:
+            if is_global_or_builtin_local(node) and node.name not in custom_globals:
                 assign = False
                 if is_assign_target(node):
                     func = node.find_parent(NodeType.function)
@@ -108,7 +104,7 @@ def lint_code(ctxt, root, lint_opts):
                 if lint_unused and node.var not in used_labels and not node.name.startswith("_"):
                     add_error(f"Label '{node.name}' isn't used", node)
 
-            elif is_node_global_like(node):
+            elif is_global_or_builtin_local(node):
                 if lint_undefined and node.name not in custom_globals:
                     if node.name in builtin_globals:
                         if is_assign_target(node):
