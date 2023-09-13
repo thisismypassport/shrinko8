@@ -4,7 +4,7 @@ from pico_compress import print_size
 from pico_preprocess import k_tab_break
 
 # when adding new globals:
-#   check whether to update builtins_copied_to_locals (find 'local ...=...' script inside pico8 binary)
+#   check whether to update builtins_copied_to_locals (find 'local ...=...' script inside pico8 binary; e.g. `strings $(which pico8) | grep "^local "`)
 #   consider whether to update builtins_with_callbacks
 
 main_builtins = {
@@ -20,7 +20,7 @@ main_builtins = {
     "pal", "palt", "peek", "peek2", "peek4", "pget",
     "poke", "poke2", "poke4", "print", "printh", "pset",
     "rawequal", "rawget", "rawlen", "rawset", "rect",
-    "rectfill", "reload", "rnd", "run", "select", "setmetatable",
+    "rectfill", "reload", "reset", "rnd", "run", "select", "setmetatable",
     "serial", "sfx", "sget", "sgn", "sin", "split",
     "spr", "sqrt", "srand", "sset", "sspr", "stat", "stop",
     "sub", "time", "tline", "tonum", "tostr", "trace", "type",
@@ -46,7 +46,11 @@ builtins_copied_to_locals = { # builtins listed here should also be listed elsew
     "del", "deli", "clip", "color", "pal", "palt", "fillp",
     "pget", "pset", "sget", "sset", "fget", "fset",
     "circ", "circfill", "rect", "rectfill", "oval", "ovalfill",
-    "line", "spr", "sspr"
+    "line", "spr", "sspr",
+    "mget", "mset", "tline", "peek", "poke", "peek2", "poke2",
+    "peek4", "poke4", "memcpy", "memset", "max", "min", "mid",
+    "flr", "ceil", "cos", "sin", "atan2", "srand", "band", # note: rnd is missing due to a pico8 typo
+    "bor", "bxor", "bnot", "shl", "shr", "lshr", "rotl", "rotr",
 }
 
 builtins_with_callbacks = { # builtins listed here may call user code before returning, NOT including far-fetched stuff like metamethods
