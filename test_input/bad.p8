@@ -12,10 +12,10 @@ function f2()
   return t(line)
 end
 function f2d1()
-  function band() end
+  function abs() end
 end
-local this_is_ok = bor
-function bor() return this_is_ok() end
+local this_is_ok = sgn
+function sgn() return this_is_ok() end
 -->8
 -- unused
 function fx()
