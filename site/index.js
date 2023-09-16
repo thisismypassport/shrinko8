@@ -395,6 +395,12 @@ function setImageUrl(selector, data) {
     }
 }
 
+// copy the edu url to clipboard
+function copyUrlToClipboard() {
+    navigator.clipboard.writeText($("#minify-url").attr("href"));
+    $("#minify-url-copied").show();
+}
+
 // download the output file
 async function saveOutputFile() {
     let format = $("#minify-format").val();
@@ -423,7 +429,7 @@ async function saveOutputFile() {
     download(output, name + "." + ext, type);
 }
 
-async function doShrinko(args, encoding) {
+async function doShrinko(args, encoding, usePreview) {
     let argStr = $("#extra-args").val();
 
     await inputMgr.flush();
@@ -432,7 +438,7 @@ async function doShrinko(args, encoding) {
     let useScript = Boolean(scriptMgr.getValue());
 
     try {
-        return await api.runShrinko(args, argStr, useScript, encoding);
+        return await api.runShrinko(args, argStr, useScript, encoding, usePreview);
     } catch (e) {
         console.error(e);
         return [-1, e.message, undefined, undefined]
@@ -492,7 +498,7 @@ function applyCounts(stdouterr) {
         }
     }
     
-    for (let count of ["tokens", "chars", "compressed"]) {
+    for (let count of ["tokens", "chars", "compressed", "url"]) {
         $("#count-" + count).text(counts[count]);
         $("#percent-" + count).text(percents[count]);
     }
@@ -533,8 +539,16 @@ async function doMinify() {
             }
         }
 
-        let encoding = isFormatText(format) ? "utf8" : "binary";
-        let [code, stdouterr, output, preview] = await doShrinko(args, encoding);
+        // (adjust p8 preview)
+        if (format === "tiny-rom") {
+            args.push("--output-sections", "lua");
+        } else if (format === "url") {
+            args.push("--output-sections", "lua,gfx");
+        }
+
+        let encoding = isFormatText(format) || isFormatUrl(format) ? "utf8" : "binary";
+        let usePreview = !isFormatText(format);
+        let [code, stdouterr, output, preview] = await doShrinko(args, encoding, usePreview);
 
         stdouterr = applyCounts(stdouterr);
 
@@ -543,6 +557,10 @@ async function doMinify() {
         } else {
             if (isFormatText(format)) {
                 $("#minify-code").data("editor").setValue(output, -1);
+            } else if (isFormatUrl(format)) {
+                $("#minify-url").attr("href", output).text(output);
+                $("#minify-url-preview").data("editor").setValue(preview, -1);
+                $("#minify-url-copied").hide();
             } else {
                 if (isFormatImg(format)) {
                     setImageUrl("#minify-image", output);
@@ -636,12 +654,24 @@ function onMinifyOptsChange(event) {
 function onMinifyFormatChange(event) {
     let format = $("#minify-format").prop("value");
     $("#minify-text-div").toggle(isFormatText(format));
-    $("#minify-binary-div").toggle(!isFormatText(format));
+    $("#minify-url-div").toggle(isFormatUrl(format));
+    $("#minify-binary-div").toggle(!isFormatText(format) && !isFormatUrl(format));
     $("#minify-image").toggle(isFormatImg(format));
-    $("#row-compressed").toggle(!isFormatText(format));
+    $("#file-icon").toggle(!isFormatImg(format));
+    $("#row-compressed").toggle(!isFormatText(format) && !isFormatUrl(format));
+    $("#row-url-compressed").toggle(isFormatUrl(format));
     $("#no-row-compressed").toggle(isFormatText(format));
     $("#minify-error-overlay").toggle(outputMap[format] === false);
     $("#minify-pico8dat-overlay").toggle(isFormatExport(format) && !hasPico8Dat);
+
+    if (isFormatText(format)) {
+        initAceIfNeeded("#minify-code", "lua");
+    } else if (isFormatUrl(format)) {
+        initAceIfNeeded("#minify-url-preview", "lua");
+    } else {
+        initAceIfNeeded("#minify-preview", "lua");
+    }
+
     if (event) {
         doShrinkoAction();
     }
@@ -672,19 +702,22 @@ function onTabChange() {
     doShrinkoAction();
 }
 
-// set up an ace textbox
-function setUpAce(id, lang, cb) {
-    let editor = ace.edit(id.substring(1))
-    editor.session.setMode("ace/mode/" + lang)
-    editor.setOptions({
-        printMargin: false,
-        useWorker: false, // don't check syntax (maybe ok for python)
-        readOnly: Boolean($(id).attr("readonly")),
-        placeholder: $(id).attr("placeholder"),
-    });
-    $(id).data("editor", editor);
-    if (cb) {
-        editor.session.on("change", cb);
+// set up an ace textbox, unless already done
+function initAceIfNeeded(id, lang, cb) {
+    let elem = $(id);
+    if (!elem.data("editor")) {
+        let editor = ace.edit(id.substring(1))
+        editor.session.setMode("ace/mode/" + lang)
+        editor.setOptions({
+            printMargin: false,
+            useWorker: false, // don't check syntax (maybe ok for python)
+            readOnly: Boolean(elem.attr("readonly")),
+            placeholder: elem.attr("placeholder"),
+        });
+        elem.data("editor", editor);
+        if (cb) {
+            editor.session.on("change", cb);
+        }
     }
 }
 
@@ -710,13 +743,9 @@ $(() => {
 
     showLoading();
     showVersion();
-    setUpAce("#input-code", "lua", onInputChange);
-    setUpAce("#minify-code", "lua");
-    setUpAce("#minify-preview", "lua");
-    setUpAce("#script-code", "python", onScriptChange);
-    $("#output-tabs").tabs({
-        activate: onTabChange,
-    });
+    initAceIfNeeded("#input-code", "lua", onInputChange);
+    initAceIfNeeded("#script-code", "python", onScriptChange);
+    $("#output-tabs").tabs({activate: onTabChange});
 
     // (we call below functions with an undefined event, thus avoiding doShrinkoAction being called here)
     $("#minify-opts").change(onMinifyOptsChange); onMinifyOptsChange();

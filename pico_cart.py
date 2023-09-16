@@ -366,10 +366,13 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
     cart.code, cart.code_map = preprocess_code(path, "".join(code), code_line, preprocessor=preprocessor)
     return cart
 
-def write_cart_to_source(cart, unicode_caps=False, **_):
+def write_cart_to_source(cart, unicode_caps=False, sections=None, **_):
     lines = [k_p8_prefix + " // http://www.pico-8.com"]
     lines.append(f"version {cart.version_id}")
     defrom = mem_create_rom()
+
+    def include(section):
+        return sections is None or section in sections
 
     def nybbles(data):
         return "".join('%01x' % b for b in data)
@@ -392,53 +395,60 @@ def write_cart_to_source(cart, unicode_caps=False, **_):
                 break
         return lines
 
-    lines.append("__lua__")
-    lines.append(from_p8str(cart.code, unicaps=unicode_caps))
+    if include("lua"):
+        lines.append("__lua__")
+        lines.append(from_p8str(cart.code, unicaps=unicode_caps))
 
-    gfx_lines = get_needed_lines(0x80, lambda y: mem_tile_addr(0, y)[0], 0x40)
-    if gfx_lines:
-        lines.append("__gfx__")
-        for y in range(gfx_lines):
-            lines.append(nybbles(cart.rom.get4(mem_tile_addr(x, y)) for x in range(128)))
+    if include("gfx"):
+        gfx_lines = get_needed_lines(0x80, lambda y: mem_tile_addr(0, y)[0], 0x40)
+        if gfx_lines:
+            lines.append("__gfx__")
+            for y in range(gfx_lines):
+                lines.append(nybbles(cart.rom.get4(mem_tile_addr(x, y)) for x in range(128)))
 
-    map_lines = get_needed_lines(0x20, lambda y: mem_map_addr(0, y), 0x80)
-    if map_lines:
-        lines.append("__map__")
-        for y in range(map_lines):
-            lines.append(bytes(cart.rom.get8(mem_map_addr(x, y)) for x in range(128)))
+    if include("map"):
+        map_lines = get_needed_lines(0x20, lambda y: mem_map_addr(0, y), 0x80)
+        if map_lines:
+            lines.append("__map__")
+            for y in range(map_lines):
+                lines.append(bytes(cart.rom.get8(mem_map_addr(x, y)) for x in range(128)))
 
-    gff_lines = get_needed_lines(2, lambda y: mem_flag_addr(0, y), 0x80)
-    if gff_lines:
-        lines.append("__gff__")
-        for y in range(gff_lines):
-            lines.append(bytes(cart.rom.get8(mem_flag_addr(x, y)) for x in range(128)))
+    if include("gff"):
+        gff_lines = get_needed_lines(2, lambda y: mem_flag_addr(0, y), 0x80)
+        if gff_lines:
+            lines.append("__gff__")
+            for y in range(gff_lines):
+                lines.append(bytes(cart.rom.get8(mem_flag_addr(x, y)) for x in range(128)))
 
-    sfx_lines = get_needed_lines(0x40, lambda y: mem_sfx_addr(y, 0), 0x44)
-    if sfx_lines:
-        lines.append("__sfx__")
-        for y in range(sfx_lines):
-            info = bytes(cart.rom.get8(mem_sfx_info_addr(y, x)) for x in range(4))
-            notes = (cart.rom.get16(mem_sfx_addr(y, x)) for x in range(32))
-            note_groups = nybble_groups(((n >> 4) & 0x3, n & 0xf, ((n >> 6) & 0x7) | (n >> 12) & 0x8, (n >> 9) & 0x7, (n >> 12) & 0x7) for n in notes)
-            lines.append(info + note_groups)
+    if include("sfx"):
+        sfx_lines = get_needed_lines(0x40, lambda y: mem_sfx_addr(y, 0), 0x44)
+        if sfx_lines:
+            lines.append("__sfx__")
+            for y in range(sfx_lines):
+                info = bytes(cart.rom.get8(mem_sfx_info_addr(y, x)) for x in range(4))
+                notes = (cart.rom.get16(mem_sfx_addr(y, x)) for x in range(32))
+                note_groups = nybble_groups(((n >> 4) & 0x3, n & 0xf, ((n >> 6) & 0x7) | (n >> 12) & 0x8, (n >> 9) & 0x7, (n >> 12) & 0x7) for n in notes)
+                lines.append(info + note_groups)
 
-    music_lines = get_needed_lines(0x40, lambda y: mem_music_addr(y, 0), 0x4)
-    if music_lines:
-        lines.append("__music__")
-        for y in range(music_lines):
-            chans = [cart.rom.get8(mem_music_addr(y, x)) for x in range(4)]
-            flags = bytes((sum(((ch >> 7) & 1) << i for i, ch in enumerate(chans)),))
-            ids = bytes(ch & 0x7f for ch in chans)
-            lines.append(flags + " " + ids)
+    if include("music"):
+        music_lines = get_needed_lines(0x40, lambda y: mem_music_addr(y, 0), 0x4)
+        if music_lines:
+            lines.append("__music__")
+            for y in range(music_lines):
+                chans = [cart.rom.get8(mem_music_addr(y, x)) for x in range(4)]
+                flags = bytes((sum(((ch >> 7) & 1) << i for i, ch in enumerate(chans)),))
+                ids = bytes(ch & 0x7f for ch in chans)
+                lines.append(flags + " " + ids)
     
-    if cart.screenshot and any(cart.screenshot.array):
+    if include("label") and cart.screenshot and any(cart.screenshot.array):
         lines.append("__label__")
         for y in range(128):
             lines.append(ext_nybbles(cart.screenshot[x, y] for x in range(128)))
     
     for meta, metalines in cart.meta.items():
-        lines.append(f"__{k_meta_prefix + meta}__")
-        lines += metalines
+        if include(k_meta_prefix + meta):
+            lines.append(f"__{k_meta_prefix + meta}__")
+            lines += metalines
 
     return "\n".join(lines)
 

@@ -177,7 +177,7 @@ let api = {
         return shrinko8(["--version"], true);
     },
 
-    runShrinko: async (args, argStr, useScript, encoding) => {
+    runShrinko: async (args, argStr, useScript, encoding, usePreview) => {
         await initPromise;
 
         let cmdline = [inputFile];
@@ -191,7 +191,7 @@ let api = {
         if (useScript) {
             cmdline.push("--script", scriptFile);
         }
-        if (encoding == "binary") {
+        if (usePreview) {
             cmdline.push("--extra-output", previewFile);
         }
         if (hasPico8Dat) {
@@ -205,7 +205,7 @@ let api = {
             if (encoding) {
                 output = fs.readFile(outputFile, {encoding});
             }
-            if (encoding == "binary") {
+            if (usePreview) {
                 preview = fs.readFile(previewFile, {encoding: "utf8"});
             }
         }
@@ -214,9 +214,6 @@ let api = {
     },
 
     runTests: async () => {
-        // current status: zlib is different so tests that generate pngs fail at compare time
-        // (should I change tests to compare pngs by pixels?)
-        // (also, currently always throws SystemExit)
         await initPromise;
         
         if (!self.shrinko8_run_tests) {

@@ -28,3 +28,6 @@ function isFormatImg(fmt) {
 function isFormatExport(fmt) {
     return fmt == "pod" || fmt == "js";
 }
+function isFormatUrl(fmt) {
+    return fmt == "url";
+}

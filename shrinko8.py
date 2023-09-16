@@ -7,7 +7,7 @@ from pico_export import read_cart_export, read_pod_file, ListOp
 from pico_tokenize import k_hint_split_re
 import argparse
 
-k_version = 'v1.1f'
+k_version = 'v1.1g'
 
 def SplitBySeps(val):
     return k_hint_split_re.split(val)
@@ -100,13 +100,14 @@ pgroup.add_argument("--trace-input-compression", help="trace the input's compres
 pgroup = parser.add_argument_group("other semi-undocumented options")
 pgroup.add_argument("--builtin", type=SplitBySeps, action=extend_arg, help="treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
 pgroup.add_argument("--not-builtin", type=SplitBySeps, action=extend_arg, help="do not treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
-pgroup.add_argument("--global-builtins-only", action="store_true", help="assume all builtins are global, equivalent to pico8's -global_api option")
+pgroup.add_argument("--global-builtins-only", action="store_true", help="assume all builtins are global, corresponds to pico8's -global_api option")
 pgroup.add_argument("--version", action="store_true", help="print version of cart. (if no cart is provided - print shrinko8 version and exit)")
 pgroup.add_argument("--bbs", action="store_true", help="interpret input as a bbs cart id, e.g. '#...' and download it from the bbs")
 pgroup.add_argument("--url", action="store_true", help="interpret input as a URL, and download it from the internet")
 pgroup.add_argument("--ignore-hints", action="store_true", help="ignore shrinko8 hint comments")
 pgroup.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
 pgroup.add_argument("--dump-misc-too", action="store_true", help="causes --dump to also dump misc. files inside the export")
+pgroup.add_argument("--output-sections", type=SplitBySeps, action=extend_arg, help="only output the specified p8 sections (lua,gfx,...)")
 
 def default_output_format(output):
     ext = path_extension(output)[1:].lower()
@@ -322,7 +323,7 @@ def main_inner(raw_args):
                            unicode_caps=args.unicode_caps, old_compress=args.old_compression,
                            force_compress=args.count or args.force_compression,
                            fast_compress=args.fast_compression, keep_compression=args.keep_compression,
-                           screenshot_path=args.label, title=args.title,
+                           screenshot_path=args.label, title=args.title, sections=args.output_sections,
                            cart_args=output_cart_args, cart_op=output_cart_op, target=target, pico8_dat=pico8_dat)
             except OSError as err:
                 throw(f"cannot write cart: {err}")
