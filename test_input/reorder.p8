@@ -79,7 +79,7 @@ a=20;--[[no-merge]]b=x+x; printh(a..b)
 
 do
     local printh=printh
-    local _ENV = setmetatable({a=0},{__newindex=function(t,k,v) rawset(t, k, v + t.a) end})
+    local --[[member-keys]]_ENV = setmetatable({a=0},{__newindex=function(t,k,v) rawset(t, k, v + t.a) end})
     a=3;--[[no-merge]]b=4; printh(a..b)
 end
 

@@ -56,30 +56,54 @@ g_opts.all = not g_opts.only_compress and not g_opts.only_safe_minify and not g_
 class DeltaInfoDictionary(defaultdict):
     class Info(Struct):
         sum = min = max = count = 0
+        pos_sum = neg_sum = 0
+        min_ref = max_ref = None
         
-        def apply(m, value):
+        def apply(m, value, ref):
             m.sum += value
             m.count += 1
             m.min = min(m.min, value)
             m.max = max(m.max, value)
+            if m.min == value:
+                m.min_ref = ref
+            if m.max == value:
+                m.max_ref = ref
+            if value >= 0:
+                m.pos_sum += value
+            else:
+                m.neg_sum += value
 
         def apply_info(m, info):
             m.sum += info.sum
             m.count += info.count
             m.min = min(m.min, info.min)
             m.max = max(m.max, info.max)
+            if m.min == info.min:
+                m.min_ref = info.min_ref
+            if m.max == info.max:
+                m.max_ref = info.max_ref
+            m.pos_sum += info.pos_sum
+            m.neg_sum += info.neg_sum
 
         @property
         def average(m):
             return m.sum / m.count
+        
+        @property
+        def pos_average(m):
+            return m.pos_sum / m.count
+        
+        @property
+        def neg_average(m):
+            return m.neg_sum / m.count
 
     def __missing__(m, key):
         info = m.Info()
         m[key] = info
         return info
 
-    def apply(m, key, value):
-        m[key].apply(value)
+    def apply(m, key, value, ref):
+        m[key].apply(value, ref)
     
     def apply_dictionary(m, other):
         for key, info in other.items():
@@ -152,7 +176,7 @@ def run_for_cart(args):
                         print(f"Improvement of {cmpval - outval} in {cart}:{kind}:{key}")
                     else:
                         print(f"Regression of {outval - cmpval} in {cart}:{kind}:{key}")
-                deltas.apply(f"{kind}.{key}", outval - cmpval)
+                deltas.apply(f"{kind}.{key}", outval - cmpval, cart)
 
     def process_output(kind, output):
         if output is None:
@@ -198,7 +222,7 @@ def run_for_cart(args):
     return (cart, get_test_results(), new_cart_input, cart_output, deltas, best_path_for_pico8)
 
 def interact_with_pico8s():
-    import win32api, win32gui, win32process, win32con as wc, pywintypes
+    import win32api, win32gui, win32process, win32con as wc, pywintypes # type: ignore
 
     pico8_paths = set(path_normalize(pico8) for pico8 in g_opts.pico8)
 
@@ -310,17 +334,16 @@ def run(focus):
     for key, info in sorted(deltas.items()):
         if not info.min and not info.max:
             continue
-
-        extra_print = []
-        if info.min:
-            extra_print.append(f"{-info.min} max improvement")
-        if info.max:
-            extra_print.append(f"WARNING: {info.max} max regression")
         
         if info.sum <= 0:
-            print(f"{key} improved by {-info.sum} in total ({-info.average} average, {', '.join(extra_print)})")
+            print(f"{key} improved by {-info.sum} in total ({-info.average:.2f} average)")
         else:
-            print(f"WARNING: {key} regressed by {info.sum} in total ({info.average} average, {', '.join(extra_print)})")
+            print(f"WARNING: {key} regressed by {info.sum} in total ({info.average:.2f} average)")
+
+        if info.min:
+            print(f"    {-info.min} max improvement [@{info.min_ref}], {-info.neg_average:.2f} improvement average")
+        if info.max:
+            print(f"    WARNING: {info.max} max regression [@{info.max_ref}], {info.pos_average:.2f} regression average")
 
 def run_all():
     if g_opts.focus_all:

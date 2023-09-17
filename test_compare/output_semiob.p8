@@ -3,7 +3,7 @@ version 41
 __lua__
 print=printh 
 ?"hello ᶜ7there♥ら"
-🐱,d,r,h,s,u,n,n=11,12,13,14,15,16,17,17
+🐱,i,d,r,h,s,e,e=11,12,13,14,15,16,17,17
 
 t(stat(band()))
 
@@ -12,43 +12,43 @@ t()
 
 
 
-l=0 o=0
-o=0
+c=0 l=0
+l=0
 
 print"this is included"
 ?"#[disable[[this for now/ever]]]"
-local n={1,2,3}
+local e={1,2,3}
 print(
-#n
+#e
 )
 print(
 #[[#include notaninclude
 ]]
 )
 
-local n,o = "preserved_key",{preserved_key=123}
-?o[n] 
-local n = "preserved_glob"
+local e,l = "preserved_key",{preserved_key=123}
+?l[e] 
+local e = "preserved_glob"
 preserved_glob = 123
-?_ENV[n] 
-local n = {}
-n["whatever"] = 123
-?n.whatever 
-function n.subfunc() end
-function n:subfunc() end
-?n:subfunc()
+?_ENV[e] 
+local e = {}
+e["whatever"] = 123
+?e.whatever 
+function e.subfunc() end
+function e:subfunc() end
+?e:subfunc()
 
-local n,o = "key",{key=123}
-?o[n]
+local e,l = "key",{key=123}
+?l[e]
 
-local n,o = split "key1,key2,key3,123",{key1=123,key2=234,key3=345}
-?o[n[2]]
+local e,l = split "key1,key2,key3,123",{key1=123,key2=234,key3=345}
+?l[e[2]]
 
-local n = "f"
-f = 123
-?_ENV[n]
+local e = "o"
+o = 123
+?_ENV[e]
 
-local n = "key1:key2#~~key3,", "!key1_still$key2█ア+123-key123\nif\nif◝"
+local e = "key1:key2#~~key3,", "!key1_still$key2█ア+123-key123\nif\nif◝"
 
 do
   local _ENV = { assert=assert}
@@ -60,17 +60,17 @@ end
 function some_future_pico8_api() end
 some_future_pico8_api(1,2,3)
 
-local n = {preserved1=1, preserved2=2}
-n.preserved1 += 1
-?n["preserved1"]
-n = setmetatable( {preserved3=3}, i)
-?n["preserved3"]
-
-e = {preserved1=1, preserved2=2}
+local e = {preserved1=1, preserved2=2}
 e.preserved1 += 1
 ?e["preserved1"]
-e = setmetatable( {preserved3=3}, i)
+e = setmetatable( {preserved3=3}, f)
 ?e["preserved3"]
+
+n = {preserved1=1, preserved2=2}
+n.preserved1 += 1
+?n["preserved1"]
+n = setmetatable( {preserved3=3}, f)
+?n["preserved3"]
 
 local e = {assert=assert, add=add}
 do
@@ -101,26 +101,26 @@ if (1 == 2);
 if (1 == 2) sin=cos cos=sin
 local e = {1}, {1,2,3,4}
 
-local e,n = 1 ~= 2,1,1.2345,4660,4660.33777,-1,-1.2345,-4660.33777,32776,0xf000.f,-39322,-65535.99999
-local n = "hi", "hello", '"hi"', "'hello'", '"hi"', "'hi'", "", "", "a\nb", "\\", "\0¹²³⁴⁵⁶", "¹²³⁴⁵⁶⁷", "\\\\\\\\\\\\", "\n\n\n\n\n\n", "¹²³⁴⁵⁶]]"
-local n = [[]], [[hi]], [['hi']], [["'hi'"]], [["""""'''''hi'''''"""""]], [[♥♥♥♥]], [[]], [[
+local e,l = 1 ~= 2,1,1.2345,4660,4660.33777,-1,-1.2345,-4660.33777,32776,0xf000.f,-39322,-65535.99999
+local l = "hi", "hello", '"hi"', "'hello'", '"hi"', "'hi'", "", "", "a\nb", "\\", "\0¹²³⁴⁵⁶", "¹²³⁴⁵⁶⁷", "\\\\\\\\\\\\", "\n\n\n\n\n\n", "¹²³⁴⁵⁶]]"
+local l = [[]], [[hi]], [['hi']], [["'hi'"]], [["""""'''''hi'''''"""""]], [[♥♥♥♥]], [[]], [[
 
 ]], [==[\\\\\\\\\
 
 ]]]=]]===]]==]
-local n = -256, -256*4, 65280^4, -65280, ~65280
+local l = -256, -256*4, 65280^4, -65280, ~65280
 if (not e) e = -1
 
 ?1 or 1 or 2 and 3 == 4 >= 4 | 5 ~ 6 << 1 >>< 1 .. 2 .. 3 - -1^4^1 / 1 & 7
 ?((~(((((((tonum(((3 or 4) and 5) ~= 2) | 1) ~ 2) & 3) >> 1) .. 1) - (1 + 3)) * 3)) ^ 2) ^ 1
 local e = ({})[1], (function()end)()
-local n, o,f,e,i = sin(1,2), cos((cos())),(cos((cos()))),{ord=ord,pal=pal}
+local l, n,o,e,f = sin(1,2), cos((cos())),(cos((cos()))),{ord=ord,pal=pal}
 local e = ord"123", pal{1,2}, e:ord("ord"), e:pal({1,2}), sin(1)
-local d = {ord"1",[2]=3,x=4,(ord"1")}
+local i = {ord"1",[2]=3,x=4,(ord"1")}
 e += 1
-n, o = sin(1,2), cos((cos()))
-f, i = (cos((cos())))
-function x() return 1, 2, ord"1", (ord"1") end
+l, n = sin(1,2), cos((cos()))
+o, f = (cos((cos())))
+function u() return 1, 2, ord"1", (ord"1") end
 if 1 == 2 then elseif 1 == 2 then else end
 while 1 == 2 do end
 repeat until 1 == 1
@@ -133,12 +133,12 @@ end
 if(true) if false then else print"sh3" end
 if true then if false then else print"sh4" end end
 
-c="renaming bug"
+q="renaming bug"
 function a()
-  local e,l,n,o,f,i,a,d,r,t,h,s,u,x,k,y,v,p,b,w,g,m,E,N,D,j,q
-  return c
+  local e,l,n,o,f,i,c,a,d,r,t,h,s,u,x,k,y,v,p,b,w,g,m,E,N,D,j
+  return q
 end
 ?a()
-l=0l=1
+c=0c=1
 
-k=?"END!"
+x=?"END!"

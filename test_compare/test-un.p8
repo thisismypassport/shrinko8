@@ -2,150 +2,150 @@ pico-8 cartridge // http://www.pico-8.com
 version 36
 __lua__
 
-f = 1
+n = 1
 assert(true, 1)
-assert(f == 1, 2)
+assert(n == 1, 2)
 assert("\0ᶜ3\n	⁵Aa" == "\0ᶜ3\n	⁵Aa")
 assert("'\"\\'" == [['"\']], 3)
 assert([=[]]]=] == "]]", 4)
-f = 1
-m = 1
-assert(f == 1 and m == 1, 5)
+n = 1
+d = 1
+assert(n == 1 and d == 1, 5)
 assert(0xf.f == 0xf.f and 2.25 == 2.25, 6)
-e, l, i = 1, {}, 3
-e, l.n, l[1], i = i, 2, 4, e
-assert(e == 3 and i == 1 and l["n"] == 2 and l[1] == 4, 8)
+i, c, e = 1, {}, 3
+i, c.n, c[1], e = e, 2, 4, i
+assert(i == 3 and e == 1 and c["n"] == 2 and c[1] == 4, 8)
 do
-  local n = e + 1
+  local n = i + 1
   assert(n == 4, 9)
   local n = n * 2
   assert(n == 8, 9.1)
 end
-assert(e == 3, 9.2)
-local t = _ENV
-assert(t == _ENV, 10)
-local t
-assert(t == nil, 11)
+assert(i == 3, 9.2)
+local n = _ENV
+assert(n == _ENV, 10)
+local n
+assert(n == nil, 11)
 
-function d()
+function r()
   return 1, 2, 3
 end
 
-local t, i, m, f, k, D = 0, d()
-assert(t == 0 and i == 1 and m == 2 and f == 3 and k == nil and D == nil, 12)
+local n, d, o, e, l, a = 0, r()
+assert(n == 0 and d == 1 and o == 2 and e == 3 and l == nil and a == nil, 12)
 
-function d(...)
+function r(...)
   return ...
 end
 
-assert(d(1, 2, 3) == 1, 13)
-e, l = (d(1, 2))
-assert(e == 1 and l == nil, 14)
-e, l = d(1, 2), 3
-assert(e == 1 and l == 3, 15)
-assert(pack(d(1, 2, nil, 3, nil, nil)).n == 6, 16)
+assert(r(1, 2, 3) == 1, 13)
+i, c = (r(1, 2))
+assert(i == 1 and c == nil, 14)
+i, c = r(1, 2), 3
+assert(i == 1 and c == 3, 15)
+assert(pack(r(1, 2, nil, 3, nil, nil)).n == 6, 16)
 
-function d(...)
+function r(...)
   return ..., ..., ...
 end
 
-assert(pack(d(1, 2, 3)).n == 5, 17)
+assert(pack(r(1, 2, 3)).n == 5, 17)
 for n = 1, 3 do
-  assert(select(n, d(1, 2, 3)) == 1, 18)
+  assert(select(n, r(1, 2, 3)) == 1, 18)
 end
-assert(select(4, d(1, 2, 3)) == 2, 19)
-n = 0
-for e = 5, 1, -2 do
-  n = 1
-  assert(e == 5 or e == 3 or e == 1, 20)
+assert(select(4, r(1, 2, 3)) == 2, 19)
+f = 0
+for n = 5, 1, -2 do
+  f = 1
+  assert(n == 5 or n == 3 or n == 1, 20)
 end
-assert(n == 1, 20.5)
+assert(f == 1, 20.5)
 for n = 5, 1 do
   assert(false, 21)
 end
-n = 0
-for e, d in ipairs {4, 5} do
-  assert(e == 1 and d == 4 or e == 2 and d == 5, 22)
-  n += 1
+f = 0
+for n, e in ipairs {4, 5} do
+  assert(n == 1 and e == 4 or n == 2 and e == 5, 22)
+  f += 1
 end
-assert(n == 2, 22.5)
-if n == 2 then
-  n += 1
+assert(f == 2, 22.5)
+if f == 2 then
+  f += 1
 else
   assert(false, 23)
 end
-assert(n == 3, 23.5)
-if n == 2 then
+assert(f == 3, 23.5)
+if f == 2 then
   assert(false, 24)
-elseif n == 3 then
-  n += 1
+elseif f == 3 then
+  f += 1
 else
   assert(false, 24.5)
 end
-assert(n == 4, 24.6)
-if n == 2 then
+assert(f == 4, 24.6)
+if f == 2 then
   assert(false, 25)
 else
-  n += 1
+  f += 1
 end
-assert(n == 5, 25.5)
-if n == 5 then
-  n = 0
-  n = 1
+assert(f == 5, 25.5)
+if f == 5 then
+  f = 0
+  f = 1
 else
   assert(false, 26)
 end
-assert(n == 1, 27)
-if n == 5 then
+assert(f == 1, 27)
+if f == 5 then
   assert(false, 28)
 else
-  n = 2
+  f = 2
 end
-assert(n == 2, 29)
-o = 1
-while n > 0 do
-  n -= 1
-  o *= 2
+assert(f == 2, 29)
+u = 1
+while f > 0 do
+  f -= 1
+  u *= 2
 end
-assert(o == 4 and n == 0, 30)
-while o > 0 do
-  o -= 1
-  n += 1
+assert(u == 4 and f == 0, 30)
+while u > 0 do
+  u -= 1
+  f += 1
 end
-assert(n == 4 and o == 0, 31)
-while n > 0 do
-  n -= 1
-  o += 1
-  if o == 3 then
+assert(f == 4 and u == 0, 31)
+while f > 0 do
+  f -= 1
+  u += 1
+  if u == 3 then
     break
   end
 end
-assert(n == 1 and o == 3, 32)
+assert(f == 1 and u == 3, 32)
 repeat
-  n += 1
-  o -= 1
-until n == 1 or n == 3
-assert(n == 3 and o == 1, 33)
+  f += 1
+  u -= 1
+until f == 1 or f == 3
+assert(f == 3 and u == 1, 33)
 
-function d()
+function r()
   return
 end
 
-function s()
+function m()
 end
 
-assert(d() == nil and pack(d()).n == 0, 34)
-assert(s() == nil and pack(s()).n == 0, 35)
+assert(r() == nil and pack(r()).n == 0, 34)
+assert(m() == nil and pack(m()).n == 0, 35)
 
-function r(...)
+function x(...)
   return ...
 end
 
-e = {1, 2, o = 1, i = 2, 3, 4, [12] = 4, r(5, 6, nil, 8)}
-assert(e[1] == 1 and e[2] == 2 and e[3] == 3 and e[4] == 4 and e[5] == 5 and e[6] == 6, 36)
-assert(e[7] == nil and e[8] == 8 and e["o"] == 1 and e.i == 2 and e[12] == 4, 37)
+i = {1, 2, o = 1, i = 2, 3, 4, [12] = 4, x(5, 6, nil, 8)}
+assert(i[1] == 1 and i[2] == 2 and i[3] == 3 and i[4] == 4 and i[5] == 5 and i[6] == 6, 36)
+assert(i[7] == nil and i[8] == 8 and i["o"] == 1 and i.i == 2 and i[12] == 4, 37)
 
-function r(...)
+function x(...)
   return {...}
 end
 
@@ -156,44 +156,44 @@ do
 
   assert(#n(1, 2) == 1 and n(1, 2).o == 3, 38)
 end
-assert(#r(1, 2) == 2, 39)
+assert(#x(1, 2) == 2, 39)
 assert(1 + 4 * 5 == 21 and 498 & 255 << 4 == 496, 40)
 assert((1 + 4) * 5 == 25 and (498 & 255) << 4 == 3872, 41)
 assert(-2 ^ 4 == -16 and (-2) ^ 4 == 16, 42)
 assert(1 ~= 2 and 1 ~= 2 or assert(false, 43), 43.1)
-f = {l = function(n)
+e = {l = function(n)
   return n.e
 end, e = 3}
-assert(f:l() == 3 and f.l {e = 4} == 4, 44)
-setmetatable(f, {__index = function(e, n)
+assert(e:l() == 3 and e.l {e = 4} == 4, 44)
+setmetatable(e, {__index = function(e, n)
   return n
 end})
-assert(f.r == "r", 45)
-f.d = f
+assert(e.r == "r", 45)
+e.d = e
 
-function f.d.d.e(n)
+function e.d.d.e(n)
   return n
 end
 
-assert(f.e(false) == false, 46)
+assert(e.e(false) == false, 46)
 
-function f.d.d:a(n)
+function e.d.d:a(n)
   return self, n
 end
 
-assert(f:a(true) == f and select(2, f:a(true)) == true, 47)
+assert(e:a(true) == e and select(2, e:a(true)) == true, 47)
 do
-  t = 1
+  n = 1
   do
     ::n::
-    t += 1
-    if t == 4 then
+    n += 1
+    if n == 4 then
       goto e
     end
     goto n
   end
   ::e::
-  assert(t == 4, 48)
+  assert(n == 4, 48)
 end
 do
   ::n::
@@ -203,52 +203,52 @@ do
     ::n::
   end
 end
-t = 0
-for n, e in next, {5} do
-  assert(n == 1 and e == 5, 50)
-  t += 1
+n = 0
+for e, d in next, {5} do
+  assert(e == 1 and d == 5, 50)
+  n += 1
 end
-assert(t == 1, 50.5)
+assert(n == 1, 50.5)
 do
   local n, _ENV = add, {assert = assert}
   n(_ENV, 3)
   assert(_ENV[1] == 3, 51)
 end
 
-local function n(n)
+local function e(n)
   _ENV = n
 end
 
-local e = _ENV
-n {assert = assert, w = 123}
-assert(w == 123, 52)
-n(e)
+local d = _ENV
+e {assert = assert, z = 123}
+assert(z == 123, 52)
+e(d)
 
-function d()
+function r()
   return 9, 0, 1
 end
 
-function p(n)
+function A(n)
   return n()
 end
 
-function b(n)
+function B(n)
   return (n())
 end
 
-assert(pack(p(d)).n == 3 and pack(b(d)).n == 1, 53)
-t = 72
-t -= 4 * 2
-t >>>= 16
-assert(t == .00098, 54)
-if t < 1 then
-  if t == 0 then
-    t = 123
+assert(pack(A(r)).n == 3 and pack(B(r)).n == 1, 53)
+n = 72
+n -= 4 * 2
+n >>>= 16
+assert(n == .00098, 54)
+if n < 1 then
+  if n == 0 then
+    n = 123
   end
 else
-  t = 321
+  n = 321
 end
-assert(t == .00098, 55)
+assert(n == .00098, 55)
 do
   local n = 1
 
@@ -256,8 +256,8 @@ do
   end
 
 end
-assert(B == nil, 56)
-t = 1
+assert(O == nil, 56)
+n = 1
 repeat
   local n = 2
 until assert(n == 2, 57)
@@ -292,18 +292,18 @@ local function n(e, d)
   end
 end
 
-local o, l, t, f = n(10), n(20), n(30, 1)
-assert(o() == 11 and l() == 21 and n(0)() == 1 and t() == 31 and f() == 61 and o() == 12 and l() == 22 and n(0)() == 1 and t() == 32 and f() == 62, 60)
+local o, l, a, t = n(10), n(20), n(30, 1)
+assert(o() == 11 and l() == 21 and n(0)() == 1 and a() == 31 and t() == 61 and o() == 12 and l() == 22 and n(0)() == 1 and a() == 32 and t() == 62, 60)
 
-function x(n)
+function w(n)
   return n
 end
 
-assert(x "me" == "me" and x [[me]] == "me", 61)
-h = {t = function(e, n)
+assert(w "me" == "me" and w [[me]] == "me", 61)
+p = {t = function(e, n)
   return n
 end}
-assert(h:t "me" == "me" and #h:t {} == 0, 62)
+assert(p:t "me" == "me" and #p:t {} == 0, 62)
 do
   while true do
     if 1 == 1 then
@@ -315,31 +315,31 @@ do
 end
 local n = 1
 
-function z()
+function k()
   return n
 end
 
 local n = 2
-assert(z() == 1, 63)
+assert(k() == 1, 63)
 local n = 1
 do
-  function A()
+  function D()
     return n
   end
 
   local n = 2
-  assert(A() == 1, 64)
+  assert(D() == 1, 64)
 end
 do
   local n, e = 1, 2
   ::n::
   assert(e == 2, 65)
   if n > 1 then
-    assert(a() == 4 and e == 2, 66)
+    assert(s() == 4 and e == 2, 66)
     goto e
   end
   local e = 3
-  a = function()
+  s = function()
     e += 1
     return e
   end
@@ -351,8 +351,8 @@ do
   local n = 1
   ::n::
   local d = n
-  e = a
-  a = function()
+  e = s
+  s = function()
     d += 1
     return d
   end
@@ -364,7 +364,7 @@ do
   end
 end
 ::d::
-assert(a() == 3 and a() == 4 and e() == 2 and a() == 5 and e() == 3, 67)
+assert(s() == 3 and s() == 4 and e() == 2 and s() == 5 and e() == 3, 67)
 do
   goto n
   local n
@@ -393,16 +393,16 @@ function d(e, n)
 end
 
 d(1, 2)
-g = 0
-u = {10, 20}
+b = 0
+h = {10, 20}
 
 function e()
-  g += 1
-  return g
+  b += 1
+  return b
 end
 
-u[e()] += 1
-assert(u[1] == 11 and u[2] == 20, 72)
+h[e()] += 1
+assert(h[1] == 11 and h[2] == 20, 72)
 n = 0
 n += 16
 assert(n == 16, 73)
@@ -416,15 +416,15 @@ if 1 == 1 then
 end
 assert(n == 2, 74)
 if 1 == 2 then
-  c = 1
+  g = 1
 else
   if 1 == 3 then
-    c = 2
+    g = 2
   else
-    c = 3
+    g = 3
   end
 end
-assert(c == 3, 76)
+assert(g == 3, 76)
 if 1 == 1 then
   if 2 == 2 then
     n = 4

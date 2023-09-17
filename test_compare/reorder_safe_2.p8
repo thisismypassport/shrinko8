@@ -42,12 +42,12 @@ local o=a
 l(o..a)
 end
 t={}
-t.l=3t.o=4printh(t.l..t.o)
-t.l=3t.l=4printh(t.l)
-t.o=t.l+1t.l=3printh(t.l..t.o)
-t.l=5t.o=t["l"]printh(t.l..t.o)
-t["a"]=6t.l=7printh(t.l)
-u,(printh"one"or{}).c=0,printh"two"
+t.o=3t.c=4printh(t.o..t.c)
+t.o=3t.o=4printh(t.o)
+t.c=t.o+1t.o=3printh(t.o..t.c)
+t.o=5t.c=t["o"]printh(t.o..t.c)
+t["a"]=6t.o=7printh(t.o)
+u,(printh"one"or{}).l=0,printh"two"
 r,(printh"three"or{}).d=0,printh"four"
 d()
 l=sqrt(4)o=sqrt(9)printh(l..o)
@@ -59,11 +59,11 @@ l=6o=i()printh(l..l)
 e=setmetatable({},{__add=function()return l end})d()
 l=20o=e+e printh(l..o)
 do
-local n,_ENV=printh,setmetatable({l=0},{__newindex=function(l,o,n)rawset(l,o,n+l.l)end})
-l=3o=4n(l..o)
+local l,_ENV=printh,setmetatable({o=0},{__newindex=function(l,o,n)rawset(l,o,n+l.o)end})
+o=3c=4l(o..c)
 end
 do
-local l=setmetatable({l=0},{__newindex=function(l,o,n)rawset(l,o,n+l.l)end})
-l.l=7l.o=8printh(l.l..l.o)
+local l=setmetatable({o=0},{__newindex=function(l,o,n)rawset(l,o,n+l.o)end})
+l.o=7l.c=8printh(l.o..l.c)
 end
 printh"over..."

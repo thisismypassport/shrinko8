@@ -241,8 +241,8 @@ def tokenize(source, ctxt=None, all_comments=False):
             sublang_cls = ctxt.sublang_getter(sublang_name)
             if sublang_cls:
                 add_lang_error = lambda msg: add_error(f"{sublang_name}: {msg}")
-                tokens[-1].sublang_name = sublang_name
-                tokens[-1].sublang = sublang_cls(parse_string_literal(token.value), on_error=add_lang_error)
+                token.sublang_name = sublang_name
+                token.sublang = sublang_cls(parse_string_literal(token.value), on_error=add_lang_error)
                 return
 
     def add_next_mods(token, mods):

@@ -547,7 +547,7 @@ class CompressionTracer:
         fail()
 
     def escape(m, str):
-        return '"%s"' % str.replace('"', '""') # let \n/etc go unescaped, good for excel/etc
+        return '"%s"' % from_p8str(str).replace('"', '""') # let \n/etc go unescaped, good for excel/etc
 
     def update(m, item):
         bitpos = m.curr_bitpos()

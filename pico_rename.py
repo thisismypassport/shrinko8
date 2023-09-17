@@ -1,6 +1,6 @@
 from utils import *
 from pico_defs import from_p8str
-from pico_tokenize import TokenType, is_identifier, keywords, CommentHint
+from pico_tokenize import TokenType, Token, is_identifier, keywords, CommentHint
 from pico_parse import VarKind, NodeType, VarBase
 from pico_minify import format_string_literal, Focus
 import fnmatch
@@ -349,29 +349,35 @@ def rename_tokens(ctxt, root, rename_opts):
             else:
                 return True
     
-    remaining_locals = deque(sorted(local_uses, key=lambda k: local_uses[k], reverse=True))
-    remaining_globals = deque(sorted(global_uses, key=lambda k: global_uses[k], reverse=True))
-    remaining_members = deque(sorted(member_uses, key=lambda k: member_uses[k], reverse=True))
-    remaining_labels = deque(sorted(label_uses, key=lambda k: label_uses[k], reverse=True))
+    remaining_locals = list(sorted(local_uses, key=lambda k: local_uses[k], reverse=True))
+    remaining_globals = list(sorted(global_uses, key=lambda k: global_uses[k], reverse=True))
+    remaining_members = list(sorted(member_uses, key=lambda k: member_uses[k], reverse=True))
+    remaining_labels = list(sorted(label_uses, key=lambda k: label_uses[k], reverse=True))
 
     local_renames, global_renames, member_renames, label_renames = {}, {}, {}, {}
 
-    def select_var(remaining, excluded, renames, ident, var_map=None):
-        for i, sel in enumerate(remaining):
-            sel_var = var_map[sel] if var_map else sel
-            
-            for exclude in excluded:
-                if not are_vars_compatible(sel_var, exclude):
-                    break
-            else:
+    def try_select_var(sel, excluded, renames, ident, var_map=None):
+        sel_var = var_map[sel] if var_map else sel
+
+        for exclude in excluded:
+            if not are_vars_compatible(sel_var, exclude):
+                return False
+
+        excluded.append(sel_var)
+        renames[sel] = ident
+        return True
+
+    def select_var(remaining, excluded, renames, ident, var_map=None, i=0):
+        while i < len(remaining):
+            if try_select_var(remaining[i], excluded, renames, ident, var_map):
                 del remaining[i]
-                excluded.append(sel_var)
-                renames[sel] = ident
-                return True
-    
+                return i
+            i += 1
+
     def select_vars(remaining, excluded, renames, ident):
-        while select_var(remaining, excluded, renames, ident):
-            pass
+        i = 0
+        while i != None:
+            i = select_var(remaining, excluded, renames, ident, i=i)
 
     for ident in get_idents():
         if not remaining_locals and not remaining_globals and not remaining_members and not remaining_labels:
@@ -385,11 +391,16 @@ def rename_tokens(ctxt, root, rename_opts):
         if ident in local_excludes:
             excluded.extend(local_excludes[ident])
 
-        # TODO, old approach:
         if ident != "_ENV":
-            select_var(remaining_globals, excluded, global_renames, ident, root.globals)
-            select_var(remaining_members, excluded, member_renames, ident, root.members)
-            select_vars(remaining_locals, excluded, local_renames, ident)
+            if not focus.chars: # going over locals first seems to usually increase compression (TODO...)
+                select_vars(remaining_locals, excluded, local_renames, ident)
+                select_var(remaining_globals, excluded, global_renames, ident, root.globals)
+                select_var(remaining_members, excluded, member_renames, ident, root.members)
+            else:
+                select_var(remaining_globals, excluded, global_renames, ident, root.globals)
+                select_var(remaining_members, excluded, member_renames, ident, root.members)
+                select_vars(remaining_locals, excluded, local_renames, ident)
+
         select_vars(remaining_labels, excluded, label_renames, ident)
 
     # output the identifier mapping, if needed
