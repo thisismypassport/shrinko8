@@ -198,8 +198,7 @@ def rename_tokens(ctxt, root, rename_opts):
     # we avoid renaming into any names used by pico8/lua, as otherwise renamed variables may have a non-nill initial value
     global_excludes = global_strings_cpy
     member_excludes = member_strings.copy()
-    global_excludes.add("_ENV")
-    member_excludes.add("_ENV")
+    local_excludes = defaultdict(list)
 
     def compute_effective_kind(node, kind, explicit):
         """get the identifier kind (global/member/etc) of a node, taking into account hints in the code"""
@@ -245,6 +244,7 @@ def rename_tokens(ctxt, root, rename_opts):
 
         elif kind == VarKind.local:
             if node.var.implicit:
+                local_excludes[node.name].append(node.var)
                 return None
             elif node.name == "_ENV": # e.g. new locals named it
                 return None
@@ -310,12 +310,11 @@ def rename_tokens(ctxt, root, rename_opts):
         else:
             return ident_chars[0], False
 
-    def create_ident_stream():
-        """returns a function that can be called to return new identifiers, in the ideal order"""
+    def get_idents():
+        """a generator of new identifiers, in the ideal order"""
         next_ident = ""
 
-        def get_next_ident():
-            nonlocal next_ident
+        while True:
             for i in range(len(next_ident)-1, -1, -1):
                 next_ch, found = get_next_ident_char(next_ident[i], i==0)
                 next_ident = str_replace_at(next_ident, i, 1, next_ch)
@@ -323,89 +322,75 @@ def rename_tokens(ctxt, root, rename_opts):
                     break
             else:
                 next_ident = str_insert(next_ident, 0, get_next_ident_char(None, True)[0])
-            return next_ident
+            if next_ident not in keywords:
+                yield next_ident
 
-        return get_next_ident
+    def are_vars_compatible(var1, var2):
+        is_global1 = var1.kind in (VarKind.global_, VarKind.member)
+        is_global2 = var2.kind in (VarKind.global_, VarKind.member)
 
-    def assign_idents(uses, excludes):
-        """assign new names to the given identifiers, in usage frequency order, and ignoring unwanted names"""
-        ident_stream = create_ident_stream()
-        rename_map = {}
-
-        for value in sorted(uses, key=lambda k: uses[k], reverse=True):
-            while True:
-                ident = ident_stream()
-                if ident not in excludes and ident not in keywords:
-                    break
-
-            rename_map[value] = ident
-
-        return rename_map
-
-    member_renames = assign_idents(member_uses, member_excludes)
-    global_renames = assign_idents(global_uses, global_excludes)
-
-    class ReverseRenameMap:
-        def __init__(m, map):
-            m.map = map
-            m.revmap = None
+        if is_global1 and is_global2: # both globals/members
+            return var1.kind != var2.kind
         
-        def get(m, ident):
-            if m.revmap is None:
-                m.revmap = {v: k for k, v in m.map.items()}
+        elif is_global1 or is_global2:
+            gvar, lvar = (var1, var2) if is_global1 else (var2, var1)
+            if lvar.kind == VarKind.label:
+                return True
             
-            orig_ident = m.revmap.get(ident)
-            if orig_ident is None and ident not in m.map:
-                orig_ident = ident # could be one we didn't rename
-            return orig_ident
+            if gvar.kind == VarKind.global_ and lvar.scope.has_used_globals and gvar.name in lvar.scope.used_globals:
+                return False
+            if gvar.kind == VarKind.member and lvar.scope.has_used_members and gvar.name in lvar.scope.used_members:
+                return False
+            return True
 
-    rev_member_renames = ReverseRenameMap(member_renames)
-    rev_global_renames = ReverseRenameMap(global_renames)    
+        else: # both locals/labels
+            if var1.kind == var2.kind:
+                return var1 not in var2.scope.used_locals and var2 not in var1.scope.used_locals
+            else:
+                return True
     
-    def assign_locals_idents(uses, excludes):
-        """assign new names to the locals' identifiers, like assign_idents but trickier as it takes scopes into account"""
-        ident_stream = create_ident_stream()
-        rename_map = {}
+    remaining_locals = deque(sorted(local_uses, key=lambda k: local_uses[k], reverse=True))
+    remaining_globals = deque(sorted(global_uses, key=lambda k: global_uses[k], reverse=True))
+    remaining_members = deque(sorted(member_uses, key=lambda k: member_uses[k], reverse=True))
+    remaining_labels = deque(sorted(label_uses, key=lambda k: label_uses[k], reverse=True))
 
-        remaining_uses = list(sorted(uses, key=lambda k: uses[k], reverse=True))
-        while remaining_uses:
-            ident = ident_stream()
-            ident_global, ident_member = None, None
-            ident_locals = []
+    local_renames, global_renames, member_renames, label_renames = {}, {}, {}, {}
 
-            if ident in excludes or ident in keywords:
-                continue
+    def select_var(remaining, excluded, renames, ident, var_map=None):
+        for i, sel in enumerate(remaining):
+            sel_var = var_map[sel] if var_map else sel
             
-            for i, var in enumerate(remaining_uses):
-                if var.scope.has_used_globals:
-                    if ident_global is None:
-                        ident_global = rev_global_renames.get(ident)
-                    if ident_global in var.scope.used_globals:
-                        continue
-                
-                if var.scope.has_used_members:
-                    if ident_member is None:
-                        ident_member = rev_member_renames.get(ident)
-                    if ident_member in var.scope.used_members:
-                        continue
-                
-                for _, ident_local in ident_locals:
-                    if ident_local in var.scope.used_locals:
-                        break
-                    if var in ident_local.scope.used_locals:
-                        break
+            for exclude in excluded:
+                if not are_vars_compatible(sel_var, exclude):
+                    break
+            else:
+                del remaining[i]
+                excluded.append(sel_var)
+                renames[sel] = ident
+                return True
+    
+    def select_vars(remaining, excluded, renames, ident):
+        while select_var(remaining, excluded, renames, ident):
+            pass
 
-                else:
-                    rename_map[var] = ident
-                    ident_locals.append((i, var))
+    for ident in get_idents():
+        if not remaining_locals and not remaining_globals and not remaining_members and not remaining_labels:
+            break
 
-            for i, ident_local in reversed(ident_locals):
-                assert remaining_uses.pop(i) == ident_local
+        excluded = []
+        if ident in global_excludes:
+            excluded.append(root.globals[ident])
+        if ident in member_excludes:
+            excluded.append(root.members[ident])
+        if ident in local_excludes:
+            excluded.extend(local_excludes[ident])
 
-        return rename_map
-        
-    local_renames = assign_locals_idents(local_uses, ("_ENV",))
-    label_renames = assign_locals_idents(label_uses, ())
+        # TODO, old approach:
+        if ident != "_ENV":
+            select_var(remaining_globals, excluded, global_renames, ident, root.globals)
+            select_var(remaining_members, excluded, member_renames, ident, root.members)
+            select_vars(remaining_locals, excluded, local_renames, ident)
+        select_vars(remaining_labels, excluded, label_renames, ident)
 
     # output the identifier mapping, if needed
 

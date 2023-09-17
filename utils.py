@@ -1571,6 +1571,29 @@ def iter_chunk(src, count):
             break
         yield chunk
 
+def func_union(func1, func2, return_early=None, return_combine=None):
+    """Return a function that behaves like func1 followed by func2. Either of func1/func2 may be None.
+    'return_early' can decide whether to return func1's result. 'return_combine' can combine func1's and func2's results"""
+    if func1 is None:
+        return func2
+    elif func2 is None:
+        return func1
+    elif return_early:
+        def union(*args, **kwargs):
+            ret = func1(*args, **kwargs)
+            if return_early(ret):
+                return ret
+            return func2(*args, **kwargs)
+        return union
+    else:
+        def union(*args, **kwargs):
+            ret1 = func1(*args, **kwargs)
+            ret2 = func2(*args, **kwargs)
+            if return_combine:
+                return return_combine(ret1, ret2)
+            # else, None
+        return union
+
 def getattrs(obj, private = True, magic = False):
     """Get all attributes of 'obj' (By default, including _privates but excluding __magic__)"""
     for attr in dir(obj):
@@ -1762,9 +1785,9 @@ class Rect(Tuple):
     @classmethod
     def from_coords(cls, x, y, x2, y2):
         return cls(x, y, x2 - x, y2 - y)
-    
+
 Rect.zero = Rect(0, 0, 0, 0)
-    
+
 class ProjectedDictBase(dict):
     """A dict baseclass where keys are projected via _project before compared"""
     @classmethod
@@ -1782,8 +1805,6 @@ class ProjectedDictBase(dict):
         return super().__delitem__(m.__class__._project(key))
     def __contains__(m, key):
         return super().__contains__(m.__class__._project(key))
-    def has_key(m, key):
-        return super().has_key(m.__class__._project(key))
     def pop(m, key, *args, **kwargs):
         return super().pop(m.__class__._project(key), *args, **kwargs)
     def get(m, key, *args, **kwargs):
@@ -1803,7 +1824,7 @@ class ProjectedDictBase(dict):
         if F:
             for k, v in F.items():
                 m[k] = v
-            
+
 class CaseInsensitiveDict(ProjectedDictBase):
     """A dict where key comparison is case-insensitive"""
     @classmethod

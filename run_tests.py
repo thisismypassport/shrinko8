@@ -12,6 +12,7 @@ parser.add_argument("-v", "--verbose", action="store_true", help="print test suc
 parser.add_argument("-x", "--exe", action="store_true", help="test a packaged exe instead of the python script")
 parser.add_argument("-p", "--pico8", action="append", help="specify a pico8 exe to test the results with")
 parser.add_argument("-P", "--no-pico8", action="store_true", help="disable running pico8 even if exe is supplied (for convenience)")
+parser.add_argument("--profile", action="store_true", help="enable profiling")
 
 # for test consistency:
 os.environ["PICO8_PLATFORM_CHAR"] = 'w'
@@ -165,7 +166,8 @@ def run():
     run_test("unkform1", "unkform1", "unkform1")
     run_test("unkform2", "unkform2.png", "unkform2", "--format", "png", "--input-format", "auto")
     run_test("mini", "mini.p8", "mini.p8", "--minify", "--no-minify-lines",
-             "--builtin", "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z")
+             "--builtin", "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z",
+             "--local-builtin", "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z")
     run_test("tinyrom", "tiny.rom", "tiny.lua")
     run_test("title", "title.p8", "title.p8.png")
     if run_test("repl", "repl.p8", "repl.p8", "--minify",
@@ -190,7 +192,7 @@ def run():
 def main(raw_args):
     global g_opts
     g_opts = parser.parse_args(raw_args)
-    init_tests(g_opts.exe)
+    init_tests(g_opts)
     
     dir_ensure_exists("test_output")
     run()

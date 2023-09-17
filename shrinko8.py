@@ -73,7 +73,7 @@ pgroup.add_argument("--unminify", action="store_true", help="enable unminificati
 pgroup.add_argument("--unminify-indent", type=int, help="indentation size when unminifying", default=2)
 
 pgroup = parser.add_argument_group("misc. options")
-pgroup.add_argument("-s", "--script", help="manipulate the cart via a custom python script - see README for api details")
+pgroup.add_argument("-s", "--script", action="append", help="manipulate the cart via a custom python script - see README for api details")
 pgroup.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
 pgroup.add_argument("--label", help="path to image to use as the label when creating png carts (default: taken from __label__ like pico8 does)")
 pgroup.add_argument("--title", help="title to use when creating png carts (default: taken from first two comments like pico8 does)")
@@ -101,6 +101,7 @@ pgroup = parser.add_argument_group("other semi-undocumented options")
 pgroup.add_argument("--builtin", type=SplitBySeps, action=extend_arg, help="treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
 pgroup.add_argument("--not-builtin", type=SplitBySeps, action=extend_arg, help="do not treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
 pgroup.add_argument("--global-builtins-only", action="store_true", help="assume all builtins are global, corresponds to pico8's -global_api option")
+pgroup.add_argument("--local-builtin", type=SplitBySeps, action=extend_arg, help="treat identifier(s) as a local builtin (probably no use outside of testing)")
 pgroup.add_argument("--version", action="store_true", help="print version of cart. (if no cart is provided - print shrinko8 version and exit)")
 pgroup.add_argument("--bbs", action="store_true", help="interpret input as a bbs cart id, e.g. '#...' and download it from the bbs")
 pgroup.add_argument("--url", action="store_true", help="interpret input as a URL, and download it from the internet")
@@ -213,7 +214,11 @@ def main_inner(raw_args):
 
     preproc_cb, postproc_cb, sublang_cb = None, None, None
     if args.script:
-        preproc_cb, postproc_cb, sublang_cb = import_from_script_by_path(args.script, "preprocess_main", "postprocess_main", "sublanguage_main")
+        for script in args.script:
+            preproc_main, postproc_main, sublang_main = import_from_script_by_path(script, "preprocess_main", "postprocess_main", "sublanguage_main")
+            preproc_cb = func_union(preproc_cb, preproc_main)
+            postproc_cb = func_union(postproc_main, postproc_cb) # (reverse order)
+            sublang_cb = func_union(sublang_cb, sublang_main, return_early=e)
 
     base_count_handler = ParsableCountHandler if args.parsable_count else True
     if args.input_count:
@@ -250,9 +255,10 @@ def main_inner(raw_args):
             write_code_size(cart, handler=args.input_count, input=True)
             
         ctxt = PicoContext(extra_builtins=args.builtin, not_builtins=args.not_builtin, 
-                        local_builtins=not args.global_builtins_only,
-                        srcmap=args.rename_map, sublang_getter=sublang_cb, version=cart.version_id,
-                        hint_comments=not args.ignore_hints)
+                           local_builtins=not args.global_builtins_only,
+                           extra_local_builtins=args.local_builtin,
+                           srcmap=args.rename_map, sublang_getter=sublang_cb, version=cart.version_id,
+                           hint_comments=not args.ignore_hints)
         if preproc_cb:
             preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args)
 

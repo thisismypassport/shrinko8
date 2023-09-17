@@ -8,27 +8,33 @@ class VarKind(Enum):
     local = global_ = member = label = ...
     
 class VarBase():
-    def __init__(m, name, implicit=False):
+    def __init__(m, kind, name, implicit=False):
+        m.kind = kind
         m.name = name
         m.keys_kind = None
         m.implicit = implicit
         m.reassigned = False
+        
+    def __repr__(m):
+        return f"{m.kind} {m.name}"
 
 class Local(VarBase):
     def __init__(m, name, scope, implicit=False):
-        super().__init__(name, implicit)
+        super().__init__(VarKind.local, name, implicit)
         m.scope = scope
         m.captured = False
 
 class Global(VarBase):
-    pass
+    def __init__(m, name):
+        super().__init__(VarKind.global_, name)
 
 class Member(VarBase):
-    pass
+    def __init__(m, name):
+        super().__init__(VarKind.member, name)
 
 class Label(VarBase):
     def __init__(m, name, scope):
-        super().__init__(name)
+        super().__init__(VarKind.label, name)
         m.scope = scope
 
 class Scope:
@@ -55,19 +61,21 @@ class Scope:
             curr = curr.parent
     
     @lazy_property
-    def used_locals(m):
+    def used_locals(m): # set of Local or Label objs
         return set()
     
     @lazy_property
-    def used_globals(m):
+    def used_globals(m): # set of names, not of Global objs
         return set()
     @property
     def has_used_globals(m):
         return lazy_property.is_set(m, "used_globals")
     
     @lazy_property
-    def used_members(m): # note - only for members used as if they were globals,
-        return set()     # NOT for normally used members! (very rare)
+    def used_members(m): # set of names, not of Member objs
+        # note - only for members used as if they were globals,
+        # NOT for normally used members! (very rare)
+        return set()
     @property
     def has_used_members(m):
         return lazy_property.is_set(m, "used_members")
