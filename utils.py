@@ -50,7 +50,7 @@ def exec_def(name, code):
 def exec_script_by_path(path, name=None):
     """executes script at 'path', returning its module object"""
     import importlib.util
-    script_spec = importlib.util.spec_from_file_location(default(name, path_basename_no_extension(path)), path)
+    script_spec = importlib.util.spec_from_file_location(default(name, path_basename_no_extension(path)), path_absolute(path))
     script_mod = importlib.util.module_from_spec(script_spec)
     script_spec.loader.exec_module(script_mod)
     return script_mod

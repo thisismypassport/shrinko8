@@ -198,7 +198,7 @@ def rename_tokens(ctxt, root, rename_opts):
     # we avoid renaming into any names used by pico8/lua, as otherwise renamed variables may have a non-nill initial value
     global_excludes = global_strings_cpy
     member_excludes = member_strings.copy()
-    local_excludes = defaultdict(list)
+    local_excludes = defaultdict(set)
 
     globals_after_zero = set()
     members_after_zero = set()
@@ -242,15 +242,16 @@ def rename_tokens(ctxt, root, rename_opts):
                 if env_var and env_var.keys_kind != None:
                     return compute_effective_kind(node, env_var.keys_kind, explicit=True)
 
-            if node.name in preserved_globals:
+            if node.var.implicit or node.name in preserved_globals:
                 global_excludes.add(node.name)
                 return None
 
         elif kind == VarKind.local:
-            if node.var.implicit:
-                local_excludes[node.name].append(node.var)
+            if node.var.implicit or node.var.builtin:
+                local_excludes[node.name].add(node.var)
                 return None
-            elif node.name == "_ENV": # e.g. new locals named it
+            # best to keep this check, e.g. to avoid renaming _ENV locals that are unused unless local builtins are disabled
+            elif node.name == "_ENV":
                 return None
 
         return kind

@@ -34,8 +34,9 @@ deprecated_builtins = {
 }
 
 undocumented_builtins = {
-    "holdframe", "_set_fps", "_update_buttons",
-    "_map_display", "_get_menu_item_selected",
+    "holdframe", "_set_fps", "_update_buttons", "_mark_cpu",
+    "_startframe", "_update_framerate", "_set_mainloop_exists",
+    "_map_display", "_get_menu_item_selected", "_pausemenu",
     "set_draw_slice", "tostring",
 }
 

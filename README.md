@@ -132,7 +132,7 @@ In such cases, you have multiple ways to tell Shrinko8 precisely how your cart b
 
     * If you're making your tables inherit _ENV (allowing you to bind the table to _ENV and access both table members and globals without a '.'), you can [rename table keys the same way as globals](#renaming-table-keys-the-same-way-as-globals).
 
-    * If you're otherwise assigning to or from _ENV, you may need to either [specify how all keys of a table are renamed](#controlling-renaming-of-all-keys-of-a-table), or [specify how specific usages of an identifier is renamed](#controlling-renaming-of-specific-identifier-usages) in order to tell Shrinko8 which table keys should be renamed as if they were globals.
+    * If you're otherwise assigning to or from _ENV, you may need to either [specify how all keys of a table are renamed](#controlling-renaming-of-all-keys-of-a-table), or [specify how specific occurrences of an identifier is renamed](#advanced---controlling-renaming-of-specific-identifier-occurrences) in order to tell Shrinko8 which table keys should be renamed as if they were globals.
     
 * Reordering assumptions:
 
@@ -198,27 +198,9 @@ You can instruct the minifier to rename table keys the same way as globals (allo
 
 If you prefer, you can instead pass `--preserve "*=*.*"` to the command line.
 
-### Controlling renaming of specific identifier usages
-
-The `--[[global]]` and `--[[member]]` hints can also be used on a specific usage of an identifier to change the way it's renamed.
-
-In additon, the `--[[preserve]]` hint can prevent identifiers from being renamed at all:
-```lua
-do
-  local _ENV = {--[[global]]assert=assert}
-  assert(true)
-end
-for _ENV in all({{x=1}, {x=2}}) do
-  --[[member]]x += 1
-end
---[[preserve]]some_future_pico8_api(1,2,3)
-```
-
-Note that this affects only a specific usage of an identifier. If you want to rename all usages, `--preserve:` is the recommended approach.
-
 ### Controlling renaming of all keys of a table
 
-Additionally, you can use `--[[preserve-keys]]`, `--[[global-keys]]` and `--[[member-keys]]` to affect how *all* keys of a table are renamed.
+You can use `--[[preserve-keys]]`, `--[[global-keys]]` and `--[[member-keys]]` to affect how *all* keys of a table are renamed.
 
 This can be applied on either table constructors (aka `{...}`) or on variables. When applying on variables, the hint affects all members accessed through that variable, as well as any table constructors directly assigned to it.
 ```lua
@@ -243,6 +225,24 @@ This can be also be useful when assigning regular tables to _ENV:
 -- hints on an _ENV local affects all globals in its scope
 for --[[member-keys]]_ENV in all({{x=1,y=5}, {x=2,y=6}}) do
   x += y + y*x
+end
+```
+
+### Advanced - Controlling renaming of specific identifier occurrences
+
+The `--[[global]]`, `--[[member]]` and `--[[preserve]]` hints can also be used on a **specific** occurrence of an identifier to change the way it's renamed.
+
+Usually, there are easier ways to control renaming (such as by [preserving identifiers across the entire cart](#preserving-identifiers-across-the-entire-cart) or [controlling renaming of all keys in a table](#controlling-renaming-of-all-keys-of-a-table)), but this option is here for cases where you need precise control over how to rename each occurence.
+
+```lua
+do
+  -- NOTE: can be more easily achieved via --[[global-keys]]
+  local _ENV = {--[[global]]assert=assert}
+  assert(true)
+end
+-- NOTE: can be more easily achieved via --[[member-keys]]
+for _ENV in all({{x=1}, {x=2}}) do
+  --[[member]]x += 1
 end
 ```
 

@@ -8,20 +8,21 @@ class VarKind(Enum):
     local = global_ = member = label = ...
     
 class VarBase():
-    def __init__(m, kind, name, implicit=False):
+    def __init__(m, kind, name):
         m.kind = kind
         m.name = name
         m.keys_kind = None
-        m.implicit = implicit
+        m.implicit = False # has implicit *access*?
         m.reassigned = False
         
     def __repr__(m):
         return f"{m.kind} {m.name}"
 
 class Local(VarBase):
-    def __init__(m, name, scope, implicit=False):
-        super().__init__(VarKind.local, name, implicit)
+    def __init__(m, name, scope, builtin=False):
+        super().__init__(VarKind.local, name)
         m.scope = scope
+        m.builtin = builtin
         m.captured = False
 
 class Global(VarBase):
@@ -240,11 +241,11 @@ def parse(source, tokens, ctxt=None):
     globals = LazyDict(lambda key: Global(key))
     members = LazyDict(lambda key: Member(key))
     
-    scope.add(Local("_ENV", scope, True))
+    scope.add(Local("_ENV", scope))
 
     if ctxt and ctxt.local_builtins:
         for local in ctxt.local_builtins:
-            scope.add(Local(local, scope, True))
+            scope.add(Local(local, scope, builtin=True))
    
     def peek(off=0):
         i = idx + off
@@ -339,7 +340,7 @@ def parse(source, tokens, ctxt=None):
         
         if kind == VarKind.global_:
             env_token = Token.synthetic(TokenType.ident, "_ENV", token)
-            node.add_extra_child(parse_var(token=env_token))
+            node.add_extra_child(parse_var(token=env_token, implicit=True))
 
         return node
     
@@ -901,8 +902,7 @@ def is_any_assign_target(node):
     return is_assign_target(node) or is_op_assign_target(node) or is_function_target(node)
 
 def is_global_or_builtin_local(node):
-    """global or built-in local"""
-    return node.kind == VarKind.global_ or (node.kind == VarKind.local and node.var.scope.funcdepth < 0 and node.name != "_ENV")
+    return node.kind == VarKind.global_ or (node.kind == VarKind.local and node.var.builtin)
 
 def is_vararg_expr(node):
     return node.type in (NodeType.call, NodeType.varargs)
