@@ -7,7 +7,7 @@ from pico_export import read_cart_export, read_pod_file, ListOp
 from pico_tokenize import k_hint_split_re
 import argparse
 
-k_version = 'v1.1.1'
+k_version = 'v1.1.2'
 
 def SplitBySeps(val):
     return k_hint_split_re.split(val)

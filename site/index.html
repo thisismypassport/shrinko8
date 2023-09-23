@@ -115,6 +115,10 @@
       textarea {
         resize: none;
       }
+
+      a { /* even without href */
+        cursor: pointer;
+      }
     </style>
   </head>
   <body style="height: 100%; margin: 0;" data-droptarget="#input-code"
@@ -216,7 +220,8 @@ It can be a .p8 file, a .png cart, and more."></div>
                   <button type="button" onclick="saveOutputFile()">Download</button>
                 </div>
                 <div style="flex: 1" class="flex-column margin">
-                  <div>Preview:<span style="color: gray"> (To download, click the 'Download' button to the left. Copy/pasting this preview to Pico-8 will not compress as well)</span></div>
+                  <div>Preview:<span style="color: gray"> (Shrinko-8 can compress better than Pico-8 itself, so you're recommended to 
+                    <a onclick="saveOutputFile()">download</a> the file instead of copy/pasting)</span></div>
                   <div id="minify-preview" class="ace-textarea" style="flex: 1; margin-top: 10px" readonly></div>
                 </div>
               </div>

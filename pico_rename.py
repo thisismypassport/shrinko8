@@ -200,6 +200,10 @@ def rename_tokens(ctxt, root, rename_opts):
     member_excludes = member_strings.copy()
     local_excludes = defaultdict(list)
 
+    globals_after_zero = set()
+    members_after_zero = set()
+    locals_after_zero = set()
+
     def compute_effective_kind(node, kind, explicit):
         """get the identifier kind (global/member/etc) of a node, taking into account hints in the code"""
         if kind == VarKind.member:
@@ -251,16 +255,32 @@ def rename_tokens(ctxt, root, rename_opts):
 
         return kind
 
+    def is_after_zero(node):
+        if not node.is_extra_child():
+            prev = node.prev_token()
+            # TODO: would be good to rename after minify?
+            if prev.type == TokenType.number and prev.value.endswith("0"):
+                return True
+
     def collect_idents_pre(node):            
         if node.type == NodeType.var:
             node.effective_kind = compute_effective_kind(node, default(node.var_kind, node.kind), explicit=e(node.var_kind))
             
             if node.effective_kind == VarKind.member:
                 member_uses[node.name] += 1
+                if is_after_zero(node):
+                    members_after_zero.add(node.name)
+            
             elif node.effective_kind == VarKind.global_:
                 global_uses[node.name] += 1
+                if is_after_zero(node):
+                    globals_after_zero.add(node.name)
+            
             elif node.effective_kind == VarKind.local:
                 local_uses[node.var] += 1
+                if is_after_zero(node):
+                    locals_after_zero.add(node.var)
+            
             elif node.effective_kind == VarKind.label:
                 label_uses[node.var] += 1
                     
@@ -356,8 +376,11 @@ def rename_tokens(ctxt, root, rename_opts):
 
     local_renames, global_renames, member_renames, label_renames = {}, {}, {}, {}
 
-    def try_select_var(sel, excluded, renames, ident, var_map=None):
+    def try_select_var(sel, excluded, renames, avoids, ident, var_map=None):
         sel_var = var_map[sel] if var_map else sel
+        
+        if sel in avoids:
+            return False
 
         for exclude in excluded:
             if not are_vars_compatible(sel_var, exclude):
@@ -367,21 +390,26 @@ def rename_tokens(ctxt, root, rename_opts):
         renames[sel] = ident
         return True
 
-    def select_var(remaining, excluded, renames, ident, var_map=None, i=0):
+    def select_var(remaining, excluded, renames, avoids, ident, var_map=None, i=0):
         while i < len(remaining):
-            if try_select_var(remaining[i], excluded, renames, ident, var_map):
+            if try_select_var(remaining[i], excluded, renames, avoids, ident, var_map):
                 del remaining[i]
                 return i
             i += 1
 
-    def select_vars(remaining, excluded, renames, ident):
+    def select_vars(remaining, excluded, renames, avoids, ident):
         i = 0
         while i != None:
-            i = select_var(remaining, excluded, renames, ident, i=i)
+            i = select_var(remaining, excluded, renames, avoids, ident, i=i)
 
     for ident in get_idents():
         if not remaining_locals and not remaining_globals and not remaining_members and not remaining_labels:
             break
+
+        avoid_locals = avoid_globals = avoid_members = ()
+        for ch in "bxBX": # these chars cause extra space if placed after 0
+            if ident.startswith(ch):
+                avoid_locals, avoid_globals, avoid_members = locals_after_zero, globals_after_zero, members_after_zero
 
         excluded = []
         if ident in global_excludes:
@@ -393,15 +421,15 @@ def rename_tokens(ctxt, root, rename_opts):
 
         if ident != "_ENV":
             if not focus.chars: # going over locals first seems to usually increase compression (TODO...)
-                select_vars(remaining_locals, excluded, local_renames, ident)
-                select_var(remaining_globals, excluded, global_renames, ident, root.globals)
-                select_var(remaining_members, excluded, member_renames, ident, root.members)
+                select_vars(remaining_locals, excluded, local_renames, avoid_locals, ident)
+                select_var(remaining_globals, excluded, global_renames, avoid_globals, ident, root.globals)
+                select_var(remaining_members, excluded, member_renames, avoid_members, ident, root.members)
             else:
-                select_var(remaining_globals, excluded, global_renames, ident, root.globals)
-                select_var(remaining_members, excluded, member_renames, ident, root.members)
-                select_vars(remaining_locals, excluded, local_renames, ident)
+                select_var(remaining_globals, excluded, global_renames, avoid_globals, ident, root.globals)
+                select_var(remaining_members, excluded, member_renames, avoid_members, ident, root.members)
+                select_vars(remaining_locals, excluded, local_renames, avoid_locals, ident)
 
-        select_vars(remaining_labels, excluded, label_renames, ident)
+        select_vars(remaining_labels, excluded, label_renames, (), ident)
 
     # output the identifier mapping, if needed
 

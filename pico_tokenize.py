@@ -105,6 +105,9 @@ class TokenNodeBase:
         child.parent = m
         child.extra_i = len(m.extra_children)
         m.extra_children.append(child)
+    
+    def is_extra_child(m):
+        return hasattr(m, "extra_i")
 
 class TokenType(Enum):
     number = string = ident = keyword = punct = ...
