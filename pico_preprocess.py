@@ -183,6 +183,7 @@ class CustomPreprocessor(PicoPreprocessor):
         m.defines = defines.copy() if defines else {}
         m.pp_handler = pp_handler
         m.ppstack = []
+        m.recurse = 0
         m.active = True
         
     def get_active(m):
@@ -191,6 +192,7 @@ class CustomPreprocessor(PicoPreprocessor):
     def start(m, path, code, outparts):
         if m.pp_handler:
             m.pp_handler(op=True, args=(), ppline="", active=True, outparts=outparts, negate=False)
+        m.recurse += 1
 
     def parse_args(m, args, code, i, inline):
         while True:
@@ -221,7 +223,7 @@ class CustomPreprocessor(PicoPreprocessor):
             end_i = code.find("\n", end_i + 1)
 
         end_i = end_i if end_i >= 0 else len(code)
-        line = code[i:end_i].replace("\\\n", "")
+        line = code[i:end_i].replace("\\\n", "\n")
 
         args = []
         m.parse_args(args, line, 0, inline=False)
@@ -235,6 +237,8 @@ class CustomPreprocessor(PicoPreprocessor):
         elif op == "#define" and len(args) >= 2:
             if m.active:
                 value = line.split(maxsplit=2)[2].rstrip() if len(args) > 2 else ""
+                if "#[" in value:
+                    value, _ = preprocess_code("(define)", value, preprocessor=m)
                 m.defines[args[1]] = value
 
         elif op == "#undef" and len(args) == 2:
@@ -322,7 +326,8 @@ class CustomPreprocessor(PicoPreprocessor):
         return end_i, end_i, out_i + len(value)
 
     def finish(m, path, code, outparts):
-        if m.ppstack:
+        m.recurse -= 1
+        if m.recurse == 0 and m.ppstack:
             throw("Unterminated custom preprocessor ifs")
         if m.pp_handler:
             m.pp_handler(op=False, args=(), ppline="", active=True, outparts=outparts, negate=False)

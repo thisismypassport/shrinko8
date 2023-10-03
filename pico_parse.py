@@ -11,9 +11,11 @@ class VarBase():
     def __init__(m, kind, name):
         m.kind = kind
         m.name = name
-        m.keys_kind = None
         m.implicit = False # has implicit *access*?
         m.reassigned = False
+
+    keys_kind = None
+    rename = None
         
     def __repr__(m):
         return f"{m.kind} {m.name}"
@@ -329,6 +331,8 @@ def parse(source, tokens, ctxt=None):
         var_kind = getattr(token, "var_kind", None)
         if var and hasattr(token, "keys_kind"):
             var.keys_kind = token.keys_kind
+        if var and hasattr(token, "rename"):
+            var.rename = token.rename
 
         node = Node(NodeType.var, [token], name=name, kind=kind, var_kind=var_kind, var=var, new=bool(new), scope=search_scope)
 

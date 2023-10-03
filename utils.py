@@ -81,46 +81,54 @@ def isdescriptor(obj):
     """Return whether the value is a descriptor"""
     return hasattr(obj, "__get__") or hasattr(obj, "__set__") or hasattr(obj, "__del__")
 
-class ProcessValue:
-    """When defining an Enum/Tuple/etc, forces the value to be processed, despite being a function/descriptor/..."""
+class IncludeAttr:
+    """When defining an Enum/Tuple/etc, forces the attribute to be included, despite having a private name or being a function/descriptor/..."""
     def __init__(m, value):
         m.value = value
 
-class KeepValue:
-    """When defining an Enum/Tuple/etc, forces the value to be left alone, despite not being a function/descriptor/..."""
+class NoRenameAttr(IncludeAttr):
+    """When defining an Enum/Tuple/etc, forces the attribute to be included and not be renamed, despite having a name ending in _"""
     def __init__(m, value):
         m.value = value
 
-def _metaclass_collect_values(cls_dict, values, prefirst, next):
+class ExcludeAttr:
+    """When defining an Enum/Tuple/etc, forces the attribute to be excluded, despite not having a private name nad not being a function/descriptor/..."""
+    def __init__(m, value):
+        m.value = value
+
+def _metaclass_collect_values(cls_dict, values, prefirst, next, with_aliases=True):
     prev_value = prefirst
     for key, value in default(values, cls_dict).items():
+        keep_key = False
         if key.startswith("__") and key.endswith("__"):
             continue
-        elif isinstance(value, ProcessValue):
+        elif isinstance(value, IncludeAttr):
+            keep_key = isinstance(value, NoRenameAttr)
             value = value.value
-        elif callable(value) or isdescriptor(value) or isinstance(value, KeepValue):
+        elif key.startswith("_") or callable(value) or isdescriptor(value) or isinstance(value, ExcludeAttr):
             continue
         elif value is ...:
             value = next(prev_value)
         prev_value = value
+
         yield key, value
+        if key.endswith("_") and not keep_key:
+            yield key[:-1], value # yield "proper" name last, so it overrides the '_' name in reverse maps
 
 def _metaclass_collect_fields(cls_dict, values):
     fields = []
     defaults = []
+    no_default = defaults # marker value, compare via 'is'
 
-    has_default = True # unless next_no_default is called
     def next_no_default(_):
-        nonlocal has_default
-        has_default = False
+        return no_default
 
-    for k, v in _metaclass_collect_values(cls_dict, values, None, next_no_default):
+    for k, v in _metaclass_collect_values(cls_dict, values, None, next_no_default, with_aliases=False):
         fields.append(k)
-        if has_default:
+        if v is not no_default:
             defaults.append(v)
         elif defaults:
             raise Exception(f"Cannot specify required field {k} after optional fields")
-        has_default = True # unless next_no_default is called
     
     return tuple(fields), tuple(defaults)
 
@@ -191,7 +199,7 @@ class EnumMetaclass(type):
         enum_dict["_values"] = full_name_value_map
         
         for k, v in cls_dict.items():
-            if isinstance(v, KeepValue):
+            if isinstance(v, ExcludeAttr):
                 v = v.value
             
             if k in name_value_map:
@@ -216,7 +224,8 @@ class Enum(metaclass=EnumMetaclass):
     All non-private attributes of the class other than functions and descriptors become enum members.
     Atributes with a value of ... receive values automatically.
     Inherited classes behave like regular classes unless they have Enum as a direct baseclass.
-    Advanced: PlainValue, values keyword parameter
+    Advanced: ExcludeAttr/IncludeAttr, values keyword parameter
+    Atributes with a name ending with _ can be referred to without the _.
     """
 
 class BitmaskMetaclass(type):
@@ -363,7 +372,7 @@ class BitmaskMetaclass(type):
                 bitmask_dict[name] = bitfield_property(mask)
     
         for k, v in cls_dict.items():
-            if isinstance(v, KeepValue):
+            if isinstance(v, ExcludeAttr):
                 v = v.value
             
             if k in name_mask_map:
@@ -384,7 +393,8 @@ class Bitmask(metaclass=BitmaskMetaclass):
     A bitmask is like a struct, but with its fields mapped into a single bitmask integer.
     Bitmasks can also be manipulated via: & | ^
     Inherited classes behave like regular classes unless they have Bitmask as a direct baseclass.
-    Advanced: PlainValue, values keyword parameter
+    Advanced: ExcludeAttr/IncludeAttr, values keyword parameter
+    Atributes with a name ending with _ can be referred to without the _.
     """
     
 class TupleMetaclass(type):
@@ -440,7 +450,7 @@ class TupleMetaclass(type):
         fields_set = set(fields)
 
         for k, v in cls_dict.items():
-            if isinstance(v, KeepValue):
+            if isinstance(v, ExcludeAttr):
                 v = v.value
             
             if k in fields_set:
@@ -460,7 +470,8 @@ class Tuple(metaclass=TupleMetaclass):
     Atributes with a value of ... are required, otherwise - optional with the given default value.
     The tuple behaves similarly to collections.namedtuple
     Inherited classes behave like regular classes unless they have Tuple as a direct baseclass.
-    Advanced: PlainValue, values keyword parameter
+    Advanced: ExcludeAttr/IncludeAttr, values keyword parameter
+    Atributes with a name ending with _ can be referred to without the _.
     """
         
 class StructMetaclass(type):
@@ -506,7 +517,7 @@ class StructMetaclass(type):
         fields_set = set(fields)
         
         for k, v in cls_dict.items():
-            if isinstance(v, KeepValue):
+            if isinstance(v, ExcludeAttr):
                 v = v.value
             
             if k in fields_set:
@@ -526,7 +537,8 @@ class Struct(metaclass=StructMetaclass):
     Atributes with a value of ... are required, otherwise - optional with the given default value.
     A struct is like a mutable named tuple, except equality goes by identity.
     Inherited classes behave like regular classes unless they have Struct as a direct baseclass.
-    Advanced: PlainValue, values keyword parameter
+    Advanced: ExcludeAttr/IncludeAttr, values keyword parameter
+    Atributes with a name ending with _ can be referred to without the _.
     """
 
 def SymbolClass(name):

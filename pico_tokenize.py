@@ -16,6 +16,7 @@ k_lint_func_prefix = "func::"
 k_lint_count_stop = "count::stop"
 
 k_language_prefix = "language::"
+k_rename_prefix = "rename::"
 
 class StopTraverse(BaseException):
     pass
@@ -176,7 +177,7 @@ k_hint_split_re = re.compile(r"[\s,]+")
 
 class NextTokenMods:
     def __init__(m):
-        m.var_kind = m.keys_kind = m.func_kind = m.merge_prev = m.sublang = None
+        m.var_kind = m.keys_kind = m.func_kind = m.merge_prev = m.sublang = m.rename = None
         m.comments = None
         
     def add_comment(m, cmt):
@@ -259,6 +260,8 @@ def tokenize(source, ctxt=None, all_comments=False):
             token.func_kind = mods.func_kind
         if mods.merge_prev != None:
             token.merge_prev = mods.merge_prev
+        if mods.rename != None:
+            token.rename = mods.rename
         if mods.sublang != None:
             add_sublang(token, mods.sublang)
 
@@ -298,6 +301,8 @@ def tokenize(source, ctxt=None, all_comments=False):
                     get_next_mods().merge_prev = False
                 elif comment.startswith(k_language_prefix) and not any(ch.isspace() for ch in comment):
                     get_next_mods().sublang = comment[len(k_language_prefix):]
+                elif comment.startswith(k_rename_prefix) and not any(ch.isspace() for ch in comment):
+                    get_next_mods().rename = comment[len(k_rename_prefix):]
         
         if all_comments or hint != CommentHint.none:
             get_next_mods().add_comment(Comment(hint, hintdata, source, orig_idx, idx))

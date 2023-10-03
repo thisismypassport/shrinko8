@@ -204,8 +204,16 @@ def rename_tokens(ctxt, root, rename_opts):
     members_after_zero = set()
     locals_after_zero = set()
 
+    renamed_vars = set()
+
     def compute_effective_kind(node, kind, explicit):
         """get the identifier kind (global/member/etc) of a node, taking into account hints in the code"""
+
+        if node.var.rename:
+            node.name = node.var.rename
+            renamed_vars.add(node.var)
+            return None
+
         if kind == VarKind.member:
             table_name = ""
             
@@ -432,19 +440,25 @@ def rename_tokens(ctxt, root, rename_opts):
 
         select_vars(remaining_labels, excluded, label_renames, (), ident)
 
+    if renamed_vars:
+        for var1, var2 in itertools.product(renamed_vars, renamed_vars):
+            if var1 != var2 and var1.rename == var2.rename and not are_vars_compatible(var1, var2):
+                throw(f"rename hint of {var1.name} to {var1.rename} conflicts with that of {var2.name} to {var2.rename}")
+
     # output the identifier mapping, if needed
 
-    def update_srcmap(mapping, kind):
+    def update_srcmap(mapping, kind=None):
         for old, new in mapping.items():
             old_name = old.name if isinstance(old, VarBase) else old
 
-            ctxt.srcmap.append(f"{kind} {from_p8str(new)} <- {from_p8str(old_name)}")
+            ctxt.srcmap.append(f"{kind or old.kind} {from_p8str(new)} <- {from_p8str(old_name)}")
 
     if e(ctxt.srcmap):
-        update_srcmap(member_renames, "member")
-        update_srcmap(global_renames, "global")
-        update_srcmap(local_renames, "local")
-        update_srcmap(label_renames, "label")
+        update_srcmap(member_renames, VarKind.member)
+        update_srcmap(global_renames, VarKind.global_)
+        update_srcmap(local_renames)
+        update_srcmap(label_renames)
+        update_srcmap({var: var.rename for var in renamed_vars})
 
     # write the new names into the syntax tree
 
@@ -460,6 +474,8 @@ def rename_tokens(ctxt, root, rename_opts):
                 node.name = local_renames[node.var]
             elif node.effective_kind == VarKind.label:
                 node.name = label_renames[node.var]
+            elif node.var.rename:
+                orig_name = node.var.name # (node.name already renamed)
             else:
                 return
 
