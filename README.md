@@ -261,6 +261,20 @@ Above, all uses of circfill and rectfill are renamed except for the ones precede
 
 Be aware that doing this won't reduce the compressed size of the cart, and will increases the token count (due to the assignment), so it's only for when you care about character count above all else.
 
+### Advanced - Explicit renaming
+
+While Shrinko8 has good heuristics for choosing identifier names, it's still possible to improve upon them when hand-minifying carts (useful especially when trying to fit small carts under some chosen limit).
+
+In order to still be able to use Shrinko8 in such cases, a hint is provided to instruct Shrinko8 how to rename specific variables:
+
+```lua
+function --[[rename::f]]func(--[[rename::a]]arg)
+    local --[[rename::b]]val = arg
+end
+```
+
+A rename hint affects all instances of the marked variable.
+
 ## Prevent merging of specific statements
 
 You can insert `--[[no-merge]]` between two statements to ensure they're not merged, e.g:

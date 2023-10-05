@@ -168,4 +168,13 @@ end
 ?fff()
 x=0.x=1
 
+-- explicit rename
+function --[[rename::new_name]]old_name(old_param, do_rename_this)
+  return --[[rename::new_name]]old_param.old_member, do_rename_this.old_member
+end
+function old_name(--[[rename::new_name2]]old_param, do_rename_this, do_rename_that)
+  local more_things_to_rename, and_so_on
+  return old_param.--[[rename::new_member]]old_member
+end
+
 done=?"END!"

@@ -141,4 +141,12 @@ end
 ?a()
 c=0c=1
 
+function new_name(new_name, e)
+  return new_name.new_member, e.new_member
+end
+function new_name( new_name2, e, l)
+  local e, l
+  return new_name2. new_member
+end
+
 x=?"END!"
