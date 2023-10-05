@@ -15,7 +15,7 @@ for e, t in pairs(_ENV) do
   end
 end
 local _ENV = n
-K, nl = true
+J, nt = true
 
 function p(t, e)
   for n = 1, #e do
@@ -38,11 +38,11 @@ function y(n)
   return n >= "0" and n <= "9"
 end
 
-function E(n)
+function D(n)
   return n >= "A" and n <= "Z" or n >= "a" and n <= "z" or n == "_" or n >= "█" or y(n)
 end
 
-function n1(l, n, i, r)
+function nc(l, n, i, r)
   local e = ""
   while n <= #l do
     local t = b(l, n)
@@ -104,7 +104,7 @@ function n1(l, n, i, r)
   return e, n + 1
 end
 
-function X(e, n, t, l)
+function Z(e, n, t, l)
   if b(e, n) == "[" then
     n += 1
     local l = n
@@ -134,12 +134,12 @@ function X(e, n, t, l)
   return nil, n
 end
 
-function nr(t, u)
+function nl(t, u)
   local n, a, r, c, s, h, f, o = 1, 1, {}, {}, {}, {}
 
   local function i(n, e)
     if u then
-      no(n, o)
+      nr(n, o)
     end
     f = n and not e
   end
@@ -156,7 +156,7 @@ function nr(t, u)
     elseif e == "-" and b(t, n + 1) == "-" then
       n += 2
       if b(t, n) == "[" then
-        l, n = X(t, n, i)
+        l, n = Z(t, n, i)
       end
       if not l then
         while n <= #t and b(t, n) ~= "\n" do
@@ -192,16 +192,16 @@ function nr(t, u)
         l = "0"
       end
       add(r, tonum(l))
-    elseif E(e) then
-      while E(b(t, n)) do
+    elseif D(e) then
+      while D(b(t, n)) do
         n += 1
       end
       add(r, sub(t, o, n - 1))
     elseif e == "'" or e == '"' then
-      l, n = n1(t, n + 1, e, i)
+      l, n = nc(t, n + 1, e, i)
       add(r, {t = l})
     elseif e == "[" and p(b(t, n + 1), "=[") then
-      l, n = X(t, n, i, true)
+      l, n = Z(t, n, i, true)
       add(r, {t = l})
     else
       n += 1
@@ -241,7 +241,7 @@ function nr(t, u)
   return r, c, s, h
 end
 
-function G(t, n)
+function q(t, n)
   for e = 1, #n do
     if n[e] == t then
       return e
@@ -249,11 +249,11 @@ function G(t, n)
   end
 end
 
-function I(n)
+function H(n)
   return unpack(n, 1, n.n)
 end
 
-function ns(e)
+function n1(e)
   local n = {}
   for e, t in next, e do
     n[e] = t
@@ -262,23 +262,23 @@ function ns(e)
 end
 
 local n = split "and,break,do,else,elseif,end,false,for,function,goto,if,in,local,nil,not,or,repeat,return,then,true,until,while"
-M = {}
+L = {}
 for n in all(n) do
-  M[n] = true
+  L[n] = true
 end
 
-local function X(n)
+local function Z(n)
   return type(n) == "string" and b(n, #n) == "="
 end
 
-ni = split "end,else,elseif,until"
+no = split "end,else,elseif,until"
 
-function nf(n, C)
-  local r, Z, t = nr(n, true)
+function ni(n, X)
+  local r, B, t = nl(n, true)
   local n, i, u, x, f, s, h, e, c, m, a, v = 1, 0, 0, {}
 
   local function o(e)
-    no(e, t[n - 1] or 1)
+    nr(e, t[n - 1] or 1)
   end
 
   local function p(n)
@@ -287,7 +287,7 @@ function nf(n, C)
     end
   end
 
-  local function A(e)
+  local function _(e)
     local n = f[e]
     if n then
       return function(t)
@@ -301,17 +301,17 @@ function nf(n, C)
     end
   end
 
-  local function D()
+  local function C()
     local n = f["..."]
     if not n or n ~= v then
       o "unexpected '...'"
     end
     return function(e)
-      return I(e[n]["..."])
+      return H(e[n]["..."])
     end
   end
 
-  local function z(e)
+  local function A(e)
     local n = f[e]
     if n then
       return function(t)
@@ -345,7 +345,7 @@ function nf(n, C)
     if e == nil then
       o()
     end
-    if type(e) == "string" and E(b(e, 1)) and not M[e] then
+    if type(e) == "string" and D(b(e, 1)) and not L[e] then
       return e
     end
     if type(e) == "string" then
@@ -416,21 +416,21 @@ function nf(n, C)
     if o then
       return function(e)
         local t = r(e)
-        return t[o](t, I(b(e, n)))
+        return t[o](t, H(b(e, n)))
       end, true, nil, function(e)
         local t = r(e)
-        return t[o], pack(t, I(b(e, n)))
+        return t[o], pack(t, H(b(e, n)))
       end
     else
       return function(e)
-        return r(e)(I(b(e, n)))
+        return r(e)(H(b(e, n)))
       end, true, nil, function(e)
         return r(e), b(e, n)
       end
     end
   end
 
-  local function E()
+  local function D()
     local o, u, c, a = {}, {}, 1
     while not l "}" do
       a = nil
@@ -475,14 +475,14 @@ function nf(n, C)
     end
   end
 
-  local function B(s, h)
+  local function z(s, h)
     local n, b, e
     if s then
       if h then
         g()
         n = d()
         f[n] = i
-        e = z(n)
+        e = A(n)
       else
         n = {d()}
         while l "." do
@@ -493,9 +493,9 @@ function nf(n, C)
           b = true
         end
         if #n == 1 then
-          e = z(n[1])
+          e = A(n[1])
         else
-          local t = A(n[1])
+          local t = _(n[1])
           for e = 2, #n - 1 do
             local l = t
             t = function(t)
@@ -549,7 +549,7 @@ function nf(n, C)
       if h then
         add(t, {})
       end
-      local l = ns(t)
+      local l = n1(t)
       local o = #l
       local n = function(...)
         local t, e = pack(...), l
@@ -572,7 +572,7 @@ function nf(n, C)
         deli(e)
         if n then
           if type(n) == "table" then
-            return I(n)
+            return H(n)
           end
           return n()
         end
@@ -609,7 +609,7 @@ function nf(n, C)
       return p(l.t)
     end
     if l == "{" then
-      return E()
+      return D()
     end
     if l == "(" then
       n = e()
@@ -661,26 +661,26 @@ function nf(n, C)
       end
     end
     if l == "function" then
-      return B()
+      return z()
     end
     if l == "..." then
-      return D()
+      return C()
     end
     if l == "\\" then
       n = d()
       return function()
-        return nh(n)
+        return ns(n)
       end, true, function()
-        return n0(n)
+        return nh(n)
       end
     end
     if d(l) then
-      return A(l), true, z(l)
+      return _(l), true, A(l)
     end
     o("unexpected token: " .. l)
   end
 
-  local function z(e, t, l, r)
+  local function A(e, t, l, r)
     local n
     if e == "^" and t <= 12 then
       n = r(12)
@@ -828,7 +828,7 @@ function nf(n, C)
     end
   end
 
-  local function D(u, l, a)
+  local function C(u, l, a)
     local i = r[n]
     n += 1
     local o, f
@@ -868,7 +868,7 @@ function nf(n, C)
         return y(l, o)
       end
     end
-    local e = z(i, u, l, e)
+    local e = A(i, u, l, e)
     if not e then
       n -= 1
     end
@@ -878,7 +878,7 @@ function nf(n, C)
   e = function(r)
     local n, e, t, l = v()
     while true do
-      local r, o, i, f = D(r or 0, n, e)
+      local r, o, i, f = C(r or 0, n, e)
       if not r then
         break
       end
@@ -895,7 +895,7 @@ function nf(n, C)
     return n
   end
 
-  local function D()
+  local function C()
     local n = w(v)
     t "="
     local e = w(e)
@@ -920,11 +920,11 @@ function nf(n, C)
     end
   end
 
-  local function E(t, l)
+  local function D(t, l)
     local r = r[n]
     n += 1
     local n = sub(r, 1, -2)
-    local n = z(n, 0, t, function()
+    local n = A(n, 0, t, function()
       return e()
     end)
     if not n then
@@ -936,9 +936,9 @@ function nf(n, C)
     end
   end
 
-  local function F()
+  local function E()
     if l "function" then
-      return B(true, true)
+      return z(true, true)
     else
       local n, e = w(d), l "=" and w(e) or {}
       g()
@@ -961,17 +961,17 @@ function nf(n, C)
     end
   end
 
-  local function z(e)
-    local t = Z[n - 1]
+  local function A(e)
+    local t = B[n - 1]
     h = function()
-      return t ~= Z[n]
+      return t ~= B[n]
     end
     if not e or h() then
       o(n <= #r and "bad shorthand" or nil)
     end
   end
 
-  local function Z()
+  local function B()
     local r, o, e, n = r[n] == "(", e()
     if l "then" then
       e, n = c()
@@ -979,12 +979,12 @@ function nf(n, C)
         n = c()
         t "end"
       elseif l "elseif" then
-        n = Z()
+        n = B()
       else
         t "end"
       end
     else
-      z(r)
+      A(r)
       e = c()
       if not h() and l "else" then
         n = c()
@@ -1015,20 +1015,20 @@ function nf(n, C)
     return n, e
   end
 
-  local function j()
+  local function F()
     local r, o, n = r[n] == "(", e()
     if l "do" then
       n = v()
       t "end"
     else
-      z(r)
+      A(r)
       n = v()
       h = nil
     end
     return function(e)
       while o(e) do
         if stat(1) >= 1 then
-          J()
+          I()
         end
         local n, e = n(e)
         if n then
@@ -1038,7 +1038,7 @@ function nf(n, C)
     end
   end
 
-  local function z()
+  local function A()
     local l, r = i, v(true)
     t "until"
     local o = e()
@@ -1048,7 +1048,7 @@ function nf(n, C)
     return function(n)
       repeat
         if stat(1) >= 1 then
-          J()
+          I()
         end
         local e, t = r(n)
         if not e then
@@ -1064,7 +1064,7 @@ function nf(n, C)
     end
   end
 
-  local function q()
+  local function j()
     if r[n + 1] == "=" then
       local r = d()
       t "="
@@ -1080,7 +1080,7 @@ function nf(n, C)
       return function(n)
         for e = o(n), d(n), e(n) do
           if stat(1) >= 1 then
-            J()
+            I()
           end
           add(n, {[r] = e})
           local e, t = l(n)
@@ -1114,7 +1114,7 @@ function nf(n, C)
             r[l[n]] = t[n]
           end
           if stat(1) >= 1 then
-            J()
+            I()
           end
           add(n, r)
           local e, t = o(n)
@@ -1137,10 +1137,10 @@ function nf(n, C)
   end
 
   local function m()
-    if not a and not C then
+    if not a and not X then
       o "return outside of function"
     end
-    if r[n] == ";" or G(r[n], ni) or h and h() then
+    if r[n] == ";" or q(r[n], no) or h and h() then
       return function()
         return pack()
       end
@@ -1154,10 +1154,10 @@ function nf(n, C)
         return function(n)
           local n, e = t(n)
           if stat(1) >= 1 then
-            J()
+            I()
           end
           return function()
-            return n(I(e))
+            return n(H(e))
           end
         end
       else
@@ -1194,7 +1194,7 @@ function nf(n, C)
     end)
     return function()
       if stat(1) >= 1 then
-        J()
+        I()
       end
       return 0, n
     end
@@ -1212,16 +1212,16 @@ function nf(n, C)
       return n
     end
     if i == "if" then
-      return Z()
+      return B()
     end
     if i == "while" then
-      return j()
+      return F()
     end
     if i == "repeat" then
-      return z()
+      return A()
     end
     if i == "for" then
-      return q()
+      return j()
     end
     if i == "break" then
       return p()
@@ -1230,7 +1230,7 @@ function nf(n, C)
       return m(), true
     end
     if i == "local" then
-      return F()
+      return E()
     end
     if i == "goto" then
       return v()
@@ -1239,28 +1239,28 @@ function nf(n, C)
       return g(f)
     end
     if i == "function" and r[n] ~= "(" then
-      return B(true)
+      return z(true)
     end
     if i == "?" then
-      local e, t = A "print", w(e)
+      local e, t = _ "print", w(e)
       return function(n)
-        e(n)(I(b(n, t)))
+        e(n)(H(b(n, t)))
       end
     end
     n -= 1
     local i, e, f, t = n, e()
     if l "," or l "=" then
       n = i
-      return D()
-    elseif X(r[n]) then
-      return E(e, f)
-    elseif u <= 1 and K then
+      return C()
+    elseif Z(r[n]) then
+      return D(e, f)
+    elseif u <= 1 and J then
       return function(n)
         local n = pack(e(n))
         if not (t and n.n == 0) then
-          add(H, n)
+          add(G, n)
         end
-        nl = n[1]
+        nt = n[1]
       end
     else
       if not t then
@@ -1277,7 +1277,7 @@ function nf(n, C)
     s[u] = i
     u += 1
     local a, f, o = u, e and 32767 or i, {}
-    while n <= #r and not G(r[n], ni) and not (h and h()) do
+    while n <= #r and not q(r[n], no) and not (h and h()) do
       local n, e = d(o)
       if n then
         add(o, n)
@@ -1317,7 +1317,7 @@ function nf(n, C)
       return t, n
     end
   end
-  f = K and {_ENV = 0, _env = 0, _ = 0} or {_ENV = 0}
+  f = J and {_ENV = 0, _env = 0, _ = 0} or {_ENV = 0}
   local e = c()
   if n <= #r then
     o "unexpected end"
@@ -1326,15 +1326,15 @@ function nf(n, C)
     n()
   end
   return function(n)
-    local n = K and {_ENV = n, _env = n, _ = nl} or {_ENV = n}
+    local n = J and {_ENV = n, _env = n, _ = nt} or {_ENV = n}
     local n = e {[0] = n}
     if n then
-      return I(n)
+      return H(n)
     end
   end
 end
 
-T, U = 10, false
+S, T = 10, false
 local t = {["\0"] = "000", ["ᵉ"] = "014", ["ᶠ"] = "015"}
 for n, e in pairs(o) do
   if not p(n, "'\n") then
@@ -1342,7 +1342,7 @@ for n, e in pairs(o) do
   end
 end
 
-function n2(n)
+function n0(n)
   local e = 1
   while e <= #n do
     local l = b(n, e)
@@ -1356,18 +1356,18 @@ function n2(n)
   return '"' .. n .. '"'
 end
 
-function nb(n)
+function n2(n)
   if type(n) ~= "string" then
     return false
   end
-  if M[n] then
+  if L[n] then
     return false
   end
   if #n == 0 or y(b(n, 1)) then
     return false
   end
   for e = 1, #n do
-    if not E(b(n, e)) then
+    if not D(b(n, e)) then
       return false
     end
   end
@@ -1381,13 +1381,13 @@ function f(e, t)
   elseif n == "boolean" then
     return e and "true" or "false"
   elseif n == "number" then
-    return tostr(e, U)
+    return tostr(e, T)
   elseif n == "string" then
-    return n2(e)
+    return n0(e)
   elseif n == "table" and not t then
     local n, t, r = "{", 0, 0
     for e, l in next, e do
-      if t == T then
+      if t == S then
         n = n .. ",<...>"
         break
       end
@@ -1398,7 +1398,7 @@ function f(e, t)
       if e == r + 1 then
         n = n .. l
         r = e
-      elseif nb(e) then
+      elseif n2(e) then
         n = n .. e .. "=" .. l
       else
         n = n .. "[" .. f(e, 1) .. "]=" .. l
@@ -1411,7 +1411,7 @@ function f(e, t)
   end
 end
 
-function np(n, e)
+function nb(n, e)
   if e == nil then
     return n
   end
@@ -1447,25 +1447,25 @@ end
 poke(24365, 1)
 cls()
 h = "> "
-a, x, A = "", 1, 0
-c, z = 1, 20
-w, B = {""}, 1
-C = false
+a, x, _ = "", 1, 0
+c, A = 1, 20
+w, z = {""}, 1
+X = false
 m, u = 0, 1
-N, O = true, true
+M, N = true, true
 s = {7, 4, 3, 5, 6, 8, 5, 12, 14, 7, 11, 5}
 e.print = function(n, ...)
-  if pack(...).n ~= 0 or not N then
+  if pack(...).n ~= 0 or not M then
     return print(n, ...)
   end
-  add(H, tostr(n))
+  add(G, tostr(n))
 end
 
-function nd()
+function nf()
   poke(24368, 1)
 end
 
-function nu()
+function nd()
   return function()
     if stat(30) then
       return stat(31)
@@ -1473,7 +1473,7 @@ function nu()
   end
 end
 
-function V(l, r)
+function U(l, r)
   local e, n, t = 1, 0, 0
   if not l then
     return e, n, t
@@ -1499,9 +1499,9 @@ function V(l, r)
   return e, n, t
 end
 
-function D(t, l)
+function C(t, l)
   local n, e = 0, 0
-  local o, r, t = V(t, function(t, i, r, o)
+  local o, r, t = U(t, function(t, i, r, o)
     if l == t then
       n, e = r, o
     end
@@ -1515,9 +1515,9 @@ function D(t, l)
   return n, e, t
 end
 
-function F(l, r, e)
+function E(l, r, e)
   local t, n = 1, false
-  local r, o, l = V(l, function(o, f, i, l)
+  local r, o, l = U(l, function(o, f, i, l)
     if e == l and r == i and not n then
       t = o
       n = true
@@ -1536,9 +1536,9 @@ function F(l, r, e)
   return t, l
 end
 
-function W(n, t, l, e)
+function V(n, t, l, e)
   if type(e) == "function" then
-    V(n, function(n, r, o, i)
+    U(n, function(n, r, o, i)
       print(r, t + o * 4, l + i * 6, e(n))
     end)
   else
@@ -1546,10 +1546,10 @@ function W(n, t, l, e)
   end
 end
 
-function nw(n, r, o)
-  local i, e, f, t = nr(n)
+function np(n, r, o)
+  local i, e, f, t = nl(n)
   local e = 1
-  W(n, r, o, function(r)
+  V(n, r, o, function(r)
     while e <= #t and t[e] < r do
       e += 1
     end
@@ -1562,11 +1562,11 @@ function nw(n, r, o)
       e = s[6]
     elseif n == true then
       e = s[7]
-    elseif type(n) ~= "string" or G(n, {"nil", "true", "false"}) then
+    elseif type(n) ~= "string" or q(n, {"nil", "true", "false"}) then
       e = s[8]
-    elseif M[n] then
+    elseif L[n] then
       e = s[9]
-    elseif not E(b(n, 1)) then
+    elseif not D(b(n, 1)) then
       e = s[10]
     elseif l[n] then
       e = s[11]
@@ -1609,22 +1609,22 @@ function _draw()
 
   local function l(r)
     local l = h .. a .. " "
-    local o, t, e = D(l, #h + c)
+    local o, t, e = C(l, #h + c)
     if e > x then
       n(e - x)
     elseif e < x then
       f(x - e, e)
     end
     x = e
-    A = mid(A, 0, max(x - 21, 0))
+    _ = mid(_, 0, max(x - 21, 0))
     ::n::
-    local n = u - x + A
+    local n = u - x + _
     if n + t < 0 then
-      A += 1
+      _ += 1
       goto n
     end
     if n + t >= 21 then
-      A -= 1
+      _ -= 1
       goto n
     end
     local n = n * 6
@@ -1632,9 +1632,9 @@ function _draw()
     if x > 21 then
       rectfill(0, 126, 127, 127, 0)
     end
-    nw(l, 0, n)
+    np(l, 0, n)
     print(h, 0, n, s[4])
-    if z >= 10 and r ~= false and not v then
+    if A >= 10 and r ~= false and not v then
       d(o * 4, n + t * 6)
     end
   end
@@ -1645,12 +1645,12 @@ function _draw()
     print("[enter] ('esc' to abort)", 0, u * 6, s[3])
     while true do
       flip()
-      nd()
-      for n in nu() do
+      nf()
+      for n in nd() do
         if n == "•" then
-          C = true
+          X = true
           g = ""
-          H = {}
+          G = {}
           return false
         end
         if n == "\r" or n == "\n" then
@@ -1663,13 +1663,13 @@ function _draw()
 
   ::n::
   local t, e
-  if H or g then
-    t, e = F(g, 0, m)
-    if e - m <= 20 and H then
-      g, H = np(g, H)
-      t, e = F(g, 0, m)
-      if #H == 0 and not v then
-        H = nil
+  if G or g then
+    t, e = E(g, 0, m)
+    if e - m <= 20 and G then
+      g, G = nb(g, G)
+      t, e = E(g, 0, m)
+      if #G == 0 and not v then
+        G = nil
       end
     end
   end
@@ -1682,19 +1682,19 @@ function _draw()
   if g then
     local r, t = sub(g, t), min(e - m, 20)
     n(t)
-    W(r, 0, (u - t) * 6, s[1])
+    V(r, 0, (u - t) * 6, s[1])
     if t < e - m then
       if f(t) then
         goto n
       end
     else
-      local r, o, e = D(P, 0)
+      local r, o, e = C(O, 0)
       n(e)
-      W(P, 0, (u - e) * 6, s[2])
+      V(O, 0, (u - e) * 6, s[2])
       if v then
         m += t
       else
-        a, x, A, c, m, g, P = "", 0, 0, 1, 0
+        a, x, _, c, m, g, O = "", 0, 0, 1, 0
         l()
       end
     end
@@ -1704,21 +1704,21 @@ function _draw()
     u -= 1
     print(v, 0, u * 6, s[3])
   end
-  if Z then
+  if B then
     n(1)
     u -= 1
-    print(Z, 0, u * 6, s[3])
-    Z = nil
+    print(B, 0, u * 6, s[3])
+    B = nil
   end
-  if Q then
-    Q -= 1
-    if Q == 0 then
-      Z, Q = ""
+  if P then
+    P -= 1
+    if P == 0 then
+      B, P = ""
     end
   end
-  z -= 1
-  if z == 0 then
-    z = 20
+  A -= 1
+  if A == 0 then
+    A = 20
   end
   color(r)
   camera(o, i)
@@ -1727,24 +1727,24 @@ function _draw()
   end
 end
 
-r, d, j = false, false, false
-q = {}
+r, d, F = false, false, false
+j = {}
 
-function no(n, e)
-  i, nx = n, e
+function nr(n, e)
+  i, nw = n, e
   assert(false, n)
 end
 
-function Y(n, t, l)
-  return nf(n, l)(t or e)
+function W(n, t, l)
+  return ni(n, l)(t or e)
 end
 
-function nn(n, e)
-  return Y("return " .. n, e, true)
+function Y(n, e)
+  return W("return " .. n, e, true)
 end
 
-function n3(n)
-  local e = cocreate(nf)
+function nx(n)
+  local e = cocreate(ni)
   ::n::
   local n, e = coresume(e, n)
   if n and not e then
@@ -1756,44 +1756,44 @@ function n3(n)
   return n, e
 end
 
-function nm(n, e)
-  local n, e = D(n, e)
+function n3(n, e)
+  local n, e = C(n, e)
   return "line " .. e + 1 .. " col " .. n + 1
 end
 
-function na(e, l)
-  H, C, i = {}, false, false
-  r, d, j = false, false, false
+function nu(e, l)
+  G, X, i = {}, false, false
+  r, d, F = false, false, false
   local t, r, n = cocreate(function()
-    Y(e)
+    W(e)
   end)
   while true do
     r, n = coresume(t)
     if costatus(t) == "dead" then
       break
     end
-    if N and not d then
+    if M and not d then
       v = "running, press 'esc' to abort"
       _draw()
       flip()
       v = nil
     else
-      if O and not d and not j then
+      if N and not d and not F then
         flip()
       end
-      if not O and holdframe then
+      if not N and holdframe then
         holdframe()
       end
-      j = false
+      F = false
     end
-    for n in nu() do
+    for n in nd() do
       if n == "•" then
-        C = true
+        X = true
       else
-        add(q, n)
+        add(j, n)
       end
     end
-    if C then
+    if X then
       n = "computation aborted"
       break
     end
@@ -1802,26 +1802,26 @@ function na(e, l)
     if l then
       n = "unexpected end of code"
     else
-      n, H = nil
+      n, G = nil
     end
   end
   if i then
-    n, i = i .. "\nat " .. nm(e, nx)
+    n, i = i .. "\nat " .. n3(e, nw)
   end
-  P = n
-  q = {}
+  O = n
+  j = {}
 end
 
-J = function()
+I = function()
   r = true
   yield()
   r = false
 end
 e.flip = function(...)
   local n = pack(flip(...))
-  j = true
-  J()
-  return I(n)
+  F = true
+  I()
+  return H(n)
 end
 e.coresume = function(n, ...)
   local e = pack(coresume(n, ...))
@@ -1830,18 +1830,18 @@ e.coresume = function(n, ...)
     e = pack(coresume(n))
   end
   i = false
-  return I(e)
+  return H(e)
 end
 e.stat = function(n, ...)
   if n == 30 then
-    return #q > 0 or stat(n, ...)
+    return #j > 0 or stat(n, ...)
   elseif n == 31 then
-    if #q > 0 then
-      return deli(q, 1)
+    if #j > 0 then
+      return deli(j, 1)
     else
       local n = stat(n, ...)
       if n == "•" then
-        C = true
+        X = true
       end
       return n
     end
@@ -1850,7 +1850,7 @@ e.stat = function(n, ...)
   end
 end
 
-function n7(n)
+function nm(n)
   if _set_fps then
     _set_fps(n._update60 and 60 or 30)
   end
@@ -1874,87 +1874,87 @@ function n7(n)
       n._draw()
     end
     flip()
-    j = true
-    J()
+    F = true
+    I()
   end
   d = false
 end
 
-function nh(n)
-  if G(n, {"i", "interrupt"}) then
+function ns(n)
+  if q(n, {"i", "interrupt"}) then
+    return M
+  elseif q(n, {"f", "flip"}) then
     return N
-  elseif G(n, {"f", "flip"}) then
-    return O
-  elseif G(n, {"r", "repl"}) then
-    return K
-  elseif G(n, {"mi", "max_items"}) then
+  elseif q(n, {"r", "repl"}) then
+    return J
+  elseif q(n, {"mi", "max_items"}) then
+    return S
+  elseif q(n, {"h", "hex"}) then
     return T
-  elseif G(n, {"h", "hex"}) then
-    return U
-  elseif G(n, {"cl", "colors"}) then
+  elseif q(n, {"cl", "colors"}) then
     return s
-  elseif G(n, {"c", "code"}) then
+  elseif q(n, {"c", "code"}) then
     local n = {[0] = a}
     for e = 1, #w - 1 do
       n[e] = w[#w - e]
     end
     return n
-  elseif G(n, {"cm", "compile"}) then
+  elseif q(n, {"cm", "compile"}) then
     return function(n)
-      return n3(n)
+      return nx(n)
     end
-  elseif G(n, {"x", "exec"}) then
+  elseif q(n, {"x", "exec"}) then
     return function(n, e)
-      Y(n, e)
+      W(n, e)
     end
-  elseif G(n, {"v", "eval"}) then
+  elseif q(n, {"v", "eval"}) then
     return function(n, e)
-      return nn(n, e)
+      return Y(n, e)
     end
-  elseif G(n, {"p", "print"}) then
+  elseif q(n, {"p", "print"}) then
     return function(n, ...)
       e.print(f(n), ...)
     end
-  elseif G(n, {"ts", "tostr"}) then
+  elseif q(n, {"ts", "tostr"}) then
     return function(n)
       return f(n)
     end
-  elseif G(n, {"rst", "reset"}) then
+  elseif q(n, {"rst", "reset"}) then
     run()
-  elseif G(n, {"run"}) then
-    n7(e)
+  elseif q(n, {"run"}) then
+    nm(e)
   else
     assert(false, "unknown \\-command")
   end
 end
 
-function n0(e)
+function nh(e)
   local function t(n)
     return n and n ~= 0 and true or false
   end
 
   local n
-  if G(e, {"i", "interrupt"}) then
+  if q(e, {"i", "interrupt"}) then
+    n = function(n)
+      M = t(n)
+    end
+  elseif q(e, {"f", "flip"}) then
     n = function(n)
       N = t(n)
     end
-  elseif G(e, {"f", "flip"}) then
+  elseif q(e, {"r", "repl"}) then
     n = function(n)
-      O = t(n)
+      J = t(n)
     end
-  elseif G(e, {"r", "repl"}) then
+  elseif q(e, {"mi", "max_items"}) then
     n = function(n)
-      K = t(n)
+      S = tonum(n) or -1
     end
-  elseif G(e, {"mi", "max_items"}) then
+  elseif q(e, {"h", "hex"}) then
     n = function(n)
-      T = tonum(n) or -1
+      T = t(n)
     end
-  elseif G(e, {"h", "hex"}) then
-    n = function(n)
-      U = t(n)
-    end
-  elseif G(e, {"cl", "colors"}) then
+  elseif q(e, {"cl", "colors"}) then
     n = function(n)
       s = n
     end
@@ -1967,18 +1967,18 @@ function n0(e)
   return setmetatable(n, n), 0
 end
 
-R = stat(4)
-L, S = 0, false
+Q = stat(4)
+K, R = 0, false
 poke(24412, 10, 2)
 
 function k(n)
   if stat(28, n) then
-    if n ~= ne then
-      ne, L = n, 0
+    if n ~= nn then
+      nn, K = n, 0
     end
-    return L == 0 or L >= 10 and L % 2 == 0
-  elseif ne == n then
-    ne = nil
+    return K == 0 or K >= 10 and K % 2 == 0
+  elseif nn == n then
+    nn = nil
   end
 end
 
@@ -1986,35 +1986,35 @@ function _update()
   local e = false
 
   local function t(t)
-    local e, n, l = D(h .. a, #h + c)
-    if nt then
-      e = nt
+    local e, n, l = C(h .. a, #h + c)
+    if ne then
+      e = ne
     end
     n += t
     if not (n >= 0 and n < l) then
       return false
     end
-    c = max(F(h .. a, e, n) - #h, 1)
-    nt = e
-    z = 20
+    c = max(E(h .. a, e, n) - #h, 1)
+    ne = e
+    A = 20
     return true
   end
 
   local function o(t)
-    local n, l = D(h .. a, #h + c)
+    local n, l = C(h .. a, #h + c)
     n = t > 0 and 100 or 0
-    c = max(F(h .. a, n, l) - #h, 1)
+    c = max(E(h .. a, n, l) - #h, 1)
     e = true
   end
 
   local function f(n)
-    w[B] = a
-    B += n
-    a = w[B]
+    w[z] = a
+    z += n
+    a = w[z]
     if n < 0 then
       c = #a + 1
     else
-      c = max(F(h .. a, 32, 0) - #h, 1)
+      c = max(E(h .. a, 32, 0) - #h, 1)
       local n = b(a, c)
       if n ~= "" and n ~= "\n" then
         c -= 1
@@ -2030,7 +2030,7 @@ function _update()
       end
       w[#w] = a
       add(w, "")
-      B = #w
+      z = #w
       e = true
     end
   end
@@ -2061,11 +2061,11 @@ function _update()
       e = true
     end
   elseif k(82) then
-    if (r or not t(-1)) and B > 1 then
+    if (r or not t(-1)) and z > 1 then
       f(-1)
     end
   elseif k(81) then
-    if (r or not t(1)) and B < #w then
+    if (r or not t(1)) and z < #w then
       f(1)
     end
   else
@@ -2075,25 +2075,25 @@ function _update()
       if #a == 0 then
         extcmd "pause"
       else
-        H, P = {}
+        G, O = {}
         i()
       end
     elseif t == "\r" or t == "\n" then
       if u then
         l "\n"
       else
-        na(a)
-        if not H then
+        nu(a)
+        if not G then
           l "\n"
         else
           i()
         end
       end
     elseif r and k(40) then
-      na(a, true)
+      nu(a, true)
       i()
     elseif t ~= "" and n >= 32 and n < 154 then
-      if S and n >= 128 then
+      if R and n >= 128 then
         t = chr(n - 63)
       end
       l(t)
@@ -2104,8 +2104,8 @@ function _update()
     elseif n == 196 then
       o(1)
     elseif n == 203 then
-      S = not S
-      Z, Q = "shift now selects " .. (S and "punycase" or "symbols"), 40
+      R = not R
+      B, P = "shift now selects " .. (R and "punycase" or "symbols"), 40
     elseif k(74) then
       if r then
         c = 1
@@ -2127,21 +2127,21 @@ function _update()
     end
   end
   local t = stat(4)
-  if t ~= R or n == 213 then
+  if t ~= Q or n == 213 then
     l(t)
-    R = t
+    Q = t
   end
   if n == 194 or n == 215 then
-    if a ~= "" and a ~= R then
-      R = a
+    if a ~= "" and a ~= Q then
+      Q = a
       printh(a, "@clip")
       if n == 215 then
         a = ""
         c = 1
       end
-      Z = "press again to put in clipboard"
+      B = "press again to put in clipboard"
     else
-      Z = ""
+      B = ""
     end
   end
   if stat(120) then
@@ -2152,13 +2152,13 @@ function _update()
     until n == 0
   end
   if e then
-    z, nt = 20
+    A, ne = 20
   end
-  L += 1
-  nd()
+  K += 1
+  nf()
 end
 
-function nc(n, e)
+function na(n, e)
   local e, t = coresume(cocreate(e))
   if not e then
     printh("error #" .. n .. ": " .. t)
@@ -2170,11 +2170,11 @@ function nc(n, e)
   end
 end
 
-nc(1, function()
-  assert(pack(nn "(function (...) return ... end)(1,2,nil,nil)").n == 4)
+na(1, function()
+  assert(pack(Y "(function (...) return ... end)(1,2,nil,nil)").n == 4)
 end)
-nc(2, function()
-  assert(nn "function() local temp, temp2 = {max(1,3)}, -20;return temp[1] + temp2; end" () == -17)
+na(2, function()
+  assert(Y "function() local temp, temp2 = {max(1,3)}, -20;return temp[1] + temp2; end" () == -17)
 end)
 printh "finished"
 stop()
