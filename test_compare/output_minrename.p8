@@ -30,5 +30,5 @@ local e={1},{1,2,3,4}local e,n=1~=2,1,1.2345,4660,4660.33777,-1,-1.2345,-4660.33
 local e=({})[1],(function()end)()local n,o,f,e,i=sin(1,2),cos((cos())),(cos((cos()))),{ord=ord,pal=pal}local e=ord"123",pal{1,2},e:ord("ord"),e:pal({1,2}),sin(1)local c={ord"1",[2]=3,x=4,(ord"1")}e+=1n,o=sin(1,2),cos((cos()))f,i=(cos((cos())))function xxx()return 1,2,ord"1",(ord"1")end if 1==2then elseif 1==2then else end while 1==2do end repeat until 1==1for e in(all{})do end print("test"..@16 .."str")if(true)?"sh1"
 if true then?"sh2"
 end if(true)if false then else print"sh3"end
-if true then if false then else print"sh4"end end l="renaming bug"function fff()local e,n,o,f,i,c,a,d,r,t,h,s,u,x,k,y,v,p,b,w,g,m,E,N,D,j,q return l end?fff()
+if true then if false then else print"sh4"end end l="renaming bug"function fff()local e,n,o,f,i,c,a,d,r,t,h,s,u,x,k,y,v,p,b,w,g,_,m,E,N,D,j return l end?fff()
 x=0 x=1function new_name(new_name,e)return new_name.new_member,e.new_member end function new_name(new_name2,e,l)local e,l return new_name2.new_member end done=?"END!"

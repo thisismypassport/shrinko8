@@ -133,10 +133,10 @@ end
 if(true) if false then else print"sh3" end
 if true then if false then else print"sh4" end end
 
-q="renaming bug"
+j="renaming bug"
 function a()
-  local e,l,n,o,f,i,c,a,d,r,t,h,s,u,x,k,y,v,p,b,w,g,m,E,N,D,j
-  return q
+  local e,l,n,o,f,i,c,a,d,r,t,h,s,u,x,k,y,v,p,b,w,g,_,m,E,N,D
+  return j
 end
 ?a()
 c=0c=1

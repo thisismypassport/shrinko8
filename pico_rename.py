@@ -332,7 +332,7 @@ def rename_tokens(ctxt, root, rename_opts):
 
     def get_next_ident_char(ch, first):
         nextch = ident_char_order_map.get(ch) if ch else ident_chars[0]
-        while first and nextch and (nextch.isdigit() or nextch == '_'): # note: we avoid leading underscores too
+        while first and nextch and nextch.isdigit():
             nextch = ident_char_order_map.get(nextch)
         if nextch:
             return nextch, True
