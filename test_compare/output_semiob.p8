@@ -3,7 +3,7 @@ version 41
 __lua__
 print=printh 
 ?"hello ᶜ7there♥ら"
-🐱,i,d,r,h,s,e,e=11,12,13,14,15,16,17,17
+🐱,i,r,h,u,s,e,e=11,12,13,14,15,16,17,17
 
 t(stat(band()))
 
@@ -120,7 +120,7 @@ local i = {ord"1",[2]=3,x=4,(ord"1")}
 e += 1
 l, n = sin(1,2), cos((cos()))
 o, f = (cos((cos())))
-function u() return 1, 2, ord"1", (ord"1") end
+function x() return 1, 2, ord"1", (ord"1") end
 if 1 == 2 then elseif 1 == 2 then else end
 while 1 == 2 do end
 repeat until 1 == 1
@@ -135,7 +135,7 @@ if true then if false then else print"sh4" end end
 
 j="renaming bug"
 function a()
-  local e,l,n,o,f,i,c,a,d,r,t,h,s,u,x,k,y,v,p,b,w,g,_,m,E,N,D
+  local e,l,n,o,f,i,c,a,d,r,t,h,u,s,x,k,y,v,p,b,w,g,_,m,E,N,D
   return j
 end
 ?a()
@@ -148,5 +148,9 @@ function new_name( new_name2, e, l)
   local e, l
   return new_name2. new_member
 end
+function d( l, e, f, n, o, i)
+  return l+e+f+n+o+i
+end
+?d(1,2,4,8,16,32)
 
-x=?"END!"
+k=?"END!"

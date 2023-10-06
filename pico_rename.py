@@ -199,6 +199,7 @@ def rename_tokens(ctxt, root, rename_opts):
     global_excludes = global_strings_cpy
     member_excludes = member_strings.copy()
     local_excludes = defaultdict(set)
+    label_excludes = defaultdict(set)
 
     globals_after_zero = set()
     members_after_zero = set()
@@ -212,6 +213,14 @@ def rename_tokens(ctxt, root, rename_opts):
         if node.var.rename:
             node.name = node.var.rename
             renamed_vars.add(node.var)
+            if kind == VarKind.member:
+                member_excludes.add(node.name)
+            elif kind == VarKind.global_:
+                global_excludes.add(node.name)
+            elif kind == VarKind.local:
+                local_excludes[node.name].add(node.var)
+            elif kind == VarKind.label:
+                label_excludes[node.name].add(node.var)
             return None
 
         if kind == VarKind.member:
@@ -420,15 +429,15 @@ def rename_tokens(ctxt, root, rename_opts):
             if ident.startswith(ch):
                 avoid_locals, avoid_globals, avoid_members = locals_after_zero, globals_after_zero, members_after_zero
 
-        excluded = []
-        if ident in global_excludes:
-            excluded.append(root.globals[ident])
-        if ident in member_excludes:
-            excluded.append(root.members[ident])
-        if ident in local_excludes:
-            excluded.extend(local_excludes[ident])
-
         if ident != "_ENV":
+            excluded = []
+            if ident in global_excludes:
+                excluded.append(root.globals[ident])
+            if ident in member_excludes:
+                excluded.append(root.members[ident])
+            if ident in local_excludes:
+                excluded.extend(local_excludes[ident])
+
             if not focus.chars: # going over locals first seems to usually increase compression (TODO...)
                 select_vars(remaining_locals, excluded, local_renames, avoid_locals, ident)
                 select_var(remaining_globals, excluded, global_renames, avoid_globals, ident, root.globals)
@@ -438,7 +447,9 @@ def rename_tokens(ctxt, root, rename_opts):
                 select_var(remaining_members, excluded, member_renames, avoid_members, ident, root.members)
                 select_vars(remaining_locals, excluded, local_renames, avoid_locals, ident)
 
-        select_vars(remaining_labels, excluded, label_renames, (), ident)
+        if remaining_labels:
+            excluded = list(label_excludes[ident])
+            select_vars(remaining_labels, excluded, label_renames, (), ident)
 
     if renamed_vars:
         for var1, var2 in itertools.product(renamed_vars, renamed_vars):

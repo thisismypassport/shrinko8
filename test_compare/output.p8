@@ -2,7 +2,7 @@ pico-8 cartridge // http://www.pico-8.com
 version 41
 __lua__
 print=printh?"hello ᶜ7there♥ら"
-🐱,i,d,r,h,s,e,e=11,12,13,14,15,16,17,17t(stat(band()))-- this one comment, i do want!
+🐱,i,r,h,u,s,e,e=11,12,13,14,15,16,17,17t(stat(band()))-- this one comment, i do want!
 t()c=0l=0l=0print"this is included"?"#[disable[[this for now/ever]]]"
 local e={1,2,3}print(#e)print(#[[#include notaninclude
 ]])local e,l="preserved_key",{preserved_key=123}?l[e]
@@ -12,7 +12,7 @@ function e.subfunc()end function e:subfunc()end?e:subfunc()
 local e,l="c",{c=123}?l[e]
 local e,l=split"e,l,i,123",{e=123,l=234,i=345}?l[e[2]]
 local e="o"o=123?_ENV[e]
-local e="e:l#~~i,","!t$h+123-s\nif\nu"do local _ENV={assert=assert}assert(true)end for _ENV in all{{o=1},{o=2}}do o+=1end function some_future_pico8_api()end some_future_pico8_api(1,2,3)local e={preserved1=1,preserved2=2}e.preserved1+=1?e["preserved1"]
+local e="e:l#~~i,","!t$h+123-u\nif\ns"do local _ENV={assert=assert}assert(true)end for _ENV in all{{o=1},{o=2}}do o+=1end function some_future_pico8_api()end some_future_pico8_api(1,2,3)local e={preserved1=1,preserved2=2}e.preserved1+=1?e["preserved1"]
 e=setmetatable({preserved3=3},f)?e["preserved3"]
 n={preserved1=1,preserved2=2}n.preserved1+=1?n["preserved1"]
 n=setmetatable({preserved3=3},f)?n["preserved3"]
@@ -27,8 +27,9 @@ local e={1},{1,2,3,4}local e,l=1~=2,1,1.2345,4660,4660.33777,-1,-1.2345,-4660.33
 ]]]=]]===]]==]local l=-256,-256*4,65280^4,-65280,~65280if(not e)e=-1
 ?1or 1or 2and 3==4>=4|5~6<<1>><1 ..2 ..3- -1^4^1/1&7
 ?((~(((((((tonum(((3or 4)and 5)~=2)|1)~2)&3)>>1)..1)-(1+3))*3))^2)^1
-local e=({})[1],(function()end)()local l,n,o,e,f=sin(1,2),cos((cos())),(cos((cos()))),{d=ord,r=pal}local e=ord"123",pal{1,2},e:d("ord"),e:r({1,2}),sin(1)local i={ord"1",[2]=3,o=4,(ord"1")}e+=1l,n=sin(1,2),cos((cos()))o,f=(cos((cos())))function u()return 1,2,ord"1",(ord"1")end if 1==2then elseif 1==2then else end while 1==2do end repeat until 1==1for e in(all{})do end print("test"..@16 .."str")if(true)?"sh1"
+local e=({})[1],(function()end)()local l,n,o,e,f=sin(1,2),cos((cos())),(cos((cos()))),{d=ord,r=pal}local e=ord"123",pal{1,2},e:d("ord"),e:r({1,2}),sin(1)local i={ord"1",[2]=3,o=4,(ord"1")}e+=1l,n=sin(1,2),cos((cos()))o,f=(cos((cos())))function x()return 1,2,ord"1",(ord"1")end if 1==2then elseif 1==2then else end while 1==2do end repeat until 1==1for e in(all{})do end print("test"..@16 .."str")if(true)?"sh1"
 if true then?"sh2"
 end if(true)if false then else print"sh3"end
-if true then if false then else print"sh4"end end j="renaming bug"function a()local e,l,n,o,f,i,c,a,d,r,t,h,s,u,x,k,y,v,p,b,w,g,_,m,E,N,D return j end?a()
-c=0c=1function new_name(new_name,e)return new_name.new_member,e.new_member end function new_name(new_name2,e,l)local e,l return new_name2.new_member end x=?"END!"
+if true then if false then else print"sh4"end end j="renaming bug"function a()local e,l,n,o,f,i,c,a,d,r,t,h,u,s,x,k,y,v,p,b,w,g,_,m,E,N,D return j end?a()
+c=0c=1function new_name(new_name,e)return new_name.new_member,e.new_member end function new_name(new_name2,e,l)local e,l return new_name2.new_member end function d(l,e,f,n,o,i)return l+e+f+n+o+i end?d(1,2,4,8,16,32)
+k=?"END!"

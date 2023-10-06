@@ -35,5 +35,6 @@ repeat until 1==1for e in(all{})do end print("test"..@16 .."str")if(true)?"sh1"
 if true then?"sh2"
 end if(true)if false then else print"sh3"end
 if true then if(false);else print"sh4"
-end l="renaming bug"function fff()local e,n,o,f,i,c,a,d,r,t,h,s,u,x,k,y,v,p,♥,b,w,g,_,ら,m,E,N return l end?fff()
-x=0 x=1function old_name(e,l)return e.old_member,l.old_member end function old_name(e,l,n)local l,n return e.old_member end done=?"END!"
+end l="renaming bug"function fff()local e,n,o,f,i,c,a,d,r,t,h,u,s,x,k,y,v,p,♥,b,w,g,_,ら,m,E,N return l end?fff()
+x=0 x=1function old_name(e,l)return e.old_member,l.old_member end function old_name(e,l,n)local l,n return e.old_member end function ggg(e,l,n,o,f,i)return e+l+n+o+f+i end?ggg(1,2,4,8,16,32)
+done=?"END!"

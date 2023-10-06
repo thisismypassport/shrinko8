@@ -122,4 +122,8 @@ function old_name(old_param,do_rename_this,do_rename_that)
 local more_things_to_rename,and_so_on
 return old_param.old_member
 end
+function ggg(p1,p2,p3,p4,p5,p6)
+return p1+p2+p3+p4+p5+p6
+end
+?ggg(1,2,4,8,16,32)
 done=?"END!"

@@ -4,7 +4,7 @@ __lua__
 
 print = printh
 ?"hello ᶜ7there♥ら"
-🐱, i, d, r, h, s, e, e = 11, 12, 13, 14, 15, 16, 17, 17
+🐱, i, r, h, u, s, e, e = 11, 12, 13, 14, 15, 16, 17, 17
 t(stat(band()))
 -- this one comment, i do want!
 t()
@@ -40,7 +40,7 @@ local e, l = split "e,l,i,123", {e = 123, l = 234, i = 345}
 local e = "o"
 o = 123
 ?_ENV[e]
-local e = "e:l#~~i,", "!t$h+123-s\nif\nu"
+local e = "e:l#~~i,", "!t$h+123-u\nif\ns"
 do
   local _ENV = {assert = assert}
   assert(true)
@@ -120,7 +120,7 @@ e += 1
 l, n = sin(1, 2), cos((cos()))
 o, f = (cos((cos())))
 
-function u()
+function x()
   return 1, 2, ord "1", (ord "1")
 end
 
@@ -156,7 +156,7 @@ end
 j = "renaming bug"
 
 function a()
-  local e, l, n, o, f, i, c, a, d, r, t, h, s, u, x, k, y, v, p, b, w, g, _, m, E, N, D
+  local e, l, n, o, f, i, c, a, d, r, t, h, u, s, x, k, y, v, p, b, w, g, _, m, E, N, D
   return j
 end
 
@@ -173,4 +173,9 @@ function new_name(new_name2, e, l)
   return new_name2.new_member
 end
 
-x = ?"END!"
+function d(l, e, f, n, o, i)
+  return l + e + f + n + o + i
+end
+
+?d(1, 2, 4, 8, 16, 32)
+k = ?"END!"

@@ -208,4 +208,9 @@ function old_name(--[[rename::new_name2]]old_param, do_rename_this, do_rename_th
     return old_param.--[[rename::new_member]]old_member
 end
 
+function ggg(--[[rename::l]]p1, --[[rename::e]]p2, --[[rename::f]]p3, p4, p5, p6)
+    return p1 + p2 + p3 + p4 + p5 + p6
+end
+
+?ggg(1, 2, 4, 8, 16, 32)
 done = ?"END!"
