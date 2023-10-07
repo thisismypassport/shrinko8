@@ -548,8 +548,9 @@ def output_original_wspace(root, exclude_comments=False):
     prev_token = Token.none
     prev_welded_token = None
     prev_vline = 0
+    need_linebreak = False
 
-    def get_wspace(pre, post, allow_linebreaks):
+    def get_wspace(pre, post, allow_linebreaks, need_linebreak=False):
         source = default(pre.source, post.source)
         text = source.text[pre.endidx:post.idx]
         
@@ -561,15 +562,17 @@ def output_original_wspace(root, exclude_comments=False):
 
         if not allow_linebreaks and "\n" in text:
             text = text[:text.index("\n")] + " "
+        if need_linebreak and "\n" not in text:
+            text += "\n"
 
         return text
 
     def output_tokens(token):
-        nonlocal prev_token, prev_welded_token, prev_vline
+        nonlocal prev_token, prev_welded_token, prev_vline, need_linebreak
         
         if prev_token.endidx != token.idx:
             allow_linebreaks = e(token.vline) and token.vline != prev_vline
-            wspace = get_wspace(prev_token, token, allow_linebreaks)
+            wspace = get_wspace(prev_token, token, allow_linebreaks, need_linebreak)
 
             if exclude_comments and token.children:
                 # only output spacing before and after the comments between the tokens
@@ -589,6 +592,7 @@ def output_original_wspace(root, exclude_comments=False):
                 output.append(wspace)
             
             prev_welded_token = None
+            need_linebreak = False
         
         # extra whitespace may be needed due to modified or deleted tokens
         if prev_welded_token and token.value and (prev_welded_token.modified or token.modified or prev_welded_token != prev_token):
@@ -603,7 +607,12 @@ def output_original_wspace(root, exclude_comments=False):
         if e(token.vline):
             prev_vline = token.vline
     
-    root.traverse_nodes(tokens=output_tokens)
+    def post_node_output(node):
+        nonlocal need_linebreak
+        if need_newline_after(node):
+            need_linebreak = True
+    
+    root.traverse_nodes(tokens=output_tokens, post=post_node_output)
     return "".join(output)
 
 from pico_process import PicoSource
