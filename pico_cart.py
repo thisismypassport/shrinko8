@@ -140,24 +140,39 @@ k_title_size = Point(31 * 4, 16)
 
 k_palette_map_6bpp = {Color(c.r & ~3, c.g & ~3, c.b & ~3, c.a & ~3): i for c, i in k_palette_map.items()}
 
-def load_cart_image(f):
+def load_image(f):
     r = BinaryReader(f)
     if r.bytes(8) != b"\x89PNG\r\n\x1a\n":
         throw("Not a valid png")
     r.subpos(8)
 
-    image = Surface.load(f)
+    return Surface.load(f)
+
+def load_cart_image(f):
+    image = load_image(f)
     if image.width != k_cart_image_width or image.height != k_cart_image_height:
         throw("Png has wrong size")
 
     return image
+
+def read_screenshot_from_pixels(pixels, offset=None):
+    if offset is None:
+        offset = Point(0,0)
+
+    screenshot = MultidimArray(k_screenshot_rect.size, 0)
+
+    for y in range(k_screenshot_rect.h):
+        for x in range(k_screenshot_rect.w):
+            r, g, b, a = pixels[Point(x, y) + offset]
+            screenshot[x, y] = k_palette_map_6bpp.get((r & ~3, g & ~3, b & ~3, a & ~3), 0)
+
+    return screenshot
 
 def read_cart_from_image(data, **opts):
     image = load_cart_image(BytesIO(data))
     width, height = image.size
 
     data = bytearray()
-    screenshot = MultidimArray(k_screenshot_rect.size, 0)
     pixels = image.pixels
 
     for y in range(height):
@@ -166,13 +181,8 @@ def read_cart_from_image(data, **opts):
             byte = ((b & 3) << 0) | ((g & 3) << 2) | ((r & 3) << 4) | ((a & 3) << 6)
             data.append(byte)
 
-    for y in range(k_screenshot_rect.h):
-        for x in range(k_screenshot_rect.w):
-            r, g, b, a = pixels[Point(x, y) + k_screenshot_offset]
-            screenshot[x, y] = k_palette_map_6bpp.get((r & ~3, g & ~3, b & ~3, a & ~3), 0)
-
     cart = read_cart_from_rom(data, **opts)
-    cart.screenshot = screenshot
+    cart.screenshot = read_screenshot_from_pixels(pixels, offset=k_screenshot_offset)
     return cart
 
 def get_res_path():
@@ -366,7 +376,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
     cart.code, cart.code_map = preprocess_code(path, "".join(code), code_line, preprocessor=preprocessor)
     return cart
 
-def write_cart_to_source(cart, unicode_caps=False, sections=None, **_):
+def write_cart_to_source(cart, unicode_caps=False, screenshot_path=None, sections=None, **_):
     lines = [k_p8_prefix + " // http://www.pico-8.com"]
     lines.append(f"version {cart.version_id}")
     defrom = mem_create_rom()
@@ -440,10 +450,18 @@ def write_cart_to_source(cart, unicode_caps=False, sections=None, **_):
                 ids = bytes(ch & 0x7f for ch in chans)
                 lines.append(flags + " " + ids)
     
-    if include("label") and cart.screenshot and any(cart.screenshot.array):
-        lines.append("__label__")
-        for y in range(128):
-            lines.append(ext_nybbles(cart.screenshot[x, y] for x in range(128)))
+    if include("label"):
+        screenshot = None
+        if screenshot_path:
+            image = load_image(BytesIO(file_read(screenshot_path)))
+            screenshot = read_screenshot_from_pixels(image.pixels)
+        elif cart.screenshot and any(cart.screenshot.array):
+            screenshot = cart.screenshot
+
+        if screenshot:
+            lines.append("__label__")
+            for y in range(128):
+                lines.append(ext_nybbles(screenshot[x, y] for x in range(128)))
     
     for meta, metalines in cart.meta.items():
         if include(k_meta_prefix + meta):
