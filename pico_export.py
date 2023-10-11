@@ -187,12 +187,13 @@ class JsExport(CartExport):
             m.read_pod().dump_contents(dest, fmt, misc=True)
     
     @classmethod
-    def create(cls, pico8_dat, **_):
-        html5_pod = PodFile(pico8_dat.find_named("pod/f_html5.pod"))
+    def create(cls, pico8_dat, html_pod=None, for_wasm=False, **_):
+        if not html_pod:
+            html_pod = PodFile(pico8_dat.find_named("pod/f_html5.pod"))
         js_file = "var _cartname=[];\n"
         js_file += "var _cdpos=0; var iii=0; var ciii=0;\n"
         js_file += "var _cartdat=[];\n\n"
-        js_file += html5_pod.find_named("src/pico8.js").decode()
+        js_file += html_pod.find_named("src/pico8_wasm.js" if for_wasm else "src/pico8.js").decode()
         return JsExport(js_file)        
 
 class PodFile:
@@ -286,6 +287,18 @@ class PodFile:
                 return e.content
         if strict:
             throw(f"expected to find {name} in pod")
+
+    def find_prefix(m, prefix, strict=True):
+        found = False
+        for e in m.entries:
+            if e.name.startswith(prefix):
+                yield e.name[len(prefix):], e.content
+                found = True
+        if strict and not found:
+            throw(f"expected to find {prefix}* in pod")
+
+    def contains(m, name):
+        return m.find_named(name, strict=False) != None
 
     def shift_entry_positions(m, i, delta):
         for e in m.entries[i:]:
@@ -604,6 +617,254 @@ class PodExport(CartExport, PodFile):
             m.append_content("", bytes(new_pod.data))
         return m
 
+class FullExport(CartExport):
+    def __init__(m, pico8_dat, cart):
+        m.pico8_dat = pico8_dat
+        m.cart = cart
+
+    @classmethod
+    def create(cls, pico8_dat, cart=None, **opts):
+        opts["cart"] = cart
+
+        m = FullExport(pico8_dat, cart)
+        m.html_pod = PodFile(pico8_dat.find_named("pod/f_html5.pod"))
+        m.bin_pod = PodFile(pico8_dat.find_named("pod/f_bin.pod"))
+
+        m.pod = PodExport.create(pico8_dat, **opts)
+        m.js = JsExport.create(pico8_dat, html_pod=m.html_pod, **opts)
+        m.wjs = JsExport.create(pico8_dat, html_pod=m.html_pod, for_wasm=True, **opts)
+        m.exports = [m.pod, m.js, m.wjs]
+        m.curr_time = time.localtime(time.time())[:6]
+        return m
+
+    def write_cart(m, *args, **opts):
+        for export in m.exports:
+            export.write_cart(*args, **opts)
+
+    def find_zstr(m, data, prefix, infix):
+        start = 0
+        while True:
+            start = data.find(prefix, start)
+            if start < 0:
+                break
+
+            end = data.find(b"\0", start)
+            if end < 0:
+                break
+            
+            zstr = data[start:end]
+            if infix in zstr:
+                return zstr.decode()
+            
+            start = end + 1
+        
+        raise Exception("'%s' with '%s' not found in data")
+
+    def find_icon_offset_in_exe(m, exe_data):
+        r = BinaryReader(BytesIO(exe_data))
+        assert r.str(2) == "MZ"
+        r.setpos(0x3c)
+        r.setpos(r.u32())
+
+        assert r.str(4) == "PE\0\0"
+        _, num_sections, _, _, _, opt_header_size, _ = r.u16(), r.u16(), r.u32(), r.u32(), r.u32(), r.u16(), r.u16()
+        header_end = r.pos() + opt_header_size
+
+        opt_header = r.u16()
+        assert opt_header in (0x10b, 0x20b)
+        is64 = (opt_header == 0x20b)
+        r.addpos(126 if is64 else 110)
+        rsrc_rva = r.u32()
+
+        r.setpos(header_end)
+        sections = []
+        for _ in range(num_sections):
+            r.addpos(0x8)
+            vsize, vaddr, _, offset = r.u32(), r.u32(), r.u32(), r.u32()
+            r.addpos(0x10)
+            sections.append((vaddr, vsize, offset))
+        
+        def rva_to_offset(rva):
+            for vaddr, vsize, offset in sections:
+                if rva >= vaddr and rva < vaddr + vsize:
+                    return offset + (rva - vaddr)
+
+        rsrc_offset = rva_to_offset(rsrc_rva)
+        if rsrc_offset is None:
+            eprint("no rsrc in exe")
+            return None
+        
+        def find_rsrc_entry(offset, target):
+            if offset & 0x80000000:
+                r.setpos(rsrc_offset + (offset & 0x7fffffff) + 0xc)
+                num_named, num_indexed = r.u16(), r.u16()
+                r.addpos(num_named * 0x8)
+
+                for _ in range(num_indexed):
+                    idx, offset = r.u32(), r.u32()
+                    if idx == target:
+                        return offset
+        
+        icon_entry = find_rsrc_entry(0x80000000, 3)
+        if e(icon_entry):
+            icon_entry = find_rsrc_entry(icon_entry, 1)
+        if e(icon_entry):
+            icon_entry = find_rsrc_entry(icon_entry, 0x409)
+        if icon_entry is None or icon_entry & 0x80000000:
+            eprint("no english icon #1 in exe")
+            return None
+
+        r.setpos(rsrc_offset + icon_entry)
+        icon_rva, icon_size = r.u32(), r.u32()
+        if icon_size != 0x10828:
+            eprint("unknown icon size in exe")
+            return None
+
+        icon_offset = rva_to_offset(icon_rva)
+        assert e(icon_offset)
+        return icon_offset + 0x28
+
+    def create_icns_data(m, raw_data):
+        w = BinaryWriter(big_end=True)
+        w.str("icns")
+        w.u32(0) # filled below
+        w.str("it32")
+        w.u32(0xc + 0x80 * 0x81 * 3)
+        w.u32(0)
+
+        # pico8 doesn't compress, so neither shall we
+        for chan in range(3):
+            for y in range(0x80):
+                w.u8(0x7f)
+                for x in range(0x80):
+                    w.u8(raw_data[(x + y*0x80)*3 + chan])
+
+        w.str("t8mk")
+        mask_len = 0x80 * 0x80
+        w.u32(0x8 + mask_len)
+        for i in range(mask_len):
+            w.u8(0xff)
+
+        w.setpos(4)
+        w.u32(w.len())
+        return w.f.getvalue()
+
+    def save(m, path):
+        import base64
+        from zipfile import ZipFile, ZipInfo, ZIP_STORED, ZIP_DEFLATED
+
+        def zip_write(zip, dir, name, data, exec=False, is_dir=False):
+            info = ZipInfo(dir + "/" + name, m.curr_time)
+            info.create_system = 3 # unix
+            info.external_attr = (0o775 if exec or is_dir else 0o644) << 16
+            if is_dir:
+                info.external_attr |= 0x10 # w/o 0x40000000
+                info.compress_type = ZIP_STORED
+                info.filename += "/"
+                zip.writestr(info, b"") # zip.mkdir is too new...
+            else:
+                info.external_attr |= 0x80000000
+                info.compress_type = ZIP_DEFLATED
+                zip.writestr(info, data)
+        
+        def zip_mkdir(zip, dir, name):
+            zip_write(zip, dir, name, None, is_dir=True)
+            return dir + "/" + name
+
+        def zip_copy(zip, dir, pod, exclude=None):
+            for e in pod.entries:
+                if e.name and e.name.startswith("./"): # many unnamed entries?
+                    if exclude and exclude in e.name:
+                        continue
+
+                    exec = "." not in path_basename(e.name) # ???
+                    is_dir = not e.content # ???
+                    zip_write(zip, dir, e.name[2:], e.content, exec=exec, is_dir=is_dir)
+
+        dir_ensure_exists(path)
+        basename = path_basename_no_extension(path)
+
+        screenshot_bmpdata = None
+        screenshot_icnsdata = None
+        screenshot_png = None
+        screenshot_url = ""
+        if m.cart and m.cart.screenshot:
+            screenshot = create_screenshot_surface(m.cart.screenshot)
+            screenshot_bmpdata = screenshot.to_data(PixelFormat.bgra8, flip=True)
+            screenshot_icnsdata = screenshot.to_data(PixelFormat.rgb8)
+            screenshot_png = screenshot.convert(PixelFormat.rgb8).save()
+            screenshot_url = "data:image/png;base64," + base64.b64encode(screenshot_png).decode()
+        
+        html_data = m.html_pod.find_named("src/shell.html").decode()
+        html_data = html_data.replace("##js_file##", "%s.js" % basename)
+        html_data = html_data.replace("##label_file##", screenshot_url)
+        
+        html_path = path_join(path, "%s_html" % basename)
+        dir_ensure_exists(html_path)
+        file_write_text(path_join(html_path, "%s.html" % basename), html_data)
+        file_write_text(path_join(html_path, "%s.js" % basename), m.js.text)
+        
+        html_path = path_join(path, "%s_wasm" % basename)
+        dir_ensure_exists(html_path)
+        file_write_text(path_join(html_path, "%s.html" % basename), html_data)
+        file_write(path_join(html_path, "%s.wasm" % basename), m.html_pod.find_named("src/pico8_wasm.wasm"))
+        file_write_text(path_join(html_path, "%s.js" % basename), m.wjs.text.replace("pico8_wasm.wasm", "%s.wasm" % basename))
+
+        exe_data = m.bin_pod.find_named("bin/pico8.exe")
+        if screenshot_bmpdata:
+            exe_icon_i = m.find_icon_offset_in_exe(exe_data)
+            if e(exe_icon_i):
+                exe_data = str_replace_at(exe_data, exe_icon_i, 0x10000, screenshot_bmpdata)
+            else:
+                eprint("couldn't find icon in exe, not changing it")
+
+        win_dir = "%s_windows" % basename
+        with ZipFile(path_join(path, win_dir + ".zip"), "w") as win_zip:
+            zip_write(win_zip, win_dir, "%s.exe" % basename, exe_data, exec=True)
+            zip_write(win_zip, win_dir, "data.pod", m.pod.data)
+            zip_write(win_zip, win_dir, "SDL2.dll", m.bin_pod.find_named("bin/SDL2.dll"))
+
+        linux_dir = "%s_linux" % basename
+        with ZipFile(path_join(path, linux_dir + ".zip"), "w") as linux_zip:
+            zip_write(linux_zip, linux_dir, "data.pod", m.pod.data)
+            if screenshot_png: zip_write(linux_zip, linux_dir, "%s.png" % basename, screenshot_png)
+            zip_write(linux_zip, linux_dir, basename, m.bin_pod.find_named("bin/pico8_dyn.amd64"), exec=True)
+        
+        raspi_dir = "%s_raspi" % basename
+        with ZipFile(path_join(path, raspi_dir + ".zip"), "w") as raspi_zip:
+            zip_write(raspi_zip, raspi_dir, "data.pod", m.pod.data)
+            if screenshot_png: zip_write(raspi_zip, raspi_dir, "%s.png" % basename, screenshot_png)
+            for suffix, content in m.bin_pod.find_prefix("builds/pi_builds/pico8_player"):
+                zip_write(raspi_zip, raspi_dir, basename + suffix, content, exec=True)
+
+        if screenshot_icnsdata:
+            icns_data = m.create_icns_data(screenshot_icnsdata) # doesn't seem to use "builds/osx_builds/pico8.icns" in the pod
+        else:
+            icns_data = m.bin_pod.find_named("builds/osx_builds/pico8.icns")
+
+        # unfortunately, the plist template isn't in the pods - only in the exe. well, the exe's in the pod, so...
+        info_plist = m.find_zstr(exe_data, b"<?xml", b"<key>CFBundleExecutable</key>")
+        info_plist = info_plist.replace("%s.%s", "pico8_author.%s" % basename)
+        info_plist = info_plist.replace("%s", basename)
+
+        osx_dir = "%s.app" % basename
+        with ZipFile(path_join(path, "%s_osx.zip" % basename), "w") as osx_zip:
+            osx_cont_dir = zip_mkdir(osx_zip, osx_dir, "Contents")
+            osx_mac_dir = zip_mkdir(osx_zip, osx_cont_dir, "MacOS")
+            osx_res_dir = zip_mkdir(osx_zip, osx_cont_dir, "Resources")
+            zip_write(osx_zip, osx_mac_dir, "data.pod", m.pod.data)
+            zip_write(osx_zip, osx_mac_dir, basename, m.bin_pod.find_named("builds/osx_builds/pico8_player"), exec=True)
+            zip_write(osx_zip, osx_res_dir, "%s.icns" % basename, icns_data)
+            zip_write(osx_zip, osx_cont_dir, "Info.plist", info_plist.encode())
+
+            osx_sdlfw_pod = PodFile(list(m.bin_pod.find_prefix("builds/osx_builds/sdl2_framework"))[0][1])
+            osx_fw_dir = zip_mkdir(osx_zip, osx_cont_dir, "Frameworks")
+            osx_sdlfw_dir = zip_mkdir(osx_zip, osx_fw_dir, "SDL2.framework")
+            zip_copy(osx_zip, osx_sdlfw_dir, osx_sdlfw_pod, exclude="/_CodeSignature")
+            osx_sdlver_dir = zip_mkdir(osx_zip, osx_sdlfw_dir, "Versions")
+            zip_copy(osx_zip, zip_mkdir(osx_zip, osx_sdlver_dir, "Current"), osx_sdlfw_pod)
+            zip_copy(osx_zip, zip_mkdir(osx_zip, osx_sdlver_dir, "A"), osx_sdlfw_pod)
+
 def read_pod_file(path):
     return PodFile(file_read(path))
 
@@ -622,6 +883,8 @@ def write_cart_export(path, export):
         file_write_text(path, export.text)
     elif isinstance(export, PodExport):
         file_write(path, export.data)
+    elif isinstance(export, FullExport):
+        export.save(path)
     else:
         fail("invalid cart export")
 
@@ -629,12 +892,14 @@ def create_cart_export(format, pico8_dat, **opts):
     """Create an empty CartExport in the given format"""
     if format == CartFormat.js:
         return JsExport.create(pico8_dat, **opts)
-    if format == CartFormat.pod:
+    elif format == CartFormat.pod:
         return PodExport.create(pico8_dat, **opts)
+    elif format == CartFormat.bin:
+        return FullExport.create(pico8_dat, **opts)
     else:
         throw(f"invalid format for listing: {format}")
 
-def write_or_edit_cart_export(path, cart, format, cart_args=None, cart_op=None, target=None, pico8_dat=None, **opts):
+def write_or_edit_cart_export(path, cart, format, extra_carts=None, cart_args=None, cart_op=None, target=None, pico8_dat=None, **opts):
     """Write or edit a CartExport in the given path, depenindg on cart_op/cart_args arguments"""
     if cart_op is None:
         assert isinstance(pico8_dat, PodFile)
@@ -644,4 +909,8 @@ def write_or_edit_cart_export(path, cart, format, cart_args=None, cart_op=None, 
         export = target
         
     export.write_cart(cart, cart_args, cart_op, **opts)
+    if extra_carts:
+        for extra_cart in extra_carts:
+            export.write_cart(extra_cart, **opts)
+    
     write_cart_export(path, export)

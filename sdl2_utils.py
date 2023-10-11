@@ -11,6 +11,7 @@ class Color(Tuple):
 class PixelFormat(Enum):
     rgba8 = "RGBA"
     bgra8 = ("RGBA", "BGRA")
+    rgb8 = "RGB"
     i8 = "P"
 
     @property
@@ -62,15 +63,21 @@ class Surface:
         m.pil = pil
         m.fmt = fmt
     
-    def to_data(m, fmt=None):
+    def to_data(m, fmt=None, flip=False):
         if fmt is None:
             fmt = m.format
-        else:
-            assert fmt._pil_fmt == m.format._pil_fmt
-        return m.pil.tobytes("raw", fmt._pil_raw_fmt)
+        return m.pil.tobytes("raw", fmt._pil_raw_fmt, 0, -1 if flip else 1)
 
-    def save(m, f):
-        m.pil.save(f, "png")
+    def save(m, dest=None):
+        if dest is None:
+            dest = BytesIO()
+            m.save(dest)
+            return dest.getvalue()
+        
+        m.pil.save(dest, "png")
+
+    def convert(m, fmt):
+        return Surface(m.pil.convert(fmt._pil_fmt))
 
     @property
     def width(m):

@@ -6,13 +6,14 @@ import hashlib, base64
 
 class CartFormat(Enum):
     """An enum representing the supported cart formats"""
-    auto = p8 = png = lua = rom = tiny_rom = clip = url = code = js = pod = ...
+    auto = p8 = png = lua = rom = tiny_rom = clip = url = code = js = pod = bin = ...
 
-CartFormat.input_names = tuple(CartFormat._values.keys())
-CartFormat.output_names = tuple(name for name in CartFormat.input_names if name != "auto")
-CartFormat.ext_names = tuple(name for name in CartFormat.input_names if name not in ("auto", "tiny_rom", "code"))
+CartFormat.all_names = tuple(CartFormat._values.keys())
+CartFormat.input_names = tuple(name for name in CartFormat.all_names if name != "bin")
+CartFormat.output_names = tuple(name for name in CartFormat.all_names if name != "auto")
+CartFormat.ext_names = tuple(name for name in CartFormat.all_names if name not in ("auto", "tiny_rom", "code"))
 CartFormat.src_names = ("p8", "lua", "code")
-CartFormat.export_names = ("js", "pod")
+CartFormat.export_names = ("js", "pod", "bin")
 
 class Cart:
     """A pico8 cart, including its code (as a p8str), rom (as a Memory), and more"""
@@ -34,6 +35,7 @@ class Cart:
 
     @property
     def title(m):
+        """Returns the cart's title, as a p8str"""
         title_meta = m.meta.get("title")
         if title_meta is None:
             title = ""
@@ -48,6 +50,7 @@ class Cart:
 
     @title.setter
     def title(m, value):
+        """Sets the cart's title, from a p8str"""
         m.meta["title"] = from_p8str(value).splitlines()
 
     def set_code_without_title(m, code):
@@ -243,9 +246,7 @@ def write_cart_to_image(cart, screenshot_path=None, title=None, **opts):
                 a = (a & ~3) | ((byte >> 6) & 3)
                 pixels[x, y] = (r, g, b, a)
 
-        f = BytesIO()
-        image.save(f)
-        return f.getvalue()
+        return image.save()
 
 k_p8_prefix = "pico-8 cartridge"
 k_meta_prefix = "meta:"
@@ -645,7 +646,7 @@ def write_cart(path, cart, format, **opts):
         file_write_text(path, write_cart_to_raw_source(cart, **opts))
     elif format == CartFormat.code:
         file_write_text(path, write_cart_to_raw_source(cart, with_header=True, **opts))
-    elif format in (CartFormat.js, CartFormat.pod):
+    elif format in (CartFormat.js, CartFormat.pod, CartFormat.bin):
         write_or_edit_cart_export(path, cart, format, **opts)
     else:
         throw(f"invalid format for writing: {format}")

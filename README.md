@@ -486,7 +486,9 @@ However, it is also possible to override the label from a custom 128x128 screens
 
 ## Reading and writing exported formats
 
-Shrinko8 can also read, create (with some limitations) and modify exported carts:
+### Reading exports
+
+Shrinko8 can read the following exports:
 * js - Pico-8 carts exported to html+js - supply the .js file to shrinko8.
 * pod - Pico-8 carts exported as (any) executables - supply the .pod file to shrinko8.
 
@@ -497,15 +499,28 @@ If the export contains more than one cart, you can use:
 * `--dump <folder>` to dump all the carts in the export into the given folder
 * `--cart <name>` to select which cart to read from the export, instead of the main cart
 
+### Creating exports
+
+Shrinko8 can create the following exports:
+* bin - A directory containing all exports (both binary and web). Recommended.
+* js - Just the .js file for an html+js export.
+* pod - Just the .pod file for any binary export.
+
 When you pass an export as the output parameter to Shrinko8, it will - by default - try to create a new export containing a single cart.
 
 However, for that to work, you need to also supply `--pico8-dat <path to pico8.dat file inside your pico8 directory>` to Shrinko8, e.g:
 
-`python shrinko8.py path-to-input.p8 path-to-output.js --pico8-dat c:/pico8/pico8.dat`
+`python shrinko8.py path-to-input.p8 path-to-output.bin --pico8-dat c:/pico8/pico8.dat`
 
-Also, note that Shrinko8 only creates the js or pod files which contain the cart data (among other stuff) - you need to use pico8 to create the rest of the files (e.g. htmls, executables).
+You can create a multi-cart export by using `--extra-input`:
 
-Instead of creating an export, you can pass one of the below options to instead modify an existing export - e.g. to add additional carts, resulting in a multi-cart export.
+`python shrinko8.py path-to-main-cart.p8 path-to-output.bin --pico8-dat c:/pico8/pico8.dat --extra-input extra-cart-1.p8  --extra-input extra-cart-2.p8`
+
+### Modifying exports
+
+For advanced usecases, you can also modify an existing export. (bin)
+
+To do this, you can pass one of the below options:
 * `--insert-cart` to insert a new cart to the export. (The name is taken from the input cart)
 * `--insert-cart <name>` to insert a new cart to the export and give it a specific name.
 * `--replace-cart <name>` to replace the cart with the specified name
