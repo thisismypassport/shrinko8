@@ -729,8 +729,8 @@ function initAceIfNeeded(id, lang, cb) {
     }
 }
 
-function runTests(mode) {
-    async function endTest(ok, msg) {
+async function runTests(mode, argsStr) {
+    async function endTest(ok, msg, save) {
         if (mode == "post") {
             await fetch(ok ? "test-ok" : "test-fail", {
                 method: "post",
@@ -740,10 +740,19 @@ function runTests(mode) {
             window.close();
         } else {
             alert(msg);
+            if (save) {
+                download(save, "save.zip", "application/zip");
+            }
         }
     }
 
-    api.runTests().then(msg => endTest(true, msg)).catch(e => endTest(false, e.message));
+    try {
+        let [status, output, save] = await api.runTests(argsStr, mode == "save")
+        endTest(status == 0, output, save)
+    } catch (e) {
+        console.error(e);
+        endTest(false, e.message)
+    }
 }
 
 $(() => {
@@ -761,8 +770,9 @@ $(() => {
     $("#lint-opts").change(onLintOptsChange); onLintOptsChange();
     $("#extra-args").change(OnExtraArgsChange);
     
-    let testMode = new URLSearchParams(location.search).get("test");
+    let params = new URLSearchParams(location.search);
+    let testMode = params.get("test");
     if (testMode) {
-        runTests(testMode)
+        runTests(testMode, params.get("test-args"))
     }
 })

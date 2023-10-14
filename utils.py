@@ -2335,7 +2335,21 @@ def dir_paths(path):
 
 dir_get_current = os.getcwd
 dir_set_current = os.chdir
-    
+
+def try_dir_names(path, defval = None):
+    """Try returning the names of the contents of the directory"""
+    try:
+        return dir_names(path)
+    except Exception:
+        return defval
+
+def try_dir_paths(path, defval = None):
+    """Try returning the full paths of the contents of the directory"""
+    try:
+        return dir_paths(path)
+    except Exception:
+        return defval
+
 def filename_fixup(filename):
     """Fixup a filename to be valid"""
     fixed = "".join([ch if ch not in r"\/:*?<>|" else "_" for ch in filename])

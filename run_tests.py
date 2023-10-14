@@ -15,6 +15,7 @@ parser.add_argument("-P", "--no-pico8", action="store_true", help="disable runni
 parser.add_argument("--profile", action="store_true", help="enable profiling")
 
 # for test consistency:
+os.environ["PICO8_EXPORT_REPRO_TIME"] = '1577934245'
 os.environ["PICO8_PLATFORM_CHAR"] = 'w'
 #os.environ["PICO8_VERSION_ID"] = ... - best test the version we set by default
 
@@ -29,8 +30,18 @@ def measure(kind, path, input=False):
     else:
         print("MISSING!")
 
+def try_read_dir_contents(dir):
+    results = []
+    for name in sorted(try_dir_names(dir, ())):
+        child = path_join(dir, name)
+        if path_is_dir(child):
+            results.append((name, try_read_dir_contents(child)))
+        else:
+            results.append((name, try_file_read(child)))
+    return results
+
 def run_test(name, input, output, *args, private=False, check_output=True, from_output=False,
-             read_stdout=False, norm_stdout=nop, exit_code=0, extra_outputs=None, norm_output=nop,
+             read_stdout=False, norm_stdout=nop, exit_code=0, extra_outputs=None, output_reader=try_file_read,
              pico8_output_val=None, pico8_output=None, copy_in_to_out=False):
     if g_opts.test:
         for wanted_test in g_opts.test:
@@ -63,7 +74,7 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
         file_write_text(outpath, norm_stdout(run_stdout))
 
     if run_success and check_output:
-        if norm_output(try_file_read(outpath)) != norm_output(try_file_read(cmppath)):
+        if output_reader(outpath) != output_reader(cmppath):
             stdouts.append(f"ERROR: File difference: {outpath}, {cmppath}")
             success = False
 
@@ -205,7 +216,7 @@ def main(raw_args):
         except ImportError:
             pass
         else:
-            private_run(g_opts, run_test, run_stdout_test)
+            private_run(g_opts, sys.modules[__name__])
     
     return end_tests()
 

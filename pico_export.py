@@ -634,7 +634,7 @@ class FullExport(CartExport):
         m.js = JsExport.create(pico8_dat, html_pod=m.html_pod, **opts)
         m.wjs = JsExport.create(pico8_dat, html_pod=m.html_pod, for_wasm=True, **opts)
         m.exports = [m.pod, m.js, m.wjs]
-        m.curr_time = time.localtime(time.time())[:6]
+        m.curr_time = time.localtime(maybe_float(os.getenv("PICO8_EXPORT_REPRO_TIME", time.time())))[:6]
         return m
 
     def write_cart(m, *args, **opts):

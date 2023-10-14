@@ -1,1 +1,1 @@
-run_tests.py test_utils.py test_input/* test_compare/*
+run_tests.py test_utils.py test_input test_compare

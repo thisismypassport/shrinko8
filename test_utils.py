@@ -52,7 +52,7 @@ def add_test_results(results):
 def end_tests():
     status = 0
     if g_num_failed:
-        print("\n%d/%d FAILED!" % g_num_failed)
+        print("\n%d/%d FAILED!" % (g_num_failed, g_num_ran))
         status = 1
     elif g_num_ran:
         print("\nAll %d passed" % g_num_ran)

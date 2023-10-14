@@ -238,18 +238,38 @@ let api = {
         return [code, stdout, output, preview];
     },
 
-    runTests: async () => {
+    runTests: async (argsStr, save) => {
         await initPromise;
         
         if (!self.shrinko8_run_tests) {
             let response = await fetch("shrinko8_test.zip");
             await pyodide.unpackArchive(await response.arrayBuffer(), "zip");
 
+            self.shrinko8_run_tests_args = [];
+            if (argsStr) {
+                self.shrinko8_run_tests_args.push(...shlex(argsStr))
+            }
+            if (fs.analyzePath("private_pico_8").exists) {
+                self.shrinko8_run_tests_args.push("-p", "private_pico_8/pico8.exe", "-P");
+            }
+
             let run_tests = pyodide.pyimport("run_tests")
             self.shrinko8_run_tests = run_tests.main
         }
 
-        return run_main(self.shrinko8_run_tests, [], true)
+        let [exitcode, output] = run_main(self.shrinko8_run_tests, self.shrinko8_run_tests_args);
+
+        let saveData = undefined
+        if (save) {
+            if (fs.analyzePath("private_test_output").exists) {
+                fs.rename("private_test_output", "test_output/private")
+            }
+
+            makeArchive("save.zip", "zip", "test_output", ".");
+            saveData = fs.readFile("save.zip");
+        }
+
+        return [exitcode, output, saveData]
     },
 }
 
