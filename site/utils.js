@@ -26,7 +26,10 @@ function isFormatImg(fmt) {
     return fmt == "png";
 }
 function isFormatExport(fmt) {
-    return fmt == "pod" || fmt == "js";
+    return fmt == "pod" || fmt == "js" || fmt == "bin";
+}
+function isFormatNeedZip(fmt) {
+    return fmt == "bin";
 }
 function isFormatUrl(fmt) {
     return fmt == "url";

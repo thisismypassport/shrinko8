@@ -6,6 +6,7 @@ importScripts("utils.js")
 let inputFile = "input.p8";
 let inputSrcDir = "input.dir";
 let outputFile = "output.unk";
+let outputDir = "output.dir";
 let previewFile = "preview.p8";
 let scriptFile = "script.py";
 let pico8Dat = "pico8.dat";
@@ -89,6 +90,18 @@ function shlex(str) {
     return shlex_module.split(str).toJs()
 }
 
+let shutil_module;
+function makeArchive(outputFile, ...args) {
+    if (!shutil_module) {
+        shutil_module = pyodide.pyimport("shutil");
+    }
+
+    let zipName = shutil_module.make_archive(outputFile, ...args)
+    if (outputFile !== zipName) {
+        shutil_module.move(zipName, outputFile)
+    }
+}
+
 function rmdirRec(path) {
     for (let file of fs.readdir(path)) {
         if (file == "." || file == "..") {
@@ -116,10 +129,14 @@ function mkdirParentRec(path) {
     }
 }
 
-function copyInputs(files, main) {
-    if (fs.analyzePath(inputSrcDir).exists) {
-        rmdirRec(inputSrcDir);
+function rmdirRecIfNeeded(dir) {
+    if (fs.analyzePath(dir).exists) {
+        rmdirRec(dir);
     }
+}
+
+function copyInputs(files, main) {
+    rmdirRecIfNeeded(inputSrcDir);
     for (let [relpath, data] of files) {
         let path = joinPath(inputSrcDir, relpath);
         mkdirParentRec(path);
@@ -177,12 +194,17 @@ let api = {
         return shrinko8(["--version"], true);
     },
 
-    runShrinko: async (args, argStr, useScript, encoding, usePreview) => {
+    runShrinko: async (args, argStr, useScript, encoding, usePreview, doZip) => {
         await initPromise;
 
         let cmdline = [inputFile];
         if (encoding) {
-            cmdline.push(outputFile);
+            if (doZip) {
+                rmdirRecIfNeeded(outputDir);
+                cmdline.push(outputDir);
+            } else {
+                cmdline.push(outputFile);
+            }
         }
         cmdline.push(...args);
         if (argStr) {
@@ -202,6 +224,9 @@ let api = {
 
         let output, preview;
         if (code == 0) {
+            if (doZip) {
+                makeArchive(outputFile, "zip", outputDir, ".")
+            }
             if (encoding) {
                 output = fs.readFile(outputFile, {encoding});
             }

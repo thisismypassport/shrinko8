@@ -184,14 +184,17 @@ It can be a .p8 file, a .png cart, and more."></div>
           <div class="flex-column" style="flex: 1">
             <label style="display: block; margin-bottom: 10px;">Target format:
               <select id="minify-format">
-                <option value="png">.png cart</option>
-                <option value="p8">.p8 file</option>
-                <option value="rom">.rom file</option>
-                <option value="lua">.lua file (Code only)</option>
-                <option value="tiny-rom">Tiny .rom file (Code only)</option>
+                <option value="png">.PNG cart</option>
+                <option value="p8">.P8 file</option>
+                <option value="rom">.ROM file</option>
+                <option value="" disabled>──────────</option>
+                <option value="lua">.LUA file (Code only)</option>
+                <option value="tiny-rom">Tiny .ROM file (Code only)</option>
                 <option value="url">Edu URL (Code & gfx only)</option>
-                <option value="js">.js file (For HTML export)</option>
-                <option value="pod">.pod file (For binary export)</option>
+                <option value="" disabled>──────────</option>
+                <option value="bin">All HTML + Binary exports (in testing)</option>
+                <option value="js">.JS file (Advanced)</option>
+                <option value="pod">.POD file (Advanced)</option>
               </select>
             </label>
             
@@ -255,7 +258,7 @@ It can be a .p8 file, a .png cart, and more."></div>
               <label><input type="radio" name="minify" value="--unminify">Undo Minification (Reformat)</label><br/>
               <label><input type="radio" name="minify" value="">No Minification</label><br/>
               <label><input type="radio" name="minify" 
-                value="--minify-safe-only --no-minify-rename --no-minify-lines">Minimal Minification (Undoable, easier to debug)</label><br/>
+                value="--minify-safe-only --no-minify-rename --no-minify-lines">Minimal Minification (Easy to read & debug)</label><br/>
               <label><input type="radio" name="minify" value="--minify-safe-only" checked>Safe Minification</label><br/>
               <label><input type="radio" name="minify" value="--minify" id="minify-agg">Aggressive Minification</label><br/>
 
@@ -280,6 +283,8 @@ It can be a .p8 file, a .png cart, and more."></div>
                   <option value="--focus-tokens --focus-compressed">Tokens & Compressed size</option>
                 </select>
               </label>
+
+              <label><input type="checkbox" style="margin-top: 20px" id="minify-keep-lines">Keep linebreaks (Helps debugging)</label>
             </div>
             
             <div style="flex: 0">

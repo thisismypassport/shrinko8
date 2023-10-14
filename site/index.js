@@ -422,6 +422,9 @@ async function saveOutputFile() {
         type = "text/plain";
     } else if (isFormatImg(format)) {
         type = "image/png";
+    } else if (isFormatNeedZip(format)) {
+        type = "application/zip"
+        ext = "zip"
     } else {
         type = "application/octet-stream";
     }
@@ -429,7 +432,7 @@ async function saveOutputFile() {
     download(output, name + "." + ext, type);
 }
 
-async function doShrinko(args, encoding, usePreview) {
+async function doShrinko(args, encoding, usePreview, doZip) {
     let argStr = $("#extra-args").val();
 
     await inputMgr.flush();
@@ -438,7 +441,7 @@ async function doShrinko(args, encoding, usePreview) {
     let useScript = Boolean(scriptMgr.getValue());
 
     try {
-        return await api.runShrinko(args, argStr, useScript, encoding, usePreview);
+        return await api.runShrinko(args, argStr, useScript, encoding, usePreview, doZip);
     } catch (e) {
         console.error(e);
         return [-1, e.message, undefined, undefined]
@@ -539,6 +542,10 @@ async function doMinify() {
             }
         }
 
+        if ($("#minify-keep-lines").isChecked()) {
+            args.push("--no-minify-lines");
+        }
+
         // (adjust p8 preview)
         if (format === "tiny-rom") {
             args.push("--output-sections", "lua");
@@ -548,7 +555,8 @@ async function doMinify() {
 
         let encoding = isFormatText(format) || isFormatUrl(format) ? "utf8" : "binary";
         let usePreview = !isFormatText(format);
-        let [code, stdouterr, output, preview] = await doShrinko(args, encoding, usePreview);
+        let doZip = isFormatNeedZip(format);
+        let [code, stdouterr, output, preview] = await doShrinko(args, encoding, usePreview, doZip);
 
         stdouterr = applyCounts(stdouterr);
 
