@@ -40,11 +40,6 @@
         height: 100%; 
       }
 
-      .hcenter {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-      }
       .center {
         position: absolute;
         left: 50%;
@@ -64,6 +59,10 @@
       .flex-row {
         display: flex;
         flex-flow: row;
+      }
+      .flex-center {
+        display: flex;
+        justify-content: center;
       }
 
       .margin {
@@ -93,6 +92,10 @@
 
       .selected {
         background-color: skyblue;
+      }
+
+      .extra-selected {
+        background-color: orchid;
       }
 
       .edu-url {
@@ -132,6 +135,9 @@
               <input id="input-file" type="file" multiple style="margin-bottom: 10px;" accept=".p8,.lua,.png,.rom,.js,.pod"
                     onchange="loadSelectedFiles(this)" />
             </label>
+            <span id="input-extra-files" style="display: none">
+              (+ <span id="input-extra-count"></span> extra files for multi-cart export)
+            </span>
           </div>
           <div>
             <span id="version" style="vertical-align: super"></span>
@@ -152,7 +158,9 @@ It can be a .p8 file, a .png cart, and more."></div>
               <div class="base" style="flex: 1">
                 <div id="input-error-output" class="scroll asis" style="max-height: 30vh"></div>
               </div>
-              <div><button type="button" class="hcenter" onclick="onInputErrorClose()">Close</button></div>
+              <div class="flex-center">
+                <button type="button" onclick="onInputErrorClose()">Close</button>
+              </div>
             </div>
           </div>
           <div id="input-select-overlay" class="overlay">
@@ -162,11 +170,16 @@ It can be a .p8 file, a .png cart, and more."></div>
               <div class="base" style="flex: 1">
                 <div id="input-select-list" class="scroll border asis" style="max-height: 30vh"></div>
               </div>
-              <div class="margin">
-                <span class="hcenter">
+              <div class="margin flex-center">
+                <span>
                   <button type="button" onclick="onInputSelect()">Open</button>
                   <button type="button" onclick="onInputSelectClose()">Cancel</button>
                 </span>
+              </div>
+              <div class="margin">
+                <label id="input-select-extra-label">
+                  <input type="checkbox" id="input-select-extra">Select extra files for multi-cart export
+                </label><br/>
               </div>
             </div>
           </div>

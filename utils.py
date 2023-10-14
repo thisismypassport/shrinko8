@@ -1559,6 +1559,11 @@ def list_set(list, i, val, defval = None):
 str_get = list_get
 str_rget = list_rget
 
+def list_unpack(list, n, defval = None):
+    """Return the 'n' first elements in the list, padding with 'defval' if needed"""
+    for i in range(n):
+        yield list_get(list, i)
+
 def tuple_insert(tuple, i, newval):
     """Return a new tuple based on 'tuple' with 'newval' inserted at index 'i'"""
     return tuple[:i] + (newval,) + tuple[i:]

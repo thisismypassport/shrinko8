@@ -6,6 +6,16 @@ function getLowExt(path) {
     return match ? match[1].toLowerCase() : "";
 }
 
+function getNoExt(path) {
+    let match = path.match(/(.*)\.[^\.]+$/);
+    return match ? match[1] : path;
+}
+
+function getBaseName(path) {
+    let match = path.match(/\/([^\/]+)$/);
+    return match ? match[1] : path;
+}
+
 function getParentDir(path) {
     let match = path.match(/(.*)\/[^\/]+$/);
     return match ? match[1] : "";

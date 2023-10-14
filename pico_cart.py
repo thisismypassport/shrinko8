@@ -18,12 +18,13 @@ CartFormat.export_names = ("js", "pod", "bin")
 class Cart:
     """A pico8 cart, including its code (as a p8str), rom (as a Memory), and more"""
 
-    def __init__(m, code="", rom=None):
+    def __init__(m, code="", rom=None, path="", name=""):
         m.version_id = get_default_version_id()
         m.version_tuple = get_version_tuple(m.version_id)
         m.platform = get_default_platform()
         m.rom = rom.copy() if rom else mem_create_rom()
-        m.path = ""
+        m.path = path
+        m.name = name if name else path_basename(path) if path else ""
         m.code = code
         m.code_map = ()
         m.code_rom = None
@@ -70,8 +71,7 @@ def read_code_from_rom(r, keep_compression=False, **opts):
     return uncompress_code(r, **opts), code_rom
 
 def read_cart_from_rom(buffer, path=None, allow_tiny=False, **opts):
-    cart = Cart()
-    cart.path = path
+    cart = Cart(path=path)
     
     with BinaryReader(BytesIO(buffer), big_end = True) as r:
         if r.len() < k_cart_size and allow_tiny: # tiny rom, code only
@@ -252,8 +252,7 @@ k_p8_prefix = "pico-8 cartridge"
 k_meta_prefix = "meta:"
 
 def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
-    cart = Cart()
-    cart.path = path
+    cart = Cart(path=path)
     
     def nybbles(line):
         for b in line:

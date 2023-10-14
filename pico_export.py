@@ -45,15 +45,13 @@ class CartExport:
 
         return m.read_impl(ref, path=cart_name, **opts)
     
-    def write_cart(m, cart, cart_args=None, cart_op=None, **opts):
-        cart_name = list_get(cart_args or (), 0)
-        target_name = list_get(cart_args or (), 1)
+    def write_cart(m, cart, cart_name=None, cart_op=None, target_name=None, **opts):
         cart_op = default(cart_op, ListOp.insert)
         carts = m.get_carts_impl()
 
         if cart_op == ListOp.insert:
             if cart_name is None:
-                cart_name = path_basename(cart.path)
+                cart_name = cart.name
             if m._contains(carts, cart_name):
                 throw(f"cart {cart_name} already found in export")
             
@@ -601,7 +599,7 @@ class PodExport(CartExport, PodFile):
                         assert content.format.bpp == 8
                         x, y = 0, 0
                         pixels = content.pixels
-                        for ch in path_basename_no_extension(cart.path):
+                        for ch in path_no_extension(cart.name):
                             pixels[x, y] = ord(ch)
                             x += 1
                             if x == content.width:
@@ -623,7 +621,7 @@ class FullExport(CartExport):
         m.cart = cart
 
     @classmethod
-    def create(cls, pico8_dat, cart=None, **opts):
+    def create(cls, pico8_dat, cart=None, export_name=None, **opts):
         opts["cart"] = cart
 
         m = FullExport(pico8_dat, cart)
@@ -634,6 +632,8 @@ class FullExport(CartExport):
         m.js = JsExport.create(pico8_dat, html_pod=m.html_pod, **opts)
         m.wjs = JsExport.create(pico8_dat, html_pod=m.html_pod, for_wasm=True, **opts)
         m.exports = [m.pod, m.js, m.wjs]
+        
+        m.export_name = export_name
         m.curr_time = time.localtime(maybe_float(os.getenv("PICO8_EXPORT_REPRO_TIME", time.time())))[:6]
         return m
 
@@ -782,7 +782,9 @@ class FullExport(CartExport):
                     zip_write(zip, dir, e.name[2:], e.content, exec=exec, is_dir=is_dir)
 
         dir_ensure_exists(path)
-        basename = path_basename_no_extension(path)
+        basename = m.export_name
+        if not basename:
+            basename = path_basename_no_extension(path)
 
         screenshot_bmpdata = None
         screenshot_icnsdata = None
@@ -915,16 +917,17 @@ def read_from_cart_export(path, format, cart_name=None, extra_carts=None, **opts
     else:
         return export.read_cart(cart_name, **opts)
 
-def write_to_cart_export(path, cart, format, extra_carts=None, cart_args=None, cart_op=None, target=None, pico8_dat=None, **opts):
-    """Create or edit a CartExport in the given path, depenindg on cart_op/cart_args arguments"""
+def write_to_cart_export(path, cart, format, extra_carts=None, cart_name=None, target_name=None, cart_op=None, 
+                         target_export=None, export_name=None, pico8_dat=None, **opts):
+    """Create or edit a CartExport in the given path, depending on cart_op/cart_args arguments"""
     if cart_op is None:
         assert isinstance(pico8_dat, PodFile)
-        export = create_cart_export(format, pico8_dat, cart=cart)
+        export = create_cart_export(format, pico8_dat, cart=cart, export_name=export_name)
     else:
-        assert isinstance(target, CartExport)
-        export = target
+        assert isinstance(target_export, CartExport)
+        export = target_export
         
-    export.write_cart(cart, cart_args, cart_op, **opts)
+    export.write_cart(cart, cart_name, cart_op, target_name, **opts)
     if extra_carts:
         for extra_cart in extra_carts:
             export.write_cart(extra_cart, **opts)

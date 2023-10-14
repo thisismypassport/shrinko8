@@ -5,6 +5,7 @@ importScripts("utils.js")
 
 let inputFile = "input.p8";
 let inputSrcDir = "input.dir";
+let extraInputFileTmpl = "extrainput#.p8"
 let outputFile = "output.unk";
 let outputDir = "output.dir";
 let previewFile = "preview.p8";
@@ -147,11 +148,11 @@ function copyInputs(files, main) {
 }
 
 let api = {
-    loadInputFiles: async (files, main, subfile) => {
+    loadInputFiles: async (files, main, subfile, extras) => {
         await initPromise;
 
         let mainExt = getLowExt(main);
-        if (isFormatText(mainExt) && files.size == 1 && subfile == null) {
+        if (isFormatText(mainExt) && files.size == 1 && subfile == null && !extras) {
             // simple case - no conversion/preprocessing is needed or wanted.
             let data = files.values().next().value;
             fs.writeFile(inputFile, new Uint8Array(data));
@@ -164,7 +165,18 @@ let api = {
                 args.push("--cart", subfile)
             }
             shrinko8(args, true);
-            return fs.readFile(inputFile, {encoding: "utf8"});
+            let result = fs.readFile(inputFile, {encoding: "utf8"});
+            
+            // also convert/preprocess extra files
+            let extraI = 0;
+            if (extras) {
+                for (let extra of extras) {
+                    let extraInputFile = extraInputFileTmpl.replace("#", extraI++);
+                    shrinko8([joinPath(inputSrcDir, extra), extraInputFile], true);
+                }
+            }
+
+            return result;
         }
     },
     listInputFile: async (files, main) => {
@@ -194,7 +206,7 @@ let api = {
         return shrinko8(["--version"], true);
     },
 
-    runShrinko: async (args, argStr, useScript, encoding, usePreview, doZip) => {
+    runShrinko: async (args, argStr, useScript, encoding, usePreview, doZip, extraNames) => {
         await initPromise;
 
         let cmdline = [inputFile];
@@ -218,6 +230,12 @@ let api = {
         }
         if (hasPico8Dat) {
             cmdline.push("--pico8-dat", pico8Dat); // won't hurt to always pass - only read if needed
+        }
+        if (extraNames) {
+            for (let i = 0; i < extraNames.length; i++) {
+                let extraInputFile = extraInputFileTmpl.replace("#", i);
+                cmdline.push("--extra-input", extraInputFile, "p8", extraNames[i]);
+            }
         }
 
         let [code, stdout] = shrinko8(cmdline);

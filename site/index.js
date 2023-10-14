@@ -60,6 +60,9 @@ class InputChangeMgr {
         this.pending = undefined;
         this.promise = undefined;
         this.inProg = false;
+
+        this.fileName = "";
+        this.extraNames = [];
     }
 
     // Cancel any pending input changes
@@ -169,7 +172,7 @@ async function loadInputFiles(inputs) {
     }
 
     let allFiles = new Map();
-    let foundP8 = undefined;
+    let firstP8 = undefined;
     async function processFile(file, relpath) {
         try {
             let path = joinPath(relpath, file.name);
@@ -177,10 +180,8 @@ async function loadInputFiles(inputs) {
             allFiles.set(path, data);
 
             if (getLowExt(file.name) == "p8") {
-                if (foundP8 == undefined) {
-                    foundP8 = path;
-                } else {
-                    foundP8 = false; // multiple files
+                if (firstP8 == undefined) {
+                    firstP8 = path;
                 }
             }
         } catch (e) {
@@ -213,16 +214,14 @@ async function loadInputFiles(inputs) {
         }
     }));
 
-    let mainPath;
+    let mainPath, extraPaths;
     if (allFiles.size == 0) {
         onerror("Failed reading any files from your local machine");
         return;
     } else if (allFiles.size == 1) {
         mainPath = allFiles.keys().next().value;
-    } else if (foundP8) {
-        mainPath = foundP8;
     } else {
-        mainPath = await beginInputSelect(allFiles.keys(), "main");
+        [mainPath, extraPaths] = await beginInputSelect(allFiles.keys(), "main", firstP8);
     }
 
     let subfile = undefined;
@@ -231,14 +230,22 @@ async function loadInputFiles(inputs) {
         if (subfiles.length == 1) {
             subfile = subfiles[0];
         } else {
-            subfile = await beginInputSelect(subfiles, "export");
+            [subfile] = await beginInputSelect(subfiles, "export");
         }
     }
     
     try {
-        let code = await api.loadInputFiles(allFiles, mainPath, subfile);
+        let code = await api.loadInputFiles(allFiles, mainPath, subfile, extraPaths);
         inputMgr.setValue(code); // calls onInputChange
+
         $("#input-overlay").hide();
+        
+        inputMgr.fileName = getBaseName(mainPath)
+        inputMgr.extraNames = extraPaths ? extraPaths.map(getBaseName) : [];
+        let numExtras = inputMgr.extraNames.length;
+        $("#input-extra-files").toggle(numExtras > 0);
+        $("#input-extra-count").text(numExtras);
+
         doShrinkoAction();
     } catch (e) {
         console.error(e);
@@ -308,31 +315,54 @@ function onInputErrorClose() {
 let inputSelectResolve;
 
 // create ui to select a file, return promise for the ui's end (may never resolve)
-async function beginInputSelect(paths, reason) {
+async function beginInputSelect(paths, reason, initialSel) {
     $('#input-select-overlay').show();
     $("#input-overlay").hide();
     
     $("#input-select-main-label").toggle(reason == "main")
     $("#input-select-export-label").toggle(reason == "export")
 
+    let inExtraMode = false;
+    $("#input-select-extra-label").toggle(reason == "main");
+    let selectExtra = $("#input-select-extra");
+    selectExtra.prop("checked", false);
+    selectExtra.click(() => {
+        inExtraMode = !inExtraMode;
+    })
+
     let elem = $('#input-select-list');
     elem.empty();
 
     let selDiv;
+    let extraSelDivs = [];
     for (let path of paths) {
         let div = $("<div/>");
         div.text(path);
         div.css("cursor", "pointer");
 
         div.click(() => {
-            if (selDiv) {
-                selDiv.removeClass("selected");
+            if (inExtraMode) {
+                if (div !== selDiv) {
+                    if (extraSelDivs.includes(div)) {
+                        extraSelDivs = extraSelDivs.filter(item => item !== div);
+                        div.removeClass("extra-selected");
+                    } else {
+                        extraSelDivs.push(div);
+                        div.addClass("extra-selected");
+                    }
+                }
+            } else {
+                if (!extraSelDivs.includes(div)) {
+                    if (selDiv) {
+                        selDiv.removeClass("selected");
+                    }
+                    div.addClass("selected");
+                    selDiv = div;
+                }
             }
-            div.addClass("selected");
-            selDiv = div;
         });
         
-        if (!selDiv) {
+        if (!selDiv && (path === initialSel || !initialSel)) {
             selDiv = div;
             selDiv.click();
         }
@@ -347,7 +377,12 @@ async function beginInputSelect(paths, reason) {
     $('#input-select-overlay').hide();
     $("#input-overlay").show();
 
-    return selDiv.text();
+    let extraSels;
+    if (extraSelDivs.length) {
+        extraSels = extraSelDivs.map(div => div.text());
+    }
+
+    return [selDiv.text(), extraSels];
 }
 
 // called to finish selecting a file
@@ -411,8 +446,7 @@ async function saveOutputFile() {
         ext = "rom";
     }
 
-    let files = $("#input-code").prop("files");
-    let name = (files && files[0]) ? files[0].name : "";
+    let name = getNoExt(inputMgr.fileName);
     if (!name) {
         name = "output";
     }
@@ -432,7 +466,7 @@ async function saveOutputFile() {
     download(output, name + "." + ext, type);
 }
 
-async function doShrinko(args, encoding, usePreview, doZip) {
+async function doShrinko(args, encoding, usePreview, doZip, extraNames) {
     let argStr = $("#extra-args").val();
 
     await inputMgr.flush();
@@ -441,7 +475,7 @@ async function doShrinko(args, encoding, usePreview, doZip) {
     let useScript = Boolean(scriptMgr.getValue());
 
     try {
-        return await api.runShrinko(args, argStr, useScript, encoding, usePreview, doZip);
+        return await api.runShrinko(args, argStr, useScript, encoding, usePreview, doZip, extraNames);
     } catch (e) {
         console.error(e);
         return [-1, e.message, undefined, undefined]
@@ -553,10 +587,17 @@ async function doMinify() {
             args.push("--output-sections", "lua,gfx");
         }
 
+        if (isFormatExport(format)) {
+            args.push("--export-name", getNoExt(inputMgr.fileName));
+            args.push("--output-cart", inputMgr.fileName);
+        }
+
         let encoding = isFormatText(format) || isFormatUrl(format) ? "utf8" : "binary";
         let usePreview = !isFormatText(format);
         let doZip = isFormatNeedZip(format);
-        let [code, stdouterr, output, preview] = await doShrinko(args, encoding, usePreview, doZip);
+        let extraNames = isFormatExport(format) ? inputMgr.extraNames : undefined;
+
+        let [code, stdouterr, output, preview] = await doShrinko(args, encoding, usePreview, doZip, extraNames);
 
         stdouterr = applyCounts(stdouterr);
 
