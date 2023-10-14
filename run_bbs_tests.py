@@ -196,6 +196,7 @@ def run_for_cart(args):
             process_compare(kind + "-vs-unfocused", output, cart_unfocused[kind])
 
     best_path_for_pico8 = download_path
+    start_test()
 
     if g_opts.unminify:
         unminify_results = run_code(uncompress_path, unminify_path, "--unminify")

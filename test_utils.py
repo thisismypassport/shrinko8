@@ -3,8 +3,8 @@ from unittest.mock import patch
 import subprocess, pstats, cProfile, tempfile
 
 def init_tests(opts): # use: opts.exe and opts.profile
-    global g_status
-    g_status = 0
+    global g_num_ran, g_num_failed
+    g_num_ran = g_num_failed =0
 
     global g_profile, g_profile_stats_files
     g_profile = opts.profile
@@ -21,9 +21,13 @@ def init_tests(opts): # use: opts.exe and opts.profile
         global g_code_file
         g_code_file = "shrinko8.py"
 
+def start_test():
+    global g_num_ran
+    g_num_ran += 1
+
 def fail_test():
-    global g_status
-    g_status = 1
+    global g_num_failed
+    g_num_failed += 1
 
 def get_test_results():
     stats_file = None
@@ -33,20 +37,29 @@ def get_test_results():
         g_profile.dump_stats(dump_target.name)
         stats_file = dump_target.name
 
-    return g_status, stats_file
+    return g_num_ran, g_num_failed, stats_file
 
 def add_test_results(results):
-    status, stats_file = results
-    global g_status, g_profile_stats_files
+    ran, failed, stats_file = results
+    global g_num_ran, g_num_failed, g_profile_stats_files
 
-    if status != 0:
-        g_status = status
+    g_num_ran += ran
+    g_num_failed += failed
     
     if stats_file:
         g_profile_stats_files.append(stats_file)
 
 def end_tests():
-    print("\nAll passed" if g_status == 0 else "\nSome FAILED!")
+    status = 0
+    if g_num_failed:
+        print("\n%d/%d FAILED!" % g_num_failed)
+        status = 1
+    elif g_num_ran:
+        print("\nAll %d passed" % g_num_ran)
+    else:
+        print("\nNo tests ran!")
+        status = 2
+    
     if g_profile:
         stats = pstats.Stats()
         for src in [g_profile, *g_profile_stats_files]:
@@ -58,7 +71,8 @@ def end_tests():
         stats.print_stats()
         for stats_file in g_profile_stats_files:
             file_delete(stats_file)
-    return g_status
+    
+    return status
 
 def run_code(*args, exit_code=0):
     actual_code = 0

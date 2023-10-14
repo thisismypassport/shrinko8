@@ -28,6 +28,7 @@ extend_arg = "extend" if sys.version_info >= (3,8) else None
 
 parser = argparse.ArgumentParser()
 parser.add_argument("input", help="input file, can be in any format. ('-' for stdin)", nargs='?')
+parser.add_argument("additional_inputs", help="extra input files. (for use when creating exports)", nargs='*')
 parser.add_argument("output", help="output file. ('-' for stdout)", nargs='?')
 parser.add_argument("-f", "--format", type=EnumFromStr(CartFormat), help="output cart format {%s}" % EnumList(CartFormat.output_names))
 parser.add_argument("-F", "--input-format", type=EnumFromStr(CartFormat), help="input cart format {%s}" % EnumList(CartFormat.input_names))
@@ -134,11 +135,15 @@ def main_inner(raw_args):
         parser.print_help(sys.stderr)
         return 1
 
-    args = parser.parse_args(raw_args)
+    args = parser.parse_intermixed_args(raw_args)
 
     if args.version and not args.input:
         print(k_version)
         return
+
+    if args.additional_inputs and not args.output:
+        args.output = args.additional_inputs[-1] # argparse doesn't support nargs=* followed by nargs=?
+        del args.additional_inputs[-1]
         
     if not args.input:
         throw("No input file specified")
@@ -242,29 +247,41 @@ def main_inner(raw_args):
         args.trace_compression = CompressionTracer(args.trace_compression)
 
     if args.input:
-        cart, extra_carts, exit_status = handle_input(args)
-        if cart is None:
-            return exit_status
+        cart, extra_carts = handle_input(args)
+        if cart is None: # e.g. list/dump case
+            return 0
+        
+        passed, ok = handle_processing(args, cart, extra_carts)
+        if not passed:
+            return 2 if ok else 1
         
     else: # output-only operations
         cart = Cart() # just to avoid exceptions
         extra_carts = ()
-        exit_status = None
+        passed = True
 
     if args.output:
         handle_output(args, cart, extra_carts)
 
-    if e(exit_status):
-        return exit_status
+    if not passed:
+        return 2
 
 def handle_input(args):
     main_cart = None
     extra_carts = []
-    had_errors = False
 
     all_inputs = [(args.input, args.input_format)]
+    
+    if args.additional_inputs:
+        if not args.extra_input:
+            args.extra_input = []
+        for input in args.additional_inputs:
+            args.extra_input.append((input,))
+    
+    output_is_export = str(args.format) in CartFormat.export_names
+
     if args.extra_input:
-        if str(args.format) not in CartFormat.export_names:
+        if not output_is_export:
             throw("--extra-input can only be used when creating exports")
         read_extra_input_output(all_inputs, args.extra_input)
     
@@ -278,16 +295,29 @@ def handle_input(args):
                 else:
                     dir_ensure_exists(args.dump)
                     export.dump_contents(args.dump, default(args.format, CartFormat.p8), misc=args.dump_misc_too)
-                return None, None, 0
+                return None, None
 
             preprocessor = CustomPreprocessor() if args.custom_preprocessor else None
             cart = read_cart(input, input_format, size_handler=args.input_count, 
                              debug_handler=args.trace_input_compression, cart_name=args.cart,
-                             keep_compression=args.keep_compression, preprocessor=preprocessor)
-            src = CartSource(cart)
+                             keep_compression=args.keep_compression, preprocessor=preprocessor,
+                             extra_carts=extra_carts if output_is_export and not args.cart else None)
+            
+            if main_cart:
+                extra_carts.append(cart)
+            else:
+                main_cart = cart
         except OSError as err:
             throw(f"cannot read cart: {err}")
+    
+    return main_cart, extra_carts
 
+def handle_processing(args, main_cart, extra_carts):
+    had_warns = False
+
+    for cart in itertools.chain((main_cart,), extra_carts):
+        src = CartSource(cart)
+        
         if args.input_count:
             write_code_size(cart, handler=args.input_count, input=True)
             
@@ -304,12 +334,12 @@ def handle_input(args):
                                   unminify=args.unminify, stop_on_lint=not args.no_lint_fail,
                                   fail=False, want_count=not args.no_count_tokenize)
         if errors:
-            had_errors = True
+            had_warns = True
             print("Lint warnings:" if ok else "Compilation errors:")
             for error in sorted(errors):
                 print(error.format(args.error_format))
             if not ok or not args.no_lint_fail:
-                return None, None, 2 if ok else 1
+                return False, ok
 
         if args.rename_map:
             file_write_text(args.rename_map, "\n".join(ctxt.srcmap))
@@ -324,13 +354,8 @@ def handle_input(args):
         
         if args.version:
             print("version: %d, v%d.%d.%d:%d, %c" % (cart.version_id, *cart.version_tuple, cart.platform))
-        
-        if main_cart:
-            extra_carts.append(cart)
-        else:
-            main_cart = cart
-
-    return main_cart, extra_carts, 2 if had_errors else None
+    
+    return True, had_warns
 
 def handle_output(args, cart, extra_carts):
     output_cart_args = default(args.insert_cart, default(args.replace_cart, default(args.delete_cart, args.rename_cart)))

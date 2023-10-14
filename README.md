@@ -512,9 +512,13 @@ However, for that to work, you need to also supply `--pico8-dat <path to pico8.d
 
 `python shrinko8.py path-to-input.p8 path-to-output.bin --pico8-dat c:/pico8/pico8.dat`
 
-You can create a multi-cart export by using `--extra-input`:
+You can create a multi-cart export by supplying additional input carts:
 
-`python shrinko8.py path-to-main-cart.p8 path-to-output.bin --pico8-dat c:/pico8/pico8.dat --extra-input extra-cart-1.p8  --extra-input extra-cart-2.p8`
+`python shrinko8.py path-to-main-cart.p8 extra-cart-1.p8 extra-cart-2.p8 path-to-output.bin --pico8-dat c:/pico8/pico8.dat`
+
+If you need to explicitly specify the type of each additional input cart, you can instead use `--extra-input`
+
+Also, if both the input and output are exports, all carts from the input get placed in the output, unless `--cart` is explicitly specified.
 
 ### Modifying exports
 

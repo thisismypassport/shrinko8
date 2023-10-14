@@ -19,20 +19,20 @@ class CartExport:
     # rename_impl: (<ref>, new_name, **opts) -> void
     # NOTE: <ref>s are valid only until next modification or get_carts_impl call
 
-    def default(m, carts, strict=True):
+    def _default(m, carts, strict=True):
         name = dict_first_key(carts)
         if name is None and strict:
             throw(f"export is empty - contains no carts")
         return name
 
-    def find(m, carts, cart_name, strict=True):
+    def _find(m, carts, cart_name, strict=True):
         ref = carts.get(cart_name)
         if ref is None and strict:
             throw(f"cart {cart_name} not found in export")
         return ref
 
-    def contains(m, carts, cart_name):
-        return e(m.find(carts, cart_name, strict=False))
+    def _contains(m, carts, cart_name):
+        return e(m._find(carts, cart_name, strict=False))
     
     def list_carts(m):
         return m.get_carts_impl().keys()
@@ -40,8 +40,8 @@ class CartExport:
     def read_cart(m, cart_name=None, **opts):
         carts = m.get_carts_impl()
         if cart_name is None:
-            cart_name = m.default(carts)
-        ref = m.find(carts, cart_name)
+            cart_name = m._default(carts)
+        ref = m._find(carts, cart_name)
 
         return m.read_impl(ref, path=cart_name, **opts)
     
@@ -54,25 +54,25 @@ class CartExport:
         if cart_op == ListOp.insert:
             if cart_name is None:
                 cart_name = path_basename(cart.path)
-            if m.contains(carts, cart_name):
+            if m._contains(carts, cart_name):
                 throw(f"cart {cart_name} already found in export")
             
             target_ref = None
             if e(target_name):
-                target_ref = m.find(carts, target_name)
+                target_ref = m._find(carts, target_name)
             m.insert_impl(target_ref, cart_name, cart, **opts)
 
         else:
             if cart_name is None:
-                cart_name = m.default(carts)
-            ref = m.find(carts, cart_name)
+                cart_name = m._default(carts)
+            ref = m._find(carts, cart_name)
             
             if cart_op == ListOp.replace:
                 m.replace_impl(ref, cart, **opts)
             elif cart_op == ListOp.delete:
                 m.delete_impl(ref)
             elif cart_op == ListOp.rename:
-                if m.contains(carts, target_name):
+                if m._contains(carts, target_name):
                     throw(f"cart {target_name} already found in export")
                 
                 m.rename_impl(ref, target_name)
@@ -899,8 +899,24 @@ def create_cart_export(format, pico8_dat, **opts):
     else:
         throw(f"invalid format for listing: {format}")
 
-def write_or_edit_cart_export(path, cart, format, extra_carts=None, cart_args=None, cart_op=None, target=None, pico8_dat=None, **opts):
-    """Write or edit a CartExport in the given path, depenindg on cart_op/cart_args arguments"""
+def read_from_cart_export(path, format, cart_name=None, extra_carts=None, **opts):
+    """Read a cart or carts from a cart export"""
+    export = read_cart_export(path, format)
+
+    if e(extra_carts):
+        assert not cart_name
+        main_cart = None
+        for cart in export.list_carts():
+            if main_cart:
+                extra_carts.append(export.read_cart(cart, **opts))
+            else:
+                main_cart = export.read_cart(cart, **opts)
+        return main_cart
+    else:
+        return export.read_cart(cart_name, **opts)
+
+def write_to_cart_export(path, cart, format, extra_carts=None, cart_args=None, cart_op=None, target=None, pico8_dat=None, **opts):
+    """Create or edit a CartExport in the given path, depenindg on cart_op/cart_args arguments"""
     if cart_op is None:
         assert isinstance(pico8_dat, PodFile)
         export = create_cart_export(format, pico8_dat, cart=cart)

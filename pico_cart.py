@@ -622,7 +622,7 @@ def read_cart(path, format=None, **opts):
     elif format == CartFormat.lua:
         return read_cart_from_source(file_read_text(path), raw=True, path=path, **opts)
     elif format in (CartFormat.js, CartFormat.pod):
-        return read_cart_export(path, format).read_cart(**opts)
+        return read_from_cart_export(path, format, **opts)
     elif format in (None, CartFormat.auto):
         return read_cart_autodetect(path, **opts)
     else:
@@ -647,7 +647,7 @@ def write_cart(path, cart, format, **opts):
     elif format == CartFormat.code:
         file_write_text(path, write_cart_to_raw_source(cart, with_header=True, **opts))
     elif format in (CartFormat.js, CartFormat.pod, CartFormat.bin):
-        write_or_edit_cart_export(path, cart, format, **opts)
+        write_to_cart_export(path, cart, format, **opts)
     else:
         throw(f"invalid format for writing: {format}")
 
@@ -660,5 +660,5 @@ def get_bbs_cart_url(id):
 
     return "https://www.lexaloffle.com/bbs/get_cart.php?" + urlencode(params)
 
-from pico_export import read_cart_export, write_or_edit_cart_export
+from pico_export import read_from_cart_export, write_to_cart_export
 from pico_preprocess import preprocess_code

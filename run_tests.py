@@ -39,6 +39,7 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
         else:
             return None
 
+    start_test()
     prefix = "private_" if private else ""
     inpath = path_join(prefix + ("test_output" if from_output else "test_input"), input)
     outpath = path_join(prefix + "test_output", output)
