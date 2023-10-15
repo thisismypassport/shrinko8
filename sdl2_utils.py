@@ -8,6 +8,9 @@ class BlendMode(Enum):
 class Color(Tuple):
     r = g = b = ...; a = 0xff
 
+    def set_a(m, a):
+        return Color(m.r, m.g, m.b, a)
+
 class PixelFormat(Enum):
     rgba8 = "RGBA"
     bgra8 = ("RGBA", "BGRA")

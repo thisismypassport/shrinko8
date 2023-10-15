@@ -526,10 +526,13 @@ function applyCounts(stdouterr) {
     for (let line of stdouterr.split("\n")) {
         let tokens = line.trim().split(":");
         if (tokens.length >= 5 && tokens[0] == "count") {
-            counts[tokens[2]] = tokens[3]
+            let type = tokens[2];
+            if (!counts[type]) {
+                counts[type] = tokens[3]
 
-            let percent = tokens[3] / tokens[4] * 100;
-            percents[tokens[2]] = percent.toFixed(percent >= 95 ? 2 : 0) + "%";
+                let percent = tokens[3] / tokens[4] * 100;
+                percents[type] = percent.toFixed(percent >= 95 ? 2 : 0) + "%";
+            }
         } else {
             rest.push(line);
         }

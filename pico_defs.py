@@ -71,22 +71,28 @@ class Memory(bytearray):
         i, high = ix
         m.set8_bits(i, 4 if high else 0, 0xf, value)
 
-def mem_tile_addr(x, y):
-    """Convert an (x,y) coord to a tile address, for use with Memory.get/set4"""
-    return y * 0x40 + (x >> 1), (x & 1)
+k_mem_sprites_addr = 0
+k_mem_map_addr = 0x2000
+k_mem_flag_addr = 0x3000
+k_mem_music_addr = 0x3100
+k_mem_sfx_addr = 0x3200
+
+def mem_sprite_addr(x, y):
+    """Convert an (x,y) coord to a sprite address, for use with Memory.get/set4"""
+    return k_mem_sprites_addr + y * 0x40 + (x >> 1), (x & 1)
     
 def mem_map_addr(x, y):
     """Convert an (x,y) coord to a map address"""
     if y >= 0x20: y -= 0x40  # in effect
-    return 0x2000 + y * 0x80 + x
+    return k_mem_map_addr + y * 0x80 + x
 
 def mem_flag_addr(tile, y=0):
-    """Convert a tile number to the tile's flags address"""
-    return 0x3000 + y * 0x80 + tile
+    """Convert a tile number to the sprite's flags address"""
+    return k_mem_flag_addr + y * 0x80 + tile
 
 def mem_music_addr(music, ch):
     """Returns the address of the given channel of the given music"""
-    return 0x3100 + music * 0x4 + ch
+    return k_mem_music_addr + music * 0x4 + ch
     
 def mem_sfx_addr(sound, note):
     """Return the address of the given note of the given sfx"""
@@ -147,9 +153,6 @@ k_palette = [
     Color(0xFF, 0x6E, 0x59, 0xff),
     Color(0xFF, 0x9D, 0x81, 0xff),
 ]
-
-# maps color to pico8 palette index
-k_palette_map = {color: i for i, color in enumerate(k_palette)}
 
  # the pico8 character set
 k_charset = [

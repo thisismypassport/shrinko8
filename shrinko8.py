@@ -2,12 +2,12 @@
 from utils import *
 from pico_process import PicoContext, process_code, CartSource, CustomPreprocessor, ErrorFormat
 from pico_compress import write_code_size, write_compressed_size, CompressionTracer
-from pico_cart import Cart, CartFormat, read_cart, write_cart, get_bbs_cart_url
+from pico_cart import Cart, CartFormat, read_cart, write_cart, get_bbs_cart_url, merge_cart
 from pico_export import read_cart_export, read_pod_file, ListOp
 from pico_tokenize import k_hint_split_re
 import argparse
 
-k_version = 'v1.1.2d'
+k_version = 'v1.1.2e'
 
 def SplitBySeps(val):
     return k_hint_split_re.split(val)
@@ -18,7 +18,10 @@ def EnumFromStr(enum_type):
     cvt.__name__ = enum_type.__name__
     return cvt
 
-def EnumList(list):
+def EnumList(enum_type, pred=None):
+    list = enum_type._values
+    if pred:
+        list = filter(lambda name: pred(enum_type(name)), list)
     return ", ".join(str.replace("_", "-") for str in list)
 
 def ParsableCountHandler(prefix, name, size, limit):
@@ -26,12 +29,14 @@ def ParsableCountHandler(prefix, name, size, limit):
 
 extend_arg = "extend" if sys.version_info >= (3,8) else None
 
+k_def_sections = ("lua", "gfx", "map", "gff", "sfx", "music", "label")
+
 parser = argparse.ArgumentParser()
 parser.add_argument("input", help="input file, can be in any format. ('-' for stdin)", nargs='?')
 parser.add_argument("additional_inputs", help="extra input files. (for use when creating exports)", nargs='*')
 parser.add_argument("output", help="output file. ('-' for stdout)", nargs='?')
-parser.add_argument("-f", "--format", type=EnumFromStr(CartFormat), help="output cart format {%s}" % EnumList(CartFormat.output_names))
-parser.add_argument("-F", "--input-format", type=EnumFromStr(CartFormat), help="input cart format {%s}" % EnumList(CartFormat.input_names))
+parser.add_argument("-f", "--format", type=EnumFromStr(CartFormat), help="output cart format {%s}" % EnumList(CartFormat, lambda e: e.is_output()))
+parser.add_argument("-F", "--input-format", type=EnumFromStr(CartFormat), help="input cart format {%s}" % EnumList(CartFormat, lambda e: e.is_input()))
 parser.add_argument("-u", "--unicode-caps", action="store_true", help="write capitals as italicized unicode characters (better for copy/paste)")
 
 pgroup = parser.add_argument_group("minify options")
@@ -60,7 +65,7 @@ pgroup.add_argument("--no-lint-duplicate", action="store_true", help="don't prin
 pgroup.add_argument("--no-lint-undefined", action="store_true", help="don't print lint warnings on undefined variables")
 pgroup.add_argument("--no-lint-fail", action="store_true", help="create output cart even if there were lint warnings")
 pgroup.add_argument("--lint-global", type=SplitBySeps, action=extend_arg, help="don't print lint warnings for these globals (same as '--lint:' comment)")
-pgroup.add_argument("--error-format", type=EnumFromStr(ErrorFormat), help="how to format lint warnings & compilation errors {%s}" % EnumList(ErrorFormat._values))
+pgroup.add_argument("--error-format", type=EnumFromStr(ErrorFormat), help="how to format lint warnings & compilation errors {%s}" % EnumList(ErrorFormat))
 
 pgroup = parser.add_argument_group("count options")
 pgroup.add_argument("-c", "--count", action="store_true", help="enable printing token count, character count & compressed size")
@@ -76,19 +81,22 @@ pgroup.add_argument("--unminify-indent", type=int, help="indentation size when u
 pgroup = parser.add_argument_group("misc. options")
 pgroup.add_argument("-s", "--script", action="append", help="manipulate the cart via a custom python script - see README for api details")
 pgroup.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
-pgroup.add_argument("--label", help="path to image to use as the label when creating png carts (default: taken from __label__ like pico8 does)")
-pgroup.add_argument("--title", help="title to use when creating png carts (default: taken from first two comments like pico8 does)")
-pgroup.add_argument("--extra-output", nargs='+', action="append", metavar=("OUTPUT", "FORMAT"),
-                    help="Additional output file to produce (and optionally, the format to use)")
+pgroup.add_argument("--merge", nargs='+', action="append", metavar=("INPUT SECTIONS [FORMAT]", ""),
+                    help="file to merge the specified sections from, where SECTIONS is a comma-separated list of sections {%s,...}" % ",".join(k_def_sections))
+pgroup.add_argument("--label", help="image to use as the label (default: taken from __label__ like pico8 does)")
+pgroup.add_argument("--title", action="append", 
+                    help="text to use as the title (default: taken from first two comments like pico8 does). Use twice for a second line")
+pgroup.add_argument("--extra-output", nargs='+', action="append", metavar=("OUTPUT [FORMAT]", ""),
+                    help="additional output file to produce (and optionally, the format to use)")
 
-pgroup = parser.add_argument_group("cart export options (for use with the formats: %s)" % EnumList(CartFormat.export_names))
+pgroup = parser.add_argument_group("cart export options (for use with the formats: %s)" % EnumList(CartFormat, lambda e: e.is_export()))
 pgroup.add_argument("--list", action="store_true", help="list all cart names inside the export")
 pgroup.add_argument("--dump", help="dump all carts inside the export to the specified folder. -f can be used to specify the output format")
 pgroup.add_argument("--cart", help="name of cart to extract from the export")
 pgroup.add_argument("--pico8-dat", help="path to the pico8.dat file in the pico8 directory. needed to create new exports")
 pgroup.add_argument("--output-cart", help="override name to use for the main cart in the export")
-pgroup.add_argument("--extra-input", nargs='+', action="append", metavar=("INPUT", "FORMAT NAME"),
-                    help="Additional input file to place in export (and optionally, the format of the file & the name to use for it in the export)")
+pgroup.add_argument("--extra-input", nargs='+', action="append", metavar=("INPUT [FORMAT [NAME]]", ""),
+                    help="additional input file to place in export (and optionally, the format of the file & the name to use for it in the export)")
 pgroup.add_argument("--insert-cart", nargs="*", metavar=("NAME", "BEFORE"), help="add the cart to an existing export. (The default name is the input cart's name)")
 pgroup.add_argument("--replace-cart", nargs="*", metavar=("NAME"), help="replace the cart with the given name (Default: main cart) in the export")
 pgroup.add_argument("--delete-cart", nargs=1, help="delete the cart with the given name from the export")
@@ -113,12 +121,14 @@ pgroup.add_argument("--url", action="store_true", help="interpret input as a URL
 pgroup.add_argument("--ignore-hints", action="store_true", help="ignore shrinko8 hint comments")
 pgroup.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
 pgroup.add_argument("--dump-misc-too", action="store_true", help="causes --dump to also dump misc. files inside the export")
-pgroup.add_argument("--output-sections", type=SplitBySeps, action=extend_arg, help="only output the specified p8 sections (lua,gfx,...)")
+pgroup.add_argument("--output-sections", type=SplitBySeps, action=extend_arg, help="only output the specified p8 sections {%s,...}" % ",".join(k_def_sections))
 pgroup.add_argument("--export-name", help="name to use for the export (by default, taken from output name)")
+pgroup.add_argument("--template-image", help="template image to use for png carts, instead of the default pico8 template")
+pgroup.add_argument("--template-only", action="store_true", help="when creating the png cart, ignore the label & title, using just the template")
 
 def default_format(input, for_output=False):
     ext = path_extension(input)[1:].lower()
-    if ext in CartFormat.ext_names:
+    if ext in CartFormat._values and CartFormat(ext).is_ext():
         return CartFormat(ext)
     elif for_output:
         return CartFormat.p8
@@ -262,19 +272,37 @@ def main_inner(raw_args):
         return 2
 
 def handle_input(args):
-    main_cart = None
-    extra_carts = []
+    output_is_export = args.format and args.format.is_export()
 
-    all_inputs = [(args.input, args.input_format, None)]
+    # read the main cart
+    extra_carts = []
+    try:
+        if args.list or args.dump:
+            export = read_cart_export(args.input, args.input_format)
+            if args.list:
+                for entry in export.list_carts():
+                    print(entry)
+            else:
+                dir_ensure_exists(args.dump)
+                export.dump_contents(args.dump, default(args.format, CartFormat.p8), misc=args.dump_misc_too)
+            return None, None
+
+        preprocessor = CustomPreprocessor() if args.custom_preprocessor else None
+        main_cart = read_cart(args.input, args.input_format, size_handler=args.input_count, 
+                              debug_handler=args.trace_input_compression, cart_name=args.cart,
+                              keep_compression=args.keep_compression, preprocessor=preprocessor,
+                              extra_carts=extra_carts if output_is_export and not args.cart else None)
+    except OSError as err:
+        throw(f"cannot read cart: {err}")
     
+    # collect additional carts to read
     if args.additional_inputs:
         if not args.extra_input:
             args.extra_input = []
         for input in args.additional_inputs:
             args.extra_input.append((input,))
-    
-    output_is_export = str(args.format) in CartFormat.export_names
 
+    extra_inputs = []
     if args.extra_input:
         if not output_is_export:
             throw("--extra-input can only be used when creating exports")
@@ -282,39 +310,39 @@ def handle_input(args):
         if args.extra_input:
             for extra in args.extra_input:
                 if len(extra) == 1:
-                    all_inputs.append((extra[0], default_format(extra[0], for_output=True), None))
+                    extra_inputs.append((extra[0], default_format(extra[0], for_output=True), None, None))
                 elif 3 >= len(extra) >= 2:
-                    all_inputs.append((extra[0], CartFormat(extra[1]), list_get(extra, 2)))
+                    extra_inputs.append((extra[0], CartFormat(extra[1]), list_get(extra, 2), None))
                 else:
                     throw("too many arguments to --extra-output")
-    
-    for input, input_format, input_name in all_inputs:
-        try:
-            if args.list or args.dump:
-                export = read_cart_export(input, input_format)
-                if args.list:
-                    for entry in export.list_carts():
-                        print(entry)
-                else:
-                    dir_ensure_exists(args.dump)
-                    export.dump_contents(args.dump, default(args.format, CartFormat.p8), misc=args.dump_misc_too)
-                return None, None
 
-            preprocessor = CustomPreprocessor() if args.custom_preprocessor else None
-            cart = read_cart(input, input_format, size_handler=args.input_count, 
-                             debug_handler=args.trace_input_compression, cart_name=args.cart,
-                             keep_compression=args.keep_compression, preprocessor=preprocessor,
-                             extra_carts=extra_carts if output_is_export and not args.cart else None)
-            
-            if input_name:
-                cart.name = input_name
-
-            if main_cart:
-                extra_carts.append(cart)
+    if args.merge:
+        for merge in args.merge:
+            if len(merge) == 2:
+                extra_inputs.append((merge[0], default_format(merge[0]), None, SplitBySeps(merge[1])))
+            elif len(merge) == 3:
+                extra_inputs.append((merge[0], CartFormat(merge[2]), None, SplitBySeps(merge[1])))
             else:
-                main_cart = cart
-        except OSError as err:
-            throw(f"cannot read cart: {err}")
+                throw("too many or few arguments to --merge (must be 2 or 3)")
+    
+    if args.label:
+        extra_inputs.append((args.label, CartFormat.label, None, ("label",)))
+    if args.title:
+        main_cart.meta["title"] = args.title
+
+    # read additional carts
+    for input, input_format, input_name, merge_sections in extra_inputs:
+        preprocessor = CustomPreprocessor() if args.custom_preprocessor else None
+        cart = read_cart(input, input_format,
+                         keep_compression=args.keep_compression, preprocessor=preprocessor)
+        
+        if input_name:
+            cart.name = input_name
+        
+        if e(merge_sections):
+            merge_cart(main_cart, cart, merge_sections)
+        else:
+            extra_carts.append(cart)
     
     return main_cart, extra_carts
 
@@ -355,7 +383,7 @@ def handle_processing(args, main_cart, extra_carts):
         
         if args.count:
             write_code_size(cart, handler=args.count)
-            if not (args.output and str(args.format) not in CartFormat.src_names) and not args.no_count_compress: # else, will be done in write_cart
+            if not (args.output and args.format.is_src()) and not args.no_count_compress: # else, will be done in write_cart
                 write_compressed_size(cart, handler=args.count, fast_compress=args.fast_compression, debug_handler=args.trace_compression)
         
         if args.version:
@@ -392,7 +420,7 @@ def handle_output(args, cart, extra_carts):
     
     for output, format in all_outputs:
         target_export, pico8_dat = None, None
-        if str(format) in CartFormat.export_names:
+        if format.is_export():
             if e(output_cart_op):
                 try:
                     target_export = read_cart_export(output, format)
@@ -412,7 +440,8 @@ def handle_output(args, cart, extra_carts):
                        unicode_caps=args.unicode_caps, old_compress=args.old_compression,
                        force_compress=args.count or args.force_compression,
                        fast_compress=args.fast_compression, keep_compression=args.keep_compression,
-                       screenshot_path=args.label, title=args.title, sections=args.output_sections,
+                       template_image=args.template_image, template_only=args.template_only,
+                       sections=args.output_sections,
                        cart_op=output_cart_op, cart_name=output_cart_name, target_name=output_cart_target,
                        target_export=target_export, export_name=args.export_name, pico8_dat=pico8_dat)
         except OSError as err:

@@ -607,8 +607,8 @@ class PodExport(CartExport, PodFile):
                                 y += 1
 
                 elif pod_i == 1 and i == 6:
-                    if cart and cart.screenshot:
-                        content = create_screenshot_surface(cart.screenshot)
+                    if cart and cart.label:
+                        content = create_screenshot_surface(cart.label)
 
                 new_pod.append_content(e.name, content, compress=isinstance(content, Surface))
 
@@ -786,20 +786,20 @@ class FullExport(CartExport):
         if not basename:
             basename = path_basename_no_extension(path)
 
-        screenshot_bmpdata = None
-        screenshot_icnsdata = None
-        screenshot_png = None
-        screenshot_url = ""
-        if m.cart and m.cart.screenshot:
-            screenshot = create_screenshot_surface(m.cart.screenshot)
-            screenshot_bmpdata = screenshot.to_data(PixelFormat.bgra8, flip=True)
-            screenshot_icnsdata = screenshot.to_data(PixelFormat.rgb8)
-            screenshot_png = screenshot.convert(PixelFormat.rgb8).save()
-            screenshot_url = "data:image/png;base64," + base64.b64encode(screenshot_png).decode()
+        label_bmpdata = None
+        label_icnsdata = None
+        label_png = None
+        label_url = ""
+        if m.cart and m.cart.label:
+            label = create_screenshot_surface(m.cart.label)
+            label_bmpdata = label.to_data(PixelFormat.bgra8, flip=True)
+            label_icnsdata = label.to_data(PixelFormat.rgb8)
+            label_png = label.convert(PixelFormat.rgb8).save()
+            label_url = "data:image/png;base64," + base64.b64encode(label_png).decode()
         
         html_data = m.html_pod.find_named("src/shell.html").decode()
         html_data = html_data.replace("##js_file##", "%s.js" % basename)
-        html_data = html_data.replace("##label_file##", screenshot_url)
+        html_data = html_data.replace("##label_file##", label_url)
         
         html_path = path_join(path, "%s_html" % basename)
         dir_ensure_exists(html_path)
@@ -813,10 +813,10 @@ class FullExport(CartExport):
         file_write_text(path_join(html_path, "%s.js" % basename), m.wjs.text.replace("pico8_wasm.wasm", "%s.wasm" % basename))
 
         exe_data = m.bin_pod.find_named("bin/pico8.exe")
-        if screenshot_bmpdata:
+        if label_bmpdata:
             exe_icon_i = m.find_icon_offset_in_exe(exe_data)
             if e(exe_icon_i):
-                exe_data = str_replace_at(exe_data, exe_icon_i, 0x10000, screenshot_bmpdata)
+                exe_data = str_replace_at(exe_data, exe_icon_i, 0x10000, label_bmpdata)
             else:
                 eprint("couldn't find icon in exe, not changing it")
 
@@ -829,18 +829,18 @@ class FullExport(CartExport):
         linux_dir = "%s_linux" % basename
         with ZipFile(path_join(path, linux_dir + ".zip"), "w") as linux_zip:
             zip_write(linux_zip, linux_dir, "data.pod", m.pod.data)
-            if screenshot_png: zip_write(linux_zip, linux_dir, "%s.png" % basename, screenshot_png)
+            if label_png: zip_write(linux_zip, linux_dir, "%s.png" % basename, label_png)
             zip_write(linux_zip, linux_dir, basename, m.bin_pod.find_named("bin/pico8_dyn.amd64"), exec=True)
         
         raspi_dir = "%s_raspi" % basename
         with ZipFile(path_join(path, raspi_dir + ".zip"), "w") as raspi_zip:
             zip_write(raspi_zip, raspi_dir, "data.pod", m.pod.data)
-            if screenshot_png: zip_write(raspi_zip, raspi_dir, "%s.png" % basename, screenshot_png)
+            if label_png: zip_write(raspi_zip, raspi_dir, "%s.png" % basename, label_png)
             for suffix, content in m.bin_pod.find_prefix("builds/pi_builds/pico8_player"):
                 zip_write(raspi_zip, raspi_dir, basename + suffix, content, exec=True)
 
-        if screenshot_icnsdata:
-            icns_data = m.create_icns_data(screenshot_icnsdata) # doesn't seem to use "builds/osx_builds/pico8.icns" in the pod
+        if label_icnsdata:
+            icns_data = m.create_icns_data(label_icnsdata) # doesn't seem to use "builds/osx_builds/pico8.icns" in the pod
         else:
             icns_data = m.bin_pod.find_named("builds/osx_builds/pico8.icns")
 

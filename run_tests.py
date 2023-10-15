@@ -147,7 +147,14 @@ def run():
     run_test("test-ob", "test.p8", "test-ob.p8", "--focus-compressed", "--minify", pico8_output_val="DONE")
     run_test("test-oc", "test.p8", "test-oc.p8", "--focus-chars", "--minify", pico8_output_val="DONE")
     run_test("globasmemb", "globasmemb.p8", "globasmemb.p8", "--minify", pico8_output_val="OK")
-    run_test("p82png", "testcvt.p8", "testcvt.png")
+    if run_test("p82png", "testcvt.p8", "testcvt.png",
+                "--extra-output", "test_output/testcvt.sprites.png", "spritesheet",
+                "--extra-output", "test_output/testcvt.label.png", "label", 
+                extra_outputs=["testcvt.sprites.png", "testcvt.label.png"]):
+        run_test("merge", "default.p8", "merged.p8",
+                 "--label", "test_output/testcvt.label.png", "--title", "a fine title", "--title", "by you",
+                 "--merge", "test_output/testcvt.sprites.png", "gfx", "spritesheet",
+                 "--merge", "test_input/default2.p8", "map,sfx,music,gff")
     run_test("test_png", "test.png", "test.png", "--minify")
     run_test("png2p8", "test.png", "testcvt.p8")
     if run_test("compress", "testcvt.p8", "testtmp.png", "--force-compression", check_output=False):

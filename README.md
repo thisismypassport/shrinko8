@@ -451,6 +451,8 @@ Shrinko8 supports multiple cart formats, and allows converting between them:
 * clip - Pico-8 clipboard format (i.e. [cart]...[/cart])
 * url - Pico-8 education version url (code & gfx only)
 * js, pod - Exported formats, see [section on how to read or write them](#reading-and-writing-exported-formats).
+* label - A 128x128 image of a cart's label (label only)
+* spritesheet - A 128x128 image of a cart's spritesheet (gfx only)
 * auto - try to determine automatically from content
 
 E.g:
@@ -474,15 +476,31 @@ Specifying the format is also useful when using the standard input/output (via `
 
 `python shrinko8.py path-to-input.p8 - --minify --format lua` (This prints minified lua to stdout)
 
-You can convert a cart to multiple formats at once:
+You can convert a cart to multiple formats at once using `--extra-output path [format]`:
 
-`python shrinko8.py path-to-input.p8 path-to-output.png --extra-output path-to-output.p8  --extra-output path-to-output.rom`
+`python shrinko8.py path-to-input.p8 path-to-output.png --extra-output path-to-output.p8 --extra-output path-to-output.rom`
+
+You can additionally export the cart's spritesheet and label:
+
+`python shrinko8.py path-to-input.p8 path-to-output.png --extra-output path-to-spritesheet.png spritesheet --extra-output path-to-label.png label`
 
 ## Specifying custom labels & titles
 
 Normally, shrinko8 will take the label and title (if any) from the input cart, same as pico8 does.
 
 However, it is also possible to override the label from a custom 128x128 screenshot via `--label <path>` and the title via `--title "some title"`
+
+## Merging multiple carts into one
+
+You can tell Shrinko8 to merge specific sections from other carts into the input cart using `--merge path sections [format]`.
+
+The following example takes the label from `label-cart.p8` and sfx & music from `sounds-cart.p8`:
+
+`python shrinko8.py path-to-input.p8 path-to-output.png --merge label-cart.p8 label --merge sounds-cart.p8 sfx,music`
+
+The following example imports the spritesheet from a 128x128 image at `spritesheet.png`
+
+`python shrinko8.py path-to-input.p8 path-to-output.png --merge spritesheet.png gfx spritesheet`
 
 ## Reading and writing exported formats
 
