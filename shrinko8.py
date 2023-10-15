@@ -97,6 +97,16 @@ pgroup.add_argument("--pico8-dat", help="path to the pico8.dat file in the pico8
 pgroup.add_argument("--output-cart", help="override name to use for the main cart in the export")
 pgroup.add_argument("--extra-input", nargs='+', action="append", metavar=("INPUT [FORMAT [NAME]]", ""),
                     help="additional input file to place in export (and optionally, the format of the file & the name to use for it in the export)")
+
+pgroup = parser.add_argument_group("other interesting options (semi-undocumented)")
+pgroup.add_argument("--template-image", help="template image to use for png carts, instead of the default pico8 template")
+pgroup.add_argument("--template-only", action="store_true", help="when creating the png cart, ignore the label & title, using just the template")
+pgroup.add_argument("--dump-misc-too", action="store_true", help="causes --dump to also dump misc. files inside the export")
+pgroup.add_argument("--version", action="store_true", help="print version of cart. (if no cart is provided - print shrinko8 version and exit)")
+pgroup.add_argument("--bbs", action="store_true", help="interpret input as a bbs cart id, e.g. '#...' and download it from the bbs")
+pgroup.add_argument("--url", action="store_true", help="interpret input as a URL, and download it from the internet")
+
+pgroup = parser.add_argument_group("export editing options (semi-undocumented)")
 pgroup.add_argument("--insert-cart", nargs="*", metavar=("NAME", "BEFORE"), help="add the cart to an existing export. (The default name is the input cart's name)")
 pgroup.add_argument("--replace-cart", nargs="*", metavar=("NAME"), help="replace the cart with the given name (Default: main cart) in the export")
 pgroup.add_argument("--delete-cart", nargs=1, help="delete the cart with the given name from the export")
@@ -110,21 +120,15 @@ pgroup.add_argument("--old-compression", action="store_true", help="compress wit
 pgroup.add_argument("--trace-compression", help="trace the compressed symbols and their cost into this file")
 pgroup.add_argument("--trace-input-compression", help="trace the input's compressed symbols and their cost into this file")
 
-pgroup = parser.add_argument_group("other semi-undocumented options")
+pgroup = parser.add_argument_group("other uninteresting options (semi-undocumented)")
 pgroup.add_argument("--builtin", type=SplitBySeps, action=extend_arg, help="treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
 pgroup.add_argument("--not-builtin", type=SplitBySeps, action=extend_arg, help="do not treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
 pgroup.add_argument("--global-builtins-only", action="store_true", help="assume all builtins are global, corresponds to pico8's -global_api option")
 pgroup.add_argument("--local-builtin", type=SplitBySeps, action=extend_arg, help="treat identifier(s) as a local builtin (probably no use outside of testing)")
-pgroup.add_argument("--version", action="store_true", help="print version of cart. (if no cart is provided - print shrinko8 version and exit)")
-pgroup.add_argument("--bbs", action="store_true", help="interpret input as a bbs cart id, e.g. '#...' and download it from the bbs")
-pgroup.add_argument("--url", action="store_true", help="interpret input as a URL, and download it from the internet")
 pgroup.add_argument("--ignore-hints", action="store_true", help="ignore shrinko8 hint comments")
 pgroup.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
-pgroup.add_argument("--dump-misc-too", action="store_true", help="causes --dump to also dump misc. files inside the export")
 pgroup.add_argument("--output-sections", type=SplitBySeps, action=extend_arg, help="only output the specified p8 sections {%s,...}" % ",".join(k_def_sections))
 pgroup.add_argument("--export-name", help="name to use for the export (by default, taken from output name)")
-pgroup.add_argument("--template-image", help="template image to use for png carts, instead of the default pico8 template")
-pgroup.add_argument("--template-only", action="store_true", help="when creating the png cart, ignore the label & title, using just the template")
 
 def default_format(input, for_output=False):
     ext = path_extension(input)[1:].lower()

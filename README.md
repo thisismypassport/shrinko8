@@ -504,6 +504,10 @@ The following example imports the spritesheet from a 128x128 image at `spriteshe
 
 ## Reading and writing exported formats
 
+Shrinko8 supports reading and writing exported formats. Creating exports through Shrinko8 can be useful in cases when Pico8's compression algorithm isn't able to fit your cart into the export, while Shrinko8's can.
+
+Creating an export requires you to have a copy of Pico8 and provide the pico8.dat file that comes with it as an argument to Shrinko8, as seen [below](#creating-exports).
+
 ### Reading exports
 
 Shrinko8 can read the following exports:
@@ -537,20 +541,6 @@ You can create a multi-cart export by supplying additional input carts:
 If you need to explicitly specify the type of each additional input cart, you can instead use `--extra-input`
 
 Also, if both the input and output are exports, all carts from the input get placed in the output, unless `--cart` is explicitly specified.
-
-### Modifying exports
-
-For advanced usecases, you can also modify an existing export. (bin)
-
-To do this, you can pass one of the below options:
-* `--insert-cart` to insert a new cart to the export. (The name is taken from the input cart)
-* `--insert-cart <name>` to insert a new cart to the export and give it a specific name.
-* `--replace-cart <name>` to replace the cart with the specified name
-* `--replace-cart` to replace the main cart
-* `--delete-cart <name>` to delete the cart with the specified name (no need to pass input cart)
-* `--rename-cart <name> <newname>` to rename the cart to the specified name (no need to pass input cart)
-
-Note that modifying existing exports doesn't require `--pico8-dat` - only creating exports does.
 
 # Unminification
 
