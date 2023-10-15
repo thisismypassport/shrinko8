@@ -15,7 +15,7 @@ local e="key1:key2#~~key3,","!key1_still$key2█ア+123-key123\nif\nif◝"do loc
 e=setmetatable({preserved3=3},my_meta)?e["preserved3"]
 g_my_table={preserved1=1,preserved2=2}g_my_table.preserved1+=1?g_my_table["preserved1"]
 g_my_table=setmetatable({preserved3=3},my_meta)?g_my_table["preserved3"]
-local e={assert=assert,add=add}do local _ENV=e assert(add({},1)==1)end do local _ENV={assert=assert,add=add}assert(add({},1)==1)end local e for _ENV in all{{x=1,y=5},{x=2,y=6}}do x+=y+y*x e=deli{2}end assert(e==2)local e={key1=1,key2=2,other=3}e.key1=e.other circfill,rectfill=circfill,rectfill circfill(120,126,3)circfill(126,120,3)rectfill(120,120,123,123)rectfill(123,123,126,126)while 1==0do end while 1==0do sin=cos cos=sin end if 1==2then end if 1==2then sin=cos cos=sin end local e={1},{1,2,3,4}local e,n=1~=2,1,1.2345,4660,4660.33777,-1,-1.2345,-4660.33777,32776,0xf000.f,-39322,-65535.99999local n="hi","hello",'"hi"',"'hello'",'"hi"',"'hi'","","","a\nb","\\","\0¹²³⁴⁵⁶","¹²³⁴⁵⁶⁷","\\\\\\\\\\\\","\n\n\n\n\n\n","¹²³⁴⁵⁶]]"local n=[[]],[[hi]],[['hi']],[["'hi'"]],[["""""'''''hi'''''"""""]],[[♥♥♥♥]],[[]],[[
+local e={assert=assert,add=add}do local _ENV=e assert(add({},1)==1)end do local _ENV={assert=assert,add=add}assert(add({},1)==1)end local e for _ENV in all{{x=1,y=5},{x=2,y=6}}do x+=y+y*x e=deli{2}end assert(e==2)local e={key1=1,key2=2,other=3}e.key1=e.other while 1==0do end while 1==0do sin=cos cos=sin end if 1==2then end if 1==2then sin=cos cos=sin end local e={1},{1,2,3,4}local e,n=1~=2,1,1.2345,4660,4660.33777,-1,-1.2345,-4660.33777,32776,0xf000.f,-39322,-65535.99999local n="hi","hello",'"hi"',"'hello'",'"hi"',"'hi'","","","a\nb","\\","\0¹²³⁴⁵⁶","¹²³⁴⁵⁶⁷","\\\\\\\\\\\\","\n\n\n\n\n\n","¹²³⁴⁵⁶]]"local n=[[]],[[hi]],[['hi']],[["'hi'"]],[["""""'''''hi'''''"""""]],[[♥♥♥♥]],[[]],[[
 
 ]],[==[\\\\\\\\\
 
@@ -23,6 +23,6 @@ local e={assert=assert,add=add}do local _ENV=e assert(add({},1)==1)end do local 
 ?((~(((((((tonum(((3or 4)and 5)~=2)|1)~2)&3)>>1)..1)-(1+3))*3))^2)^1
 local e=({})[1],(function()end)()local n,o,f,e,i=sin(1,2),cos((cos())),(cos((cos()))),{ord=ord,pal=pal}local e=ord"123",pal{1,2},e:ord("ord"),e:pal({1,2}),sin(1)local c={ord"1",[2]=3,x=4,(ord"1")}e+=1n,o=sin(1,2),cos((cos()))f,i=(cos((cos())))function xxx()return 1,2,ord"1",(ord"1")end if 1==2then elseif 1==2then else end while 1==2do end repeat until 1==1for e in(all{})do end print("test"..@16 .."str")if true then?"sh1"
 end if true then?"sh2"
-end if true then if false then else print"sh3"end end if true then if false then else print"sh4"end end l="renaming bug"function fff()local e,n,o,f,i,c,a,d,r,t,h,u,s,x,k,y,v,p,b,w,g,_,m,j,q,z,e1 return l end?fff()
+end if true then if false then else print"sh3"end end if true then if false then else print"sh4"end end l="renaming bug"function fff()local e,n,o,f,i,c,a,d,r,t,h,u,s,x,k,y,v,p,b,w,g,_,m,j,q,z,ee return l end?fff()
 x=0 x=1function old_name(e,l)return e.old_member,l.old_member end function old_name(e,l,n)local l,n return e.old_member end function ggg(e,l,n,o,f,i)return e+l+n+o+f+i end?ggg(1,2,4,8,16,32)
 done=?"END!"

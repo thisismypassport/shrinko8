@@ -91,10 +91,6 @@ assert(e == 2)
 local e = {key1=1,key2=2, other=3}
 e.key1 = e. other
 
-circfill, rectfill = circfill, rectfill
-circfill(120,126,3) circfill(126,120,3)
-rectfill(120,120,123,123) rectfill(123,123,126,126)
-
 while (1==0);
 while (1==0) sin=cos cos=sin
 if (1 == 2);

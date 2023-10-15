@@ -72,9 +72,7 @@ deli_result=deli{2}
 end
 assert(deli_result==2)
 local thing={key1=1,key2=2,other=3}
-thing.key1,circfill,rectfill=thing.other,circfill,rectfill
-circfill(120,126,3)circfill(126,120,3)
-rectfill(120,120,123,123)rectfill(123,123,126,126)
+thing.key1=thing.other
 while(1==0);
 while(1==0)sin=cos cos=sin
 if(1==2);

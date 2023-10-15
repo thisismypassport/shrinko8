@@ -104,12 +104,6 @@ assert(deli_result == 2)
 -- overrides
 local --[[preserve-keys]]thing = {key1 = 1, key2 = 2, --[[member]]other = 3}
 thing.key1 = thing.--[[member]]other
--- semi-automatic pico8 global renaming
-circfill, rectfill = --[[preserve]]circfill, --[[preserve]]rectfill
-circfill(120, 126, 3)
-circfill(126, 120, 3)
-rectfill(120, 120, 123, 123)
-rectfill(123, 123, 126, 126)
 -- punct removal
 while 1 == 0 do
 end

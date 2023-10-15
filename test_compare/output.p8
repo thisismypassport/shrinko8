@@ -16,7 +16,7 @@ local e="e:l#~~i,","!t$h+123-u\nif\ns"do local _ENV={assert=assert}assert(true)e
 e=setmetatable({preserved3=3},f)?e["preserved3"]
 n={preserved1=1,preserved2=2}n.preserved1+=1?n["preserved1"]
 n=setmetatable({preserved3=3},f)?n["preserved3"]
-local e={assert=assert,add=add}do local _ENV=e assert(add({},1)==1)end do local _ENV={assert=assert,add=add}assert(add({},1)==1)end local e for _ENV in all{{o=1,f=5},{o=2,f=6}}do o+=f+f*o e=deli{2}end assert(e==2)local e={key1=1,key2=2,a=3}e.key1=e.a circfill,rectfill=circfill,rectfill circfill(120,126,3)circfill(126,120,3)rectfill(120,120,123,123)rectfill(123,123,126,126)while(1==0);
+local e={assert=assert,add=add}do local _ENV=e assert(add({},1)==1)end do local _ENV={assert=assert,add=add}assert(add({},1)==1)end local e for _ENV in all{{o=1,f=5},{o=2,f=6}}do o+=f+f*o e=deli{2}end assert(e==2)local e={key1=1,key2=2,a=3}e.key1=e.a while(1==0);
 while(1==0)sin=cos cos=sin
 if(1==2);
 if(1==2)sin=cos cos=sin

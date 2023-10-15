@@ -264,6 +264,12 @@ def rename_tokens(ctxt, root, rename_opts):
                 return None
 
         elif kind == VarKind.local:
+            if node.var.builtin and node.name not in preserved_globals:
+                # special case for when we wish to unpreserve a builtin local - turn it into a global
+                node.var = root.globals[node.name]
+                node.kind = VarKind.global_
+                return compute_effective_kind(node, node.kind, explicit=True)
+
             if node.var.implicit or node.var.builtin:
                 local_excludes[node.name].add(node.var)
                 return None

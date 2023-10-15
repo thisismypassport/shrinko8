@@ -15,7 +15,7 @@ local e="key1:key2#~~key3,","!key1_still$key2█ア+123-key123\nif\nif◝"do loc
 e=setmetatable({preserved3=3},my_meta)?e["preserved3"]
 g_my_table={preserved1=1,preserved2=2}g_my_table.preserved1+=1?g_my_table["preserved1"]
 g_my_table=setmetatable({preserved3=3},my_meta)?g_my_table["preserved3"]
-local e={assert=assert,add=add}do local _ENV=e assert(add({},1)==1)end do local _ENV={assert=assert,add=add}assert(add({},1)==1)end local e for _ENV in all{{x=1,y=5},{x=2,y=6}}do x+=y+y*x e=deli{2}end assert(e==2)local e={key1=1,key2=2,other=3}e.key1=e.other circfill,rectfill=circfill,rectfill circfill(120,126,3)circfill(126,120,3)rectfill(120,120,123,123)rectfill(123,123,126,126)while(1==0);
+local e={assert=assert,add=add}do local _ENV=e assert(add({},1)==1)end do local _ENV={assert=assert,add=add}assert(add({},1)==1)end local e for _ENV in all{{x=1,y=5},{x=2,y=6}}do x+=y+y*x e=deli{2}end assert(e==2)local e={key1=1,key2=2,other=3}e.key1=e.other while(1==0);
 while(1==0)sin=cos cos=sin
 if(1==2);
 if(1==2)sin=cos cos=sin

@@ -122,8 +122,7 @@ def run_stdout_test(name, input, *args, output=None, **kwargs):
 
 def run():
     if run_test("minify", "input.p8", "output.p8", "--minify",
-                "--preserve", "*.preserved_key,preserved_glob,preserving_obj.*",
-                "--no-preserve", "circfill,rectfill", pico8_output="output.p8.printh"):
+                "--preserve", "*.preserved_key,preserved_glob,preserving_obj.*", pico8_output="output.p8.printh"):
         run_test("unminify", "output.p8", "input-un.p8", "--unminify",
                  from_output=True, pico8_output="output.p8.printh")
     run_test("semiobfuscate", "input.p8", "output_semiob.p8", "--minify",
@@ -141,6 +140,8 @@ def run():
     run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify", "--focus-tokens",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename")
              # pico8_output="output.p8.printh" - broken by comment bug in pico8 v0.2.5g...
+    run_test("nopreserve", "nopreserve.p8", "nopreserve.p8", "--minify",
+             "--no-preserve", "circfill,rectfill", pico8_output_val="yep")
     if run_test("test", "test.p8", "test.p8", "--minify", pico8_output_val="DONE"):
         run_test("unmintest", "test.p8", "test-un.p8", "--unminify", from_output=True, pico8_output_val="DONE")
     run_test("test-ob", "test.p8", "test-ob.p8", "--focus-compressed", "--minify", pico8_output_val="DONE")
