@@ -2,12 +2,13 @@
 
 // Get the lowercase extension of a path
 function getLowExt(path) {
-    let match = path.match(/\.([^\.]+)$/);
+    let match = path.match(/\.([^\.\/]+)$/);
     return match ? match[1].toLowerCase() : "";
 }
 
-function getNoExt(path) {
-    let match = path.match(/(.*)\.[^\.]+$/);
+// Remove all extensions of a path
+function getWithoutAllExts(path) {
+    let match = path.match(/(.*?)\.[^\/]*$/);
     return match ? match[1] : path;
 }
 

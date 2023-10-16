@@ -575,7 +575,7 @@ class PodExport(CartExport, PodFile):
             super().dump_file(dest, fmt, misc, i, name, cdata)
             
     @classmethod
-    def create(cls, pico8_dat, cart=None, **_):
+    def create(cls, pico8_dat, cart=None, export_name="", **_):
         m = PodExport(PodFile.create().data)
 
         boot_cart = read_cart_from_source(pico8_dat.find_named(m.k_pod_names[0]).decode())
@@ -594,17 +594,16 @@ class PodExport(CartExport, PodFile):
                 content = e.content
 
                 if pod_i == 1 and i == 4:
-                    if cart:
-                        # this one may just be a bug...
-                        assert content.format.bpp == 8
-                        x, y = 0, 0
-                        pixels = content.pixels
-                        for ch in path_no_extension(cart.name):
-                            pixels[x, y] = ord(ch)
-                            x += 1
-                            if x == content.width:
-                                x = 0
-                                y += 1
+                    # this is the window title - it's reinterpreted to a bitmap
+                    assert content.format.bpp == 8
+                    x, y = 0, 0
+                    pixels = content.pixels
+                    for ch in export_name + "\0":
+                        pixels[x, y] = ord(ch)
+                        x += 1
+                        if x == content.width:
+                            x = 0
+                            y += 1
 
                 elif pod_i == 1 and i == 6:
                     if cart and cart.label:
@@ -621,8 +620,9 @@ class FullExport(CartExport):
         m.cart = cart
 
     @classmethod
-    def create(cls, pico8_dat, cart=None, export_name=None, **opts):
+    def create(cls, pico8_dat, cart=None, export_name="", **opts):
         opts["cart"] = cart
+        opts["export_name"] = export_name
 
         m = FullExport(pico8_dat, cart)
         m.html_pod = PodFile(pico8_dat.find_named("pod/f_html5.pod"))
@@ -783,8 +783,6 @@ class FullExport(CartExport):
 
         dir_ensure_exists(path)
         basename = m.export_name
-        if not basename:
-            basename = path_basename_no_extension(path)
 
         label_bmpdata = None
         label_icnsdata = None
@@ -920,6 +918,9 @@ def read_from_cart_export(path, format, cart_name=None, extra_carts=None, **opts
 def write_to_cart_export(path, cart, format, extra_carts=None, cart_name=None, target_name=None, cart_op=None, 
                          target_export=None, export_name=None, pico8_dat=None, **opts):
     """Create or edit a CartExport in the given path, depending on cart_op/cart_args arguments"""
+    if not export_name:
+        export_name = path_basename_no_extension(path)
+
     if cart_op is None:
         assert isinstance(pico8_dat, PodFile)
         export = create_cart_export(format, pico8_dat, cart=cart, export_name=export_name)

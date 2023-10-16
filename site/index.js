@@ -445,8 +445,11 @@ async function saveOutputFile() {
     if (ext == "tiny-rom") {
         ext = "rom";
     }
+    if (ext == "png" || ext == "rom") {
+        ext = "p8." + ext;
+    }
 
-    let name = getNoExt(inputMgr.fileName);
+    let name = getWithoutAllExts(inputMgr.fileName);
     if (!name) {
         name = "output";
     }
@@ -591,7 +594,7 @@ async function doMinify() {
         }
 
         if (isFormatExport(format)) {
-            args.push("--export-name", getNoExt(inputMgr.fileName));
+            args.push("--export-name", getWithoutAllExts(inputMgr.fileName));
             args.push("--output-cart", inputMgr.fileName);
         }
 
