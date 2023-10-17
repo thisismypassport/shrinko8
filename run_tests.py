@@ -176,6 +176,7 @@ def run():
     run_stdout_test("linttab", "bad.p8", "--lint", "--error-format", "tabbed",
                     output="bad-tab.txt", norm_stdout=norm_paths, exit_code=2)
     run_stdout_test("count", "bad.p8", "--count", output="badcount.txt")
+    run_stdout_test("countminus", "minus.p8", "--count", output="minuscount.txt")
     run_stdout_test("error", "worse.p8", "--lint", output="worse.txt", norm_stdout=norm_paths, exit_code=1)
     run_test("script", "script.p8", "script.p8", "--script", path_join("test_input", "my_script.py"),
              "--script-args", "my-script-arg", "--my-script-opt", "123")

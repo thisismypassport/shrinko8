@@ -476,6 +476,7 @@ def count_tokens(tokens):
             continue
 
         if token.value in ("-", "~") and i+1 < len(tokens) and tokens[i+1].type == TokenType.number and \
+            token.endidx == tokens[i+1].idx and \
             i-1 >= 0 and tokens[i-1].type not in (TokenType.number, TokenType.string, TokenType.ident) and \
             tokens[i-1].value not in (")", "]", "}", ";", "end"):
             continue
