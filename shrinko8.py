@@ -387,7 +387,7 @@ def handle_processing(args, main_cart, extra_carts):
         
         if args.count:
             write_code_size(cart, handler=args.count)
-            if not (args.output and args.format.is_src()) and not args.no_count_compress: # else, will be done in write_cart
+            if not (args.output and not args.format.is_src()) and not args.no_count_compress: # else, will be done in write_cart
                 write_compressed_size(cart, handler=args.count, fast_compress=args.fast_compression, debug_handler=args.trace_compression)
         
         if args.version:
