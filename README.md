@@ -50,6 +50,16 @@ You can also minify to a p8 file (or a lua file), e.g:
 
 `python shrinko8.py path-to-input.p8 path-to-output.p8 --minify-safe-only`
 
+## Debugging the minified cart
+
+If the minified cart errors or misbehaves, here are some tips:
+
+* Try using `--no-minify-lines` to preserve linebreaks - the resulting cart will generate much more readable runtime errors, at only a very small character & byte cost.
+
+* If the errors or misbehaviours don't occur without minification, do try using `--minify-safe-only`, which always produces a cart that works identically to the original (if not, that's a bug - please report).
+
+    * If `--minify-safe-only` costs too much for you, though, read on to see [how to help Shrinko8 minify your cart correctly without safe minification](#pitfalls-of-full-minification).
+
 ## Minify options
 
 You can specify what the minification should focus on reducing via additional command-line options:
