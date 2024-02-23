@@ -273,6 +273,17 @@ class BitmaskMetaclass(type):
         
         def __hash__(m):
             return hash(m.value)
+        
+        def __str__(m):
+            if m.value:
+                values = []
+                for mask, name in full_mask_name_map.items():
+                    if m.value & mask:
+                        values.append(name)
+    
+                return ",".join(values)
+            else:
+                return ""
     
         def __repr__(m):
             if m.value:
@@ -353,6 +364,7 @@ class BitmaskMetaclass(type):
         bitmask_dict["__init__"] = __init__
         bitmask_dict["__eq__"] = __eq__
         bitmask_dict["__hash__"] = __hash__
+        bitmask_dict["__str__"] = __str__
         bitmask_dict["__repr__"] = __repr__
         bitmask_dict["__int__"] = __int__
         bitmask_dict["__nonzero__"] = __bool__
@@ -703,6 +715,42 @@ class LazyDict(defaultdict):
         value = m.populate(key)
         m[key] = value
         return value
+
+class OrderByKey:
+    """Implements ordering and equality based on order_key()"""
+    # def order_key(m):
+    def order_type(m): return type(m)
+
+    def __eq__(m, other):
+        if isinstance(other, m.order_type()):
+            return m.order_key() == other.order_key()
+        else:
+            return NotImplemented
+    def __ne__(m, other):
+        if isinstance(other, m.order_type()):
+            return m.order_key() != other.order_key()
+        else:
+            return NotImplemented
+    def __lt__(m, other):
+        if isinstance(other, m.order_type()):
+            return m.order_key() < other.order_key()
+        else:
+            return NotImplemented
+    def __gt__(m, other):
+        if isinstance(other, m.order_type()):
+            return m.order_key() > other.order_key()
+        else:
+            return NotImplemented
+    def __le__(m, other):
+        if isinstance(other, m.order_type()):
+            return m.order_key() <= other.order_key()
+        else:
+            return NotImplemented
+    def __ge__(m, other):
+        if isinstance(other, m.order_type()):
+            return m.order_key() >= other.order_key()
+        else:
+            return NotImplemented
 
 def u8(n):
     return n & 0xff
@@ -2474,6 +2522,18 @@ bound = clamp # old/dup name
 def lerp(start, end, portion):
     """Return the linear interpolation between 'start' and 'end'"""
     return start + portion * (end - start)
+
+def rotate_left(value, count, bits):
+    """Rotate 'value' left by 'count' bits, across 'bits' bits"""
+    assert value >= 0
+    count %= bits
+    return ((value << count) | (value >> (bits - count))) & make_mask(0, bits)
+
+def rotate_right(value, count, bits):
+    """Rotate 'value' right by 'count' bits, across 'bits' bits"""
+    assert value >= 0
+    count %= bits
+    return ((value >> count) | (value << (bits - count))) & make_mask(0, bits)
 
 def closure(__func, *args, **kwargs):
     """Create a lambda that applies the given arguments to 'func'"""
