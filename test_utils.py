@@ -1,6 +1,6 @@
 from utils import *
 from unittest.mock import patch
-import subprocess, pstats, cProfile, tempfile
+import subprocess, pstats, cProfile
 
 def init_tests(opts): # use: opts.exe and opts.profile
     global g_num_ran, g_num_failed
@@ -32,10 +32,8 @@ def fail_test():
 def get_test_results():
     stats_file = None
     if g_profile:
-        dump_target = tempfile.NamedTemporaryFile(delete=False)
-        dump_target.close()
-        g_profile.dump_stats(dump_target.name)
-        stats_file = dump_target.name
+        stats_file = file_temp()
+        g_profile.dump_stats(stats_file)
 
     return g_num_ran, g_num_failed, stats_file
 
@@ -116,14 +114,9 @@ def run_code(*args, exit_code=0):
         print(f"Exit with unexpected code {actual_code}")
         return False, stdout
 
-def run_pico8(p8_exe, cart_path, expected_printh=None, timeout=5.0, allow_timeout=False, with_window=False):
+def run_pico8(p8_exe, cart_path, expected_printh=None, timeout=5.0, allow_timeout=False):
     try:
-        if with_window:
-            args = [p8_exe, "-run", cart_path, "-home", "private_pico8_home", "-volume", "0", "-windowed", "1", "-width", "128", "-height", "128"]
-        else:
-            args = [p8_exe, "-x", cart_path]
-        
-        stdout = subprocess.check_output(args, encoding="utf8", errors='replace', stderr=subprocess.STDOUT, timeout=timeout)
+        stdout = subprocess.check_output([p8_exe, "-x", cart_path], encoding="utf8", errors='replace', stderr=subprocess.STDOUT, timeout=timeout)
     except subprocess.SubprocessError as e:
         if allow_timeout and isinstance(e, subprocess.TimeoutExpired):
             stdout = e.stdout
@@ -142,3 +135,69 @@ def run_pico8(p8_exe, cart_path, expected_printh=None, timeout=5.0, allow_timeou
         success = "\n".join(actual_printh_lines) == expected_printh
 
     return success, stdout
+
+def run_interactive_pico8(p8_exe, cart_path):
+    try:
+        args = [p8_exe, "-run", cart_path, "-home", "private_pico8_home", "-volume", "0", "-windowed", "1", "-width", "128", "-height", "128"]
+        return True, subprocess.check_output(args, encoding="utf8", errors='replace', stderr=subprocess.STDOUT)
+    except subprocess.SubprocessError as e:
+        return False, f"Exception: {e}"
+
+def interact_with_pico8s(pico8_paths, timeout): # for use in daemon thread
+    import test_gui_utils as gui
+
+    pico8_paths = set(path_resolve(pico8) for pico8 in pico8_paths)
+
+    pico8_keys = [gui.key("left"), gui.key("right"), gui.key("up"), gui.key("down"), gui.key('x'), gui.key('z')]
+    pico8_key_counts = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 3, 3, 4]
+    window_data = defaultdict(lambda: Dynamic(keys=[], pid=None, abandoned=False))
+    interact_start_time = 4.5 # before this, it's booting
+
+    while True:
+        # either shutdown an old pico8 window or send keys to a random pico8 window
+        curr_time = datetime.now(timezone.utc)
+
+        pico8_windows = []
+        old_pico8_windows = []
+        for window in gui.iter_windows():
+            proc = gui.get_window_process_info(window)
+            if proc.path and path_resolve(proc.path) in pico8_paths:
+                wdata = window_data[window]
+                run_time = (curr_time - proc.start_time).total_seconds()
+                if wdata.pid != proc.pid:
+                    wdata.keys.clear()
+                    wdata.pid = proc.pid
+                    wdata.abandoned = False
+
+                if run_time > interact_start_time and not wdata.abandoned:
+                    pico8_windows.append(window)
+                    if run_time > timeout:
+                        old_pico8_windows.append(window)
+
+        if pico8_windows:
+            if old_pico8_windows:
+                window = old_pico8_windows[0]
+            else:
+                window = random.choice(pico8_windows)
+            
+            if gui.set_foreground_window(window):
+                key_count = random.choice(pico8_key_counts)
+                keys = random.sample(pico8_keys, k=key_count)
+                prev_keys = window_data[window].keys
+
+                for key in prev_keys:
+                    if key not in keys:
+                        gui.send_key(key, False)
+                
+                if old_pico8_windows:
+                    # the escape will terminate a running pico8 cart, yet pivot a failed pico8 cart to the code editor
+                    gui.send_key("escape")
+                    time.sleep(0.05)
+                    gui.send_text("shutdown\n")
+                    window_data[window].abandoned = True # leave on screen, if shutdown failed
+                else:
+                    for key in keys:
+                        if key not in prev_keys:
+                            gui.send_key(key, True)
+
+        time.sleep(0.05)

@@ -1,5 +1,5 @@
-import os, sys, io, bisect, random, copy, collections, itertools, struct, array, re, traceback, hashlib, math, string, weakref, operator, heapq, time, json
-from datetime import datetime, timedelta
+import os, sys, io, bisect, random, copy, collections, itertools, struct, array, re, traceback, hashlib, math, string, weakref, operator, heapq, time, json, tempfile
+from datetime import datetime, timedelta, timezone
 from functools import reduce, total_ordering, lru_cache
 from copy import copy, deepcopy
 from io import BytesIO, StringIO
@@ -2309,16 +2309,18 @@ def file_delete(path):
 
 file_delete_if_needed = file_delete # old name
 
+def file_temp():
+    """Create a temporary file (no auto-deletion)"""
+    result = tempfile.NamedTemporaryFile(delete=False)
+    result.close()
+    return result.name
+
 path_split_name = os.path.split
 path_basename = os.path.basename
 path_dirname = os.path.dirname
 path_absolute = os.path.abspath
 path_split_extension = os.path.splitext
-path_resolve = os.path.realpath
-
-def path_normalize(path):
-    """Fully normalize a path"""
-    return os.path.normcase(os.path.normpath(path))
+path_resolve = os.path.realpath # fully canonicalizes (& normalizes) a path
 
 def path_extension(path):
     """Return the extension of a path"""

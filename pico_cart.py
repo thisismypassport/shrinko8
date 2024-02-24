@@ -313,7 +313,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
     code = []
     code_line = 0
     y = 0
-    for line_i, line in enumerate(data.split("\n")): # not splitlines, that eats a trailing empty line
+    for line_i, line in enumerate(data.splitlines()): # splitlines eats a trailing empty line, like pico8 does
         try:
             clean = line.strip()
             
@@ -483,7 +483,7 @@ def write_cart_to_source(cart, unicode_caps=False, sections=None, **_):
             lines.append(f"__{k_meta_prefix + meta}__")
             lines += metalines
 
-    return "\n".join(lines)
+    return "\n".join(lines) + "\n"
 
 def write_cart_to_raw_source(cart, with_header=False, unicode_caps=False, **_):
     source = from_p8str(cart.code, unicaps=unicode_caps)
