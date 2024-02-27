@@ -132,6 +132,12 @@ local numbug = 0xff00, 0xff00 * 4, 0xff00 ^ 4, -0xff00, ~0xff00
 if not nothing then
     nothing = 0xffff
 end
+
+function tokenhell(...)
+    return 1.2 .. 4 .. ... .. 0
+end
+
+?tokenhell(3)
 -- paren removal
 ?(((1 or 1) or (2 and ((3 == 4) >= (4 | (5 ^^ (((6 << 1) >>< (1 .. (2 .. (3 - ((-(1 ^ (4 ^ 1))) / 1))))) & 7)))))))
 ?((~(((((((tonum(((3 or 4) and 5) != 2) | 1) ^^ 2) & 3) >> 1) .. 1) - (1 + 3)) * 3)) ^ 2) ^ 1

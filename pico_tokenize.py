@@ -364,13 +364,11 @@ def tokenize(source, ctxt=None, all_comments=False):
         else:
             digits = "0123456789"
 
-        allow_dot = True
         while True:
             ch = peek()
             if ch and ch in digits:
                 idx += 1
-            elif allow_dot and ch == '.':
-                allow_dot = False
+            elif ch == '.':
                 idx += 1
             else:
                 break
@@ -488,9 +486,9 @@ def count_tokens(tokens):
         count += 1
     return count
 
-def parse_fixnum(str):
+def parse_fixnum(origstr):
     """parse a fixnum from a pico8 string"""
-    str = str.lower()
+    str = origstr.lower()
     neg = False
     if str.startswith("-"):
         str = str[1:]
@@ -521,7 +519,8 @@ def parse_fixnum(str):
         
         value += dotvalue / (base ** dotdigits)
     
-    assert not str
+    if str:
+        throw(f"Invalid number: {origstr}")
     if neg:
         value = -value
 

@@ -3,7 +3,7 @@ version 41
 __lua__
 print=printh 
 ?"hello ᶜ7there♥ら"
-🐱,i,r,h,u,s,e,e=11,12,13,14,15,16,17,17
+🐱,a,h,u,s,x,e,e=11,12,13,14,15,16,17,17
 
 t(stat(band()))
 
@@ -106,6 +106,10 @@ local l = [[]], [[hi]], [['hi']], [["'hi'"]], [["""""'''''hi'''''"""""]], [[♥�
 ]]]=]]===]]==]
 local l = -256, -256*4, 65280^4, -65280, ~65280
 if (not e) e = -1
+function i(...)
+  return 1.2 .. 4 .. ... .. 0
+end
+?i(3)
 
 ?1 or 1 or 2 and 3 == 4 >= 4 | 5 ~ 6 << 1 >>< 1 .. 2 .. 3 - -1^4^1 / 1 & 7
 ?((~(((((((tonum(((3 or 4) and 5) ~= 2) | 1) ~ 2) & 3) >> 1) .. 1) - (1 + 3)) * 3)) ^ 2) ^ 1
@@ -116,7 +120,7 @@ local i = {ord"1",[2]=3,x=4,(ord"1")}
 e += 1
 l, n = sin(1,2), cos((cos()))
 o, f = (cos((cos())))
-function x() return 1, 2, ord"1", (ord"1") end
+function k() return 1, 2, ord"1", (ord"1") end
 if 1 == 2 then elseif 1 == 2 then else end
 while 1 == 2 do end
 repeat until 1 == 1
@@ -130,11 +134,11 @@ if(true) if false then else print"sh3" end
 if true then if false then else print"sh4" end end
 
 j="renaming bug"
-function a()
-  local e,l,n,o,f,i,c,a,d,r,t,h,u,s,x,k,y,v,p,b,w,g,_,m,E,N,D
+function r()
+  local e,l,n,o,f,i,c,r,d,a,t,h,u,s,x,k,y,v,p,b,w,g,_,m,E,N,D
   return j
 end
-?a()
+?r()
 c=0c=1
 
 function new_name(new_name, e)
@@ -149,4 +153,4 @@ function d( l, e, f, n, o, i)
 end
 ?d(1,2,4,8,16,32)
 
-k=?"END!"
+y=?"END!"

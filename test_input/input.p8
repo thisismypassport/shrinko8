@@ -127,6 +127,10 @@ local strs2 = [[]], [[hi]], [['hi']], [["'hi'"]], [["""""'''''hi'''''"""""]], [[
 ]]]=]]===]]==]
 local numbug = 0xff00, 0xff00*4, 0xff00^4, -0xff00, ~0xff00
 if (not nothing) nothing = 0xffff
+function tokenhell(...)
+  return 1.2 .. 4 .. ... .. 0
+end
+?tokenhell(3)
 
 -- paren removal
 ?(((1 or 1) or (2 and ((3 == 4) >= (4 | (5 ^^ (((6 << 1) >>< (1 .. (2 .. (3 - ((-(1^(4^1))) / 1))))) & 7)))))))

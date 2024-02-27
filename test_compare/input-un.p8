@@ -4,7 +4,7 @@ __lua__
 
 print = printh
 ?"hello ᶜ7there♥ら"
-🐱, i, r, h, u, s, e, e = 11, 12, 13, 14, 15, 16, 17, 17
+🐱, a, h, u, s, x, e, e = 11, 12, 13, 14, 15, 16, 17, 17
 t(stat(band()))
 -- this one comment, i do want!
 t()
@@ -78,8 +78,8 @@ for _ENV in all {{o = 1, f = 5}, {o = 2, f = 6}} do
   e = deli {2}
 end
 assert(e == 2)
-local e = {key1 = 1, key2 = 2, a = 3}
-e.key1 = e.a
+local e = {key1 = 1, key2 = 2, r = 3}
+e.key1 = e.r
 while 1 == 0 do
 end
 while 1 == 0 do
@@ -104,18 +104,24 @@ local l = -256, -256 * 4, 65280 ^ 4, -65280, ~65280
 if not e then
   e = -1
 end
+
+function i(...)
+  return 1.2 .. 4 .. ... .. 0
+end
+
+?i(3)
 ?1 or 1 or 2 and 3 == 4 >= 4 | 5 ~ 6 << 1 >>< 1 .. 2 .. 3 - -1 ^ 4 ^ 1 / 1 & 7
 ?((~(((((((tonum(((3 or 4) and 5) ~= 2) | 1) ~ 2) & 3) >> 1) .. 1) - (1 + 3)) * 3)) ^ 2) ^ 1
 local e = ({})[1], (function()
 end)()
-local l, n, o, e, f = sin(1, 2), cos((cos())), (cos((cos()))), {d = ord, r = pal}
-local e = ord "123", pal {1, 2}, e:d("ord"), e:r({1, 2}), sin(1)
+local l, n, o, e, f = sin(1, 2), cos((cos())), (cos((cos()))), {d = ord, a = pal}
+local e = ord "123", pal {1, 2}, e:d("ord"), e:a({1, 2}), sin(1)
 local i = {ord "1", [2] = 3, o = 4, (ord "1")}
 e += 1
 l, n = sin(1, 2), cos((cos()))
 o, f = (cos((cos())))
 
-function x()
+function k()
   return 1, 2, ord "1", (ord "1")
 end
 
@@ -150,12 +156,12 @@ if true then
 end
 j = "renaming bug"
 
-function a()
-  local e, l, n, o, f, i, c, a, d, r, t, h, u, s, x, k, y, v, p, b, w, g, _, m, E, N, D
+function r()
+  local e, l, n, o, f, i, c, r, d, a, t, h, u, s, x, k, y, v, p, b, w, g, _, m, E, N, D
   return j
 end
 
-?a()
+?r()
 c = 0
 c = 1
 
@@ -173,5 +179,5 @@ function d(l, e, f, n, o, i)
 end
 
 ?d(1, 2, 4, 8, 16, 32)
-k = ?"END!"
+y = ?"END!"
 

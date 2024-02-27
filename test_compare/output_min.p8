@@ -87,6 +87,10 @@ local strs2=[[]],[[hi]],[['hi']],[["'hi'"]],[["""""'''''hi'''''"""""]],[[♥♥�
 ]]]=]]===]]==]
 local numbug=-256,-256*4,65280^4,-65280,~65280
 if(not nothing)nothing=-1
+function tokenhell(...)
+return 1.2 ..4 .. .....0
+end
+?tokenhell(3)
 ?1or 1or 2and 3==4>=4|5~6<<1>><1 ..2 ..3- -1^4^1/1&7
 ?((~(((((((tonum(((3or 4)and 5)~=2)|1)~2)&3)>>1)..1)-(1+3))*3))^2)^1
 local prefix=({})[1],(function()end)()
