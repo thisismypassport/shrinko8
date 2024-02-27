@@ -1,5 +1,6 @@
 from utils import *
 from pico_preprocess import k_wspace
+from pico_defs import num_to_fixnum
 
 keywords = {
     "and", "break", "do", "else", "elseif", "end", "false", 
@@ -128,7 +129,10 @@ class Token(TokenNodeBase):
     
     def erase(m, expected=None):
         if expected != None:
-            assert m.value == expected
+            if isinstance(expected, tuple):
+                assert m.value in expected
+            else:
+                assert m.value == expected
         m.type, m.value, m.modified = None, None, True
 
     @classmethod
@@ -483,27 +487,6 @@ def count_tokens(tokens):
 
         count += 1
     return count
-
-# fixnum - an integer representing a 16.16 pico8 fixed-point number
-# e.g. 
-# This may become a class in the future, but is a convention now.
-
-k_fixnum_mask = 0xffffffff
-
-def num_to_fixnum(value):
-    """convert a python int or real to a fixnum"""
-    return int(value * (1 << 16)) & k_fixnum_mask
-
-def fixnum_to_num(value):
-    """convert a fixnum to a python int or real"""
-    neg = value & 0x80000000
-    if neg:
-        value = (-value) & k_fixnum_mask
-    if value & 0xffff:
-        value /= (1 << 16)
-    else:
-        value >>= 16 # preserve int-ness
-    return -value if neg else value
 
 def parse_fixnum(str):
     """parse a fixnum from a pico8 string"""

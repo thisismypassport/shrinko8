@@ -2,7 +2,7 @@ from utils import *
 from pico_tokenize import TokenNodeBase, Token, TokenType
 from pico_tokenize import is_identifier, parse_string_literal, k_identifier_split_re
 
-k_invalid = object()
+k_nested = object()
 
 class VarKind(Enum):
     local = global_ = member = label = ...
@@ -231,6 +231,8 @@ k_right_binary_ops = {
 }
 
 k_block_ends = ("end", "else", "elseif", "until")
+
+k_prefix_types = (NodeType.var, NodeType.member, NodeType.index, NodeType.call, NodeType.group)
 
 def parse(source, tokens, ctxt=None):
     idx = 0
@@ -537,20 +539,20 @@ def parse(source, tokens, ctxt=None):
             nonlocal idx
             token = take()
             value = token.value
-            if value == ".":
+            if value == "." and expr.type in k_prefix_types:
                 var = parse_var(member=True)
                 expr = Node(NodeType.member, [expr, token, var], key=var, child=expr, method=False)
-            elif value == "[":
+            elif value == "[" and expr.type in k_prefix_types:
                 index = parse_expr()
                 close = require("]")
                 expr = Node(NodeType.index, [expr, token, index, close], key=index, child=expr)
-            elif value == "(":
+            elif value == "(" and expr.type in k_prefix_types:
                 expr = parse_call(expr)
-            elif value == "{" or peek(-1).type == TokenType.string:
+            elif (value == "{" or peek(-1).type == TokenType.string) and expr.type in k_prefix_types:
                 idx -= 1
                 arg = parse_core_expr()
                 expr = Node(NodeType.call, [expr, arg], func=expr, args=[arg])
-            elif value == ":":
+            elif value == ":" and expr.type in k_prefix_types:
                 var = parse_var(member=True)
                 expr = Node(NodeType.member, [expr, token, var], key=var, child=expr, method=True)
                 if peek().value == "{" or peek().type == TokenType.string:
@@ -573,6 +575,9 @@ def parse(source, tokens, ctxt=None):
             list.append(func())
             tokens.append(list[-1])
         return list
+    
+    def short_state(vline):
+        return k_nested if peek().vline == vline else True
 
     def parse_if(type=NodeType.if_):
         tokens = [peek(-1)]
@@ -581,7 +586,7 @@ def parse(source, tokens, ctxt=None):
         else_ = None
         short = False
 
-        if accept("then", tokens):
+        if accept("then", tokens) or accept("do", tokens):
             then = parse_block()
             tokens.append(then)
 
@@ -609,10 +614,10 @@ def parse(source, tokens, ctxt=None):
                 else_tokens = [peek(-1)]
                 else_body = parse_block(vline=vline)
                 else_tokens.append(else_body)
-                else_ = Node(NodeType.else_, else_tokens, body=else_body, short=True)
+                else_ = Node(NodeType.else_, else_tokens, body=else_body, short=short_state(vline))
                 tokens.append(else_)
                 
-            short = k_invalid if peek().vline == vline else True
+            short = short_state(vline)
 
         else:
             add_error("then or shorthand required", fail=True)
@@ -633,7 +638,7 @@ def parse(source, tokens, ctxt=None):
             vline = peek(-1).vline
             body = parse_block(vline=vline)
             tokens.append(body)
-            short = k_invalid if peek().vline == vline else True
+            short = short_state(vline)
         else:
             add_error("do or shorthand required", fail=True)
 

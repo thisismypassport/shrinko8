@@ -2,7 +2,7 @@ from utils import *
 from pico_tokenize import TokenType, tokenize, Token, k_char_escapes, CommentHint
 from pico_tokenize import parse_string_literal, parse_fixnum, k_keep_prefix
 from pico_tokenize import StopTraverse, k_skip_children
-from pico_parse import Node, NodeType, VarKind, k_invalid
+from pico_parse import Node, NodeType, VarKind, k_nested
 from pico_parse import k_unary_ops_prec, k_binary_op_precs, k_right_binary_ops
 from pico_parse import is_vararg_expr, is_short_block_stmt, is_global_or_builtin_local
 
@@ -202,7 +202,7 @@ def analyze_code_for_minify(root, focus):
 def minify_change_shorthand(node, new_short):
     if new_short:
         node.short = True
-        node.erase_token(2, "then" if node.type == NodeType.if_ else "do")
+        node.erase_token(2, ("then", "do"))
         if node.type == NodeType.if_ and node.else_:
             node.else_.short = True
             node.else_.erase_token(-1, "end")
@@ -498,8 +498,8 @@ def need_whitespace_between(prev_token, token):
     return ce or len(ct) != 2 or (ct[0].type, ct[0].value, ct[1].type, ct[1].value) != (prev_token.type, prev_token.value, token.type, token.value)
 
 def need_newline_after(node):
-    # (k_invalid is set for shorthands used in the middle of a line - we don't generate this ourselves (unclear how legal), but we do preserve it)
-    return node.short and node.short is not k_invalid
+    # (k_nested is set for shorthands used in the middle of a line - we don't *YET* generate this ourselves (TODO: do for 0.2.6b+), but we do preserve it)
+    return node.short and node.short is not k_nested
 
 def output_min_wspace(root, minify_lines=True):
     """convert a root back to a string, inserting as little whitespace as possible"""

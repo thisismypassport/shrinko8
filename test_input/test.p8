@@ -14,7 +14,7 @@ __lua__
 assert(true,1)
 assert(x==1,2)
 assert("\0\0123\n\t\+\z    \x41\x61"=="\000\x0c\x33\
-\9\5Aa") -- (removed newline in \z - pico8 doesn't like it...)
+\9\5Aa",2.5) -- (removed newline in \z - pico8 doesn't like it...)
 assert("\'\"\\'"==[['"\']],3)
 assert([==[]]]==]=="]]",4)
 x=1e2e3=1
@@ -48,7 +48,8 @@ assert(j==2,22.5)
 if j==2 then j+=1 else assert(false,23) end assert(j==3,23.5)
 if j==2 then assert(false,24) elseif j==3 then j+=1 else assert(false,24.5) end assert(j==4,24.6)
 if j==2 then assert(false,25) else j+=1 end assert(j==5,25.5)
-if (j==5) j=0;j=1 else assert(false,26)
+if j==2 do assert(false,25.8) else j+=1 end assert(j==6,25.9)
+if (j==6) j=0;j=1 else assert(false,26)
 assert(j==1,27)
 if (j==5) assert(false,28) else j=2
 assert(j==2,29)
@@ -148,20 +149,26 @@ assert(fft[1]==11 and fft[2]==20,72)
 a=0--[=[[[a+=1]][[a+=2]][[]]--[[--[==[a+=4]==]]]a+=8]=]a+=16
 assert(a==16,73)
 assert([[[[]]=="[[",73.5) -- ]]
-if (1==1) if (2==3) a=1 else a=2 -- (broken) else a=3
+if (1==1) if (2==3) a=1 else a=2 else a=3
 assert(a==2,74)
--- (broken) i=1 while(i<10) i+=1 if (i==5) break
--- assert(i==5,75)
+if (1==2) if (2==3) a=1 else a=2 else a=3
+assert(a==3,74.1)
+i=1 while(i<10) i+=1 if (i==5) break
+assert(i==5,75)
 if (1==2) i=1 else if (1==3) i=2 else i=3
 assert(i==3,76)
 if (1==1) if (2==2) then a=4 else a=5 end else a=6
 assert(a==4,77)
 do a=0 if (1==2) end a=123
 assert(a==123,78)
-do local r; print = function(x) r=x end; ?1
-   assert(r==1,79) end
+do local pprint, r = print; print = function(x) r=x end; ?1
+   assert(r==1,79) print = pprint end
 do local r; local print = function(x) r=x end; ?2
    assert(r==2,80) end
+f=1({x=1}).x=2 assert(f==1,81)
+f={1}({x=1}).x=2 assert(f[1]==1,81.1)
+f="1"({x=1}).x=2 assert(f=="1",81.2)
+f=function()end({x=1}).x=2 assert(f()==nil,81.3)
 --[[ -- this is treated as a line comment by good old pico-8
 printh("DONE")
 __music__

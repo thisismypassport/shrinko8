@@ -218,6 +218,30 @@ def decode_p8str(bytes):
 to_pico_chars = to_p8str # legacy name
 from_pico_chars = from_p8str # legacy name
 
+# fixnum - an integer representing a 16.16 pico8 fixed-point number
+# This may become a class in the future, but is a convention now.
+
+k_fixnum_mask = 0xffffffff
+
+def num_to_fixnum(value):
+    """convert a python int or real to a fixnum"""
+    return int(value * (1 << 16)) & k_fixnum_mask
+
+def fixnum_is_negative(value):
+    """Return whether the fixnum is negative"""
+    return bool(value & 0x80000000)
+
+def fixnum_to_num(value):
+    """convert a fixnum to a python int or real"""
+    neg = fixnum_is_negative(value)
+    if neg:
+        value = (-value) & k_fixnum_mask
+    if value & 0xffff:
+        value /= (1 << 16)
+    else:
+        value >>= 16 # preserve int-ness
+    return -value if neg else value
+
 k_version_tuples = {
     29: (0,2,1,0),
     30: (0,2,2,0),
@@ -232,6 +256,7 @@ k_version_tuples = {
     39: (0,2,5,4),
     40: (0,2,5,5),
     41: (0,2,5,6),
+    42: (0,2,6,0),
 }
 
 def get_default_version_id():

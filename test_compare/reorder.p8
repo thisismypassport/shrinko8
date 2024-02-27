@@ -11,7 +11,8 @@ do local l,o,c,n=3,(n()),4assert(n==nil)printh(l..o..c)end
 do local l,o=3local n,c=n()local d=4assert(o==nil)printh(l..n..c..d)end
 do local l,o=3local n=4,9assert(o==nil)printh(l..n)end
 do local l,o=3local n,c=?"w/e"
-local d=4assert(o==nil and n~=nil and c~=nil)printh(l..d)end
+,4
+assert(o==nil and n~=nil)printh(l..c)end
 do local l,l=3,4printh(l)end
 do local l,l=3,4printh(l)end
 do local l local l=3printh(l)end
@@ -47,15 +48,15 @@ t.o=3t.o=4printh(t.o)
 t.c,t.o=t.o+1,3printh(t.o..t.c)
 t.o=5t.c=t["o"]printh(t.o..t.c)
 t["a"]=6t.o=7printh(t.o)
-u,(printh"one"or{}).l=0,printh"two"
-r,(printh"three"or{}).d=0,printh"four"
+r,(printh"one"or{}).l=0,printh"two"
+i,(printh"three"or{}).d=0,printh"four"
 d()
 l,o=sqrt(4),sqrt(9)printh(l..o)
 l,o=flr(2.3),flr(3.9)printh(l..o)
 function max()return l end
 l=4o=max(5,6)printh(l..l)
-function i()return l end
-l=6o=i()printh(l..l)
+function u()return l end
+l=6o=u()printh(l..l)
 e=setmetatable({},{__add=function()return l end})d()
 l=20o=e+e printh(l..o)
 do

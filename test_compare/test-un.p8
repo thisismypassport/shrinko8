@@ -5,7 +5,7 @@ __lua__
 n = 1
 assert(true, 1)
 assert(n == 1, 2)
-assert("\0ᶜ3\n	⁵Aa" == "\0ᶜ3\n	⁵Aa")
+assert("\0ᶜ3\n	⁵Aa" == "\0ᶜ3\n	⁵Aa", 2.5)
 assert("'\"\\'" == [['"\']], 3)
 assert([=[]]]=] == "]]", 4)
 n = 1
@@ -89,7 +89,13 @@ else
   f += 1
 end
 assert(f == 5, 25.5)
-if f == 5 then
+if f == 2 then
+  assert(false, 25.8)
+else
+  f += 1
+end
+assert(f == 6, 25.9)
+if f == 6 then
   f = 0
   f = 1
 else
@@ -141,9 +147,9 @@ function x(...)
   return ...
 end
 
-i = {1, 2, o = 1, i = 2, 3, 4, [12] = 4, x(5, 6, nil, 8)}
+i = {1, 2, l = 1, i = 2, 3, 4, [12] = 4, x(5, 6, nil, 8)}
 assert(i[1] == 1 and i[2] == 2 and i[3] == 3 and i[4] == 4 and i[5] == 5 and i[6] == 6, 36)
-assert(i[7] == nil and i[8] == 8 and i["o"] == 1 and i.i == 2 and i[12] == 4, 37)
+assert(i[7] == nil and i[8] == 8 and i["l"] == 1 and i.i == 2 and i[12] == 4, 37)
 
 function x(...)
   return {...}
@@ -151,37 +157,37 @@ end
 
 do
   local function n(...)
-    return {..., o = 3}
+    return {..., l = 3}
   end
 
-  assert(#n(1, 2) == 1 and n(1, 2).o == 3, 38)
+  assert(#n(1, 2) == 1 and n(1, 2).l == 3, 38)
 end
 assert(#x(1, 2) == 2, 39)
 assert(1 + 4 * 5 == 21 and 498 & 255 << 4 == 496, 40)
 assert((1 + 4) * 5 == 25 and (498 & 255) << 4 == 3872, 41)
 assert(-2 ^ 4 == -16 and (-2) ^ 4 == 16, 42)
 assert(1 ~= 2 and 1 ~= 2 or assert(false, 43), 43.1)
-e = {l = function(n)
-  return n.e
-end, e = 3}
-assert(e:l() == 3 and e.l {e = 4} == 4, 44)
+e = {a = function(n)
+  return n.d
+end, d = 3}
+assert(e:a() == 3 and e.a {d = 4} == 4, 44)
 setmetatable(e, {__index = function(e, n)
   return n
 end})
 assert(e.r == "r", 45)
-e.d = e
+e.o = e
 
-function e.d.d.e(n)
+function e.o.o.d(n)
   return n
 end
 
-assert(e.e(false) == false, 46)
+assert(e.d(false) == false, 46)
 
-function e.d.d:a(n)
+function e.o.o:t(n)
   return self, n
 end
 
-assert(e:a(true) == e and select(2, e:a(true)) == true, 47)
+assert(e:t(true) == e and select(2, e:t(true)) == true, 47)
 do
   n = 1
   do
@@ -220,23 +226,23 @@ local function e(n)
 end
 
 local d = _ENV
-e {assert = assert, z = 123}
-assert(z == 123, 52)
+e {assert = assert, k = 123}
+assert(k == 123, 52)
 e(d)
 
 function r()
   return 9, 0, 1
 end
 
-function A(n)
+function z(n)
   return n()
 end
 
-function B(n)
+function A(n)
   return (n())
 end
 
-assert(pack(A(r)).n == 3 and pack(B(r)).n == 1, 53)
+assert(pack(z(r)).n == 3 and pack(A(r)).n == 1, 53)
 n = 72
 n -= 4 * 2
 n >>>= 16
@@ -268,17 +274,17 @@ do
   until assert(n * e == 6, 57.5)
 end
 
-local function d()
+local function e()
   return 3
 end
 
-assert(-d() + d() == 0, 58)
+assert(-e() + e() == 0, 58)
 
-local function e()
-  return d
+local function d()
+  return e
 end
 
-assert(e()() == 3, 59)
+assert(d()() == 3, 59)
 
 local function n(e, d)
   local o = function()
@@ -300,10 +306,10 @@ function w(n)
 end
 
 assert(w "me" == "me" and w [[me]] == "me", 61)
-p = {t = function(e, n)
+b = {f = function(e, n)
   return n
 end}
-assert(p:t "me" == "me" and #p:t {} == 0, 62)
+assert(b:f "me" == "me" and #b:f {} == 0, 62)
 do
   while true do
     if 1 == 1 then
@@ -315,12 +321,12 @@ do
 end
 local n = 1
 
-function k()
+function B()
   return n
 end
 
 local n = 2
-assert(k() == 1, 63)
+assert(B() == 1, 63)
 local n = 1
 do
   function D()
@@ -335,11 +341,11 @@ do
   ::n::
   assert(e == 2, 65)
   if n > 1 then
-    assert(s() == 4 and e == 2, 66)
+    assert(h() == 4 and e == 2, 66)
     goto e
   end
   local e = 3
-  s = function()
+  h = function()
     e += 1
     return e
   end
@@ -350,11 +356,11 @@ end
 do
   local n = 1
   ::n::
-  local d = n
-  e = s
-  s = function()
-    d += 1
-    return d
+  local e = n
+  d = h
+  h = function()
+    e += 1
+    return e
   end
   n += 1
   if n == 3 then
@@ -364,7 +370,7 @@ do
   end
 end
 ::d::
-assert(s() == 3 and s() == 4 and e() == 2 and s() == 5 and e() == 3, 67)
+assert(h() == 3 and h() == 4 and d() == 2 and h() == 5 and d() == 3, 67)
 do
   goto n
   local n
@@ -381,28 +387,28 @@ function ord(e, d)
 end
 
 local n = {}
-ord(0, n).f, ord(1, n).f = ord(2, 2), ord(3, function()
+ord(0, n).e, ord(1, n).e = ord(2, 2), ord(3, function()
   return 3
 end)(ord(4, 1), ord(5, 1))
-assert(n.f == 2, 69)
+assert(n.e == 2, 69)
 local o, n = 1, 2
 assert(n == 2, 70)
 
-function d(e, n)
+function e(e, n)
   assert(n == 2, 71)
 end
 
-d(1, 2)
-b = 0
-h = {10, 20}
+e(1, 2)
+p = 0
+g = {10, 20}
 
-function e()
-  b += 1
-  return b
+function d()
+  p += 1
+  return p
 end
 
-h[e()] += 1
-assert(h[1] == 11 and h[2] == 20, 72)
+g[d()] += 1
+assert(g[1] == 11 and g[2] == 20, 72)
 n = 0
 n += 16
 assert(n == 16, 73)
@@ -413,18 +419,38 @@ if 1 == 1 then
   else
     n = 2
   end
+else
+  n = 3
 end
 assert(n == 2, 74)
 if 1 == 2 then
-  g = 1
-else
-  if 1 == 3 then
-    g = 2
+  if 2 == 3 then
+    n = 1
   else
-    g = 3
+    n = 2
+  end
+else
+  n = 3
+end
+assert(n == 3, 74.1)
+s = 1
+while s < 10 do
+  s += 1
+  if s == 5 then
+    break
   end
 end
-assert(g == 3, 76)
+assert(s == 5, 75)
+if 1 == 2 then
+  s = 1
+else
+  if 1 == 3 then
+    s = 2
+  else
+    s = 3
+  end
+end
+assert(s == 3, 76)
 if 1 == 1 then
   if 2 == 2 then
     n = 4
@@ -443,12 +469,13 @@ end
 n = 123
 assert(n == 123, 78)
 do
-  local n
+  local e, n = print
   print = function(e)
     n = e
   end
   ?1
   assert(n == 1, 79)
+  print = e
 end
 do
   local n
@@ -458,6 +485,19 @@ do
   ?2
   assert(n == 2, 80)
 end
+e = 1
+({e = 1}).e = 2
+assert(e == 1, 81)
+e = {1}
+({e = 1}).e = 2
+assert(e[1] == 1, 81.1)
+e = "1"
+({e = 1}).e = 2
+assert(e == "1", 81.2)
+e = function()
+end
+({e = 1}).e = 2
+assert(e() == nil, 81.3)
 printh "DONE"
 
 __gfx__

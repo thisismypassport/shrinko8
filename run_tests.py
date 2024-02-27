@@ -7,6 +7,7 @@ parser.add_argument("--measure", action="store_true", help="print the input/outp
 parser.add_argument("--no-measure", action="store_true", help="don't print the input/output counts for failed tests")
 parser.add_argument("--stdout", action="store_true", help="print the stdout of shrinko8 while running the tests")
 parser.add_argument("-t", "--test", action="append", help="specify a specific test to run, optionally with wildcards")
+parser.add_argument("--test-from", help="specify a specific test to start running from")
 parser.add_argument("--no-private", action="store_true", help="do not run private tests, if they exist")
 parser.add_argument("-v", "--verbose", action="store_true", help="print test successes")
 parser.add_argument("-x", "--exe", action="store_true", help="test a packaged exe instead of the python script")
@@ -47,6 +48,11 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
         for wanted_test in g_opts.test:
             if fnmatch.fnmatch(name, wanted_test):
                 break
+        else:
+            return None
+    if g_opts.test_from:
+        if name == g_opts.test_from:
+            g_opts.test_from = None
         else:
             return None
 
@@ -138,8 +144,8 @@ def run():
     run_test("minminify", "input.p8", "output_min.p8", "--minify-safe-only", "--focus-tokens",
              "--ignore-hints", "--no-minify-rename", "--no-minify-lines", pico8_output="output.p8.printh")
     run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify", "--focus-tokens",
-             "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename")
-             # pico8_output="output.p8.printh" - broken by comment bug in pico8 v0.2.5g...
+             "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename",
+             pico8_output="output.p8.printh")
     run_test("nopreserve", "nopreserve.p8", "nopreserve.p8", "--minify",
              "--no-preserve", "circfill,rectfill", pico8_output_val="yep")
     if run_test("test", "test.p8", "test.p8", "--minify", pico8_output_val="DONE"):
