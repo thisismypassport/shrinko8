@@ -12,6 +12,7 @@ keywords = {
 k_preserve_prefix = "preserve:"
 k_lint_prefix = "lint:"
 k_keep_prefix = "keep:"
+k_use_compiler_prefix = "use-compiler:"
 
 k_lint_func_prefix = "func::"
 k_lint_count_stop = "count::stop"
@@ -110,13 +111,32 @@ class TokenNodeBase:
     
     def is_extra_child(m):
         return hasattr(m, "extra_i")
+    
+    def copy_and_erase(m):
+        cpy = copy(m)
+        for child in cpy.children:
+            child.parent = cpy
+        m.erase()
+        return cpy
+
+    def copy(m):
+        cpy = copy(m)
+        cpy.children = [child.copy() for child in m.children]
+        for child in cpy.children:
+            child.parent = cpy
+        for key, val in cpy.__dict__.items():
+            idx = list_find(m.children, val)
+            if idx >= 0:
+                cpy.__dict__[key] = cpy.children[idx]
+        return cpy
 
 class TokenType(Enum):
     number = string = ident = keyword = punct = ...
 
 class Token(TokenNodeBase):
     """A pico8 token, at 'source'.text['idx':'endidx'] (which is equal to its 'value'). Its 'type' is a TokenType.
-    For number/string tokens, the actual value can be read via parse_fixnum/parse_string_literal
+    For string tokens, the actual string is 'string_value'
+    For number tokens, the actual fixnum value is 'fixnum_value'
     Its children are the comments *before* it, if any."""
 
     def __init__(m, type, value, source, idx, endidx, vline=None, modified=False):
@@ -126,6 +146,8 @@ class Token(TokenNodeBase):
     def modify(m, value):
         m.value = value
         m.modified = True
+        lazy_property.clear(m, "fixnum_value")
+        lazy_property.clear(m, "string_value")
     
     def erase(m, expected=None):
         if expected != None:
@@ -135,20 +157,30 @@ class Token(TokenNodeBase):
                 assert m.value == expected
         m.type, m.value, m.modified = None, None, True
 
+    @lazy_property
+    def fixnum_value(m):
+        assert m.type == TokenType.number
+        return parse_fixnum(m.value)
+    
+    @lazy_property
+    def string_value(m):
+        assert m.type == TokenType.string
+        return parse_string_literal(m.value)
+
     @classmethod
-    def dummy(m, source, idx=None, vline=None):
+    def dummy(cls, source, idx=None, vline=None):
         if idx is None:
             idx = len(source.text) if source else 0
             vline = sys.maxsize if source else 0
-        return Token(None, None, source, idx, idx, vline)
+        return cls(None, None, source, idx, idx, vline)
 
     # note: vline is kept only for initial parsing and is not to be relied upon
 
     @classmethod
-    def synthetic(m, type, value, other, append=False, prepend=False):
+    def synthetic(cls, type, value, other, append=False, prepend=False):
         idx = other.endidx if append else other.idx
         endidx = other.idx if prepend else other.endidx
-        return Token(type, value, other.source, idx, endidx, modified=True)
+        return cls(type, value, other.source, idx, endidx, modified=True)
 
 Token.none = Token.dummy(None)
 
@@ -197,6 +229,7 @@ def tokenize(source, ctxt=None, all_comments=False):
     errors = []
     next_mods = None
     process_hints = ctxt and ctxt.hint_comments
+    curr_compiler_target = None
 
     def peek(off=0):
         i = idx + off
@@ -244,14 +277,63 @@ def tokenize(source, ctxt=None, all_comments=False):
         add_token(None, idx + off) # error token
         errors.append(Error(msg, tokens[-1]))
 
-    def add_sublang(token, sublang_name):
+    def add_sublang(token, sublang_data):
         if ctxt and ctxt.sublang_getter and token.type == TokenType.string:
+            sublang_name, sublang_args = list_unpack(sublang_data.split(" ", 1), 2, "")
+
             sublang_cls = ctxt.sublang_getter(sublang_name)
             if sublang_cls:
                 add_lang_error = lambda msg: add_error(f"{sublang_name}: {msg}")
                 token.sublang_name = sublang_name
-                token.sublang = sublang_cls(parse_string_literal(token.value), on_error=add_lang_error)
+                token.sublang = sublang_cls(parse_string_literal(token.value), args=sublang_args, 
+                                            on_error=add_lang_error, src=source, ctxt=ctxt)
+            else:
+                eprint("warning - ignoring unrecognized language '%s'" % sublang_name)
+
+    def finish_compiler():
+        nonlocal curr_compiler_target, tokens
+        target = curr_compiler_target
+        tokens, target.tokens = target.backup_tokens, tokens
+        target.backup_tokens = None
+        curr_compiler_target = None
+
+    def start_compiler(compiler_data):
+        nonlocal curr_compiler_target, tokens
+        if ctxt and ctxt.compiler_getter and ctxt.use_custom_compilers:
+            compiler_name, compiler_args = list_unpack(compiler_data.strip().split(" ", 1), 2, "")
+            
+            if curr_compiler_target:
+                finish_compiler()
+            if compiler_name == "none":
                 return
+
+            compiler_cls = ctxt.compiler_getter(compiler_name)
+            if compiler_cls:
+                compiler = compiler_cls(args=compiler_args, src=source, ctxt=ctxt)
+                
+                prepend_code = compiler.get_prepend_code()
+                if prepend_code:
+                    pre_tokens, pre_errors = tokenize(Source(compiler_name, prepend_code), ctxt, all_comments)
+                    tokens[0:0] = pre_tokens
+                    errors[0:0] = pre_errors
+
+                exec_code = compiler.get_execute_code()
+                exec_tokens, exec_errors = tokenize(Source(compiler_name, exec_code), ctxt, all_comments)
+                tokens.extend(exec_tokens)
+                errors.extend(exec_errors)
+
+                for target in exec_tokens:
+                    if target.type == TokenType.string and getattr(target, "var_kind", None) == False:
+                        target.compiler_name = compiler_name
+                        target.compiler = compiler
+                        
+                        curr_compiler_target = target
+                        target.backup_tokens, tokens = tokens, []
+                        break
+                else:
+                    eprint("warning - bug in compiler '%s' - no target string" % compiler_name)
+            else:
+                eprint("warning - ignoring unrecognized compiler '%s'" % compiler_name)
 
     def add_next_mods(token, mods):
         if mods.comments != None:
@@ -287,6 +369,9 @@ def tokenize(source, ctxt=None, all_comments=False):
 
             elif comment.startswith(k_keep_prefix):
                 hint = CommentHint.keep
+            
+            elif comment.startswith(k_use_compiler_prefix):
+                start_compiler(comment[len(k_use_compiler_prefix):])
 
             elif isblock:
                 if comment in ("global", "nameof"): # nameof is deprecated
@@ -303,7 +388,7 @@ def tokenize(source, ctxt=None, all_comments=False):
                     get_next_mods().keys_kind = False
                 elif comment == "no-merge":
                     get_next_mods().merge_prev = False
-                elif comment.startswith(k_language_prefix) and not any(ch.isspace() for ch in comment):
+                elif comment.startswith(k_language_prefix):
                     get_next_mods().sublang = comment[len(k_language_prefix):]
                 elif comment.startswith(k_rename_prefix) and not any(ch.isspace() for ch in comment):
                     get_next_mods().rename = comment[len(k_rename_prefix):]
@@ -464,6 +549,8 @@ def tokenize(source, ctxt=None, all_comments=False):
     
     if next_mods or all_comments:
         add_token(None, idx) # end token, for ending whitespace/comments/etc
+    if curr_compiler_target:
+        finish_compiler()
     return tokens, errors
 
 def count_tokens(tokens):
@@ -589,4 +676,4 @@ def parse_string_literal(str):
         return "".join(litparts)
 
 from pico_parse import Node, VarKind
-from pico_process import Error
+from pico_process import Error, Source

@@ -236,13 +236,15 @@ def main_inner(raw_args):
             "indent": args.unminify_indent
         }
 
-    args.preproc_cb, args.postproc_cb, args.sublang_cb = None, None, None
+    args.preproc_cb = args.postproc_cb = args.sublang_cb = args.compiler_cb = None
     if args.script:
         for script in args.script:
-            preproc_main, postproc_main, sublang_main = import_from_script_by_path(script, "preprocess_main", "postprocess_main", "sublanguage_main")
+            preproc_main, postproc_main, sublang_main, compiler_main = \
+                import_from_script_by_path(script, "preprocess_main", "postprocess_main", "sublanguage_main", "compiler_main")
             args.preproc_cb = func_union(args.preproc_cb, preproc_main)
             args.postproc_cb = func_union(postproc_main, args.postproc_cb) # (reverse order)
             args.sublang_cb = func_union(args.sublang_cb, sublang_main, return_early=e)
+            args.compiler_cb = func_union(args.compiler_cb, compiler_main, return_early=e)
 
     base_count_handler = ParsableCountHandler if args.parsable_count else True
     if args.input_count:
@@ -362,8 +364,10 @@ def handle_processing(args, main_cart, extra_carts):
         ctxt = PicoContext(extra_builtins=args.builtin, not_builtins=args.not_builtin, 
                            local_builtins=not args.global_builtins_only,
                            extra_local_builtins=args.local_builtin,
-                           srcmap=args.rename_map, sublang_getter=args.sublang_cb, version=cart.version_id,
-                           hint_comments=not args.ignore_hints)
+                           srcmap=args.rename_map, version=cart.version_id,
+                           sublang_getter=args.sublang_cb, compiler_getter=args.compiler_cb,
+                           hint_comments=not args.ignore_hints,
+                           use_custom_compilers=bool(args.minify or args.lint or args.count)) # (TODO...)
         if args.preproc_cb:
             args.preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args)
 

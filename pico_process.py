@@ -94,8 +94,8 @@ def get_source_location(path, text, idx, start_line=0, tabs=False):
         tab, line, col = None, *get_line_col(text, idx)
     return SourceLocation(path, tab, line + start_line, col)
 
-class PicoSource: # keep this light - created for temp. tokenizations
-    """A pico8 source file - e.g. either the main one or an included file"""
+class Source: # keep this light - created for temp. tokenizations
+    """A source file - e.g. either the main one or an included file"""
     path = text = ...
 
     def __init__(m, path, text):
@@ -104,7 +104,7 @@ class PicoSource: # keep this light - created for temp. tokenizations
     def get_location(m, idx, tabs=False): # (0-based)
         return get_source_location(m.path, m.text, idx, tabs=tabs)
 
-class CartSource(PicoSource):
+class CartSource(Source):
     """The source of a pico8 cart, maps indexes in the preprocessed code to individual source files"""
     def __init__(m, cart):
         m.cart = cart
@@ -151,10 +151,29 @@ class SubLanguageBase:
         pass
     minify = None
 
+class CustomCompilerBase:
+    """Base class of a custom 'compiler', which compiles pico8 source into a different language or bytecode,
+    to be placed in a string"""
+    def __init__(m, **_):
+        pass
+    def get_execute_code(m, **_):
+        return ""
+    def get_prepend_code(m, **_):
+        return None
+    def compile(m, **_):
+        return ""
+    desugar_unary_const = True # TEMP until constfold is added
+    desugar_function_stmt = False
+    desugar_repeat = False
+    desugar_for = False
+    desugar_for_in = False
+    desugar_op_assign = False
+
 class PicoContext:
     """Defines information for how pico8 code is to be processed, e.g. the supported builtins and the supported pico8 version"""
     def __init__(m, deprecated=True, undocumented=True, patterns=True, srcmap=False, extra_builtins=None, not_builtins=None, 
-                 local_builtins=True, extra_local_builtins=None, sublang_getter=None, version=sys.maxsize, hint_comments=True):
+                 local_builtins=True, extra_local_builtins=None, sublang_getter=None, compiler_getter=None,
+                 version=sys.maxsize, hint_comments=True, use_custom_compilers=False):
         builtins = set(main_builtins)
         local_builtins = set(builtins_copied_to_locals) if local_builtins else set()
         if deprecated:
@@ -178,6 +197,8 @@ class PicoContext:
 
         m.srcmap = [] if srcmap else None
         m.sublang_getter = sublang_getter
+        m.compiler_getter = compiler_getter
+        m.use_custom_compilers = use_custom_compilers
         m.hint_comments = hint_comments
         m.version = version
 
@@ -248,7 +269,7 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
                 if need_rename:
                     rename_tokens(ctxt, root, rename)
 
-                new_text = minify_code(ctxt, root, minify)
+                new_text = minify_code(ctxt, root, minify, errors)
             
             if need_unminify:
                 new_text = unminify_code(root, unminify)

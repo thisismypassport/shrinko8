@@ -190,6 +190,14 @@ def run():
              "--script", path_join("test_input", "sublang.py"), output="sublang.txt", norm_stdout=norm_paths, exit_code=2)
     run_test("sublang", "sublang.p8", "sublang.p8", "--minify",
              "--script", path_join("test_input", "sublang.py"))
+    run_stdout_test("compiler-lint", "compiler.p8", "--lint",
+             "--script", path_join("test_input", "compiler.py"), output="compiler.txt", norm_stdout=norm_paths, exit_code=2)
+    run_test("compiler", "compiler.p8", "compiler.p8", "--minify", "--no-minify-lines", "--no-minify-rename",
+             "--script", path_join("test_input", "compiler.py"))
+    run_test("compiler_desugar", "compiler.p8", "compiler_desugar.p8", "--minify", "--no-minify-lines", "--no-minify-rename",
+             "--script", path_join("test_input", "compiler.py"), "--script-args", "--desugar")
+    run_test("compiler_rename", "compiler.p8", "compiler_rename.p8", "--minify", "--no-minify-lines",
+             "--script", path_join("test_input", "compiler.py"), "--script-args", "--desugar")
     run_test("unkform1", "unkform1", "unkform1")
     run_test("unkform2", "unkform2.png", "unkform2", "--format", "png", "--input-format", "auto")
     run_test("mini", "mini.p8", "mini.p8", "--minify", "--no-minify-lines",

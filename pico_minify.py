@@ -1,111 +1,19 @@
 from utils import *
-from pico_tokenize import TokenType, tokenize, Token, k_char_escapes, CommentHint
-from pico_tokenize import parse_string_literal, parse_fixnum, k_keep_prefix
+from pico_tokenize import TokenType
 from pico_tokenize import StopTraverse, k_skip_children
-from pico_parse import Node, NodeType, VarKind, k_nested
+from pico_parse import Node, NodeType, VarKind
 from pico_parse import k_unary_ops_prec, k_binary_op_precs, k_right_binary_ops
 from pico_parse import is_vararg_expr, is_short_block_stmt, is_global_or_builtin_local
+from pico_output import format_fixnum, format_string_literal
+from pico_output import output_min_wspace, output_original_wspace
 
 class Focus(Bitmask):
     chars = compressed = tokens = ...
     none = 0
 
-# essentially only returns decvalue right now, given mostly non-fract. inputs
-# TODO: test with fract-ish inputs to see what's best to do.
-def format_fixnum(value, allow_minus=False):
-    """format a fixnum to a pico8 string"""
-    intvalue = value >> 16
-    dotvalue = value & 0xffff
-
-    hexvalue = "0x%x" % intvalue
-    if dotvalue:
-        hexvalue = "0x" if hexvalue == "0x0" else hexvalue
-        hexvalue += (".%04x" % dotvalue).rstrip('0')
-        
-    def str_add_1(str):
-        if not str:
-            return "1"
-        elif str[-1] == ".":
-            return str_add_1(str[:-1]) + "."
-        elif str[-1] == "9":
-            return str_add_1(str[:-1]) + "0"
-        else:
-            return str[:-1] + chr(ord(str[-1]) + 1)
-    
-    numvalue = value / (1 << 16)
-    decvalue = "%.10f" % numvalue
-    while "." in decvalue:
-        nextvalue = decvalue[:-1]
-        nextupvalue = str_add_1(nextvalue)
-        if parse_fixnum(nextvalue) == value:
-            decvalue = nextvalue
-        elif parse_fixnum(nextupvalue) == value:
-            decvalue = nextupvalue
-        else:
-            break
-    if decvalue.startswith("0."):
-        decvalue = decvalue[1:]
-
-    minvalue = hexvalue if len(hexvalue) < len(decvalue) else decvalue
-
-    if allow_minus and value & 0x80000000 and value != 0x80000000:
-        negvalue = "-" + format_fixnum(-value & 0xffffffff)
-        if len(negvalue) < len(minvalue):
-            minvalue = negvalue
-
-    return minvalue
-
-k_char_escapes_rev = {v: k for k, v in k_char_escapes.items() if k != '\n'}
-k_char_escapes_rev.update({"\0": "0", "\x0e": "14", "\x0f": "15"})
-
-k_char_escapes_rev_min = {k: v for k, v in k_char_escapes_rev.items() if k in "\0\n\r\"'\\"}
-
-def format_string_literal(value, use_ctrl_chars=True, use_complex_long=True, long=None, quote=None):
-    """format a pico8 string to a pico8 string literal"""
-
-    if long != False:
-        if "\0" not in value and "\r" not in value and (use_complex_long or "]]" not in value):
-            newline = "\n" if value.startswith("\n") else ""
-
-            for i in itertools.count():
-                eqs = "=" * i
-                if f"]{eqs}]" not in value:
-                    break
-            
-            strlong = f"[{eqs}[{newline}{value}]{eqs}]"
-            if long == True:
-                return strlong
-        else:
-            strlong = None
-            long = False
-
-    if long != True:
-        if quote is None:
-            quote = '"' if value.count('"') <= value.count("'") else "'"
-
-        exclude_esc = "'" if quote == '"' else '"'
-            
-        char_escapes_rev = k_char_escapes_rev_min if use_ctrl_chars else k_char_escapes_rev
-
-        litparts = []
-        for i, ch in enumerate(value):
-            if ch in char_escapes_rev and ch != exclude_esc:
-                esc = char_escapes_rev[ch]
-                if esc.isdigit() and i + 1 < len(value) and value[i + 1].isdigit():
-                    esc = esc.rjust(3, '0')
-                litparts.append("\\" + esc)
-            else:
-                litparts.append(ch)
-
-        strlit = '%s%s%s' % (quote, "".join(litparts), quote)
-        if long == False:
-            return strlit
-
-    return strlong if len(strlong) < len(strlit) else strlit
-
 def minify_string_literal(ctxt, token, focus, value=None):
     if value is None:
-        value = parse_string_literal(token.value)
+        value = token.string_value
     
     if focus.chars:
         return format_string_literal(value, use_complex_long=ctxt.version >= 40)
@@ -211,7 +119,7 @@ def minify_change_shorthand(node, new_short):
         
         # we can assume node.cond is not wrapped in parens, since we're in a post-visit
         # wrap it in parens ourselves (TODO: eww...)
-        node.cond.replace_with(Node(NodeType.group, [], child=copy(node.cond)))
+        node.cond.replace_with(Node(NodeType.group, [], child=node.cond.copy_and_erase()))
         node.cond.children.append(node.cond.child)
         node.cond.insert_token(0, TokenType.punct, "(", near_next=True)
         node.cond.append_token(TokenType.punct, ")")
@@ -372,7 +280,7 @@ def minify_merge_assignments(prev, next, ctxt, safe_only):
 
     next.erase()
 
-def minify_code(ctxt, root, minify_opts):
+def minify_code(ctxt, root, minify_opts, errors=None):
     safe_reorder = minify_opts.get("safe-reorder", False)
     minify_lines = minify_opts.get("lines", True)
     minify_wspace = minify_opts.get("wspace", True)
@@ -415,6 +323,14 @@ def minify_code(ctxt, root, minify_opts):
         token.erase("(")
         token.parent.erase_token(-1, ")")
 
+    def run_compiler(token, compiler):
+        assert e(errors)
+        subroot = token.parent.extra_children[0].child
+        add_node_error = lambda msg, node: errors.append(Error(f"{token.compiler_name}: {msg}", node))
+        warn_node = lambda msg, node: eprint(Error(f"{token.compiler_name}: {msg}", node).format()) # TODO: store warnings
+        compiled = compiler.compile(subroot, minify_opts=minify_opts, on_error=add_node_error, on_warn=warn_node)
+        token.modify(minify_string_literal(ctxt, token, focus, value=compiled))
+
     def fixup_tokens(token):
 
         # minify sublangs
@@ -422,6 +338,10 @@ def minify_code(ctxt, root, minify_opts):
         sublang = getattr(token, "sublang", None)
         if sublang and sublang.minify:
             token.modify(minify_string_literal(ctxt, token, focus, value=sublang.minify()))
+            
+        compiler = getattr(token, "compiler", None)
+        if compiler:
+            run_compiler(token, compiler)
 
         if minify_tokens:
             
@@ -479,7 +399,7 @@ def minify_code(ctxt, root, minify_opts):
             if token.type == TokenType.number:
                 outer_prec = get_precedence(token.parent.parent) if token.parent.type == NodeType.const else None
                 allow_minus = outer_prec is None or outer_prec < k_unary_ops_prec
-                token.modify(format_fixnum(parse_fixnum(token.value), allow_minus=allow_minus))
+                token.modify(format_fixnum(token.fixnum_value, allow_minus=allow_minus))
                 if token.value.startswith("-"):
                     # insert synthetic minus token, so that output_tokens's tokenize won't get confused
                     token.modify(token.value[1:])
@@ -492,127 +412,4 @@ def minify_code(ctxt, root, minify_opts):
     else:
         return output_original_wspace(root, minify_comments)
 
-def need_whitespace_between(prev_token, token):
-    combined = prev_token.value + token.value
-    ct, ce = tokenize(PicoSource(None, combined))
-    return ce or len(ct) != 2 or (ct[0].type, ct[0].value, ct[1].type, ct[1].value) != (prev_token.type, prev_token.value, token.type, token.value)
-
-def need_newline_after(node):
-    # (k_nested is set for shorthands used in the middle of a line - we don't *YET* generate this ourselves (TODO: do for 0.2.6b+), but we do preserve it)
-    return node.short and node.short is not k_nested
-
-def output_min_wspace(root, minify_lines=True):
-    """convert a root back to a string, inserting as little whitespace as possible"""
-    output = []
-    prev_token = Token.none
-    prev_vline = 0
-    need_linebreak = False
-
-    def output_tokens(token):
-        nonlocal prev_token, prev_vline, need_linebreak
-
-        if token.children:
-            for comment in token.children:
-                if comment.hint == CommentHint.keep:
-                    output.append(comment.value.replace(k_keep_prefix, "", 1))
-
-        if token.value is None:
-            return
-
-        # (modified tokens may require whitespace not previously required - e.g. 0b/0x)
-        if (prev_token.endidx < token.idx or prev_token.modified or token.modified) and prev_token.value:
-            # TODO: can we systemtically add whitespace to imrpove compression? (failed so far)
-
-            if need_linebreak or (not minify_lines and e(token.vline) and token.vline != prev_vline):
-                output.append("\n")
-                need_linebreak = False
-            elif need_whitespace_between(prev_token, token):
-                output.append(" ")
-
-        output.append(token.value)
-        prev_token = token
-        if e(token.vline):
-            prev_vline = token.vline
-
-    def post_node_output(node):
-        nonlocal need_linebreak
-        if need_newline_after(node):
-            need_linebreak = True
-    
-    root.traverse_nodes(tokens=output_tokens, post=post_node_output)
-    return "".join(output)
-
-def output_original_wspace(root, exclude_comments=False):
-    """convert a root back to a string, using original whitespace (optionally except comments)"""
-    output = []
-    prev_token = Token.none
-    prev_welded_token = None
-    prev_vline = 0
-    need_linebreak = False
-
-    def get_wspace(pre, post, allow_linebreaks, need_linebreak=False):
-        source = default(pre.source, post.source)
-        text = source.text[pre.endidx:post.idx]
-        
-        if not text.isspace():
-            # verify this range contains only whitespace/comments (may contain more due to reorders/removes)
-            tokens, _ = tokenize(PicoSource(None, text))
-            if tokens:
-                text = text[:tokens[0].idx]
-
-        if not allow_linebreaks and "\n" in text:
-            text = text[:text.index("\n")] + " "
-        if need_linebreak and "\n" not in text:
-            text += "\n"
-
-        return text
-
-    def output_tokens(token):
-        nonlocal prev_token, prev_welded_token, prev_vline, need_linebreak
-        
-        if prev_token.endidx != token.idx:
-            allow_linebreaks = e(token.vline) and token.vline != prev_vline
-            wspace = get_wspace(prev_token, token, allow_linebreaks, need_linebreak)
-
-            if exclude_comments and token.children:
-                # only output spacing before and after the comments between the tokens
-                prespace = get_wspace(prev_token, token.children[0], allow_linebreaks)
-                postspace = get_wspace(token.children[-1], token, allow_linebreaks)
-                for comment in token.children:
-                    if comment.hint == CommentHint.keep:
-                        prespace += comment.value.replace(k_keep_prefix, "", 1)
-                
-                output.append(prespace)
-                if "\n" in wspace and "\n" not in prespace and "\n" not in postspace:
-                    output.append("\n")
-                elif wspace and not prespace and not postspace:
-                    output.append(" ")
-                output.append(postspace)
-            else:
-                output.append(wspace)
-            
-            prev_welded_token = None
-            need_linebreak = False
-        
-        # extra whitespace may be needed due to modified or deleted tokens
-        if prev_welded_token and token.value and (prev_welded_token.modified or token.modified or prev_welded_token != prev_token):
-            if need_whitespace_between(prev_welded_token, token):
-                output.append(" ")
-
-        if token.value != None:
-            output.append(token.value)
-            prev_welded_token = token
-            
-        prev_token = token
-        if e(token.vline):
-            prev_vline = token.vline
-    
-    def post_node_output(node):
-        nonlocal need_linebreak
-        if need_newline_after(node):
-            need_linebreak = True
-    
-    root.traverse_nodes(tokens=output_tokens, post=post_node_output)
-    return "".join(output)
-
-from pico_process import PicoSource
+from pico_process import Error

@@ -13,8 +13,7 @@ def lint_code(ctxt, root, lint_opts):
     custom_globals = set(lint_opts.get("globals", ()))
 
     def add_error(msg, node):
-        err = Error(msg, node)
-        errors.append(err)
+        errors.append(Error(msg, node))
 
     # find global assignment, and check for uses
 

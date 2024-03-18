@@ -6,6 +6,7 @@ k_nested = object()
 
 class VarKind(Enum):
     local = global_ = member = label = ...
+    anon = ... # for compiler desugaring only
     
 class VarBase():
     def __init__(m, kind, name):
@@ -128,7 +129,7 @@ class NodeType(Enum):
     table = table_index = table_member = varargs = assign = op_assign = ...
     local = function = if_ = elseif = else_ = while_ = repeat = until = ...
     for_ = for_in = return_ = break_ = goto = label = block = do = ...
-    sublang = ... # special
+    sublang = compiler = ... # special
 
 class Node(TokenNodeBase):
     """A pico8 syntax tree node, spanning 'source'.text['idx':'endidx']. Its 'type' is a NodeType
@@ -185,7 +186,7 @@ class Node(TokenNodeBase):
     def erase_token(m, i, expected=None):
         m.children[i].erase(expected)
     
-    def insert_existing(m, i, existing, near_next=False): # junks existing (so must be erased one way or another)
+    def insert_existing(m, i, existing, near_next=False): # existing should be new (or copy)
         src = m._create_for_insert(i, None, None, near_next)
         def reset_location(token):
             token.idx, token.endidx = src.idx, src.endidx
@@ -198,13 +199,28 @@ class Node(TokenNodeBase):
     def erase_child(m, i):
         m.children[i].erase()
 
-    def replace_with(m, target): # target must not reference m, but may reference copy(m)
+    def replace_with(m, target): # target should be new (or copy)
         old_parent = m.parent
         m.__dict__ = target.__dict__
         m.parent = old_parent
     
     def erase(m):
         m.replace_with(Node(None, []))
+
+    @classmethod
+    def synthetic(cls, src, type, *child_specs, **kwargs): # nodes in kwargs must be new nodes.
+                                                           # child_specs is array of either str OR (TokenType, str) OR <node, also passed in kwargs>
+        obj = cls(type, [], **kwargs)
+        for child in child_specs:
+            if isinstance(child, str):
+                child = (TokenType.keyword if child.isalnum() else TokenType.punct, child) # useful default
+            
+            if isinstance(child, tuple):
+                child = Token.synthetic(child[0], child[1], src)
+            
+            obj.children.append(child)
+            child.parent = obj
+        return obj
 
 class ParseError(Exception):
     pass
@@ -230,11 +246,16 @@ k_right_binary_ops = {
     "^", ".."
 }
 
+k_binary_op_synonyms = {
+    "~": "^^",
+    "!=": "~=",
+}
+
 k_block_ends = ("end", "else", "elseif", "until")
 
 k_prefix_types = (NodeType.var, NodeType.member, NodeType.index, NodeType.call, NodeType.group)
 
-def parse(source, tokens, ctxt=None):
+def parse(source, tokens, ctxt=None, compiler=None):
     idx = 0
     depth = -1 # incremented in parse_block
     funcdepth = -1 # incremented in parse_root
@@ -247,7 +268,7 @@ def parse(source, tokens, ctxt=None):
     
     scope.add(Local("_ENV", scope))
 
-    if ctxt and ctxt.local_builtins:
+    if ctxt and ctxt.local_builtins and compiler is None:
         for local in ctxt.local_builtins:
             scope.add(Local(local, scope, builtin=True))
    
@@ -298,6 +319,7 @@ def parse(source, tokens, ctxt=None):
 
         var = None
         search_scope = None
+        upvalue = False
         
         if member:
             kind = VarKind.member
@@ -322,6 +344,7 @@ def parse(source, tokens, ctxt=None):
                 var = scope.find(name)
                 if var and var.scope.funcdepth != scope.funcdepth:
                     var.captured = True
+                    upvalue = True
             
             if not var:
                 kind = VarKind.global_
@@ -336,7 +359,7 @@ def parse(source, tokens, ctxt=None):
         if var and hasattr(token, "rename"):
             var.rename = token.rename
 
-        node = Node(NodeType.var, [token], name=name, kind=kind, var_kind=var_kind, var=var, new=bool(new), scope=search_scope)
+        node = Node(NodeType.var, [token], name=name, kind=kind, var_kind=var_kind, var=var, upvalue=upvalue, new=bool(new), scope=search_scope)
 
         if label and not new:
             nonlocal unresolved_labels
@@ -427,10 +450,14 @@ def parse(source, tokens, ctxt=None):
         late_resolve_labels()
         unresolved_labels = old_unresolved
 
-        funcnode = Node(NodeType.function, tokens, target=target, params=params, body=body, name=name, kind=func_kind)
+        funcnode = Node(NodeType.function, tokens, target=target, params=params, body=body, name=name, kind=func_kind, local=local)
         if self_param:
             funcnode.add_extra_child(self_param)
-        return funcnode
+        
+        if target and compiler and compiler.desugar_function_stmt:
+            return desugar_function_stmt(funcnode)
+        else:
+            return funcnode
 
     def parse_table():
         tokens = [peek(-1)]
@@ -500,6 +527,12 @@ def parse(source, tokens, ctxt=None):
         if hasattr(token, "sublang"):
             sublang_token = Token.synthetic(TokenType.string, "", token)
             node.add_extra_child(Node(NodeType.sublang, (sublang_token,), name=token.sublang_name, lang=token.sublang))
+        
+        if hasattr(token, "compiler"):
+            subroot, suberrors = parse(source, token.tokens, ctxt, compiler=token.compiler)
+            errors.extend(suberrors)
+            if subroot:
+                node.add_extra_child(Node(NodeType.compiler, (subroot,), name=token.compiler_name, lang=token.compiler, child=subroot))
 
         return node
 
@@ -518,7 +551,10 @@ def parse(source, tokens, ctxt=None):
             return Node(NodeType.group, [token, expr, close], child=expr)
         elif value in k_unary_ops:
             expr = parse_expr(k_unary_ops_prec)
-            return Node(NodeType.unary_op, [token, expr], child=expr, op=value)
+            node = Node(NodeType.unary_op, [token, expr], child=expr, op=value)
+            if compiler and compiler.desugar_unary_const:
+                node = desugar_unary_const(node)
+            return node
         elif value == "?":
             return parse_print()
         elif value == "function":
@@ -563,7 +599,8 @@ def parse(source, tokens, ctxt=None):
                     expr = parse_call(expr, extra_arg=var)
             elif value in k_binary_op_precs and compare_prec(value, prec):
                 other = parse_expr(k_binary_op_precs[value])
-                expr = Node(NodeType.binary_op, [expr, token, other], left=expr, right=other, op=value)
+                op = k_binary_op_synonyms.get(value, value)
+                expr = Node(NodeType.binary_op, [expr, token, other], left=expr, right=other, op=op)
             else:
                 idx -= 1
                 return expr
@@ -649,8 +686,10 @@ def parse(source, tokens, ctxt=None):
         body, until = parse_block(with_until=True)
         tokens.append(body)
         tokens.append(until)
-        repeat = Node(NodeType.repeat, tokens, body=body, until=until)
-        return repeat
+        if compiler and compiler.desugar_repeat:
+            return desugar_repeat(body, until)
+        else:
+            return Node(NodeType.repeat, tokens, body=body, until=until)
 
     def parse_until():
         tokens = []
@@ -687,7 +726,10 @@ def parse(source, tokens, ctxt=None):
             require("end", tokens)
             scope = scope.parent
 
-            return Node(NodeType.for_, tokens, target=target, min=min, max=max, step=step, body=body)
+            if compiler and compiler.desugar_for:
+                return desugar_for(target, min, max, step, body, scope)
+            else:
+                return Node(NodeType.for_, tokens, target=target, min=min, max=max, step=step, body=body)
 
         else:
             newscope = Scope(scope, depth + 1, funcdepth)
@@ -705,7 +747,10 @@ def parse(source, tokens, ctxt=None):
             require("end", tokens)
             scope = scope.parent
 
-            return Node(NodeType.for_in, tokens, targets=targets, sources=sources, body=body)
+            if compiler and compiler.desugar_for:
+                return desugar_for_in(targets, sources, body, scope)
+            else:
+                return Node(NodeType.for_in, tokens, targets=targets, sources=sources, body=body)
 
     def parse_return(vline):
         tokens = [peek(-1)]
@@ -765,9 +810,12 @@ def parse(source, tokens, ctxt=None):
         token = peek()
         op = token.value[:-1]
         idx += 1
-        source = parse_expr()
+        second = parse_expr()
         mark_reassign(first)
-        return Node(NodeType.op_assign, [first, token, source], target=first, source=source, op=op)
+        if compiler and compiler.desugar_for:
+            return desugar_op_assign(first, second, op, scope)
+        else:
+            return Node(NodeType.op_assign, [first, token, second], target=first, src=second, op=op)
 
     def parse_misc_stmt():
         nonlocal idx
@@ -921,3 +969,5 @@ def is_function_stmt(node):
     return node.type == NodeType.function and node.target
 
 from pico_process import Error
+from pico_desugar import desugar_function_stmt, desugar_repeat, desugar_op_assign
+from pico_desugar import desugar_for, desugar_for_in, desugar_unary_const

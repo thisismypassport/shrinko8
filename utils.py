@@ -629,6 +629,10 @@ class lazy_property(object):
     @staticmethod
     def is_set(obj, name):
         return name in obj.__dict__
+    
+    @staticmethod
+    def clear(obj, name):
+        obj.__dict__.pop(name, None)
 
 class lazy_classproperty(object):
     """Method decorator that turns it into a lazily-evaluated class property"""
@@ -1444,13 +1448,6 @@ def nop(value):
     """The identity function"""
     return value
 
-def find(items, filter):
-    """Find the first item in 'items' that passes 'filter'"""
-    for item in items:
-        if filter(item):
-            return item
-    return None
-
 def product(items):
     """Return the product of 'items'"""
     result = 1
@@ -1574,6 +1571,13 @@ def list_remove(list, func):
         if func(item):
             del list[i]
             i -= 1
+
+def list_find(list, val):
+    """Find the index of the given element in the list"""
+    try:
+        return list.index(val)
+    except ValueError:
+        return -1
 
 def list_find_where(list, func):
     """Find the index of the first element in a list that matches predicate 'func'"""
@@ -2458,6 +2462,11 @@ def count_significant_bits(a):
     """Return how many significant bits (all but leading zero bits) 'a' has"""
     assert a >= 0
     return a.bit_length()
+
+def count_leading_zero_bits(a, bits):
+    """Return how many leading zero bits 'a' has, counting from 'bits'"""
+    assert a >= 0
+    return bits - a.bit_length()
 
 def count_trailing_zero_bits(a):
     """Return how many trailing zero bits 'a' has"""

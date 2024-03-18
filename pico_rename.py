@@ -1,8 +1,9 @@
 from utils import *
 from pico_defs import from_p8str
-from pico_tokenize import TokenType, Token, is_identifier, keywords, CommentHint
+from pico_tokenize import TokenType, is_identifier, keywords, CommentHint
+from pico_output import format_string_literal
 from pico_parse import VarKind, NodeType, VarBase
-from pico_minify import format_string_literal, Focus
+from pico_minify import Focus
 import fnmatch
 
 global_callbacks = {

@@ -95,13 +95,13 @@ class JsExport(CartExport):
         m.text = text
     
     def find_cartnames(m):
-        match = re.search("var\s+_cartname\s*=\s*\[(.*?)\]", m.text, re.S)
+        match = re.search(r"var\s+_cartname\s*=\s*\[(.*?)\]", m.text, re.S)
         if not match:
             throw("can't find _cartname var in js")
         return match
     
     def find_cartdata(m):
-        match = re.search("var\s+_cartdat\s*=\s*\[(.*?)\]", m.text, re.S)
+        match = re.search(r"var\s+_cartdat\s*=\s*\[(.*?)\]", m.text, re.S)
         if not match:
             throw("can't find _cartdat var in js")
         return match
@@ -163,7 +163,7 @@ class JsExport(CartExport):
         m.cartnames = m.cartdata = None # need reparse
     
     def find_pod(m):
-        matches = list(re.finditer("fileData0\.push\.apply\s*\(\s*fileData0\s*,\s*\[(.*?)\]\s*\)", m.text, re.S))
+        matches = list(re.finditer(r"fileData0\.push\.apply\s*\(\s*fileData0\s*,\s*\[(.*?)\]\s*\)", m.text, re.S))
         if not matches:
             throw("can't find fileData0 pushes in js")
         return matches

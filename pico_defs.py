@@ -242,6 +242,8 @@ def fixnum_to_num(value):
         value >>= 16 # preserve int-ness
     return -value if neg else value
 
+# pico-8 versions
+
 k_version_tuples = {
     29: (0,2,1,0),
     30: (0,2,2,0),

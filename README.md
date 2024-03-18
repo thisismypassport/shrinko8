@@ -662,9 +662,14 @@ class MySubLanguage(SubLanguageBase):
 
     # called to parse the sub-language from a string
     # (strings consist of raw pico-8 chars ('\0' to '\xff') - not real unicode)
-    def __init__(self, str, on_error, **_):
+    def __init__(self, str, args, on_error, **_):
         # our trivial language consists of space-separated tokens in newline-separated statements
         self.stmts = [stmt.split() for stmt in str.splitlines()]
+
+        # args is a string with the arguments we received (or an empty string if none).
+        # they can be parsed via e.g. shlex + argparse
+        self.do_lint = "nolint" not in args.split() # or we can be lazy and do this
+
         # we can report parsing errors:
         #on_error("Example")
 
@@ -688,10 +693,11 @@ class MySubLanguage(SubLanguageBase):
 
     # called to lint the sub-language's code
     def lint(self, builtins, globals, on_error, **_):
-        for stmt in self.stmts:
-            for token in stmt:
-                if self.is_global(token) and token not in builtins and token not in globals:
-                    on_error("Identifier '%s' not found" % token)
+        if self.do_lint:
+            for stmt in self.stmts:
+                for token in stmt:
+                    if self.is_global(token) and token not in builtins and token not in globals:
+                        on_error("Identifier '%s' not found" % token)
         # could do custom lints too
 
     # for --minify:
@@ -743,6 +749,12 @@ class MySubLanguage(SubLanguageBase):
 def sublanguage_main(lang, **_):
     if lang == "evally":
         return MySubLanguage
+```
+
+Example of passing arguments to the language:
+```lua
+eval(--[[language::evally arg1 arg2]][[...]])
+-- __init__ will receive args="arg1 arg2"
 ```
 
 ### Example - simple sub-language for table parsing

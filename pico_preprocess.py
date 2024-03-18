@@ -176,7 +176,7 @@ def trim_cart_to_tab(cart, target_tab):
 k_custom_pp_inline_delims = k_wspace + "[]"
     
 class CustomPreprocessor(PicoPreprocessor):
-    """A custom preprocessor that isn't enabled by default (and is quite quirky & weird)"""
+    """A shrinko8-specific preprocessor that isn't enabled by default (and is quite quirky & weird)"""
 
     def __init__(m, defines=None, pp_handler=None, **kwargs):
         super().__init__(**kwargs)

@@ -7,6 +7,9 @@ eval--[[language::evally]][[
     rawset g_another_glob .some_member g_some_global
     rawset g_another_glob .another_member g_same_global
 ]]
+eval--[[language::evally nolint]][[
+    g_another_glob <- rawsoot g_soom_global
+]]
 print(g_another_glob)
 print(g_another_glob.some_member)
 eval--[[language::empty]]""
