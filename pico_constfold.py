@@ -1,5 +1,5 @@
 from utils import *
-from pico_defs import fixnum_is_negative, k_fixnum_mask
+from pico_defs import fixnum_is_negative, k_fixnum_mask, to_p8str
 from pico_tokenize import Token, TokenType, ConstToken, k_skip_children, tokenize
 from pico_parse import Node, NodeType, VarKind, is_global_or_builtin_local, is_vararg_expr
 from pico_output import format_fixnum
@@ -585,8 +585,11 @@ def fold_consts(ctxt, root, errors):
 
     root.traverse_nodes(pre=skip_special, post=update_node_constval)
 
-def parse_constant(value):
-    tokens, errors = tokenize(Source(None, value))
+def parse_constant(value, as_str=False):
+    if as_str:
+        return LuaString(to_p8str(value))
+
+    tokens, errors = tokenize(Source(None, to_p8str(value)))
     if not errors:
         token = None
         if len(tokens) == 1:

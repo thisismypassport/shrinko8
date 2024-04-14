@@ -279,8 +279,7 @@ class CustomPreprocessor(PicoPreprocessor):
                 outparts.append(value)
                 out_i += len(value)
 
-        # (do not keep empty lines, unlike PicoPreprocessor)
-        return end_i + 1, end_i + 1, out_i
+        return end_i, end_i, out_i
         
     def handle_inline(m, path, code, i, start_i, out_i, outparts, outmappings):
         if not m.active:

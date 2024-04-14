@@ -5,7 +5,7 @@ from pico_compress import write_code_size, write_compressed_size, CompressionTra
 from pico_cart import Cart, CartFormat, read_cart, write_cart, get_bbs_cart_url, merge_cart
 from pico_export import read_cart_export, read_pod_file, ListOp
 from pico_tokenize import k_hint_split_re
-from pico_constfold import parse_constant, LuaString
+from pico_constfold import parse_constant
 import argparse
 
 k_version = 'v1.2.0b'
@@ -130,9 +130,9 @@ pgroup.add_argument("--not-builtin", type=SplitBySeps, action=extend_arg, help="
 pgroup.add_argument("--global-builtins-only", action="store_true", help="assume all builtins are global, corresponds to pico8's -global_api option")
 pgroup.add_argument("--local-builtin", type=SplitBySeps, action=extend_arg, help="treat identifier(s) as a local builtin (probably no use outside of testing)")
 pgroup.add_argument("--ignore-hints", action="store_true", help="ignore shrinko8 hint comments")
-pgroup.add_argument("--custom-preprocessor", action="store_true", help="enable a custom preprocessor (#define X 123, #ifdef X, #[X], #[X[[print('X enabled')]]])")
 pgroup.add_argument("--output-sections", type=SplitBySeps, action=extend_arg, help="only output the specified p8 sections {%s,...}" % ",".join(k_def_sections))
 pgroup.add_argument("--export-name", help="name to use for the export (by default, taken from output name)")
+pgroup.add_argument("--custom-preprocessor", action="store_true", help=argparse.SUPPRESS) # might remove this one day
 
 def default_format(input, for_output=False):
     ext = path_extension(input)[1:].lower()
@@ -243,11 +243,11 @@ def main_inner(raw_args):
     
     if args.const or args.str_const:
         if args.const:
-            args.const = {name: parse_constant(val) or throw(f"cannot parse <{val}>. If it's meant to be a string, try using --str-const instead") 
+            args.const = {name: parse_constant(val) or throw(f"cannot parse const <{val}>. If it's meant to be a string, try using --str-const instead") 
                           for name, val in args.const}
         if args.str_const:
             args.const = args.const or {}
-            args.const.update({name: LuaString(val) for name, val in args.str_const})
+            args.const.update({name: parse_constant(val, as_str=True) for name, val in args.str_const})
 
     args.preproc_cb, args.postproc_cb, args.sublang_cb = None, None, None
     if args.script:

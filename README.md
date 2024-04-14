@@ -403,6 +403,7 @@ end
 Keep in mind that in some cases, Shrinko8 will play it safe and avoid a computation whose result is questionable or has a high potential to change between pico8 versions. If this prevents a `--[[const]]` variable from being assigned a constant, Shrinko8 will warn about this:
 
 ```lua
+-- here, abs overflows (due to receiving -0x8000), and shrinko8 chooses not to rely on the overflow behaviour
 --[[const]] x = abs(0x7fff+1)-1
 ?x
 
