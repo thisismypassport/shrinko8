@@ -8,7 +8,7 @@ from pico_tokenize import k_hint_split_re
 from pico_constfold import parse_constant, LuaString
 import argparse
 
-k_version = 'v1.2.0'
+k_version = 'v1.2.0b'
 
 def SplitBySeps(val):
     return k_hint_split_re.split(val)
@@ -280,13 +280,9 @@ def main_inner(raw_args):
     else: # output-only operations
         cart = Cart() # just to avoid exceptions
         extra_carts = ()
-        passed = True
 
     if args.output:
         handle_output(args, cart, extra_carts)
-
-    if not passed:
-        return 2
 
 def handle_input(args):
     output_is_export = args.format and args.format.is_export()
@@ -385,11 +381,18 @@ def handle_processing(args, main_cart, extra_carts):
                                   unminify=args.unminify, stop_on_lint=not args.no_lint_fail,
                                   want_count=not args.no_count_tokenize)
         if errors:
-            # can be errors, lint warnings, or hint warnings...
             had_warns = True
-            print("Lint warnings:" if ok else "Compilation errors:")
+
+            if not ok:
+                print("Compilation errors:")
+            elif args.lint:
+                print("Lint warnings:")
+            else:
+                print("Hint usage warnings:")
+            
             for error in sorted(errors):
                 print(error.format(args.error_format))
+            
             if not ok or (args.lint and not args.no_lint_fail):
                 return False, ok
 
@@ -407,7 +410,7 @@ def handle_processing(args, main_cart, extra_carts):
         if args.version:
             print("version: %d, v%d.%d.%d:%d, %c" % (cart.version_id, *cart.version_tuple, cart.platform))
     
-    return True, had_warns
+    return True, not had_warns
 
 def handle_output(args, cart, extra_carts):
     if e(args.insert_cart):

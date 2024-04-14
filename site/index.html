@@ -213,7 +213,7 @@ It can be a .p8 file, a .png cart, and more."></div>
             
             <div id="minify-overlay-parent" style="flex: 1" class="base">
               <div id="minify-text-div" class="full flex-column">
-                <div id="minify-code" class="ace-textarea" style="flex: 1" readonly></div>
+                <div id="minify-code" class="ace-textarea" style="flex: 1; margin-right: 10px" readonly></div>
                 <div><button type="button" style="margin-top: 10px" onclick="saveOutputFile()">Download</button></div>
               </div>
               
@@ -224,7 +224,7 @@ It can be a .p8 file, a .png cart, and more."></div>
                   <span id="minify-url-copied" style="display: none">Copied!</span>
                 </div>
                 <div>Preview:</div>
-                <div id="minify-url-preview" class="ace-textarea" style="flex: 1; margin-top: 10px" readonly></div>
+                <div id="minify-url-preview" class="ace-textarea" style="flex: 1; margin-top: 10px; margin-right: 10px" readonly></div>
               </div>
 
               <div id="minify-binary-div" class="full flex-row">
@@ -264,6 +264,8 @@ It can be a .p8 file, a .png cart, and more."></div>
                 </div>
               </div>
             </div>
+
+            <div id="minify-diag-output" class="asis scroll border" style="flex: 0 0 20%; display: none; margin: 0 10px 0 170px"></div>
           </div>
 
           <div id="minify-opts" style="flex: 0 0 20%; padding-left: 10px; border-left: 1px solid black" class="flex-column">

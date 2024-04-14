@@ -552,6 +552,7 @@ function applyCounts(stdouterr) {
 let activeMinifies = 0;
 
 async function doMinify() {
+    $("#minify-diag-output").hide();
     $("#minify-overlay").show();
     activeMinifies++;
 
@@ -622,10 +623,13 @@ async function doMinify() {
                 }
                 $("#minify-preview").data("editor").setValue(preview, -1);
             }
+            
+            applyErrors(2, stdouterr, "#minify-diag-output");
         }
 
         outputMap[format] = code != 0 ? false : output;
         $("#minify-error-overlay").toggle(code != 0);
+        $("#minify-diag-output").toggle(code == 0 && stdouterr !== "");
     } finally {
         if (--activeMinifies == 0) {
             $("#minify-overlay").hide();
@@ -640,7 +644,7 @@ async function doLint() {
     activeLints++;
     
     try {
-        let args = ["--lint", "--no-lint-fail"];
+        let args = ["--lint"];
 
         if (!$("#lint-undef").isChecked()) {
             args.push("--no-lint-undefined");
