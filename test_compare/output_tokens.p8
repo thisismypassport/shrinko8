@@ -18,7 +18,8 @@ t()
   (also, testing comment removal)
 ]]
 
-x,b=0,0--[[]]b=0
+x,b=0,0--[[]]
+b=0
 
 -- include
 -- no header needed

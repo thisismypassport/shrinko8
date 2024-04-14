@@ -11,11 +11,13 @@ class VarBase():
     def __init__(m, kind, name):
         m.kind = kind
         m.name = name
+        m.is_const = None
         m.implicit = False # has implicit *access*?
-        m.reassigned = False
+        m.reassigned = 0
 
     keys_kind = None
     rename = None
+    constval = None
         
     def __repr__(m):
         return f"{m.kind} {m.name}"
@@ -150,6 +152,7 @@ class Node(TokenNodeBase):
         return tokens
     
     short = False # default property
+    assignment = False # default proprerty
     value = None # default proprty (TODO: bad, for consistency with Token)
 
     @property
@@ -182,10 +185,18 @@ class Node(TokenNodeBase):
         m.children.append(m._create_for_insert(len(m.children), type, value, near_next))
         m.children[-1].parent = m
 
+    def modify_token(m, i, value, expected=None):
+        m.children[i].modify(value, expected)
+    
     def erase_token(m, i, expected=None):
         m.children[i].erase(expected)
-    
-    def insert_existing(m, i, existing, near_next=False): # junks existing (so must be erased one way or another)
+
+    def remove_token(m, i, expected=None):
+        if expected != None:
+            m.children[i].check(expected)
+        del m.children[i]
+
+    def insert_existing(m, i, existing, near_next=False):
         src = m._create_for_insert(i, None, None, near_next)
         def reset_location(token):
             token.idx, token.endidx = src.idx, src.endidx
@@ -195,13 +206,18 @@ class Node(TokenNodeBase):
         m.children.insert(i, existing)
         m.children[i].parent = m
 
-    def erase_child(m, i):
-        m.children[i].erase()
+    def append_existing(m, existing, near_next=False):
+        m.insert_existing(len(m.children), existing, near_next)
 
-    def replace_with(m, target): # target must not reference m, but may reference copy(m)
+    def remove_child(m, i):
+        del m.children[i]
+
+    def replace_with(m, target): # target must not reference m, but may reference m.copy() or m.move()
         old_parent = m.parent
         m.__dict__ = target.__dict__
         m.parent = old_parent
+        for child in m.children:
+            child.parent = m
     
     def erase(m):
         m.replace_with(Node(None, []))
@@ -244,6 +260,7 @@ def parse(source, tokens, ctxt=None):
     errors = []
     globals = LazyDict(lambda key: Global(key))
     members = LazyDict(lambda key: Member(key))
+    has_env = False
     
     scope.add(Local("_ENV", scope))
 
@@ -292,7 +309,7 @@ def parse(source, tokens, ctxt=None):
             return peek(-1)
         add_error("identifier expected", fail=True)
 
-    def parse_var(token=None, new=None, member=False, label=False, implicit=False):
+    def parse_var(token=None, new=None, member=False, label=False, implicit=False, const=None):
         token = token or require_ident()
         name = token.value
 
@@ -326,15 +343,28 @@ def parse(source, tokens, ctxt=None):
             if not var:
                 kind = VarKind.global_
                 var = globals[name]
+                if ctxt and ctxt.consts and name in ctxt.consts:
+                    var.is_const = True
+                    var.constval = ctxt.consts[name]
+            
+            if name == "_ENV" and not implicit:
+                nonlocal has_env
+                has_env = True
 
         if implicit and var:
             var.implicit = True
 
         var_kind = getattr(token, "var_kind", None)
-        if var and hasattr(token, "keys_kind"):
-            var.keys_kind = token.keys_kind
-        if var and hasattr(token, "rename"):
-            var.rename = token.rename
+
+        if var:
+            if hasattr(token, "keys_kind"):
+                var.keys_kind = token.keys_kind
+            if hasattr(token, "rename"):
+                var.rename = token.rename
+            
+            const = getattr(token, "is_const", const)
+            if const != None:
+                var.is_const = const
 
         node = Node(NodeType.var, [token], name=name, kind=kind, var_kind=var_kind, var=var, new=bool(new), scope=search_scope)
 
@@ -730,7 +760,8 @@ def parse(source, tokens, ctxt=None):
         tokens = [peek(-1)]
         newscope = Scope(scope, depth, funcdepth)
 
-        targets = parse_list(tokens, lambda: parse_var(new=newscope))
+        const = getattr(tokens[0], "is_const", None)
+        targets = parse_list(tokens, lambda: parse_var(new=newscope, const=const))
         sources = []
         if accept("=", tokens):
             sources = parse_list(tokens, parse_expr)
@@ -742,8 +773,9 @@ def parse(source, tokens, ctxt=None):
         return Node(NodeType.local, tokens, targets=targets, sources=sources)
 
     def mark_reassign(target):
+        target.assignment = True
         if target.type == NodeType.var and target.var:
-            target.var.reassigned = True
+            target.var.reassigned += 1
 
     def parse_assign(first):
         tokens = [first]
@@ -871,6 +903,7 @@ def parse(source, tokens, ctxt=None):
         root = parse_block()
         root.globals = globals
         root.members = members
+        root.has_env = has_env
 
         funcdepth -= 1
 
@@ -919,5 +952,17 @@ def is_short_block_stmt(node):
     return node.short and node.type in (NodeType.if_, NodeType.else_, NodeType.while_)
 def is_function_stmt(node):
     return node.type == NodeType.function and node.target
+
+def get_precedence(node):
+    if node.type == NodeType.binary_op:
+        return k_binary_op_precs[node.op]
+    elif node.type == NodeType.unary_op:
+        return k_unary_ops_prec
+
+def is_right_assoc(node):
+    if node.type == NodeType.binary_op:
+        return node.op in k_right_binary_ops
+    else:
+        return False
 
 from pico_process import Error

@@ -12,8 +12,9 @@ Reading/Writing PNGs additionally requires the Pillow module (`python -m pip ins
 
 [Download the latest version of the source here.](https://github.com/thisismypassport/shrinko8/archive/refs/heads/main.zip)
 
-The supported tools are:
+The major supported features are:
 * [Minification](#minification) - Reduce the token count, character count and compression ratio of your cart.
+* [Constants](#constants) - Replace constant expressions with their value. Also removes 'if' branches with a constant condition.
 * [Linting](#linting) - Check for common code errors such as forgetting to declare a local.
 * [Getting Cart Size](#getting-cart-size) - Count the amount of tokens, characters, and compressed bytes your cart uses.
 * [Format Conversion](#format-conversion) - Convert between p8 files, pngs, and more. Achieves better code compression than Pico-8 when creating pngs.
@@ -72,6 +73,7 @@ You can specify what the minification should focus on reducing via additional co
 You can disable parts of the minification process via additional command-line options:
 
 * `--no-minify-rename` : Disable all renaming of identifiers
+* `--no-minify-consts` : Disable replacements of constant expressions with their value (see [constants](#constants))
 * `--no-minify-spaces` : Disable removal of spaces (and line breaks)
 * `--no-minify-lines` : Disable removal of line breaks
 * `--no-minify-comments` : Disable removal of comments (requires `--no-minify-spaces`)
@@ -310,6 +312,113 @@ You can keep specific comments in the output via:
 --keep: This is a comment to keep
 -- But this comment is gone after minify
 ```
+
+# Constants
+
+During [minification](#minification), Shrinko8 will automatically replace most constant expressions with their value:
+
+```lua
+func(60*60)
+-- becomes:
+func(3600)
+
+func('the answer is: '..1+3*2)
+-- becomes:
+func('the answer is: 7')
+```
+
+In addition, variables that are declared with the `--[[const]]` hint are treated as constants:
+
+```lua
+--[[const]] k_hero_spr = 4
+spr(k_hero_spr, x, y)
+-- becomes:
+spr(4, x, y)
+
+--[[const]] version = 'v1.2'
+?'version: '..version
+-- becomes:
+?'version: v1.2'
+
+-- the --[[const]] hint can apply to either individual variables or entire local statements
+--[[const]] local k_rock,k_box,k_wall = 4,5,6
+objs={k_rock,k_wall,k_wall,k_box}
+-- becomes:
+objs={4,6,6,5}
+
+-- some builtin functions can be used inside const declarations
+--[[const]] k_value = 2.5
+--[[const]] derived = flr(mid(k_value, 1, 5))
+?derived
+-- becomes:
+?2
+```
+
+Keep in mind that *Local* variables that aren't declared as `--[[const]]` may still be treated as constants in cases where it's safe & advantageous to do so.
+
+Furthermore, constant `if` and `elseif` branches are removed appropriately, allowing you to easily keep debug code in your source files, enabling it by simply changing the value of a variable:
+
+```lua
+--[[const]] TRACE = false
+--[[const]] DEBUG = true
+
+if (TRACE) ?"something happened!"
+if DEBUG then
+  spr(debug_spr, 10, 10)
+end
+
+-- becomes:
+spr(debug_spr,10,10)
+```
+
+## Passing constants via command line
+
+You can even declare constants in the command line, if you prefer:
+
+`python shrinko8.py path-to-input.p8 path-to-output.p8 --minify-safe-only --const DEBUG true --const SPEED 2.5 --str-const VERSION v1.2`
+
+```lua
+--[[CONST]] SPEED = 0.5 -- default value
+if DEBUG then
+  ?'debug version ' .. (VERSION or '???')
+end
+hero = 0
+function _update()
+  hero += SPEED
+end
+```
+
+Becomes: (disregarding other minifications)
+
+```lua
+?"debug version v1.2"
+hero = 0
+function _update()
+  hero += 2.5
+end
+```
+
+## Limitations
+
+Keep in mind that in some cases, Shrinko8 will play it safe and avoid a computation whose result is questionable or has a high potential to change between pico8 versions. If this prevents a `--[[const]]` variable from being assigned a constant, Shrinko8 will warn about this:
+
+```lua
+--[[const]] x = abs(0x7fff+1)-1
+?x
+
+-- warning:
+--tmp.lua:1:13: Local 'x' is marked as const but its value cannot be determined due to 'abs(0x7fff+1)'
+
+-- Becomes only:
+x=abs(32768)-1
+?x
+```
+
+If you find such limitations that you'd like to see lifted, feel free to open an issue.
+
+Finally, note that:
+* You can turn off all constant replacement via `--no-minify-consts`.
+* You can prevent treating specific variables as constants by declaring them with a `--[[non-const]]` hint. (though normally, there is no reason to do this)
 
 # Linting
 

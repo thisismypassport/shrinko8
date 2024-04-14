@@ -221,12 +221,12 @@ def run_for_cart(args):
     return (cart, get_test_results(), new_cart_input, cart_output, deltas, best_path_for_pico8)
 
 def run(focus):
-    prefix = f"{focus}_" if focus else ""
+    filename = str(focus) if focus else "normal"
 
     input_json = path_join("test_bbs", "input.json")
-    output_json = path_join("test_bbs", prefix + "output.json")
-    compare_json = path_join("test_bbs", prefix + "compare.json")
-    unfocused_json = path_join("test_bbs", "compare.json") if g_opts.compare_unfocused else None
+    output_json = path_join("test_bbs", "output", filename + ".json")
+    compare_json = path_join("test_bbs", "compare", filename + ".json")
+    unfocused_json = path_join("test_bbs", "compare", "normal.json") if g_opts.compare_unfocused else None
     inputs = try_file_read_json(input_json, {})
     outputs = try_file_read_json(output_json, {})
     compares = try_file_read_json(compare_json, {})
@@ -263,7 +263,7 @@ def run(focus):
                     p8_results.append(mt_pool.apply_async(run))
 
         for p8_result in p8_results:
-            check_run(f"{cart}:p8-run", p8_result.get())
+            check_run(f"p8-run", p8_result.get())
 
     file_write_json(input_json, inputs, sort_keys=True, indent=4)
     file_write_json(output_json, outputs, sort_keys=True, indent=4)
@@ -293,6 +293,7 @@ def run_all():
 
 if __name__ == "__main__":
     init_tests(g_opts)
-    dir_ensure_exists("test_bbs")
+    for dir in ("output", "compare"):
+        dir_ensure_exists(path_join("test_bbs", dir))
     run_all()
     sys.exit(end_tests())

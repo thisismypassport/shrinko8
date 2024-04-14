@@ -5,9 +5,10 @@ from pico_compress import write_code_size, write_compressed_size, CompressionTra
 from pico_cart import Cart, CartFormat, read_cart, write_cart, get_bbs_cart_url, merge_cart
 from pico_export import read_cart_export, read_pod_file, ListOp
 from pico_tokenize import k_hint_split_re
+from pico_constfold import parse_constant, LuaString
 import argparse
 
-k_version = 'v1.1.3b'
+k_version = 'v1.2.0'
 
 def SplitBySeps(val):
     return k_hint_split_re.split(val)
@@ -46,6 +47,7 @@ pgroup.add_argument("-ot", "--focus-tokens", action="store_true", help="when min
 pgroup.add_argument("-oc", "--focus-chars", action="store_true", help="when minifying, focus on reducing the amount of characters")
 pgroup.add_argument("-ob", "--focus-compressed", action="store_true", help="when minifying, focus on reducing the code's compressed size")
 pgroup.add_argument("--no-minify-rename", action="store_true", help="disable variable renaming in minification")
+pgroup.add_argument("--no-minify-consts", action="store_true", help="disable constant folding in minification")
 pgroup.add_argument("--no-minify-spaces", action="store_true", help="disable space removal in minification")
 pgroup.add_argument("--no-minify-lines", action="store_true", help="disable line removal in minification")
 pgroup.add_argument("--no-minify-comments", action="store_true", help="disable comment removal in minification (requires --no-minify-spaces)")
@@ -57,6 +59,8 @@ pgroup.add_argument("--rename-safe-only", action="store_true", help="only do ren
 pgroup.add_argument("--rename-members-as-globals", action="store_true", help='rename globals and members the same way (same as --preserve "*=*.*")')
 pgroup.add_argument("--reorder-safe-only", action="store_true", help="only do statement reordering that's always safe to do (subset of --minify-safe-only)")
 pgroup.add_argument("--rename-map", help="log renaming of identifiers (from minify step) to this file")
+pgroup.add_argument("--const", nargs=2, action="append", metavar=("NAME", "VALUE"), help="define a constant that will be replaced with the VALUE across the entire file")
+pgroup.add_argument("--str-const", nargs=2, action="append", metavar=("NAME", "VALUE"), help="same as --const, but the value is interpreted as a string")
 
 pgroup = parser.add_argument_group("lint options")
 pgroup.add_argument("-l", "--lint", action="store_true", help="enable checking the cart for common issues")
@@ -217,6 +221,7 @@ def main_inner(raw_args):
             "tokens": not args.no_minify_tokens,
             "reorder": not args.no_minify_reorder,
             "focus": args.focus,
+            "consts": not args.no_minify_consts,
         }
 
     args.rename = bool(args.minify) and not args.no_minify_rename
@@ -235,6 +240,14 @@ def main_inner(raw_args):
         args.unminify = {
             "indent": args.unminify_indent
         }
+    
+    if args.const or args.str_const:
+        if args.const:
+            args.const = {name: parse_constant(val) or throw(f"cannot parse <{val}>. If it's meant to be a string, try using --str-const instead") 
+                          for name, val in args.const}
+        if args.str_const:
+            args.const = args.const or {}
+            args.const.update({name: LuaString(val) for name, val in args.str_const})
 
     args.preproc_cb, args.postproc_cb, args.sublang_cb = None, None, None
     if args.script:
@@ -363,20 +376,21 @@ def handle_processing(args, main_cart, extra_carts):
                            local_builtins=not args.global_builtins_only,
                            extra_local_builtins=args.local_builtin,
                            srcmap=args.rename_map, sublang_getter=args.sublang_cb, version=cart.version_id,
-                           hint_comments=not args.ignore_hints)
+                           hint_comments=not args.ignore_hints, consts=args.const)
         if args.preproc_cb:
             args.preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args)
 
         ok, errors = process_code(ctxt, src, input_count=args.input_count, count=args.count,
                                   lint=args.lint, minify=args.minify, rename=args.rename,
                                   unminify=args.unminify, stop_on_lint=not args.no_lint_fail,
-                                  fail=False, want_count=not args.no_count_tokenize)
+                                  want_count=not args.no_count_tokenize)
         if errors:
+            # can be errors, lint warnings, or hint warnings...
             had_warns = True
             print("Lint warnings:" if ok else "Compilation errors:")
             for error in sorted(errors):
                 print(error.format(args.error_format))
-            if not ok or not args.no_lint_fail:
+            if not ok or (args.lint and not args.no_lint_fail):
                 return False, ok
 
         if args.rename_map:

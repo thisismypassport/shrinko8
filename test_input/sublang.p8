@@ -1,6 +1,8 @@
 __lua__
 g_some_global = 123
-function eval() end
+function eval()
+    _ENV = _ENV -- without this, our sublang could never work and shrinko8 could rightly(ish) delete g_some_global=123 above
+end
 eval--[[language::evally]][[
     circfill 50 50 20 7
     g_another_glob <- pack

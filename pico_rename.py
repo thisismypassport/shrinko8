@@ -1,8 +1,9 @@
 from utils import *
 from pico_defs import from_p8str
-from pico_tokenize import TokenType, Token, is_identifier, keywords, CommentHint
+from pico_tokenize import TokenType, is_identifier, keywords, CommentHint
+from pico_output import format_string_literal
 from pico_parse import VarKind, NodeType, VarBase
-from pico_minify import format_string_literal, Focus
+from pico_minify import Focus
 import fnmatch
 
 global_callbacks = {
@@ -180,12 +181,7 @@ def rename_tokens(ctxt, root, rename_opts):
 
     if safe_only:
         preserved_members.default = True # can't reasonably guarantee safety of this
-        
-        def check_safety(node):
-            if node.type == NodeType.var and node.kind != VarKind.member and node.name == "_ENV":
-                preserved_globals.default = True
-
-        root.traverse_nodes(check_safety)
+        preserved_globals.default = root.has_env
 
     # collect uses of identifier
     # (e.g. to give priority to more frequently used ones)

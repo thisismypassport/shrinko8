@@ -94,7 +94,7 @@ def get_source_location(path, text, idx, start_line=0, tabs=False):
         tab, line, col = None, *get_line_col(text, idx)
     return SourceLocation(path, tab, line + start_line, col)
 
-class PicoSource: # keep this light - created for temp. tokenizations
+class Source: # keep this light - created for temp. tokenizations
     """A pico8 source file - e.g. either the main one or an included file"""
     path = text = ...
 
@@ -104,7 +104,7 @@ class PicoSource: # keep this light - created for temp. tokenizations
     def get_location(m, idx, tabs=False): # (0-based)
         return get_source_location(m.path, m.text, idx, tabs=tabs)
 
-class CartSource(PicoSource):
+class CartSource(Source):
     """The source of a pico8 cart, maps indexes in the preprocessed code to individual source files"""
     def __init__(m, cart):
         m.cart = cart
@@ -154,7 +154,8 @@ class SubLanguageBase:
 class PicoContext:
     """Defines information for how pico8 code is to be processed, e.g. the supported builtins and the supported pico8 version"""
     def __init__(m, deprecated=True, undocumented=True, patterns=True, srcmap=False, extra_builtins=None, not_builtins=None, 
-                 local_builtins=True, extra_local_builtins=None, sublang_getter=None, version=sys.maxsize, hint_comments=True):
+                 local_builtins=True, extra_local_builtins=None, sublang_getter=None, version=sys.maxsize, hint_comments=True,
+                 consts=None):
         builtins = set(main_builtins)
         local_builtins = set(builtins_copied_to_locals) if local_builtins else set()
         if deprecated:
@@ -177,6 +178,7 @@ class PicoContext:
         m.callback_builtins = builtins_with_callbacks
 
         m.srcmap = [] if srcmap else None
+        m.consts = consts
         m.sublang_getter = sublang_getter
         m.hint_comments = hint_comments
         m.version = version
@@ -216,7 +218,7 @@ def fixup_process_args(args):
     return args_set, args
 
 def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, rename=False, unminify=False, 
-                 stop_on_lint=True, fail=True, want_count=True):
+                 stop_on_lint=True, want_count=True):
     need_lint, lint = fixup_process_args(lint)
     need_minify, minify = fixup_process_args(minify)
     need_rename, rename = fixup_process_args(rename)
@@ -245,6 +247,8 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
         
         if not errors or not stop_on_lint:        
             if need_minify:
+                simplify_code(ctxt, root, minify, errors)
+                
                 if need_rename:
                     rename_tokens(ctxt, root, rename)
 
@@ -257,13 +261,16 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
                 new_tokens = root.get_tokens() if need_parse else tokens
                 print_token_count(count_tokens(new_tokens), handler=count)
 
-    if fail and errors:
-        throw("\n".join(map(str, errors)))
-
     if e(new_text):
         source.text = new_text
 
     return ok, errors
+
+def simplify_code(ctxt, root, minify, errors):
+    fold = minify.get("consts", True)
+        
+    if fold:
+        fold_consts(ctxt, root, errors)
 
 def echo_code(code, echo=True):
     code = from_p8str(code)
@@ -278,6 +285,7 @@ from pico_parse import parse
 from pico_lint import lint_code
 from pico_minify import minify_code, minify_needs_comments
 from pico_unminify import unminify_code
+from pico_constfold import fold_consts
 from pico_rename import rename_tokens
 
 # re-export some things for examples/etc.

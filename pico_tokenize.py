@@ -34,6 +34,13 @@ class TokenNodeBase:
     def __str__(m):
         return repr(m.__dict__)
     
+    @property
+    def source_text(m):
+        if m.source and m.idx != None and m.endidx != None:
+            return m.source.text[m.idx:m.endidx]
+        else:
+            return None
+    
     def find_parent(m, type):
         parent = m.parent
         while parent and parent.type != type:
@@ -110,47 +117,96 @@ class TokenNodeBase:
     
     def is_extra_child(m):
         return hasattr(m, "extra_i")
+    
+    def move(m): # create a "destructive" copy - old object is no longer usable unless replaced
+        cpy = copy(m)
+        for child in cpy.children:
+            child.parent = cpy
+        m.erase()
+        return cpy
+
+    def copy(m):
+        cpy = copy(m)
+        cpy.children = [child.copy() for child in m.children]
+        for child in cpy.children:
+            child.parent = cpy
+        for key, val in cpy.__dict__.items():
+            idx = list_find(m.children, val)
+            if idx >= 0:
+                cpy.__dict__[key] = cpy.children[idx]
+        return cpy
 
 class TokenType(Enum):
     number = string = ident = keyword = punct = ...
 
 class Token(TokenNodeBase):
     """A pico8 token, at 'source'.text['idx':'endidx'] (which is equal to its 'value'). Its 'type' is a TokenType.
-    For number/string tokens, the actual value can be read via parse_fixnum/parse_string_literal
+    For string tokens, the actual string is 'string_value'
+    For number tokens, the actual fixnum value is 'fixnum_value'
     Its children are the comments *before* it, if any."""
 
     def __init__(m, type, value, source, idx, endidx, vline=None, modified=False):
         super().__init__()
         m.type, m.value, m.source, m.idx, m.endidx, m.vline, m.modified = type, value, source, idx, endidx, vline, modified
     
-    def modify(m, value):
+    def check(m, expected):
+        if isinstance(expected, tuple):
+            assert m.value in expected
+        else:
+            assert m.value == expected
+
+    def modify(m, value, expected=None):
+        if expected != None:
+            m.check(expected)
         m.value = value
         m.modified = True
+        lazy_property.clear(m, "fixnum_value")
+        lazy_property.clear(m, "string_value")
     
     def erase(m, expected=None):
         if expected != None:
-            if isinstance(expected, tuple):
-                assert m.value in expected
-            else:
-                assert m.value == expected
+            m.check(expected)
         m.type, m.value, m.modified = None, None, True
 
+    @lazy_property
+    def fixnum_value(m):
+        return parse_fixnum(m.value)
+    
+    @lazy_property
+    def string_value(m):
+        return parse_string_literal(m.value)
+
     @classmethod
-    def dummy(m, source, idx=None, vline=None):
+    def dummy(cls, source, idx=None, vline=None):
         if idx is None:
             idx = len(source.text) if source else 0
             vline = sys.maxsize if source else 0
-        return Token(None, None, source, idx, idx, vline)
+        return cls(None, None, source, idx, idx, vline)
 
     # note: vline is kept only for initial parsing and is not to be relied upon
 
     @classmethod
-    def synthetic(m, type, value, other, append=False, prepend=False):
+    def synthetic(cls, type, value, other, append=False, prepend=False):
         idx = other.endidx if append else other.idx
         endidx = other.idx if prepend else other.endidx
-        return Token(type, value, other.source, idx, endidx, modified=True)
+        return cls(type, value, other.source, idx, endidx, modified=True)
 
 Token.none = Token.dummy(None)
+
+class ConstToken(Token):
+    def __init__(m, type, other, fixnum_value=None, string_value=None, value=None):
+        super().__init__(type, value, other.source, other.idx, other.endidx, modified=True)
+        m.fixnum_value = fixnum_value
+        m.string_value = string_value
+        if value is None:
+            lazy_property.clear(m, "value")
+
+    @lazy_property
+    def value(m): # will not be called if minified normally, so output is suboptimal
+        if e(m.fixnum_value):
+            return format_fixnum(m.fixnum_value, sign='')
+        else:
+            return format_string_literal(m.string_value, long=False)
 
 class CommentHint(Enum):
     none = preserve = lint = keep = ...
@@ -164,10 +220,7 @@ class Comment(TokenNodeBase):
 
     @property
     def value(m):
-        if m.source and m.idx != None and m.endidx != None:
-            return m.source.text[m.idx:m.endidx]
-        else:
-            return None
+        return m.source_text
 
 def is_ident_char(ch):
     return '0' <= ch <= '9' or 'a' <= ch <= 'z' or 'A' <= ch <= 'Z' or ch in ('_', '\x1e', '\x1f') or ch >= '\x80'
@@ -181,7 +234,7 @@ k_hint_split_re = re.compile(r"[\s,]+")
 
 class NextTokenMods:
     def __init__(m):
-        m.var_kind = m.keys_kind = m.func_kind = m.merge_prev = m.sublang = m.rename = None
+        m.var_kind = m.keys_kind = m.is_const = m.func_kind = m.merge_prev = m.sublang = m.rename = None
         m.comments = None
         
     def add_comment(m, cmt):
@@ -260,6 +313,8 @@ def tokenize(source, ctxt=None, all_comments=False):
             token.var_kind = mods.var_kind
         if mods.keys_kind != None:
             token.keys_kind = mods.keys_kind
+        if mods.is_const != None:
+            token.is_const = mods.is_const
         if mods.func_kind != None:
             token.func_kind = mods.func_kind
         if mods.merge_prev != None:
@@ -303,6 +358,10 @@ def tokenize(source, ctxt=None, all_comments=False):
                     get_next_mods().keys_kind = False
                 elif comment == "no-merge":
                     get_next_mods().merge_prev = False
+                elif comment == "const":
+                    get_next_mods().is_const = True
+                elif comment == "non-const":
+                    get_next_mods().is_const = False
                 elif comment.startswith(k_language_prefix) and not any(ch.isspace() for ch in comment):
                     get_next_mods().sublang = comment[len(k_language_prefix):]
                 elif comment.startswith(k_rename_prefix) and not any(ch.isspace() for ch in comment):
@@ -489,10 +548,13 @@ def count_tokens(tokens):
 def parse_fixnum(origstr):
     """parse a fixnum from a pico8 string"""
     str = origstr.lower()
-    neg = False
+    neg = bnot = False
     if str.startswith("-"):
         str = str[1:]
         neg = True
+    elif str.startswith("~"):
+        str = str[1:]
+        bnot = True
 
     digits = "0123456789"
     if str.startswith("0x"):
@@ -523,6 +585,8 @@ def parse_fixnum(origstr):
         throw(f"Invalid number: {origstr}")
     if neg:
         value = -value
+    elif bnot:
+        value = ~value
 
     return num_to_fixnum(value)
 
@@ -589,4 +653,5 @@ def parse_string_literal(str):
         return "".join(litparts)
 
 from pico_parse import Node, VarKind
+from pico_output import format_fixnum, format_string_literal
 from pico_process import Error

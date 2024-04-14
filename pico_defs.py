@@ -219,6 +219,7 @@ to_pico_chars = to_p8str # legacy name
 from_pico_chars = from_p8str # legacy name
 
 # fixnum - an integer representing a 16.16 pico8 fixed-point number
+# e.g. 
 # This may become a class in the future, but is a convention now.
 
 k_fixnum_mask = 0xffffffff
@@ -241,6 +242,8 @@ def fixnum_to_num(value):
     else:
         value >>= 16 # preserve int-ness
     return -value if neg else value
+
+# pico-8 versions
 
 k_version_tuples = {
     29: (0,2,1,0),

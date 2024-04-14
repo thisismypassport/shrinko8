@@ -353,5 +353,5 @@ def measure_p8scii(text, **opts): # see P8sciiMeasurer's ctor for params
 
 def bytes_to_string_contents(bytes):
     """convert a bytes objects to a pico8 string literal, without the surrounding "-s"""
-    from pico_minify import format_string_literal # already implemented here...
+    from pico_output import format_string_literal # already implemented here...
     return format_string_literal(decode_p8str(bytes), long=False, quote='"')[1:-1]
