@@ -42,7 +42,7 @@ def try_read_dir_contents(dir):
     return results
 
 def run_test(name, input, output, *args, private=False, check_output=True, from_output=False,
-             read_stdout=False, norm_stdout=nop, exit_code=0, extra_outputs=None, output_reader=try_file_read,
+             stdout_output=None, norm_stdout=nop, exit_code=0, extra_outputs=None, output_reader=try_file_read,
              pico8_output_val=None, pico8_output=None, pico8_run=None, copy_in_to_out=False):
     if g_opts.test:
         for wanted_test in g_opts.test:
@@ -59,15 +59,16 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
     start_test()
     prefix = "private_" if private else ""
     inpath = path_join(prefix + ("test_output" if from_output else "test_input"), input)
-    outpath = path_join(prefix + "test_output", output)
-    cmppath = path_join(prefix + "test_compare", output)
+    if output:
+        outpath = path_join(prefix + "test_output", output)
+        cmppath = path_join(prefix + "test_compare", output)
 
     if copy_in_to_out:
         file_write(outpath, file_read(path_join(path_dirname(inpath), output)))
 
     if not input:
         args = (outpath,) + args
-    elif read_stdout:
+    elif not output:
         args = (inpath,) + args
     else:
         args = (inpath, outpath) + args
@@ -76,12 +77,18 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
     success = run_success
     stdouts = [run_stdout]
 
-    if read_stdout:
-        file_write_text(outpath, norm_stdout(run_stdout))
-
-    if run_success and check_output:
+    if run_success and output and check_output:
         if output_reader(outpath) != output_reader(cmppath):
-            stdouts.append(f"ERROR: File difference: {outpath}, {cmppath}")
+            stdouts.append(f"ERROR: Output difference: {outpath}, {cmppath}")
+            success = False
+
+    if run_success and stdout_output:
+        stdout_outpath = path_join(prefix + "test_output", stdout_output)
+        stdout_cmppath = path_join(prefix + "test_compare", stdout_output)
+        run_stdout = norm_stdout(run_stdout)
+        file_write_text(stdout_outpath, run_stdout)
+        if run_stdout != try_file_read_text(stdout_cmppath):
+            stdouts.append(f"ERROR: Stdout difference: {stdout_outpath}, {stdout_cmppath}")
             success = False
 
     if run_success and extra_outputs:
@@ -89,7 +96,7 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
             extra_outpath = path_join(prefix + "test_output", extra_output)
             extra_cmppath = path_join(prefix + "test_compare", extra_output)
             if try_file_read(extra_outpath) != try_file_read(extra_cmppath):
-                stdouts.append(f"ERROR: Extra file difference: {extra_outpath}, {extra_cmppath}")
+                stdouts.append(f"ERROR: Extra output difference: {extra_outpath}, {extra_cmppath}")
                 success = False
 
     if run_success and g_opts.pico8 and not g_opts.no_pico8 and (pico8_output != None or pico8_output_val != None or pico8_run):
@@ -108,7 +115,7 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
         print(f"\nERROR - test {name} failed")
         print(f"Args: {args}")
         print(stdout)
-        if not read_stdout and not g_opts.no_measure:
+        if output and not g_opts.no_measure:
             measure("new", outpath)
             measure("old", cmppath)
         fail_test()
@@ -122,9 +129,6 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
     if g_opts.stdout:
         print(stdout)
     return True
-
-def run_stdout_test(name, input, *args, output=None, **kwargs):
-    run_test(name, input, output, *args, **kwargs, read_stdout=True)
 
 def run():
     if run_test("minify", "input.p8", "output.p8", "--minify", "--no-minify-consts",
@@ -157,7 +161,7 @@ def run():
              pico8_run=True)
     run_test("const2", "const2.p8", "const2.p8", "--minify",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename", "--no-minify-tokens",
-             pico8_run=True)
+             pico8_run=True, stdout_output="const2.txt", norm_stdout=norm_paths)
     run_test("constcl", "constcl.p8", "constcl.p8", "--minify")
     run_test("constcl-1", "constcl.p8", "constcl-1.p8", "--minify", "--const", "DEBUG", "true", "--const", "SPEED", "2.5", "--str-const", "VERSION", "v1.2")
     run_test("constcl-2", "constcl.p8", "constcl-2.p8", "--minify", "--const", "DEBUG", "true", "--const", "SPEED", "-2.6", "--const", "hero", "~1")
@@ -193,16 +197,16 @@ def run():
     run_test("default", "default.p8", "default.rom")
     run_test("default2", "default2.p8", "default2.rom")
     run_test("genend", "genend.p8.png", "genend.p8")
-    run_stdout_test("lint", "bad.p8", "--lint", output="bad.txt", norm_stdout=norm_paths, exit_code=2)
-    run_stdout_test("linttab", "bad.p8", "--lint", "--error-format", "tabbed",
-                    output="bad-tab.txt", norm_stdout=norm_paths, exit_code=2)
-    run_stdout_test("count", "bad.p8", "--count", output="badcount.txt")
-    run_stdout_test("countminus", "minus.p8", "--count", output="minuscount.txt")
-    run_stdout_test("error", "worse.p8", "--lint", output="worse.txt", norm_stdout=norm_paths, exit_code=1)
+    run_test("lint", "bad.p8", None, "--lint", stdout_output="bad.txt", norm_stdout=norm_paths, exit_code=2)
+    run_test("linttab", "bad.p8", None, "--lint", "--error-format", "tabbed",
+             stdout_output="bad-tab.txt", norm_stdout=norm_paths, exit_code=2)
+    run_test("count", "bad.p8", None, "--count", stdout_output="badcount.txt")
+    run_test("countminus", "minus.p8", None, "--count", stdout_output="minuscount.txt")
+    run_test("error", "worse.p8", None, "--lint", stdout_output="worse.txt", norm_stdout=norm_paths, exit_code=1)
     run_test("script", "script.p8", "script.p8", "--script", path_join("test_input", "my_script.py"),
              "--script-args", "my-script-arg", "--my-script-opt", "123")
-    run_stdout_test("sublang.lint", "sublang.p8", "--lint",
-             "--script", path_join("test_input", "sublang.py"), output="sublang.txt", norm_stdout=norm_paths, exit_code=2)
+    run_test("sublang.lint", "sublang.p8", None, "--lint",
+             "--script", path_join("test_input", "sublang.py"), stdout_output="sublang.txt", norm_stdout=norm_paths, exit_code=2)
     run_test("sublang", "sublang.p8", "sublang.p8", "--minify",
              "--script", path_join("test_input", "sublang.py"))
     run_test("unkform1", "unkform1", "unkform1")

@@ -474,8 +474,12 @@ def fold_consts(ctxt, root, errors):
                         else:
                             set_const(node, constval)
 
-        elif node.type == NodeType.var and node.var and node.var.constval and not node.new and not node.assignment:
-            set_const(node, node.var.constval)
+        elif node.type == NodeType.var and node.var and not node.new and not node.assignment:
+            if node.var.constval:
+                set_const(node, node.var.constval)
+            elif node.var.is_const:
+                add_error(f"'{node.name}' is marked as constant but is used above where it is assigned to", node)
+                node.var.is_const = False
 
         elif node.type in (NodeType.local, NodeType.assign):
             visit_assign(node)
@@ -570,7 +574,10 @@ def fold_consts(ctxt, root, errors):
                     reason = ""
                     if const_ctxt_fail:
                         reason = f" due to '{const_ctxt_fail.source_text}'"
+                    elif not is_const:
+                        reason = f" due to being reassigned"
                     add_error(f"Local '{target.name}' is marked as const but its value cannot be determined" + reason, target)
+                    target.var.is_const = False
                     
             if is_const_ctxt:
                 in_const_ctxt -= 1

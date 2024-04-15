@@ -1,0 +1,9 @@
+Hint usage warnings:
+test_input/const2.p8:7:6: 'ssog4' is marked as constant but is used above where it is assigned to
+test_input/const2.p8:12:23: Local 'M' is marked as const but its value cannot be determined due to 'max(1,2)'
+test_input/const2.p8:12:25: Local 'm' is marked as const but its value cannot be determined due to 'min(1,2)'
+test_input/const2.p8:16:19: Local 'M' is marked as const but its value cannot be determined due to 'max(1,2)'
+test_input/const2.p8:24:12: Local 'ssog3' is marked as const but its value cannot be determined due to being reassigned
+test_input/const2.p8:26:12: Local 'ssog5' is marked as const but its value cannot be determined due to 'ssog5'
+test_input/const2.p8:26:20: 'ssog5' is marked as constant but is used above where it is assigned to
+test_input/const2.p8:27:12: Local 'ssog6' is marked as const but its value cannot be determined due to being reassigned

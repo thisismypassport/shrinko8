@@ -354,8 +354,6 @@ objs={4,6,6,5}
 ?2
 ```
 
-Keep in mind that *Local* variables that aren't declared as `--[[const]]` may still be treated as constants in cases where it's safe & advantageous to do so.
-
 Furthermore, constant `if` and `elseif` branches are removed appropriately, allowing you to easily keep debug code in your source files, enabling it by simply changing the value of a variable:
 
 ```lua
@@ -370,6 +368,12 @@ end
 -- becomes:
 spr(debug_spr,10,10)
 ```
+
+Some details to keep in mind:
+* *Local* variables that **aren't** declared as `--[[const]]` may still be treated as constants in cases where it's safe & advantageous to do so.
+* *Local* variables that **are** declared as `--[[const]]` still follow the usual lua scoping rules. They cannot be reassigned but new locals with the same name can be defined.
+* *Global* variables that **aren't** declared as `--[[const]]` are currently never treated as constants.
+* *Global* variables that **are** declared as `--[[const]]` are assumed to *always* have their constant value. They cannot be reassigned and can only be used below their declaration.
 
 ## Passing constants via command line
 

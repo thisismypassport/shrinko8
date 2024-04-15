@@ -8,7 +8,7 @@ from pico_tokenize import k_hint_split_re
 from pico_constfold import parse_constant
 import argparse
 
-k_version = 'v1.2.0b'
+k_version = 'v1.2.0c'
 
 def SplitBySeps(val):
     return k_hint_split_re.split(val)
