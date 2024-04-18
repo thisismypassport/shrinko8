@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 41
+version 42
 __lua__
 print=printh?"hello ᶜ7there♥ら"
 🐱,a,h,u,s,x,e,e=11,12,13,14,15,16,17,17t(stat(band()))-- this one comment, i do want!

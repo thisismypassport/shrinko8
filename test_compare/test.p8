@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 36
+version 42
 __lua__
 n=1assert(true,1)assert(n==1,2)assert("\0ᶜ3\n	⁵Aa"=="\0ᶜ3\n	⁵Aa",2.5)assert("'\"\\'"==[['"\']],3)assert([=[]]]=]=="]]",4)n=1d=1assert(n==1and d==1,5)assert(0xf.f==0xf.f and 2.25==2.25,6)i,c,e=1,{},3i,c.n,c[1],e=e,2,4,i assert(i==3and e==1and c["n"]==2and c[1]==4,8)do local n=i+1assert(n==4,9)local n=n*2assert(n==8,9.1)end assert(i==3,9.2)local n=_ENV assert(n==_ENV,10)local n assert(n==nil,11)function r()return 1,2,3end local n,d,o,e,l,a=0,r()assert(n==0and d==1and o==2and e==3and l==nil and a==nil,12)function r(...)return...end assert(r(1,2,3)==1,13)i,c=(r(1,2))assert(i==1and c==nil,14)i,c=r(1,2),3assert(i==1and c==3,15)assert(pack(r(1,2,nil,3,nil,nil)).n==6,16)function r(...)return...,...,...end assert(pack(r(1,2,3)).n==5,17)for n=1,3do assert(select(n,r(1,2,3))==1,18)end assert(select(4,r(1,2,3))==2,19)f=0for n=5,1,-2do f=1assert(n==5or n==3or n==1,20)end assert(f==1,20.5)for n=5,1do assert(false,21)end f=0for n,e in ipairs{4,5}do assert(n==1and e==4or n==2and e==5,22)f+=1end assert(f==2,22.5)if(f==2)f+=1else assert(false,23)
 assert(f==3,23.5)if f==2then assert(false,24)elseif f==3then f+=1else assert(false,24.5)end assert(f==4,24.6)if(f==2)assert(false,25)else f+=1

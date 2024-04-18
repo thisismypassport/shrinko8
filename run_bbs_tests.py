@@ -11,7 +11,7 @@ def CommaSep(val):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--carts", type=CommaSep, help="specify a specific cart or carts to run on (overrides -f)")
-parser.add_argument("-f", "--carts-file", help="specify which carts to run on via a file", default="private_bbs_tests.lst")
+parser.add_argument("-f", "--carts-file", help="specify which carts to run on via a file", default="bbs_tests.lst")
 parser.add_argument("-n", "--new-only", action="store_true", help="only test new carts")
 parser.add_argument("--input-redownload", action="store_true", help="download the carts again")
 parser.add_argument("--input-reprocess", action="store_true", help="process the downloaded carts again (count sizes and convert to p8)")
@@ -26,6 +26,7 @@ parser.add_argument("-ob", "--focus-compressed", action="store_true", help="focu
 parser.add_argument("-oa", "--focus-all", action="store_true", help="test all focuses")
 parser.add_argument("-i", "--compare-input", action="store_true", help="compare results vs the inputs too")
 parser.add_argument("-u", "--compare-unfocused", action="store_true", help="compare results vs the unfocused results too")
+parser.add_argument("--no-update", action="store_true", help="do not update carts to latest version")
 parser.add_argument("-v", "--verbose", action="store_true", help="print changes in individual carts")
 parser.add_argument("-x", "--exe", action="store_true", help="use a packaged exe instead of the python script")
 parser.add_argument("-p", "--pico8", action="append", help="specify a pico8 exe to test the results with")
@@ -207,7 +208,11 @@ def run_for_cart(args):
             process_output("compress", check_run(f"{cart}:compress", compress_results, parse_meta=True))
             best_path_for_pico8 = compress_path
 
-        minify_opts = [f"--focus-{focus}"] if focus else []
+        minify_opts = []
+        if focus:
+            minify_opts.append(f"--focus-{focus}")
+        if not g_opts.no_update:
+            minify_opts.append("--update-version")
         
         if g_opts.all or g_opts.only_safe_minify:
             safe_minify_results = run_code(uncompress_path, safe_minify_path, "--minify-safe-only", "--count", "--parsable-count", *minify_opts)

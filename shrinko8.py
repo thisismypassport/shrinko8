@@ -6,9 +6,10 @@ from pico_cart import Cart, CartFormat, read_cart, write_cart, get_bbs_cart_url,
 from pico_export import read_cart_export, read_pod_file, ListOp
 from pico_tokenize import k_hint_split_re
 from pico_constfold import parse_constant
+from pico_defs import get_default_version_id
 import argparse
 
-k_version = 'v1.2.0c'
+k_version = 'v1.2.1'
 
 def SplitBySeps(val):
     return k_hint_split_re.split(val)
@@ -107,6 +108,8 @@ pgroup.add_argument("--template-image", help="template image to use for png cart
 pgroup.add_argument("--template-only", action="store_true", help="when creating the png cart, ignore the label & title, using just the template")
 pgroup.add_argument("--dump-misc-too", action="store_true", help="causes --dump to also dump misc. files inside the export")
 pgroup.add_argument("--version", action="store_true", help="print version of cart. (if no cart is provided - print shrinko8 version and exit)")
+pgroup.add_argument("--output-version", type=int, help="the version to convert the cart to. (Same as 'version' field of p8 files)")
+pgroup.add_argument("--update-version", action="store_true", help="convert the cart to the highest supported version")
 pgroup.add_argument("--bbs", action="store_true", help="interpret input as a bbs cart id, e.g. '#...' and download it from the bbs")
 pgroup.add_argument("--url", action="store_true", help="interpret input as a URL, and download it from the internet")
 
@@ -363,6 +366,11 @@ def handle_processing(args, main_cart, extra_carts):
     had_warns = False
 
     for cart in itertools.chain((main_cart,), extra_carts):
+        if args.update_version:
+            cart.set_version(get_default_version_id())
+        elif e(args.output_version):
+            cart.set_version(args.output_version)
+
         src = CartSource(cart)
         
         if args.input_count:

@@ -64,6 +64,10 @@ class Cart:
         if old_title != m.title:
             m.title = old_title
 
+    def set_version(m, id):
+        m.version_id = id
+        m.version_tuple = get_version_tuple(id)
+
 def read_code_from_rom(r, keep_compression=False, **opts):
     code_rom = None
     if keep_compression:
@@ -390,8 +394,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
                 cart.meta[header[len(k_meta_prefix):]].append(line.rstrip('\n'))
                 
             elif header == None and clean.startswith("version "):
-                cart.version_id = int(clean.split()[1])
-                cart.version_tuple = get_version_tuple(cart.version_id)
+                cart.set_version(int(clean.split()[1]))
 
         except Exception as e:
             throw(f"Invalid {header} line in p8 file (line #{line_i + 1})")

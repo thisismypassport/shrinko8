@@ -1,5 +1,5 @@
 pico-8 cartridge // http://www.pico-8.com
-version 41
+version 42
 __lua__
 for i=0,0x42ff do
 if peek(i) != 0 then

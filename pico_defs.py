@@ -263,10 +263,11 @@ k_version_tuples = {
 }
 
 def get_default_version_id():
-    version_id = 41 # TODO - update as newer versions get more common
+    version_id = 42 # TODO - update as newer versions get more common
     return maybe_int(os.getenv("PICO8_VERSION_ID"), version_id)
 
 def get_default_platform():
+    # there's also 'E' for either Emscripten or Education
     platform = 'w' if os.name == 'nt' else 'x' if sys.platform == 'darwin' else 'l'
     return os.getenv("PICO8_PLATFORM_CHAR", platform)
 

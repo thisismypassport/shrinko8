@@ -1,4 +1,4 @@
 pico-8 cartridge // http://www.pico-8.com
-version 41
+version 42
 __lua__
 assert(l==nil,0)assert(n==nil,1)assert(i==nil,2)assert(a==nil,3)assert(s==nil,4)assert(o==nil,5)assert(c==nil,6)assert(p==nil,7)assert(e==nil,8)assert(d==nil,9)assert(b==nil,10)assert(f==nil,11)assert(g==nil,12)assert(h==nil,13)assert(j==nil,14)assert(k==nil,15)assert(m==nil,16)assert(q==nil,17)assert(r==nil,18)assert(u==nil,19)assert(v==nil,20)assert(w==nil,21)assert(x==nil,22)assert(y==nil,23)assert(z==nil,24)assert(A==nil,25)local l=pack(1,nil)assert(l.l==nil,100)assert(l.i==nil,101)assert(l.a==nil,102)assert(l.s==nil,103)assert(l.o==nil,104)assert(l.c==nil,105)assert(l.p==nil,106)assert(l.e==nil,107)assert(l.d==nil,108)assert(l.b==nil,109)assert(l.f==nil,110)assert(l.g==nil,111)assert(l.h==nil,112)assert(l.j==nil,113)assert(l.k==nil,114)assert(l.m==nil,115)assert(l.q==nil,116)assert(l.r==nil,117)assert(l.t==nil,118)assert(l.u==nil,119)assert(l.v==nil,120)assert(l.w==nil,121)assert(l.x==nil,122)assert(l.y==nil,123)assert(l.z==nil,124)assert(l.A==nil,125)printh"passed"

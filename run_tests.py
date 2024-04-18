@@ -18,7 +18,6 @@ parser.add_argument("--profile", action="store_true", help="enable profiling")
 # for test consistency:
 os.environ["PICO8_EXPORT_REPRO_TIME"] = '1577934245'
 os.environ["PICO8_PLATFORM_CHAR"] = 'w'
-#os.environ["PICO8_VERSION_ID"] = ... - best test the version we set by default
 
 def norm_paths(output):
     return output.replace("\\", "/")
@@ -43,7 +42,7 @@ def try_read_dir_contents(dir):
 
 def run_test(name, input, output, *args, private=False, check_output=True, from_output=False,
              stdout_output=None, norm_stdout=nop, exit_code=0, extra_outputs=None, output_reader=try_file_read,
-             pico8_output_val=None, pico8_output=None, pico8_run=None, copy_in_to_out=False):
+             pico8_output_val=None, pico8_output=None, pico8_run=None, copy_in_to_out=False, update_version=True):
     if g_opts.test:
         for wanted_test in g_opts.test:
             if fnmatch.fnmatch(name, wanted_test):
@@ -65,6 +64,9 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
 
     if copy_in_to_out:
         file_write(outpath, file_read(path_join(path_dirname(inpath), output)))
+
+    if update_version:
+        args += ("--update-version",)
 
     if not input:
         args = (outpath,) + args
@@ -196,7 +198,7 @@ def run():
         run_test("p82url", "test.url.p8", "test.url", from_output=True)
     run_test("default", "default.p8", "default.rom")
     run_test("default2", "default2.p8", "default2.rom")
-    run_test("genend", "genend.p8.png", "genend.p8")
+    run_test("genend", "genend.p8.png", "genend.p8", update_version=False)
     run_test("lint", "bad.p8", None, "--lint", stdout_output="bad.txt", norm_stdout=norm_paths, exit_code=2)
     run_test("linttab", "bad.p8", None, "--lint", "--error-format", "tabbed",
              stdout_output="bad-tab.txt", norm_stdout=norm_paths, exit_code=2)
@@ -204,18 +206,18 @@ def run():
     run_test("countminus", "minus.p8", None, "--count", stdout_output="minuscount.txt")
     run_test("error", "worse.p8", None, "--lint", stdout_output="worse.txt", norm_stdout=norm_paths, exit_code=1)
     run_test("script", "script.p8", "script.p8", "--script", path_join("test_input", "my_script.py"),
-             "--script-args", "my-script-arg", "--my-script-opt", "123")
+             "--update-version", "--script-args", "my-script-arg", "--my-script-opt", "123", update_version=False)
     run_test("sublang.lint", "sublang.p8", None, "--lint",
              "--script", path_join("test_input", "sublang.py"), stdout_output="sublang.txt", norm_stdout=norm_paths, exit_code=2)
     run_test("sublang", "sublang.p8", "sublang.p8", "--minify",
              "--script", path_join("test_input", "sublang.py"))
-    run_test("unkform1", "unkform1", "unkform1")
-    run_test("unkform2", "unkform2.png", "unkform2", "--format", "png", "--input-format", "auto")
+    run_test("unkform1", "unkform1", "unkform1", update_version=False)
+    run_test("unkform2", "unkform2.png", "unkform2", "--format", "png", "--input-format", "auto", update_version=False)
     run_test("mini", "mini.p8", "mini.p8", "--minify", "--no-minify-lines", "--no-minify-consts",
              "--builtin", "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z",
              "--local-builtin", "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z")
     run_test("tinyrom", "tiny.rom", "tiny.lua")
-    run_test("title", "title.p8", "title.p8.png")
+    run_test("title", "title.p8", "title.p8.png", update_version=False)
     if run_test("repl", "repl.p8", "repl.p8", "--minify",
                 "--rename-map", "test_output/repl.map", extra_outputs=["repl.map"], pico8_output_val="finished"):
         run_test("unminrepl", "repl.p8", "repl-un.p8", "--unminify", from_output=True, pico8_output_val="finished")
@@ -237,6 +239,8 @@ def run():
     run_test("short-lines", "short.p8", "short-lines.p8", "-m", "--no-minify-consts", "--no-minify-lines", "--focus-chars", pico8_output_val="K\nK")
     run_test("short-spaces", "short.p8", "short-spaces.p8", "-m", "--no-minify-consts", "--no-minify-spaces", "--focus-chars", pico8_output_val="K\nK")
     run_test("short2", "short2.p8", "short2.p8", "-m", "--no-minify-consts", "--focus-compressed", "--no-minify-spaces")
+    run_test("version-latest", "versioned.p8", "versioned-latest.p8", "-m", "-oc", pico8_output="versioned.p8.printh")
+    run_test("version-orig", "versioned.p8", "versioned-orig.p8", "-m", "-oc", update_version=False, pico8_output="versioned.p8.printh")
 
 def main(raw_args):
     global g_opts
