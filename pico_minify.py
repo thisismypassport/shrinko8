@@ -4,8 +4,7 @@ from pico_tokenize import StopTraverse, k_skip_children
 from pico_parse import Node, NodeType, VarKind
 from pico_parse import k_unary_ops_prec, get_precedence, is_right_assoc
 from pico_parse import is_vararg_expr, is_short_block_stmt, is_global_or_builtin_local
-from pico_output import format_fixnum, format_string_literal
-from pico_output import output_min_wspace, output_original_wspace
+from pico_output import format_fixnum, format_string_literal, output
 
 class Focus(Bitmask):
     chars = compressed = tokens = ...
@@ -33,7 +32,7 @@ def get_node_bodies(node):
     else:
         yield node.body
 
-def analyze_code_for_minify(root, focus):
+def analyze_code_for_minify(root, focus, ctxt):
     shorts = CounterDictionary()
     longs = CounterDictionary()
     shortenables = set()
@@ -53,29 +52,51 @@ def analyze_code_for_minify(root, focus):
 
             # can the node be converted to shorthand?
             if not is_short and not has_elseif:
-                has_shorthand, has_empties, starts_with_do = False, False, False
+                has_bad_shorthand, has_empties, starts_with_do = False, False, False
+                shorthands_can_nest = ctxt.version >= 42
 
-                def check_shorthand(node):
-                    nonlocal has_shorthand
-                    # ideally, could allow last node in an 'if' to be a print...
+                def check_shorthand(node, parent, body, child):
+                    nonlocal has_bad_shorthand
                     if node.short or node in shortenables:
-                        has_shorthand = True
+                        # at this point, both child and body are short-supported
+                        if shorthands_can_nest:
+                            is_inner_body = parent.type == NodeType.if_ and parent.else_ and body is parent.then
+
+                            # could also allow NodeType.while, but that feels like going too far
+                            # (same with supporting nested shorthands right before an 'end')
+                            if is_inner_body and not (child.type == NodeType.if_ and child.else_):
+                                has_bad_shorthand = True
+                            elif body.next_token() is not child.next_token():
+                                has_bad_shorthand = True
+                        else:
+                            # in theory, could've supported nesting print, but never did
+                            has_bad_shorthand = True
                     
                 # first check the parents
-                node.traverse_parents(check_shorthand)
+                prev_parent = node
+                def check_parent_shorthand(parent):
+                    nonlocal prev_parent
+                    check_shorthand(parent, parent, prev_parent, node)
+                    prev_parent = parent
+                    
+                node.traverse_parents(check_parent_shorthand)
                 
                 # now check the children
                 for i, body in enumerate(get_node_bodies(node)):
-                    body.traverse_nodes(post=check_shorthand)
+                    def check_child_shorthand(child):
+                        check_shorthand(child, node, body, child)
+                    
+                    body.traverse_nodes(post=check_child_shorthand)
+                    
                     if not body.children:
                         has_empties = True
                     
                     if i == 0:
-                        # beware of do block ambiguity
+                        # a shorthand cannot begin with a do block. (would be a longhand)
                         starts_with_do = body.first_token().value == "do"
                 
                 # empty bodies require extra ';'s to shorten, which worsens compression
-                is_short = not has_shorthand and not (has_empties and not focus.chars) and not starts_with_do
+                is_short = not has_bad_shorthand and not (has_empties and not focus.chars) and not starts_with_do
                 if is_short:
                     shortenables.add(node)
             
@@ -284,7 +305,7 @@ def minify_code(ctxt, root, minify_opts):
     if not focus.tokens:
         safe_reorder = True # nothing gained with False here, so set it to True just in case.
 
-    analysis = analyze_code_for_minify(root, focus)
+    analysis = analyze_code_for_minify(root, focus, ctxt)
 
     def fixup_nodes_pre(node):
         if minify_tokens:
@@ -373,6 +394,9 @@ def minify_code(ctxt, root, minify_opts):
             if token.value == "^^" and ctxt.version >= 37:
                 token.modify("~")
 
+            #if token.value == "then" and ctxt.version >= 40: # I HATE THIS :(
+            #    token.modify("do")
+
             if token.type == TokenType.string:
                 token.modify(minify_string_literal(ctxt, token, focus))
 
@@ -387,7 +411,4 @@ def minify_code(ctxt, root, minify_opts):
 
     root.traverse_nodes(fixup_nodes_pre, fixup_nodes_post, tokens=fixup_tokens)
 
-    if minify_wspace:
-        return output_min_wspace(root, minify_lines)
-    else:
-        return output_original_wspace(root, minify_comments)
+    return output(root, minify_wspace, minify_lines, minify_comments)

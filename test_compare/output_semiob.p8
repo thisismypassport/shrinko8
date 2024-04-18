@@ -128,11 +128,9 @@ for e in (all{}) do end
 print("test"..@16 .."str")
 
 if(true) ?"sh1"
-if true then ?"sh2"
-end
+if (true) ?"sh2"
 if(true) if false then else print"sh3" end
-if true then if false then else print"sh4" end end
-
+if (true) if false then else print"sh4" end 
 j="renaming bug"
 function r()
   local e,l,n,o,f,i,c,r,d,a,t,h,u,s,x,k,y,v,p,b,w,g,_,m,E,N,D
