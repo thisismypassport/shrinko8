@@ -255,18 +255,39 @@ def need_whitespace_between(ctxt, prev_token, token):
     ct, ce = tokenize(Source("<output>", combined), ctxt) # TODO: optimize?
     return ce or len(ct) != 2 or (ct[0].type, ct[0].value, ct[1].type, ct[1].value) != (prev_token.type, prev_token.value, token.type, token.value)
 
-def need_newline_after(node):
-    # (k_nested is set for shorthands used in the middle of a line - we don't *YET* generate this ourselves (TODO: do for 0.2.6b+), but we do preserve it)
+def is_non_nested_short(node):
+    # k_nested is set for shorthands used in the middle of a line
     return node.short and node.short is not k_nested
 
-def output_min_wspace(root, ctxt, minify_lines=True):
-    """convert a root back to a string, inserting as little whitespace as possible"""
+def get_orig_wspace(pre, post, ctxt, allow_linebreaks, need_linebreak=False):
+    source = default(pre.source, post.source)
+    text = source.text[pre.endidx:post.idx]
+    
+    if not text.isspace():
+        # verify this range contains only whitespace/comments (may contain more due to reorders/removes)
+        tokens, _ = tokenize(Source("<output>", text), ctxt)
+        if tokens:
+            if "\n" in text and allow_linebreaks:
+                need_linebreak = True
+            text = text[:tokens[0].idx] or text[tokens[-1].endidx:]
+
+    if not allow_linebreaks and "\n" in text:
+        text = text[:text.index("\n")] + " "
+    if need_linebreak and "\n" not in text:
+        text += "\n"
+
+    return text
+    
+def output_node(root, ctxt, minify_wspace=True, minify_lines=True, exclude_comments=True):
+    """convert a root back to a string, inserting as little whitespace as possible (under minify_wspace),
+       or using original whitespace (optionally except comments)"""
     output = []
     prev_token = Token.none
     prev_vline = 0
     need_linebreak = False
+    short_level = 0
 
-    def output_tokens(token):
+    def output_with_min_wspace(token):
         nonlocal prev_token, prev_vline, need_linebreak
 
         if token.children:
@@ -292,41 +313,7 @@ def output_min_wspace(root, ctxt, minify_lines=True):
         if e(token.vline):
             prev_vline = token.vline
 
-    def post_node_output(node):
-        nonlocal need_linebreak
-        if need_newline_after(node):
-            need_linebreak = True
-    
-    root.traverse_nodes(tokens=output_tokens, post=post_node_output)
-    return "".join(output)
-
-def output_original_wspace(root, ctxt, exclude_comments=False):
-    """convert a root back to a string, using original whitespace (optionally except comments)"""
-    output = []
-    prev_token = Token.none
-    prev_vline = 0
-    need_linebreak = False
-
-    def get_wspace(pre, post, allow_linebreaks, need_linebreak=False):
-        source = default(pre.source, post.source)
-        text = source.text[pre.endidx:post.idx]
-        
-        if not text.isspace():
-            # verify this range contains only whitespace/comments (may contain more due to reorders/removes)
-            tokens, _ = tokenize(Source("<output>", text), ctxt)
-            if tokens:
-                if "\n" in text and allow_linebreaks:
-                    need_linebreak = True
-                text = text[:tokens[0].idx] or text[tokens[-1].endidx:]
-
-        if not allow_linebreaks and "\n" in text:
-            text = text[:text.index("\n")] + " "
-        if need_linebreak and "\n" not in text:
-            text += "\n"
-
-        return text
-
-    def output_tokens(token):
+    def output_with_orig_wspace(token):
         nonlocal prev_token, prev_vline, need_linebreak
         
         if token.value is None:
@@ -334,15 +321,15 @@ def output_original_wspace(root, ctxt, exclude_comments=False):
         
         if prev_token.endidx != token.idx or prev_token.modified or token.modified:
             allow_linebreaks = e(token.vline) and token.vline != prev_vline
-            wspace = get_wspace(prev_token, token, allow_linebreaks, need_linebreak)
+            wspace = get_orig_wspace(prev_token, token, ctxt, allow_linebreaks, need_linebreak)
 
             if not wspace and prev_token.value != None and need_whitespace_between(ctxt, prev_token, token):
                 wspace += " "
 
             if exclude_comments and token.children:
                 # only output spacing before and after the comments between the tokens
-                prespace = get_wspace(prev_token, token.children[0], allow_linebreaks)
-                postspace = get_wspace(token.children[-1], token, allow_linebreaks)
+                prespace = get_orig_wspace(prev_token, token.children[0], ctxt, allow_linebreaks)
+                postspace = get_orig_wspace(token.children[-1], token, ctxt, allow_linebreaks)
                 for comment in token.children:
                     if comment.hint == CommentHint.keep:
                         prespace += comment.value.replace(k_keep_prefix, "", 1)
@@ -363,12 +350,20 @@ def output_original_wspace(root, ctxt, exclude_comments=False):
         if e(token.vline):
             prev_vline = token.vline
     
+    def pre_node_output(node):
+        nonlocal short_level
+        if is_non_nested_short(node):
+            short_level += 1
+
     def post_node_output(node):
-        nonlocal need_linebreak
-        if need_newline_after(node):
-            need_linebreak = True
+        nonlocal short_level, need_linebreak
+        if is_non_nested_short(node):
+            short_level -= 1
+            if short_level == 0:
+                need_linebreak = True
     
-    root.traverse_nodes(tokens=output_tokens, post=post_node_output)
+    root.traverse_nodes(tokens=output_with_min_wspace if minify_wspace else output_with_orig_wspace,
+                        pre=pre_node_output, post=post_node_output)
     return "".join(output)
 
 def output_code(ctxt, root, minify_opts):
@@ -376,9 +371,6 @@ def output_code(ctxt, root, minify_opts):
     minify_wspace = minify_opts.get("wspace", True)
     minify_comments = minify_opts.get("comments", True)
 
-    if minify_wspace:
-        return output_min_wspace(root, ctxt, minify_lines)
-    else:
-        return output_original_wspace(root, ctxt, minify_comments)
-    
+    return output_node(root, ctxt, minify_wspace, minify_lines, minify_comments)
+
 from pico_process import Source

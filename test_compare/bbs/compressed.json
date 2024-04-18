@@ -389,13 +389,13 @@
             "compressed": 6443
         },
         "safe_minify": {
-            "chars": 8461,
-            "compressed": 3392,
+            "chars": 8448,
+            "compressed": 3394,
             "tokens": 3643
         },
         "unsafe_minify": {
-            "chars": 8027,
-            "compressed": 3346,
+            "chars": 8014,
+            "compressed": 3347,
             "tokens": 3643
         }
     },
@@ -677,13 +677,13 @@
             "compressed": 13879
         },
         "safe_minify": {
-            "chars": 24739,
-            "compressed": 10950,
+            "chars": 24723,
+            "compressed": 10954,
             "tokens": 8101
         },
         "unsafe_minify": {
-            "chars": 22412,
-            "compressed": 10558,
+            "chars": 22396,
+            "compressed": 10561,
             "tokens": 8101
         }
     },
@@ -917,12 +917,12 @@
             "compressed": 6091
         },
         "safe_minify": {
-            "chars": 12099,
+            "chars": 12079,
             "compressed": 5132,
             "tokens": 5096
         },
         "unsafe_minify": {
-            "chars": 11656,
+            "chars": 11636,
             "compressed": 5034,
             "tokens": 5096
         }

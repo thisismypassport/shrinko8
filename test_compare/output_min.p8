@@ -107,10 +107,9 @@ for a in(all{})do end
 print("test"..@16 .."str")
 ?calls3+(({})[1]and({}).🐱 or...or xxx())+3+-3
 if(true)?"sh1"
-if true then?"sh2"
-end
+if(true)?"sh2"
 if(true)if false then else print"sh3"end
-if true then if false then else print"sh4"end end
+if(true)if false then else print"sh4"end
 l="renaming bug"
 function fff()
 local l1,l2,l3,l4,l5,l6,l7,l8,l9,l10,l11,l12,l13,l14,l15,l16,l17,l18,l19,l10,l20,l21,l22,l23,l24,l25,l26

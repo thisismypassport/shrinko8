@@ -32,11 +32,29 @@ def get_node_bodies(node):
     else:
         yield node.body
 
-def analyze_code_for_minify(root, focus):
+def analyze_code_for_minify(root, focus, ctxt):
+    shorthands_can_nest = ctxt.version >= 42
     shorts = CounterDictionary()
     longs = CounterDictionary()
-    shortenables = set()
+    allowed_shorts = set()
 
+    def allow_shorthand_nesting(parent, body, child):
+        # at this point, both parent and child are either shorthands or may become shorthands
+        if shorthands_can_nest:
+            # the then of a short if-else cannot contain anything except nested if-elses
+            if ((parent.type == NodeType.if_ and parent.else_ and body is parent.then) and 
+                    not (child.type == NodeType.if_ and child.else_)):
+                return False
+            
+            # note - pico8 now supports shorthands terminated by 'end', but we don't generate those yet
+            if body.next_token() is not child.next_token():
+                return False
+            
+            return True
+        else:
+            # in theory, could've supported nesting print even here, but never did
+            return False
+        
     def analyze_node_post(node):
 
         if node.type in (NodeType.if_, NodeType.while_):
@@ -52,31 +70,38 @@ def analyze_code_for_minify(root, focus):
 
             # can the node be converted to shorthand?
             if not is_short and not has_elseif:
-                has_shorthand, has_empties, starts_with_do = False, False, False
+                has_bad_shorthand, has_empties, starts_with_do = False, False, False
 
-                def check_shorthand(node):
-                    nonlocal has_shorthand
-                    # ideally, could allow last node in an 'if' to be a print...
-                    if node.short or node in shortenables:
-                        has_shorthand = True
-                    
                 # first check the parents
-                node.traverse_parents(check_shorthand)
+                prev_parent = node
+                def check_parent_shorthand(parent):
+                    nonlocal prev_parent, has_bad_shorthand
+                    if (parent.short or parent in allowed_shorts) and not allow_shorthand_nesting(parent, prev_parent, node):
+                        has_bad_shorthand = True
+                    prev_parent = parent
+                    
+                node.traverse_parents(check_parent_shorthand)
                 
                 # now check the children
                 for i, body in enumerate(get_node_bodies(node)):
-                    body.traverse_nodes(post=check_shorthand)
+                    def check_child_shorthand(child):
+                        nonlocal has_bad_shorthand
+                        if (child.short or child in allowed_shorts) and not allow_shorthand_nesting(node, body, child):
+                            has_bad_shorthand = True
+                    
+                    body.traverse_nodes(post=check_child_shorthand)
+                    
                     if not body.children:
                         has_empties = True
                     
                     if i == 0:
-                        # beware of do block ambiguity
+                        # a shorthand cannot begin with a do block. (would be a longhand)
                         starts_with_do = body.first_token().value == "do"
                 
                 # empty bodies require extra ';'s to shorten, which worsens compression
-                is_short = not has_shorthand and not (has_empties and not focus.chars) and not starts_with_do
+                is_short = not has_bad_shorthand and not (has_empties and not focus.chars) and not starts_with_do
                 if is_short:
-                    shortenables.add(node)
+                    allowed_shorts.add(node)
             
             if is_short:
                 shorts[node.type] += weight
@@ -96,7 +121,7 @@ def analyze_code_for_minify(root, focus):
         else:
             new_shorts[type] = None # leave alone
 
-    return Dynamic(new_shorts=new_shorts, shortenables=shortenables)
+    return Dynamic(new_shorts=new_shorts, allowed_shorts=allowed_shorts)
 
 def minify_change_shorthand(node, new_short):
     if new_short:
@@ -295,7 +320,7 @@ def minify_code(ctxt, root, minify_opts):
     if not focus.tokens:
         safe_reorder = True # nothing gained with False here, so set it to True just in case.
 
-    analysis = analyze_code_for_minify(root, focus)
+    analysis = analyze_code_for_minify(root, focus, ctxt)
 
     def fixup_nodes_pre(node):
         if minify_tokens:
@@ -343,7 +368,7 @@ def minify_code(ctxt, root, minify_opts):
             # create shorthands
             
             if (node.type in (NodeType.if_, NodeType.while_) and not node.short and
-                   (analysis.new_shorts[node.type] == True) and node in analysis.shortenables):
+                   (analysis.new_shorts[node.type] == True) and node in analysis.allowed_shorts):
                 minify_change_shorthand(node, True)
 
             if (node.type == NodeType.call and not node.short and node.func.type == NodeType.var and is_root_global_or_builtin_local(node.func) and
@@ -400,6 +425,9 @@ def minify_code(ctxt, root, minify_opts):
              
             if token.value == "^^" and ctxt.version >= 37:
                 token.modify("~")
+
+            #if token.value == "then" and ctxt.lang == Language.pico8 and ctxt.version >= 42: # I HATE THIS :(
+            #    token.modify("do")
 
             if token.value == "//" and ctxt.lang == Language.picotron:
                 token.modify("\\")

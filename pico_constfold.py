@@ -466,7 +466,7 @@ def set_const(node, value, ctxt, focus, force):
     if focus == Focus.chars and not force:
         # the new token may take more chars than before
         # though it may still be useful when further folded
-        if len(token.value) > len(output_min_wspace(node, ctxt)):
+        if len(token.value) > len(output_node(node, ctxt)):
             node.worse_const = value
             return
 
@@ -754,4 +754,4 @@ def parse_constant(value, lang, as_str=False):
 
 from pico_process import Error, Source
 from pico_minify import Focus
-from pico_output import output_min_wspace
+from pico_output import output_node
