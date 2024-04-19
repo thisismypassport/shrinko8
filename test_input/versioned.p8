@@ -8,3 +8,4 @@ if a then -- nested ifs
     end
 end
 printh"]]\\\\\"\"\"\"\\\\\\\\\"\"\"\"\\\\" -- complex long
+if a then elseif b then end

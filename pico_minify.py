@@ -394,8 +394,8 @@ def minify_code(ctxt, root, minify_opts):
             if token.value == "^^" and ctxt.version >= 37:
                 token.modify("~")
 
-            #if token.value == "then" and ctxt.version >= 40: # I HATE THIS :(
-            #    token.modify("do")
+            if token.value == "then" and ctxt.version >= 40: # I HATE THIS :(
+                token.modify("do")
 
             if token.type == TokenType.string:
                 token.modify(minify_string_literal(ctxt, token, focus))

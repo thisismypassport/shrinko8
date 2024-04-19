@@ -244,48 +244,48 @@ local l=n();({}).e=n();({}).e=n();({}).e=n()?n()
 ?nil
 ?0
 ?false
-if n then?nil
+if n do?nil
 else?false
 end?nil
 ?true
-if n then?true
+if n do?true
 else?nil
-end if n then?true
+end if n do?true
 else?false
-end if n then?true
+end if n do?true
 else?nil
-end if n then?true
-end if n then?true
+end if n do?true
+end if n do?true
 else?nil
-end if n then?true
+end if n do?true
 else?0
-end if n then?true
+end if n do?true
 else?false
-end if n then?true
-elseif f then?1
+end if n do?true
+elseif f do?1
 else?nil
-end if n then?true
-elseif f then?1
+end if n do?true
+elseif f do?1
 else?false
-end if n then?true
-elseif f then?1
+end if n do?true
+elseif f do?1
 else?nil
-end if n then?true
-elseif f then?1
-end if n then?true
-elseif f then?1
+end if n do?true
+elseif f do?1
+end if n do?true
+elseif f do?1
 else?nil
-end if n then?true
-elseif f then?1
+end if n do?true
+elseif f do?1
 else?0
-end if n then?true
-elseif f then?1
+end if n do?true
+elseif f do?1
 else?false
 end?""
 ?""
 do local e=3end?e
 ?e
-if n then local e=3end?e
+if n do local e=3end?e
 ?e
 do local function e()end end?e
 ?e

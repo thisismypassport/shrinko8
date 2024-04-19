@@ -17,6 +17,7 @@ def unminify_code(root, unminify_opts):
 
     def visit_token(token):
         nonlocal prev_token, prev_tight
+        value = token.value
 
         for comment in token.children:
             comment_value = comment.value
@@ -45,6 +46,10 @@ def unminify_code(root, unminify_opts):
         # ignore semicolons inside blocks - our formatting makes them unneeded
         if token.parent.type == NodeType.block and token.value == ";":
             return
+        
+        # if .. do -> if .. then
+        if token.value == "do" and token.parent.type in (NodeType.if_, NodeType.elseif):
+            value = "then"
 
         if prev_tight and prev_token.value not in k_tight_prefix_tokens and \
                 token.value not in k_tight_suffix_tokens and \
@@ -53,7 +58,7 @@ def unminify_code(root, unminify_opts):
                 not (prev_token.type == TokenType.punct and prev_token.parent.type == NodeType.unary_op):
             output.append(" ")
 
-        output.append(token.value)
+        output.append(value)
         prev_token = token
         prev_tight = True
 
