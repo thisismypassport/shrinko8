@@ -68,7 +68,7 @@ def lua_neg(a):
 
 def lua_abs(a):
     if a.is_number() and a.value != 0x80000000: # avoid relying on clamping overflow behavior
-        return LuaNumber(abs(a.value))
+        return LuaNumber(abs(fixnum_to_signed(a.value)))
 
 def lua_floor(a):
     if a.is_number():
