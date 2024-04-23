@@ -169,7 +169,6 @@ f=1({x=1}).x=2 assert(f==1,81)
 f={1}({x=1}).x=2 assert(f[1]==1,81.1)
 f="1"({x=1}).x=2 assert(f=="1",81.2)
 f=function()end({x=1}).x=2 assert(f()==nil,81.3)
---[[ -- this is treated as a line comment by good old pico-8
 printh("DONE")
 __music__
 07 12345678

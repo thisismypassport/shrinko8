@@ -132,9 +132,11 @@ def run_pico8(p8_exe, cart_path, expected_printh=None, timeout=5.0, allow_timeou
             success = False
 
     if success and expected_printh != None:
-        success = "\n".join(actual_printh_lines) == expected_printh
-
-    return success, stdout
+        actual_printh = "\n".join(actual_printh_lines)
+        success = actual_printh == expected_printh
+        return success, actual_printh # more interesting than stdout
+    else:
+        return success, stdout
 
 def run_interactive_pico8(p8_exe, cart_path):
     try:

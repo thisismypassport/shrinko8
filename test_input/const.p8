@@ -1,7 +1,10 @@
 pico-8 cartridge // http://www.pico-8.com
 version 36
 __lua__
-stop() -- for pure syntax check
+--[[non-const]] local ERROR = false
+function print(value)
+    printh(tostr(value, true))
+end
 -- neg
 ?-(0)
 ?-(1)
@@ -9,8 +12,8 @@ stop() -- for pure syntax check
 ?-(0x8000)
 ?-(0x7fff.ffff)
 ?-(0xedcb.a987)
-?-false
-?-nil
+if (ERROR) ?-false
+if (ERROR) ?-nil
 -- abs
 ?abs(1.3)
 ?abs(-1.3)
@@ -41,12 +44,12 @@ stop() -- for pure syntax check
 ?0x7fff.ffff+1
 ?0xffff.ffff+1
 ?"1" + "2"
-?me + 1
-?1 + me
+if (ERROR) ?me + 1
+if (ERROR) ?1 + me
 -- sub
 ?1 - 2
 ?0 - 0x.0001
-?"a" - "a"
+if (ERROR) ?"a" - "a"
 -- mul
 ?3 * 1.5
 ?3 * 1.1
@@ -112,7 +115,7 @@ stop() -- for pure syntax check
 ?-3 < 4
 ?"3" < "4"
 ?"3" < "30"
-?3 < "4"
+if (ERROR) ?3 < "4"
 -- le
 ?3 <= 3
 ?3 <= 4
@@ -120,7 +123,7 @@ stop() -- for pure syntax check
 ?-3 <= 4
 ?"\xe8" <= "z"
 ?"3" <= "3"
-?false <= true
+if (ERROR) ?false <= true
 -- gt
 ?3 > 3
 ?3 > 4
@@ -157,8 +160,8 @@ stop() -- for pure syntax check
 ?~(0)
 ?~(1)
 ?~(0xffff)
-?~true
-?~"x"
+if (ERROR) ?~true
+if (ERROR) ?~"x"
 ?bnot(1.2)
 ?bnot(1,2)
 -- band
@@ -236,7 +239,7 @@ stop() -- for pure syntax check
 ?it or me
 ?it or 4
 -- len
-?#123
+if (ERROR) ?#123
 ?#""
 ?#"123"
 ?#"123➡️✽…"
@@ -247,8 +250,9 @@ stop() -- for pure syntax check
 ?"1" .. 2
 ?0x8000 .. -2
 ?"1" .. 2.3
-?"1" .. false
+if (ERROR) ?"1" .. false
 -- misc
+function foo() return 10 end
 ?3 + 4 * 5
 ?(3 + 4) * 5
 local a, --[[const]] b = foo(), 3 * 4
@@ -258,15 +262,15 @@ local function --[[const]] nocrash() end
 local --[[const]] d, --[[const]] e = nil, false
 local --[[const]] f = max()
 ?3 + max(4, 5)
-printh,tostr=41,42
+menuitem,chr=41,42
 -- misc2
 --[[const]] ssog1 = 123; ?ssog1/2
 --[[const]] ssog2, --[[const]] ssog3 = 123, 456; ?ssog2+ssog3
 --[[const]] ssog4, --[[const]] ssog5 = 123, 456, 789; ?ssog4+ssog5
 --[[const]] ssog6, --[[const]] ssog7 = 123; ?ssog6
 ?ssog7
-foo, --[[const]] ssog11, foo2 = foo(), 123, foo(); ?ssog11
---[[const]] ssog12, foo, --[[const]] ssog13 = 123, foo(), 456; ?ssog12+ssog13
+bar, --[[const]] ssog11, bar2 = foo(), 123, foo(); ?ssog11
+--[[const]] ssog12, bar, --[[const]] ssog13 = 123, foo(), 456; ?ssog12+ssog13
 --[[const]] ssog14, --[[const]] ssog15 = foo(); ?ssog15
 --[[const]] ssog21, --[[const]] ssog22 = max(4,5); ?ssog21
 ssog22=1
@@ -286,35 +290,35 @@ local a2 = 44
 ?foo()
 --[[const]]ssoga3, ({}).x = 3, 4
 -- if
-if (1==1) ?true else ?false
-if (1==2) ?true else ?false
-if 1==1 then ?true else ?false end
-if 1==2 then ?true else ?false end
-if 1==1 then ?true elseif 1==1 then ?nil else ?false end
-if 1==2 then ?true elseif 1==1 then ?nil else ?false end
-if 1==2 then ?true elseif 1==3 then ?nil else ?false end
-if 1==2 then ?true elseif 1==1 then ?nil elseif 1==1 then ?0 else ?false end
-if 1==2 then ?true elseif 1==3 then ?nil elseif 1==1 then ?0 else ?false end
-if 1==2 then ?true elseif 1==3 then ?nil elseif 1==4 then ?0 else ?false end
-if 1==2 then ?true elseif foo then ?nil else ?false end
-if 1==2 then ?true elseif 1==1 then ?nil end
-if 1==2 then ?true elseif 1==2 then ?nil end
-if 1==1 then ?true end
-if 1==2 then ?true end
-if foo then ?true elseif 1==1 then ?nil else ?false end
-if foo then ?true elseif 1==2 then ?nil else ?false end
-if foo then ?true elseif 1==1 then ?nil end
-if foo then ?true elseif 1==2 then ?nil end
-if foo then ?true elseif 1==1 then ?nil elseif 1==1 then ?0 else ?false end
-if foo then ?true elseif 1==3 then ?nil elseif 1==1 then ?0 else ?false end
-if foo then ?true elseif 1==3 then ?nil elseif 1==4 then ?0 else ?false end
-if foo then ?true elseif bar then ?1 elseif 1==1 then ?nil else ?false end
-if foo then ?true elseif bar then ?1 elseif 1==2 then ?nil else ?false end
-if foo then ?true elseif bar then ?1 elseif 1==1 then ?nil end
-if foo then ?true elseif bar then ?1 elseif 1==2 then ?nil end
-if foo then ?true elseif bar then ?1 elseif 1==1 then ?nil elseif 1==1 then ?0 else ?false end
-if foo then ?true elseif bar then ?1 elseif 1==3 then ?nil elseif 1==1 then ?0 else ?false end
-if foo then ?true elseif bar then ?1 elseif 1==3 then ?nil elseif 1==4 then ?0 else ?false end
+if (1==1) print(true) else ?false
+if (1==2) print(true) else ?false
+if 1==1 then print(true) else print(false) end
+if 1==2 then print(true) else print(false) end
+if 1==1 then print(true) elseif 1==1 then print(nil) else print(false) end
+if 1==2 then print(true) elseif 1==1 then print(nil) else print(false) end
+if 1==2 then print(true) elseif 1==3 then print(nil) else print(false) end
+if 1==2 then print(true) elseif 1==1 then print(nil) elseif 1==1 then print(0) else print(false) end
+if 1==2 then print(true) elseif 1==3 then print(nil) elseif 1==1 then print(0) else print(false) end
+if 1==2 then print(true) elseif 1==3 then print(nil) elseif 1==4 then print(0) else print(false) end
+if 1==2 then print(true) elseif foo then print(nil) else print(false) end
+if 1==2 then print(true) elseif 1==1 then print(nil) end
+if 1==2 then print(true) elseif 1==2 then print(nil) end
+if 1==1 then print(true) end
+if 1==2 then print(true) end
+if foo then print(true) elseif 1==1 then print(nil) else print(false) end
+if foo then print(true) elseif 1==2 then print(nil) else print(false) end
+if foo then print(true) elseif 1==1 then print(nil) end
+if foo then print(true) elseif 1==2 then print(nil) end
+if foo then print(true) elseif 1==1 then print(nil) elseif 1==1 then print(0) else print(false) end
+if foo then print(true) elseif 1==3 then print(nil) elseif 1==1 then print(0) else print(false) end
+if foo then print(true) elseif 1==3 then print(nil) elseif 1==4 then print(0) else print(false) end
+if foo then print(true) elseif bar then print(1) elseif 1==1 then print(nil) else print(false) end
+if foo then print(true) elseif bar then print(1) elseif 1==2 then print(nil) else print(false) end
+if foo then print(true) elseif bar then print(1) elseif 1==1 then print(nil) end
+if foo then print(true) elseif bar then print(1) elseif 1==2 then print(nil) end
+if foo then print(true) elseif bar then print(1) elseif 1==1 then print(nil) elseif 1==1 then print(0) else print(false) end
+if foo then print(true) elseif bar then print(1) elseif 1==3 then print(nil) elseif 1==1 then print(0) else print(false) end
+if foo then print(true) elseif bar then print(1) elseif 1==3 then print(nil) elseif 1==4 then print(0) else print(false) end
 ?""
 -- if misc
 ?""

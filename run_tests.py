@@ -155,12 +155,16 @@ def run():
     run_test("minifytokens", "input.p8", "output_tokens.p8", "--minify", "--no-minify-consts", "--focus-tokens",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename",
              pico8_output="output.p8.printh")
+    run_test("nominify", "input.p8", "output-nomin.p8", check_output=False, pico8_output="output.p8.printh")
+
     run_test("nopreserve", "nopreserve.p8", "nopreserve.p8", "--minify",
              "--no-preserve", "circfill,rectfill", pico8_output_val="yep")
     run_test("safeonly", "safeonly.p8", "safeonly.p8", "--minify-safe-only")
+
+    run_test("const-baseline", "const.p8", "const-baseline.p8", check_output=False, pico8_output="const.p8.printh")
     run_test("const", "const.p8", "const.p8", "--minify",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename", "--no-minify-tokens",
-             pico8_run=True)
+             pico8_output="const.p8.printh")
     run_test("const2", "const2.p8", "const2.p8", "--minify",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename", "--no-minify-tokens",
              pico8_run=True, stdout_output="const2.txt", norm_stdout=norm_paths)
@@ -168,11 +172,13 @@ def run():
     run_test("constcl-1", "constcl.p8", "constcl-1.p8", "--minify", "--const", "DEBUG", "true", "--const", "SPEED", "2.5", "--str-const", "VERSION", "v1.2")
     run_test("constcl-2", "constcl.p8", "constcl-2.p8", "--minify", "--const", "DEBUG", "true", "--const", "SPEED", "-2.6", "--const", "hero", "~1")
     run_test("constmin", "const.p8", "constmin.p8", "--minify", pico8_run=True)
+
     if run_test("test", "test.p8", "test.p8", "--minify", "--no-minify-consts", pico8_output_val="DONE"):
         run_test("unmintest", "test.p8", "test-un.p8", "--unminify", from_output=True, pico8_output_val="DONE")
     run_test("test-ob", "test.p8", "test-ob.p8", "--focus-compressed", "--minify", "--no-minify-consts", pico8_output_val="DONE")
     run_test("test-oc", "test.p8", "test-oc.p8", "--focus-chars", "--minify", "--no-minify-consts", pico8_output_val="DONE")
     run_test("test-simp", "test.p8", "test-simp.p8", "--minify", pico8_output_val="DONE")
+    run_test("test-none", "test.p8", "test-none.p8", check_output=False, pico8_output_val="DONE")
     run_test("globasmemb", "globasmemb.p8", "globasmemb.p8", "--minify", pico8_output_val="OK")
     if run_test("p82png", "testcvt.p8", "testcvt.png",
                 "--extra-output", "test_output/testcvt.sprites.png", "spritesheet",
@@ -196,6 +202,7 @@ def run():
     run_test("p82clip", "testcvt.p8", "testcvt.clip")
     if run_test("url2p8", "test.url", "test.url.p8"):
         run_test("p82url", "test.url.p8", "test.url", from_output=True)
+
     run_test("default", "default.p8", "default.rom")
     run_test("default2", "default2.p8", "default2.rom")
     run_test("genend", "genend.p8.png", "genend.p8", update_version=False)
@@ -218,15 +225,18 @@ def run():
              "--local-builtin", "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z")
     run_test("tinyrom", "tiny.rom", "tiny.lua")
     run_test("title", "title.p8", "title.p8.png", update_version=False)
+
     if run_test("repl", "repl.p8", "repl.p8", "--minify",
                 "--rename-map", "test_output/repl.map", extra_outputs=["repl.map"], pico8_output_val="finished"):
         run_test("unminrepl", "repl.p8", "repl-un.p8", "--unminify", from_output=True, pico8_output_val="finished")
         run_test("repl-com", "repl.p8", "repl-com.png", "--force-compression", from_output=True, pico8_output_val="finished")
     run_test("repl-oc", "repl.p8", "repl-oc.p8", "--minify", "--focus-chars", pico8_output_val="finished")
     run_test("repl-ob", "repl.p8", "repl-ob.p8", "--minify", "--focus-compressed", pico8_output_val="finished")
+
     run_test("reformat", "input.p8", "input-reformat.p8", "--unminify", "--unminify-indent", "4")
     run_test("notnil", "notnil.p8", "notnil.p8", "--minify", pico8_output_val="passed")
     run_test("wildcards", "wildcards.p8", "wildcards.p8", "--minify", "--no-minify-consts")
+
     run_test("reorder", "reorder.p8", "reorder.p8", "-m", "--focus-tokens", "--no-minify-lines", "--no-minify-consts",
              pico8_output="reorder.p8.printh")
     run_test("reorder_simp", "reorder.p8", "reorder_simp.p8", "-m", "--focus-tokens", "--no-minify-lines", 
@@ -235,10 +245,12 @@ def run():
              "--ignore-hints", pico8_output="reorder.p8.printh")
     run_test("reorder_safe_2", "reorder.p8", "reorder_safe_2.p8", "-m", "--focus-tokens", "--no-minify-lines", "--no-minify-consts", 
              "--reorder-safe-only", pico8_output="reorder.p8.printh")
+    
     run_test("short", "short.p8", "short.p8", "-m", "--no-minify-consts", "--focus-chars", pico8_output_val="K\nK")
     run_test("short-lines", "short.p8", "short-lines.p8", "-m", "--no-minify-consts", "--no-minify-lines", "--focus-chars", pico8_output_val="K\nK")
     run_test("short-spaces", "short.p8", "short-spaces.p8", "-m", "--no-minify-consts", "--no-minify-spaces", "--focus-chars", pico8_output_val="K\nK")
     run_test("short2", "short2.p8", "short2.p8", "-m", "--no-minify-consts", "--focus-compressed", "--no-minify-spaces")
+
     run_test("version-latest", "versioned.p8", "versioned-latest.p8", "-m", "-oc", pico8_output="versioned.p8.printh")
     run_test("version-orig", "versioned.p8", "versioned-orig.p8", "-m", "-oc", update_version=False, pico8_output="versioned.p8.printh")
 

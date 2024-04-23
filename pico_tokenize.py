@@ -395,7 +395,7 @@ def tokenize(source, ctxt=None, all_comments=False):
                     idx = end_i + len(pad) + 2
                     return True, orig_idx, start_i, end_i
                 
-                # unterminated long brackets currently ignored by pico8
+                add_error("Unterminated long comment (no longer accepted by pico8)", 0)
         
         return False, orig_idx, None, None
 

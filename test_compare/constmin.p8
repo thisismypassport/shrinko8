@@ -1,14 +1,14 @@
 pico-8 cartridge // http://www.pico-8.com
 version 42
 __lua__
-stop()?0
+local e=false function print(e)printh(tostr(e,true))end?0
 ?-1
 ?1
 ?32768
 ?32768.00002
 ?4660.33779
-?-false
-?-nil
+if(e)?-false
+if(e)?-nil
 ?1.3
 ?1.3
 ?32767.99999
@@ -35,11 +35,11 @@ stop()?0
 ?~32767
 ?.99999
 ?"1"+"2"
-?e+1
-?1+e
+if(e)?l+1
+if(e)?1+l
 ?-1
 ?~0
-?"a"-"a"
+if(e)?"a"-"a"
 ?4.5
 ?3.29998
 ?-93.4798
@@ -84,7 +84,7 @@ stop()?0
 ?true
 ?false
 ?true
-?3==e
+?3==l
 ?true
 ?false
 ?true
@@ -98,14 +98,14 @@ stop()?0
 ?true
 ?true
 ?true
-?3<"4"
+if(e)?3<"4"
 ?true
 ?true
 ?false
 ?true
 ?false
 ?true
-?false<=true
+if(e)?false<=true
 ?false
 ?false
 ?true
@@ -136,8 +136,8 @@ stop()?0
 ?~0
 ?~1
 ?.99999
-?~true
-?~"x"
+if(e)?~true
+if(e)?~"x"
 ?~1.2
 ?bnot(1,2)
 ?544.32935
@@ -192,18 +192,18 @@ stop()?0
 ?4
 ?nil
 ?false
-?e
+?l
 ?nil
-?l and e
-?l and 4
+?i and l
+?i and 4
 ?true
 ?3
 ?4
-?e
+?l
 ?3
-?l or e
-?l or 4
-?#123
+?i or l
+?i or 4
+if(e)?#123
 ?0
 ?3
 ?6
@@ -213,75 +213,29 @@ stop()?0
 ?"12"
 ?"-32768-2"
 ?"1"..2.3
-?"1"..false
-?23
+if(e)?"1"..false
+function n()return 10end?23
 ?35
 local e=n()?e*3+36
 local function l()end local l=max()?8
-printh,tostr=41,42?61.5
+menuitem,chr=41,42?61.5
 ?579
-u=456,789?579
+s=456,789?579
 ?123
 ?nil
-n,a=n(),n()?123
-n=n()?579
-i,r=n()?r
-s=nil?5
-s=1?5
+f,a=n(),n()?123
+f=n()?579
+d,r=n()?r
+u=nil?5
+u=1?5
 ?nil
 local l?5
 l=1?5
 ?nil
 local l l=l,l l,l=l?nil
 local l=n();({}).e=n();({}).e=n();({}).e=n()?n()
-;({}).e=4?true
-?false
-?true
-?false
-?true
-?nil
-?false
-?nil
-?0
-?false
-if n then?nil
-else?false
-end?nil
-?true
-if n then?true
-else?nil
-end if n then?true
-else?false
-end if n then?true
-else?nil
-end if n then?true
-end if n then?true
-else?nil
-end if n then?true
-else?0
-end if n then?true
-else?false
-end if n then?true
-elseif f then?1
-else?nil
-end if n then?true
-elseif f then?1
-else?false
-end if n then?true
-elseif f then?1
-else?nil
-end if n then?true
-elseif f then?1
-end if n then?true
-elseif f then?1
-else?nil
-end if n then?true
-elseif f then?1
-else?0
-end if n then?true
-elseif f then?1
-else?false
-end?""
+;({}).e=4print(true)?false
+print(true)print(false)print(true)print(nil)print(false)print(nil)print(0)print(false)if n then print(nil)else print(false)end print(nil)print(true)if n then print(true)else print(nil)end if n then print(true)else print(false)end if n then print(true)else print(nil)end if n then print(true)end if n then print(true)else print(nil)end if n then print(true)else print(0)end if n then print(true)else print(false)end if n then print(true)elseif f then print(1)else print(nil)end if n then print(true)elseif f then print(1)else print(false)end if n then print(true)elseif f then print(1)else print(nil)end if n then print(true)elseif f then print(1)end if n then print(true)elseif f then print(1)else print(nil)end if n then print(true)elseif f then print(1)else print(0)end if n then print(true)elseif f then print(1)else print(false)end?""
 ?""
 do local e=3end?e
 ?e
@@ -291,5 +245,4 @@ do local function e()end end?e
 ?e
 do do::e::end goto e end::e::do goto l end::l::do return end?3
 __meta:title__
-
-neg
+[[non-const]] local ERROR = false

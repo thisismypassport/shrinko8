@@ -1,7 +1,10 @@
 pico-8 cartridge // http://www.pico-8.com
 version 42
 __lua__
-stop() -- for pure syntax check
+--[[non-const]] local ERROR = false
+function print(value)
+    printh(tostr(value, true))
+end
 -- neg
 ?0
 ?65535
@@ -9,8 +12,8 @@ stop() -- for pure syntax check
 ?32768
 ?32768.00002
 ?4660.33779
-?-false
-?-nil
+if (ERROR) ?-false
+if (ERROR) ?-nil
 -- abs
 ?1.3
 ?1.3
@@ -41,12 +44,12 @@ stop() -- for pure syntax check
 ?32768.99999
 ?.99999
 ?"1" + "2"
-?me + 1
-?1 + me
+if (ERROR) ?me + 1
+if (ERROR) ?1 + me
 -- sub
 ?65535
 ?65535.99999
-?"a" - "a"
+if (ERROR) ?"a" - "a"
 -- mul
 ?4.5
 ?3.29998
@@ -112,7 +115,7 @@ stop() -- for pure syntax check
 ?true
 ?true
 ?true
-?3 < "4"
+if (ERROR) ?3 < "4"
 -- le
 ?true
 ?true
@@ -120,7 +123,7 @@ stop() -- for pure syntax check
 ?true
 ?false
 ?true
-?false <= true
+if (ERROR) ?false <= true
 -- gt
 ?false
 ?false
@@ -157,8 +160,8 @@ stop() -- for pure syntax check
 ?65535.99999
 ?65534.99999
 ?.99999
-?~true
-?~"x"
+if (ERROR) ?~true
+if (ERROR) ?~"x"
 ?65534.8
 ?bnot(1,2)
 -- band
@@ -236,7 +239,7 @@ stop() -- for pure syntax check
 ?it or me
 ?it or 4
 -- len
-?#123
+if (ERROR) ?#123
 ?0
 ?3
 ?6
@@ -247,8 +250,9 @@ stop() -- for pure syntax check
 ?"12"
 ?"-32768-2"
 ?"1" .. 2.3
-?"1" .. false
+if (ERROR) ?"1" .. false
 -- misc
+function foo() return 10 end
 ?23
 ?35
 local a = foo()
@@ -256,15 +260,15 @@ local a = foo()
 local function --[[const]] nocrash() end
 local --[[const]] f = max()
 ?8
-printh,tostr=41,42
+menuitem,chr=41,42
 -- misc2
 --[[const]] ; ?61.5
 --[[const]] ; ?579
 --[[const]] ssog5 = 456, 789; ?579
 --[[const]] ; ?123
 ?nil
-foo, foo2 = foo(), foo(); ?123
---[[const]] foo = foo(); ?579
+bar, bar2 = foo(), foo(); ?123
+--[[const]] bar = foo(); ?579
 --[[const]] ssog14, --[[const]] ssog15 = foo(); ?ssog15
 --[[const]] ssog22 =nil ; ?5
 ssog22=1
@@ -280,68 +284,33 @@ local a0 = foo() ;({}).x=foo() ;({}).x=foo() ;({}).x=foo()
 ?foo() 
 ;({}).x = 4
 -- if
-?true 
+print(true) 
 ?false
-?true 
-?false 
-?true 
-?nil 
-?false 
-?nil 
-?0 
-?false 
-if foo then ?nil 
-else ?false 
-end
-?nil 
-?true 
-if foo then ?true 
-else?nil
-end 
-if foo then ?true 
-else ?false 
-end
-if foo then ?true 
-else?nil
-end 
-if foo then ?true
-end 
-if foo then ?true 
-else?nil
-end 
-if foo then ?true 
-else?0
-end 
-if foo then ?true 
-else ?false 
-end
-if foo then ?true 
-elseif bar then ?1 
-else?nil
-end 
-if foo then ?true 
-elseif bar then ?1 
-else ?false 
-end
-if foo then ?true 
-elseif bar then ?1 
-else?nil
-end 
-if foo then ?true 
-elseif bar then ?1
-end 
-if foo then ?true 
-elseif bar then ?1 
-else?nil
-end 
-if foo then ?true 
-elseif bar then ?1 
-else?0
-end 
-if foo then ?true 
-elseif bar then ?1 
-else ?false 
-end
+print(true) 
+print(false) 
+print(true) 
+print(nil) 
+print(false) 
+print(nil) 
+print(0) 
+print(false) 
+if foo then print(nil) else print(false) end
+print(nil) 
+print(true) 
+if foo then print(true) else print(nil)end 
+if foo then print(true) else print(false) end
+if foo then print(true) else print(nil)end 
+if foo then print(true)end 
+if foo then print(true) else print(nil)end 
+if foo then print(true) else print(0)end 
+if foo then print(true) else print(false) end
+if foo then print(true) elseif bar then print(1) else print(nil)end 
+if foo then print(true) elseif bar then print(1) else print(false) end
+if foo then print(true) elseif bar then print(1) else print(nil)end 
+if foo then print(true) elseif bar then print(1)end 
+if foo then print(true) elseif bar then print(1) else print(nil)end 
+if foo then print(true) elseif bar then print(1) else print(0)end 
+if foo then print(true) elseif bar then print(1) else print(false) end
 ?""
 -- if misc
 ?"" 
