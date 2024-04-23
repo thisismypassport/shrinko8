@@ -156,6 +156,7 @@ def run():
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename",
              pico8_output="output.p8.printh")
     run_test("nominify", "input.p8", "output-nomin.p8", check_output=False, pico8_output="output.p8.printh")
+    run_test("reformat", "input.p8", "input-reformat.p8", "--unminify", "--unminify-indent", "4")
 
     run_test("nopreserve", "nopreserve.p8", "nopreserve.p8", "--minify",
              "--no-preserve", "circfill,rectfill", pico8_output_val="yep")
@@ -167,11 +168,11 @@ def run():
              pico8_output="const.p8.printh")
     run_test("const2", "const2.p8", "const2.p8", "--minify",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename", "--no-minify-tokens",
-             pico8_run=True, stdout_output="const2.txt", norm_stdout=norm_paths)
+             stdout_output="const2.txt", norm_stdout=norm_paths)
     run_test("constcl", "constcl.p8", "constcl.p8", "--minify")
     run_test("constcl-1", "constcl.p8", "constcl-1.p8", "--minify", "--const", "DEBUG", "true", "--const", "SPEED", "2.5", "--str-const", "VERSION", "v1.2")
     run_test("constcl-2", "constcl.p8", "constcl-2.p8", "--minify", "--const", "DEBUG", "true", "--const", "SPEED", "-2.6", "--const", "hero", "~1")
-    run_test("constmin", "const.p8", "constmin.p8", "--minify", pico8_run=True)
+    run_test("constmin", "const.p8", "constmin.p8", "--minify", pico8_output="const.p8.printh")
 
     if run_test("test", "test.p8", "test.p8", "--minify", "--no-minify-consts", pico8_output_val="DONE"):
         run_test("unmintest", "test.p8", "test-un.p8", "--unminify", from_output=True, pico8_output_val="DONE")
@@ -233,7 +234,6 @@ def run():
     run_test("repl-oc", "repl.p8", "repl-oc.p8", "--minify", "--focus-chars", pico8_output_val="finished")
     run_test("repl-ob", "repl.p8", "repl-ob.p8", "--minify", "--focus-compressed", pico8_output_val="finished")
 
-    run_test("reformat", "input.p8", "input-reformat.p8", "--unminify", "--unminify-indent", "4")
     run_test("notnil", "notnil.p8", "notnil.p8", "--minify", pico8_output_val="passed")
     run_test("wildcards", "wildcards.p8", "wildcards.p8", "--minify", "--no-minify-consts")
 

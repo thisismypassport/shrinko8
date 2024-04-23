@@ -39,7 +39,7 @@ def format_fixnum(value, sign=None, base=None):
                 return str[:-1] + chr(ord(str[-1]) + 1)
         
         numvalue = value / (1 << 16)
-        decvalue = "%.10f" % numvalue
+        decvalue = "%.6f" % numvalue
         while "." in decvalue:
             nextvalue = decvalue[:-1]
             nextupvalue = str_add_1(nextvalue)
@@ -174,7 +174,6 @@ def output_original_wspace(root, exclude_comments=False):
     """convert a root back to a string, using original whitespace (optionally except comments)"""
     output = []
     prev_token = Token.none
-    prev_welded_token = None
     prev_vline = 0
     need_linebreak = False
 

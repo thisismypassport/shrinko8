@@ -146,9 +146,12 @@ class Node(TokenNodeBase):
         for child in children:
             child.parent = m
     
-    def get_tokens(m):
+    def get_tokens(m): # (not including erased tokens, whereas traverse includes them)
         tokens = []
-        m.traverse_tokens(lambda token: tokens.append(token))
+        def on_token(token):
+            if token.value != None:
+                tokens.append(token)
+        m.traverse_tokens(on_token)
         return tokens
     
     short = False # default property
@@ -964,5 +967,13 @@ def is_right_assoc(node):
         return node.op in k_right_binary_ops
     else:
         return False
+
+def can_replace_with_unary(node):
+    parent = node.parent
+    if not parent or (parent.type == NodeType.binary_op and parent.right is node):
+        return True
+    else:
+        prec = get_precedence(parent)
+        return prec is None or prec < k_unary_ops_prec
 
 from pico_process import Error

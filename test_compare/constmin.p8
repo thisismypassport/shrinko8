@@ -194,15 +194,15 @@ if(e)?~"x"
 ?false
 ?l
 ?nil
-?i and l
-?i and 4
+?n and l
+?n and 4
 ?true
 ?3
 ?4
 ?l
 ?3
-?i or l
-?i or 4
+?n or l
+?n or 4
 if(e)?#123
 ?0
 ?3
@@ -214,35 +214,54 @@ if(e)?#123
 ?"-32768-2"
 ?"1"..2.3
 if(e)?"1"..false
-function n()return 10end?23
+function f()return 10end?23
 ?35
-local e=n()?e*3+36
-local function l()end local l=max()?8
-menuitem,chr=41,42?61.5
+local l=f()?l*3+36
+local function n()end local n=max()?8
+menuitem,chr=41,42local n=4?-3*n
+?(-3)^n
+?n^-3
+?65533^2
+?-65533^2
+?2^-3
+?3
+?2.99999
+?false
+if(e)?#65533
+?61.5
 ?579
-s=456,789?579
+a=456,789?579
 ?123
 ?nil
-f,a=n(),n()?123
-f=n()?579
-d,r=n()?r
+i,s=f(),f()?123
+i=f()?579
+d,r=f()?r
 u=nil?5
 u=1?5
 ?nil
-local l?5
-l=1?5
+local e?5
+e=1?5
 ?nil
-local l l=l,l l,l=l?nil
-local l=n();({}).e=n();({}).e=n();({}).e=n()?n()
+local e e=e,e e,e=e?nil
+local e=f();({}).e=f();({}).e=f();({}).e=f()?f()
 ;({}).e=4print(true)?false
-print(true)print(false)print(true)print(nil)print(false)print(nil)print(0)print(false)if n then print(nil)else print(false)end print(nil)print(true)if n then print(true)else print(nil)end if n then print(true)else print(false)end if n then print(true)else print(nil)end if n then print(true)end if n then print(true)else print(nil)end if n then print(true)else print(0)end if n then print(true)else print(false)end if n then print(true)elseif f then print(1)else print(nil)end if n then print(true)elseif f then print(1)else print(false)end if n then print(true)elseif f then print(1)else print(nil)end if n then print(true)elseif f then print(1)end if n then print(true)elseif f then print(1)else print(nil)end if n then print(true)elseif f then print(1)else print(0)end if n then print(true)elseif f then print(1)else print(false)end?""
+print(true)print(false)print(true)print(nil)print(false)print(nil)print(0)print(false)if(f)print(nil)else print(false)
+print(nil)print(true)if(f)print(true)else print(nil)
+if(f)print(true)else print(false)
+if(f)print(true)else print(nil)
+if(f)print(true)
+if(f)print(true)else print(nil)
+if(f)print(true)else print(0)
+if(f)print(true)else print(false)
+if f then print(true)elseif i then print(1)else print(nil)end if f then print(true)elseif i then print(1)else print(false)end if f then print(true)elseif i then print(1)else print(nil)end if f then print(true)elseif i then print(1)end if f then print(true)elseif i then print(1)else print(nil)end if f then print(true)elseif i then print(1)else print(0)end if f then print(true)elseif i then print(1)else print(false)end?""
 ?""
-do local e=3end?e
-?e
-if n then local e=3end?e
-?e
-do local function e()end end?e
-?e
+do local e=3end?l
+?l
+if(f)local e=3
+?l
+?l
+do local function e()end end?l
+?l
 do do::e::end goto e end::e::do goto l end::l::do return end?3
 __meta:title__
 [[non-const]] local ERROR = false

@@ -22,7 +22,8 @@ local e={assert=assert,add=add}do local _ENV=e assert(add({},1)==1)end do local 
 ]]]=]]===]]==]local n=-256,-256*4,65280^4,-65280,~65280if not e then e=-1end function tokenhell(...)return 1.2 ..4 .. .....0end?tokenhell(3)
 ?1or 1or 2and 3==4>=4|5~6<<1>><1 ..2 ..3- -1^4^1/1&7
 ?((~(((((((tonum(((3or 4)and 5)~=2)|1)~2)&3)>>1)..1)-(1+3))*3))^2)^1
-local e=({})[1],(function()end)()local n,o,f,e,i=sin(1,2),cos((cos())),(cos((cos()))),{ord=ord,pal=pal}local e=ord"123",pal{1,2},e:ord("ord"),e:pal({1,2}),sin(1)local c={ord"1",[2]=3,x=4,(ord"1")}e+=1n,o=sin(1,2),cos((cos()))f,i=(cos((cos())))function xxx()return 1,2,ord"1",(ord"1")end if 1==2then elseif 1==2then else end while 1==2do end repeat until 1==1for e in(all{})do end print("test"..@16 .."str")if true then?"sh1"
+local e=({})[1],(function()end)()local n,o,f,e,i=sin(1,2),cos((cos())),(cos((cos()))),{ord=ord,pal=pal}local e=ord"123",pal{1,2},e:ord("ord"),e:pal({1,2}),sin(1)local c={ord"1",[2]=3,x=4,(ord"1")}e+=1n,o=sin(1,2),cos((cos()))f,i=(cos((cos())))function xxx()return 1,2,ord"1",(ord"1")end if 1==2then elseif 1==2then else end while 1==2do end repeat until 1==1for e in(all{})do end print("test"..@16 .."str")?e+(({})[1]and({}).🐱 or...or xxx())+3+-3
+if true then?"sh1"
 end if true then?"sh2"
 end if true then if false then else print"sh3"end end if true then if false then else print"sh4"end end l="renaming bug"function fff()local e,n,o,f,i,c,r,d,a,t,h,u,s,x,k,y,v,p,b,w,g,_,m,j,q,z,ee return l end?fff()
 x=0 x=1function old_name(e,l)return e.old_member,l.old_member end function old_name(e,l,n)local l,n return e.old_member end function ggg(e,l,n,o,f,i)return e+l+n+o+f+i end?ggg(1,2,4,8,16,32)

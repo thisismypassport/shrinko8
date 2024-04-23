@@ -2,7 +2,7 @@ pico-8 cartridge // http://www.pico-8.com
 version 42
 __lua__
 print=printh?"hello ᶜ7there♥ら"
-🐱,a,h,u,s,x,e,e=11,12,13,14,15,16,17,17t(stat(band()))-- this one comment, i do want!
+🐱,h,u,s,x,k,e,e=11,12,13,14,15,16,17,17t(stat(band()))-- this one comment, i do want!
 t()c=0l=0l=0print"this is included"?"#[disable[[this for now/ever]]]"
 local e={1,2,3}print(#e)print(#[[#include notaninclude
 ]])local e,l="preserved_key",{preserved_key=123}?l[e]
@@ -28,9 +28,10 @@ local e={1},{1,2,3,4}local e,l=1~=2,1,1.2345,4660,4660.33777,-1,-1.2345,-4660.33
 function i(...)return 1.2 ..4 .. .....0end?i(3)
 ?1or 1or 2and 3==4>=4|5~6<<1>><1 ..2 ..3- -1^4^1/1&7
 ?((~(((((((tonum(((3or 4)and 5)~=2)|1)~2)&3)>>1)..1)-(1+3))*3))^2)^1
-local e=({})[1],(function()end)()local l,n,o,e,f=sin(1,2),cos((cos())),(cos((cos()))),{d=ord,a=pal}local e=ord"123",pal{1,2},e:d("ord"),e:a({1,2}),sin(1)local i={ord"1",[2]=3,o=4,(ord"1")}e+=1l,n=sin(1,2),cos((cos()))o,f=(cos((cos())))function k()return 1,2,ord"1",(ord"1")end if 1==2then elseif 1==2then else end while 1==2do end repeat until 1==1for e in(all{})do end print("test"..@16 .."str")if(true)?"sh1"
+local e=({})[1],(function()end)()local l,n,o,e,f=sin(1,2),cos((cos())),(cos((cos()))),{d=ord,a=pal}local e=ord"123",pal{1,2},e:d("ord"),e:a({1,2}),sin(1)local i={ord"1",[2]=3,o=4,(ord"1")}e+=1l,n=sin(1,2),cos((cos()))o,f=(cos((cos())))function r()return 1,2,ord"1",(ord"1")end if 1==2then elseif 1==2then else end while 1==2do end repeat until 1==1for e in(all{})do end print("test"..@16 .."str")?e+(({})[1]and({}).x or...or r())+3+-3
+if(true)?"sh1"
 if true then?"sh2"
 end if(true)if false then else print"sh3"end
-if true then if false then else print"sh4"end end j="renaming bug"function r()local e,l,n,o,f,i,c,r,d,a,t,h,u,s,x,k,y,v,p,b,w,g,_,m,E,N,D return j end?r()
-c=0c=1function new_name(new_name,e)return new_name.new_member,e.new_member end function new_name(new_name2,e,l)local e,l return new_name2.new_member end function d(l,e,f,n,o,i)return l+e+f+n+o+i end?d(1,2,4,8,16,32)
+if true then if false then else print"sh4"end end j="renaming bug"function d()local e,l,n,o,f,i,c,r,d,a,t,h,u,s,x,k,y,v,p,b,w,g,_,m,E,N,D return j end?d()
+c=0c=1function new_name(new_name,e)return new_name.new_member,e.new_member end function new_name(new_name2,e,l)local e,l return new_name2.new_member end function a(l,e,f,n,o,i)return l+e+f+n+o+i end?a(1,2,4,8,16,32)
 y=?"END!"

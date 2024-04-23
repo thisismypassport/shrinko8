@@ -150,6 +150,7 @@ while (1 == 2) do end
 repeat until (1 == 1);
 for a in (all({})) do end
 print("test"..(@16).."str")
+?(calls3)+((({})[1]) and (({}).🐱) or (...) or (xxx()))+(3)+(-3)
 
 -- shorthands
 if(true) ?"sh1"

@@ -263,6 +263,19 @@ local --[[const]] d, --[[const]] e = nil, false
 local --[[const]] f = max()
 ?3 + max(4, 5)
 menuitem,chr=41,42
+-- misc1.5
+local --[[non-const]] ncval = 4
+local --[[const]] cval = -3
+?(1-4)*ncval
+?(1-4)^ncval
+?ncval^(1-4)
+?cval^2
+?-cval^2
+?2^cval
+?-cval
+?~cval
+?not cval
+if (ERROR) ?#cval
 -- misc2
 --[[const]] ssog1 = 123; ?ssog1/2
 --[[const]] ssog2, --[[const]] ssog3 = 123, 456; ?ssog2+ssog3

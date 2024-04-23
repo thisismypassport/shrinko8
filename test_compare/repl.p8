@@ -171,7 +171,7 @@ if(#n==0or y(b(n,1)))return false
 for e=1,#n do if(not D(b(n,e)))return false
 end return true end function f(e,t)local n=type(e)if n=="nil"then return"nil"elseif n=="boolean"then return e and"true"or"false"elseif n=="number"then return tostr(e,T)elseif n=="string"then return n0(e)elseif n=="table"and not t then local n,t,r="{",0,0for e,l in next,e do if(t==S)n=n..",<...>"break
 if(t>0)n=n..","
-local l=f(l,1)if e==r+1then n=n..l r=e elseif n2(e)then n=n..e.."="..l else n=n.."["..f(e,1).."]="..l end t+=1end return n.."}"else return"<"..tostr(n)..">"end end function n5(n,e)if(e==nil)return n
+local l=f(l,1)if e==r+1then n=n..l r=e elseif n2(e)then n=n..e.."="..l else n=n.."["..f(e,1).."]="..l end t+=1end return n.."}"else return"<"..tostr(n)..">"end end function nb(n,e)if(e==nil)return n
 if(not n)n=""
 local t=min(21,#e)for t=1,t do if(#n>0)n..="\n"
 local t=e[t]if type(t)=="table"then local e=""for n=1,t.n do if(#e>0)e=e..", "
@@ -189,16 +189,16 @@ if((e<l or e==l and r<i)and not n)t=o-1n=true
 end)if(not n)t=e>=l and r or r-1
 if(o>0)l+=1
 return t,l end function V(n,t,l,e)if(type(e)=="function")U(n,function(n,r,o,i)print(r,t+o*4,l+i*6,e(n))end)else print(n and"⁶rw"..n,t,l,e)
-end function nb(n,r,o)local i,e,f,t=nl(n)local e=1V(n,r,o,function(r)while e<=#t and t[e]<r do e+=1end local n if(e<=#t and f[e]<=r)n=i[e]
+end function np(n,r,o)local i,e,f,t=nl(n)local e=1V(n,r,o,function(r)while e<=#t and t[e]<r do e+=1end local n if(e<=#t and f[e]<=r)n=i[e]
 local e=s[5]if n==false then e=s[6]elseif n==true then e=s[7]elseif type(n)~="string"or q(n,{"nil","true","false"})then e=s[8]elseif L[n]then e=s[9]elseif not D(b(n,1))then e=s[10]elseif l[n]then e=s[11]end return e end)end function _draw()local r,o,i=peek(24357),peek2(24360),peek2(24362)camera()local function n(n)cursor(0,127)for n=1,n do rectfill(0,u*6,127,(u+1)*6-1,0)if(u<21)u+=1else print""
 end end local function f(n,e)for n=1,n do if(u>e)u-=1
 rectfill(0,u*6,127,(u+1)*6-1,0)end end local function d(n,e)for t=0,2do local l=pget(n+t,e+5)pset(n+t,e+5,l==0and s[12]or 0)end end local function l(r)local l=h..a.." "local o,t,e=C(l,#h+c)if e>x then n(e-x)elseif e<x then f(x-e,e)end x=e _=mid(_,0,max(x-21,0))::n::local n=u-x+_ if(n+t<0)_+=1goto n
 if(n+t>=21)_-=1goto n
 local n=n*6rectfill(0,n,127,n+x*6-1,0)if(x>21)rectfill(0,126,127,127,0)
-nb(l,0,n)print(h,0,n,s[4])if(A>=10and r~=false and not v)d(o*4,n+t*6)
+np(l,0,n)print(h,0,n,s[4])if(A>=10and r~=false and not v)d(o*4,n+t*6)
 end local function f(e)n(1)u-=1print("[enter] ('esc' to abort)",0,u*6,s[3])while true do flip()nf()for n in nd()do if(n=="•")X=true g=""G={}return false
 if(n=="\r"or n=="\n")m+=e return true
-end end end::n::local t,e if G or g then t,e=E(g,0,m)if e-m<=20and G then g,G=n5(g,G)t,e=E(g,0,m)if(#G==0and not v)G=nil
+end end end::n::local t,e if G or g then t,e=E(g,0,m)if e-m<=20and G then g,G=nb(g,G)t,e=E(g,0,m)if(#G==0and not v)G=nil
 end end if(not v)camera()
 if(m==0and not v)l(not g)
 if g then local r,t=sub(g,t),min(e-m,20)n(t)V(r,0,(u-t)*6,s[1])if t<e-m then if(f(t))goto n
@@ -208,22 +208,22 @@ if(B)n(1)u-=1print(B,0,u*6,s[3])B=nil
 if P then P-=1if(P==0)B,P=""
 end A-=1if(A==0)A=20
 color(r)camera(o,i)if(u<=20)cursor(0,u*6)
-end r,d,F=false,false,false j={}function nr(n,e)i,n3=n,e assert(false,n)end function W(n,t,l)return ni(n,l)(t or e)end function Y(n,e)return W("return "..n,e,true)end function np(n)local e=cocreate(ni)::n::local n,e=coresume(e,n)if(n and not e)goto n
+end r,d,F=false,false,false j={}function nr(n,e)i,nw=n,e assert(false,n)end function W(n,t,l)return ni(n,l)(t or e)end function Y(n,e)return W("return "..n,e,true)end function nx(n)local e=cocreate(ni)::n::local n,e=coresume(e,n)if(n and not e)goto n
 if(not n)e,i=i,false
-return n,e end function nw(n,e)local n,e=C(n,e)return"line "..e+1 .." col "..n+1end function nu(e,l)G,X,i={},false,false r,d,F=false,false,false local t,r,n=cocreate(function()W(e)end)while true do r,n=coresume(t)if(costatus(t)=="dead")break
+return n,e end function n3(n,e)local n,e=C(n,e)return"line "..e+1 .." col "..n+1end function nu(e,l)G,X,i={},false,false r,d,F=false,false,false local t,r,n=cocreate(function()W(e)end)while true do r,n=coresume(t)if(costatus(t)=="dead")break
 if M and not d then v="running, press 'esc' to abort"_draw()flip()v=nil else if(N and not d and not F)flip()
 if(not N and holdframe)holdframe()
 F=false end for n in nd()do if(n=="•")X=true else add(j,n)
 end if(X)n="computation aborted"break
 end if i==nil then if(l)n="unexpected end of code"else n,G=nil
-end if(i)n,i=i.."\nat "..nw(e,n3)
+end if(i)n,i=i.."\nat "..n3(e,nw)
 O=n j={}end I=function()r=true yield()r=false end e.flip=function(...)local n=pack(flip(...))F=true I()return H(n)end e.coresume=function(n,...)local e=pack(coresume(n,...))while r do yield()e=pack(coresume(n))end i=false return H(e)end e.stat=function(n,...)if n==30then return#j>0or stat(n,...)elseif n==31then if#j>0then return deli(j,1)else local n=stat(n,...)if(n=="•")X=true
-return n end else return stat(n,...)end end function nx(n)if(_set_fps)_set_fps(n._update60 and 60or 30)
+return n end else return stat(n,...)end end function nm(n)if(_set_fps)_set_fps(n._update60 and 60or 30)
 if(n._init)n._init()
 d=true while true do if(_update_buttons)_update_buttons()
 if(holdframe)holdframe()
 if n._update60 then n._update60()elseif n._update then n._update()end if(n._draw)n._draw()
-flip()F=true I()end d=false end function ns(n)if q(n,{"i","interrupt"})then return M elseif q(n,{"f","flip"})then return N elseif q(n,{"r","repl"})then return J elseif q(n,{"mi","max_items"})then return S elseif q(n,{"h","hex"})then return T elseif q(n,{"cl","colors"})then return s elseif q(n,{"c","code"})then local n={[0]=a}for e=1,#w-1do n[e]=w[#w-e]end return n elseif q(n,{"cm","compile"})then return function(n)return np(n)end elseif q(n,{"x","exec"})then return function(n,e)W(n,e)end elseif q(n,{"v","eval"})then return function(n,e)return Y(n,e)end elseif q(n,{"p","print"})then return function(n,...)e.print(f(n),...)end elseif q(n,{"ts","tostr"})then return function(n)return f(n)end elseif q(n,{"rst","reset"})then run()elseif q(n,{"run"})then nx(e)else assert(false,"unknown \\-command")end end function nh(e)local function t(n)return n and n~=0and true or false end local n if q(e,{"i","interrupt"})then n=function(n)M=t(n)end elseif q(e,{"f","flip"})then n=function(n)N=t(n)end elseif q(e,{"r","repl"})then n=function(n)J=t(n)end elseif q(e,{"mi","max_items"})then n=function(n)S=tonum(n)or-1end elseif q(e,{"h","hex"})then n=function(n)T=t(n)end elseif q(e,{"cl","colors"})then n=function(n)s=n end else assert(false,"unknown \\-command assign")end local n={__newindex=function(t,l,e)n(e)end}return setmetatable(n,n),0end Q=stat(4)K,R=0,false poke(24412,10,2)function k(n)if stat(28,n)then if(n~=nn)nn,K=n,0
+flip()F=true I()end d=false end function ns(n)if q(n,{"i","interrupt"})then return M elseif q(n,{"f","flip"})then return N elseif q(n,{"r","repl"})then return J elseif q(n,{"mi","max_items"})then return S elseif q(n,{"h","hex"})then return T elseif q(n,{"cl","colors"})then return s elseif q(n,{"c","code"})then local n={[0]=a}for e=1,#w-1do n[e]=w[#w-e]end return n elseif q(n,{"cm","compile"})then return function(n)return nx(n)end elseif q(n,{"x","exec"})then return function(n,e)W(n,e)end elseif q(n,{"v","eval"})then return function(n,e)return Y(n,e)end elseif q(n,{"p","print"})then return function(n,...)e.print(f(n),...)end elseif q(n,{"ts","tostr"})then return function(n)return f(n)end elseif q(n,{"rst","reset"})then run()elseif q(n,{"run"})then nm(e)else assert(false,"unknown \\-command")end end function nh(e)local function t(n)return n and n~=0and true or false end local n if q(e,{"i","interrupt"})then n=function(n)M=t(n)end elseif q(e,{"f","flip"})then n=function(n)N=t(n)end elseif q(e,{"r","repl"})then n=function(n)J=t(n)end elseif q(e,{"mi","max_items"})then n=function(n)S=tonum(n)or-1end elseif q(e,{"h","hex"})then n=function(n)T=t(n)end elseif q(e,{"cl","colors"})then n=function(n)s=n end else assert(false,"unknown \\-command assign")end local n={__newindex=function(t,l,e)n(e)end}return setmetatable(n,n),0end Q=stat(4)K,R=0,false poke(24412,10,2)function k(n)if stat(28,n)then if(n~=nn)nn,K=n,0
 return K==0or K>=10and K%2==0elseif nn==n then nn=nil end end function _update()local e=false local function t(t)local e,n,l=C(h..a,#h+c)if(ne)e=ne
 n+=t if(not(n>=0and n<l))return false
 c=max(E(h..a,e,n)-#h,1)ne=e A=20return true end local function o(t)local n,l=C(h..a,#h+c)n=t>0and 100or 0c=max(E(h..a,n,l)-#h,1)e=true end local function f(n)w[z]=a z+=n a=w[z]if n<0then c=#a+1else c=max(E(h..a,32,0)-#h,1)local n=b(a,c)if(n~=""and n~="\n")c-=1

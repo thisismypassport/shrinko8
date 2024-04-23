@@ -229,9 +229,9 @@ def run(focus):
     filename = str(focus) if focus else "normal"
 
     input_json = path_join("test_bbs", "input.json")
-    output_json = path_join("test_bbs", "output", filename + ".json")
-    compare_json = path_join("test_bbs", "compare", filename + ".json")
-    unfocused_json = path_join("test_bbs", "compare", "normal.json") if g_opts.compare_unfocused else None
+    output_json = path_join("test_output", "bbs", filename + ".json")
+    compare_json = path_join("test_compare", "bbs", filename + ".json")
+    unfocused_json = path_join("test_compare", "bbs", "normal.json") if g_opts.compare_unfocused else None
     inputs = try_file_read_json(input_json, {})
     outputs = try_file_read_json(output_json, {})
     compares = try_file_read_json(compare_json, {})
@@ -298,7 +298,9 @@ def run_all():
 
 if __name__ == "__main__":
     init_tests(g_opts)
-    for dir in ("output", "compare"):
-        dir_ensure_exists(path_join("test_bbs", dir))
+    dir_ensure_exists("test_bbs")
+    for dir in ("test_output", "test_compare"):
+        dir_ensure_exists(path_join(dir, "bbs"))
+    
     run_all()
     sys.exit(end_tests())

@@ -1,0 +1,930 @@
+{
+    "100973": {
+        "compress": {
+            "chars": 39288,
+            "compressed": 8841
+        },
+        "safe_minify": {
+            "chars": 22048,
+            "compressed": 6529,
+            "tokens": 6821
+        },
+        "unsafe_minify": {
+            "chars": 18666,
+            "compressed": 6051,
+            "tokens": 6821
+        }
+    },
+    "101541": {
+        "compress": {
+            "chars": 34820,
+            "compressed": 12510
+        },
+        "safe_minify": {
+            "chars": 30590,
+            "compressed": 11703,
+            "tokens": 2274
+        },
+        "unsafe_minify": {
+            "chars": 30245,
+            "compressed": 11615,
+            "tokens": 2274
+        }
+    },
+    "103651": {
+        "compress": {
+            "chars": 40092,
+            "compressed": 15173
+        },
+        "safe_minify": {
+            "chars": 34313,
+            "compressed": 13558,
+            "tokens": 6352
+        },
+        "unsafe_minify": {
+            "chars": 31606,
+            "compressed": 13151,
+            "tokens": 6352
+        }
+    },
+    "10388": {
+        "compress": {
+            "chars": 31061,
+            "compressed": 12033
+        },
+        "safe_minify": {
+            "chars": 19726,
+            "compressed": 8976,
+            "tokens": 7853
+        },
+        "unsafe_minify": {
+            "chars": 19191,
+            "compressed": 8837,
+            "tokens": 7853
+        }
+    },
+    "107459": {
+        "compress": {
+            "chars": 43307,
+            "compressed": 15204
+        },
+        "safe_minify": {
+            "chars": 28293,
+            "compressed": 12050,
+            "tokens": 8154
+        },
+        "unsafe_minify": {
+            "chars": 27297,
+            "compressed": 11847,
+            "tokens": 8154
+        }
+    },
+    "109575": {
+        "compress": {
+            "chars": 31993,
+            "compressed": 10330
+        },
+        "safe_minify": {
+            "chars": 19996,
+            "compressed": 7009,
+            "tokens": 7144
+        },
+        "unsafe_minify": {
+            "chars": 17600,
+            "compressed": 6681,
+            "tokens": 7144
+        }
+    },
+    "109673": {
+        "compress": {
+            "chars": 14845,
+            "compressed": 5257
+        },
+        "safe_minify": {
+            "chars": 7611,
+            "compressed": 3559,
+            "tokens": 3104
+        },
+        "unsafe_minify": {
+            "chars": 7465,
+            "compressed": 3514,
+            "tokens": 3104
+        }
+    },
+    "109822": {
+        "compress": {
+            "chars": 35953,
+            "compressed": 14758
+        },
+        "safe_minify": {
+            "chars": 35366,
+            "compressed": 14610,
+            "tokens": 8100
+        },
+        "unsafe_minify": {
+            "chars": 34398,
+            "compressed": 14515,
+            "tokens": 8100
+        }
+    },
+    "112308": {
+        "compress": {
+            "chars": 52322,
+            "compressed": 15038
+        },
+        "safe_minify": {
+            "chars": 25046,
+            "compressed": 8748,
+            "tokens": 8081
+        },
+        "unsafe_minify": {
+            "chars": 19576,
+            "compressed": 8110,
+            "tokens": 8081
+        }
+    },
+    "112740": {
+        "compress": {
+            "chars": 49966,
+            "compressed": 14828
+        },
+        "safe_minify": {
+            "chars": 21274,
+            "compressed": 8770,
+            "tokens": 7956
+        },
+        "unsafe_minify": {
+            "chars": 18710,
+            "compressed": 8350,
+            "tokens": 7956
+        }
+    },
+    "112916": {
+        "compress": {
+            "chars": 39179,
+            "compressed": 13730
+        },
+        "safe_minify": {
+            "chars": 39027,
+            "compressed": 13545,
+            "tokens": 8171
+        },
+        "unsafe_minify": {
+            "chars": 36939,
+            "compressed": 13345,
+            "tokens": 8171
+        }
+    },
+    "114060": {
+        "compress": {
+            "chars": 45477,
+            "compressed": 13836
+        },
+        "safe_minify": {
+            "chars": 23479,
+            "compressed": 8670,
+            "tokens": 8053
+        },
+        "unsafe_minify": {
+            "chars": 21423,
+            "compressed": 8358,
+            "tokens": 8053
+        }
+    },
+    "114663": {
+        "compress": {
+            "chars": 49512,
+            "compressed": 15070
+        },
+        "safe_minify": {
+            "chars": 24911,
+            "compressed": 9335,
+            "tokens": 7927
+        },
+        "unsafe_minify": {
+            "chars": 20462,
+            "compressed": 8753,
+            "tokens": 7927
+        }
+    },
+    "115136": {
+        "compress": {
+            "chars": 4643,
+            "compressed": 1767
+        },
+        "safe_minify": {
+            "chars": 2729,
+            "compressed": 1194,
+            "tokens": 1348
+        },
+        "unsafe_minify": {
+            "chars": 2693,
+            "compressed": 1178,
+            "tokens": 1348
+        }
+    },
+    "116823": {
+        "compress": {
+            "chars": 50155,
+            "compressed": 15048
+        },
+        "safe_minify": {
+            "chars": 26442,
+            "compressed": 10851,
+            "tokens": 7956
+        },
+        "unsafe_minify": {
+            "chars": 22663,
+            "compressed": 10386,
+            "tokens": 7956
+        }
+    },
+    "116846": {
+        "compress": {
+            "chars": 39925,
+            "compressed": 12687
+        },
+        "safe_minify": {
+            "chars": 23180,
+            "compressed": 8629,
+            "tokens": 7629
+        },
+        "unsafe_minify": {
+            "chars": 20422,
+            "compressed": 8229,
+            "tokens": 7629
+        }
+    },
+    "11722": {
+        "compress": {
+            "chars": 26589,
+            "compressed": 7659
+        },
+        "safe_minify": {
+            "chars": 15257,
+            "compressed": 5198,
+            "tokens": 5847
+        },
+        "unsafe_minify": {
+            "chars": 13162,
+            "compressed": 4881,
+            "tokens": 5847
+        }
+    },
+    "119614": {
+        "compress": {
+            "chars": 40128,
+            "compressed": 14758
+        },
+        "safe_minify": {
+            "chars": 31395,
+            "compressed": 11861,
+            "tokens": 4790
+        },
+        "unsafe_minify": {
+            "chars": 27016,
+            "compressed": 11159,
+            "tokens": 4790
+        }
+    },
+    "12502": {
+        "compress": {
+            "chars": 13973,
+            "compressed": 5327
+        },
+        "safe_minify": {
+            "chars": 5199,
+            "compressed": 2541,
+            "tokens": 2321
+        },
+        "unsafe_minify": {
+            "chars": 5199,
+            "compressed": 2541,
+            "tokens": 2321
+        }
+    },
+    "12682": {
+        "compress": {
+            "chars": 31669,
+            "compressed": 10000
+        },
+        "safe_minify": {
+            "chars": 15003,
+            "compressed": 6585,
+            "tokens": 6200
+        },
+        "unsafe_minify": {
+            "chars": 14762,
+            "compressed": 6551,
+            "tokens": 6200
+        }
+    },
+    "13057": {
+        "compress": {
+            "chars": 16596,
+            "compressed": 6066
+        },
+        "safe_minify": {
+            "chars": 10377,
+            "compressed": 4860,
+            "tokens": 3190
+        },
+        "unsafe_minify": {
+            "chars": 10377,
+            "compressed": 4860,
+            "tokens": 3190
+        }
+    },
+    "131586": {
+        "compress": {
+            "chars": 27177,
+            "compressed": 8808
+        },
+        "safe_minify": {
+            "chars": 15450,
+            "compressed": 6163,
+            "tokens": 4723
+        },
+        "unsafe_minify": {
+            "chars": 15290,
+            "compressed": 6137,
+            "tokens": 4723
+        }
+    },
+    "132559": {
+        "compress": {
+            "chars": 40781,
+            "compressed": 14582
+        },
+        "safe_minify": {
+            "chars": 26937,
+            "compressed": 11751,
+            "tokens": 8015
+        },
+        "unsafe_minify": {
+            "chars": 25841,
+            "compressed": 11596,
+            "tokens": 8015
+        }
+    },
+    "142353": {
+        "compress": {
+            "chars": 41588,
+            "compressed": 15275
+        },
+        "safe_minify": {
+            "chars": 41525,
+            "compressed": 15251,
+            "tokens": 6098
+        },
+        "unsafe_minify": {
+            "chars": 40631,
+            "compressed": 15095,
+            "tokens": 6098
+        }
+    },
+    "15116": {
+        "compress": {
+            "chars": 23927,
+            "compressed": 6482
+        },
+        "safe_minify": {
+            "chars": 8336,
+            "compressed": 3404,
+            "tokens": 3643
+        },
+        "unsafe_minify": {
+            "chars": 7902,
+            "compressed": 3356,
+            "tokens": 3643
+        }
+    },
+    "18483": {
+        "compress": {
+            "chars": 30450,
+            "compressed": 9078
+        },
+        "safe_minify": {
+            "chars": 19788,
+            "compressed": 7070,
+            "tokens": 7421
+        },
+        "unsafe_minify": {
+            "chars": 18256,
+            "compressed": 6895,
+            "tokens": 7421
+        }
+    },
+    "20407": {
+        "compress": {
+            "chars": 7151,
+            "compressed": 2749
+        },
+        "safe_minify": {
+            "chars": 3229,
+            "compressed": 1502,
+            "tokens": 1324
+        },
+        "unsafe_minify": {
+            "chars": 3130,
+            "compressed": 1477,
+            "tokens": 1324
+        }
+    },
+    "21098": {
+        "compress": {
+            "chars": 31448,
+            "compressed": 11668
+        },
+        "safe_minify": {
+            "chars": 19323,
+            "compressed": 8612,
+            "tokens": 8107
+        },
+        "unsafe_minify": {
+            "chars": 17851,
+            "compressed": 8345,
+            "tokens": 8107
+        }
+    },
+    "24899": {
+        "compress": {
+            "chars": 38142,
+            "compressed": 12622
+        },
+        "safe_minify": {
+            "chars": 22351,
+            "compressed": 10027,
+            "tokens": 7659
+        },
+        "unsafe_minify": {
+            "chars": 21644,
+            "compressed": 9930,
+            "tokens": 7659
+        }
+    },
+    "26851": {
+        "compress": {
+            "chars": 28608,
+            "compressed": 13229
+        },
+        "safe_minify": {
+            "chars": 25277,
+            "compressed": 11858,
+            "tokens": 8081
+        },
+        "unsafe_minify": {
+            "chars": 24751,
+            "compressed": 11702,
+            "tokens": 8081
+        }
+    },
+    "33331": {
+        "compress": {
+            "chars": 17491,
+            "compressed": 5821
+        },
+        "safe_minify": {
+            "chars": 9916,
+            "compressed": 4251,
+            "tokens": 4017
+        },
+        "unsafe_minify": {
+            "chars": 9427,
+            "compressed": 4185,
+            "tokens": 4017
+        }
+    },
+    "41037": {
+        "compress": {
+            "chars": 45875,
+            "compressed": 12936
+        },
+        "safe_minify": {
+            "chars": 32716,
+            "compressed": 10617,
+            "tokens": 7294
+        },
+        "unsafe_minify": {
+            "chars": 32645,
+            "compressed": 10597,
+            "tokens": 7294
+        }
+    },
+    "42655": {
+        "compress": {
+            "chars": 22577,
+            "compressed": 8001
+        },
+        "safe_minify": {
+            "chars": 15162,
+            "compressed": 6109,
+            "tokens": 6163
+        },
+        "unsafe_minify": {
+            "chars": 13717,
+            "compressed": 5852,
+            "tokens": 6163
+        }
+    },
+    "43229": {
+        "compress": {
+            "chars": 39178,
+            "compressed": 11639
+        },
+        "safe_minify": {
+            "chars": 24714,
+            "compressed": 9060,
+            "tokens": 8111
+        },
+        "unsafe_minify": {
+            "chars": 22010,
+            "compressed": 8743,
+            "tokens": 8111
+        }
+    },
+    "44028": {
+        "compress": {
+            "chars": 45968,
+            "compressed": 12556
+        },
+        "safe_minify": {
+            "chars": 22786,
+            "compressed": 7588,
+            "tokens": 7428
+        },
+        "unsafe_minify": {
+            "chars": 18963,
+            "compressed": 7044,
+            "tokens": 7428
+        }
+    },
+    "47025": {
+        "compress": {
+            "chars": 13939,
+            "compressed": 4228
+        },
+        "safe_minify": {
+            "chars": 9221,
+            "compressed": 3439,
+            "tokens": 3763
+        },
+        "unsafe_minify": {
+            "chars": 8147,
+            "compressed": 3343,
+            "tokens": 3763
+        }
+    },
+    "59366": {
+        "compress": {
+            "chars": 34386,
+            "compressed": 12092
+        },
+        "safe_minify": {
+            "chars": 27471,
+            "compressed": 10428,
+            "tokens": 7377
+        },
+        "unsafe_minify": {
+            "chars": 24397,
+            "compressed": 9969,
+            "tokens": 7377
+        }
+    },
+    "59497": {
+        "compress": {
+            "chars": 24156,
+            "compressed": 11305
+        },
+        "safe_minify": {
+            "chars": 19336,
+            "compressed": 10362,
+            "tokens": 2882
+        },
+        "unsafe_minify": {
+            "chars": 19336,
+            "compressed": 10362,
+            "tokens": 2882
+        }
+    },
+    "59509": {
+        "compress": {
+            "chars": 39238,
+            "compressed": 11676
+        },
+        "safe_minify": {
+            "chars": 21398,
+            "compressed": 7361,
+            "tokens": 8085
+        },
+        "unsafe_minify": {
+            "chars": 19131,
+            "compressed": 7079,
+            "tokens": 8085
+        }
+    },
+    "66786": {
+        "compress": {
+            "chars": 25587,
+            "compressed": 8130
+        },
+        "safe_minify": {
+            "chars": 13465,
+            "compressed": 5396,
+            "tokens": 5502
+        },
+        "unsafe_minify": {
+            "chars": 12343,
+            "compressed": 5222,
+            "tokens": 5502
+        }
+    },
+    "66935": {
+        "compress": {
+            "chars": 42758,
+            "compressed": 12530
+        },
+        "safe_minify": {
+            "chars": 34978,
+            "compressed": 11332,
+            "tokens": 7055
+        },
+        "unsafe_minify": {
+            "chars": 31790,
+            "compressed": 10857,
+            "tokens": 7055
+        }
+    },
+    "69899": {
+        "compress": {
+            "chars": 36598,
+            "compressed": 12136
+        },
+        "safe_minify": {
+            "chars": 20978,
+            "compressed": 7907,
+            "tokens": 5448
+        },
+        "unsafe_minify": {
+            "chars": 17463,
+            "compressed": 7417,
+            "tokens": 5448
+        }
+    },
+    "72921": {
+        "compress": {
+            "chars": 37571,
+            "compressed": 13933
+        },
+        "safe_minify": {
+            "chars": 23204,
+            "compressed": 10928,
+            "tokens": 8101
+        },
+        "unsafe_minify": {
+            "chars": 20748,
+            "compressed": 10535,
+            "tokens": 8101
+        }
+    },
+    "75108": {
+        "compress": {
+            "chars": 9209,
+            "compressed": 3105
+        },
+        "safe_minify": {
+            "chars": 5066,
+            "compressed": 2234,
+            "tokens": 2695
+        },
+        "unsafe_minify": {
+            "chars": 5056,
+            "compressed": 2231,
+            "tokens": 2695
+        }
+    },
+    "75741": {
+        "compress": {
+            "chars": 28410,
+            "compressed": 8718
+        },
+        "safe_minify": {
+            "chars": 16853,
+            "compressed": 6478,
+            "tokens": 4596
+        },
+        "unsafe_minify": {
+            "chars": 16853,
+            "compressed": 6478,
+            "tokens": 4596
+        }
+    },
+    "78599": {
+        "compress": {
+            "chars": 44095,
+            "compressed": 15154
+        },
+        "safe_minify": {
+            "chars": 25755,
+            "compressed": 11203,
+            "tokens": 8056
+        },
+        "unsafe_minify": {
+            "chars": 23899,
+            "compressed": 10903,
+            "tokens": 8056
+        }
+    },
+    "82023": {
+        "compress": {
+            "chars": 25528,
+            "compressed": 9252
+        },
+        "safe_minify": {
+            "chars": 15126,
+            "compressed": 6470,
+            "tokens": 6308
+        },
+        "unsafe_minify": {
+            "chars": 14578,
+            "compressed": 6340,
+            "tokens": 6308
+        }
+    },
+    "83367": {
+        "compress": {
+            "chars": 39786,
+            "compressed": 15181
+        },
+        "safe_minify": {
+            "chars": 33984,
+            "compressed": 14181,
+            "tokens": 8075
+        },
+        "unsafe_minify": {
+            "chars": 31767,
+            "compressed": 13923,
+            "tokens": 8075
+        }
+    },
+    "85620": {
+        "compress": {
+            "chars": 42829,
+            "compressed": 15164
+        },
+        "safe_minify": {
+            "chars": 28886,
+            "compressed": 12338,
+            "tokens": 8132
+        },
+        "unsafe_minify": {
+            "chars": 28861,
+            "compressed": 12322,
+            "tokens": 8132
+        }
+    },
+    "86280": {
+        "compress": {
+            "chars": 35951,
+            "compressed": 14527
+        },
+        "safe_minify": {
+            "chars": 28335,
+            "compressed": 13250,
+            "tokens": 7707
+        },
+        "unsafe_minify": {
+            "chars": 27830,
+            "compressed": 13193,
+            "tokens": 7707
+        }
+    },
+    "89823": {
+        "compress": {
+            "chars": 35746,
+            "compressed": 10130
+        },
+        "safe_minify": {
+            "chars": 23525,
+            "compressed": 7770,
+            "tokens": 8108
+        },
+        "unsafe_minify": {
+            "chars": 21184,
+            "compressed": 7507,
+            "tokens": 8108
+        }
+    },
+    "89915": {
+        "compress": {
+            "chars": 30466,
+            "compressed": 14407
+        },
+        "safe_minify": {
+            "chars": 29670,
+            "compressed": 14277,
+            "tokens": 8147
+        },
+        "unsafe_minify": {
+            "chars": 29668,
+            "compressed": 14277,
+            "tokens": 8147
+        }
+    },
+    "90020": {
+        "compress": {
+            "chars": 42234,
+            "compressed": 12451
+        },
+        "safe_minify": {
+            "chars": 17879,
+            "compressed": 7311,
+            "tokens": 7590
+        },
+        "unsafe_minify": {
+            "chars": 17868,
+            "compressed": 7295,
+            "tokens": 7590
+        }
+    },
+    "91453": {
+        "compress": {
+            "chars": 54034,
+            "compressed": 13353
+        },
+        "safe_minify": {
+            "chars": 26579,
+            "compressed": 9175,
+            "tokens": 7965
+        },
+        "unsafe_minify": {
+            "chars": 20214,
+            "compressed": 8346,
+            "tokens": 7965
+        }
+    },
+    "94408": {
+        "compress": {
+            "chars": 48356,
+            "compressed": 13608
+        },
+        "safe_minify": {
+            "chars": 34246,
+            "compressed": 11358,
+            "tokens": 4504
+        },
+        "unsafe_minify": {
+            "chars": 34210,
+            "compressed": 11354,
+            "tokens": 4504
+        }
+    },
+    "96334": {
+        "compress": {
+            "chars": 51283,
+            "compressed": 14899
+        },
+        "safe_minify": {
+            "chars": 25209,
+            "compressed": 8896,
+            "tokens": 8148
+        },
+        "unsafe_minify": {
+            "chars": 20426,
+            "compressed": 8322,
+            "tokens": 8148
+        }
+    },
+    "97636": {
+        "compress": {
+            "chars": 19446,
+            "compressed": 5849
+        },
+        "safe_minify": {
+            "chars": 9583,
+            "compressed": 3993,
+            "tokens": 4284
+        },
+        "unsafe_minify": {
+            "chars": 9136,
+            "compressed": 3907,
+            "tokens": 4284
+        }
+    },
+    "9983": {
+        "compress": {
+            "chars": 15248,
+            "compressed": 6109
+        },
+        "safe_minify": {
+            "chars": 11053,
+            "compressed": 5149,
+            "tokens": 5096
+        },
+        "unsafe_minify": {
+            "chars": 10517,
+            "compressed": 5058,
+            "tokens": 5096
+        }
+    }
+}

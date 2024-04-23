@@ -1411,7 +1411,7 @@ function f(e, t)
   end
 end
 
-function n5(n, e)
+function nb(n, e)
   if e == nil then
     return n
   end
@@ -1546,7 +1546,7 @@ function V(n, t, l, e)
   end
 end
 
-function nb(n, r, o)
+function np(n, r, o)
   local i, e, f, t = nl(n)
   local e = 1
   V(n, r, o, function(r)
@@ -1632,7 +1632,7 @@ function _draw()
     if x > 21 then
       rectfill(0, 126, 127, 127, 0)
     end
-    nb(l, 0, n)
+    np(l, 0, n)
     print(h, 0, n, s[4])
     if A >= 10 and r ~= false and not v then
       d(o * 4, n + t * 6)
@@ -1666,7 +1666,7 @@ function _draw()
   if G or g then
     t, e = E(g, 0, m)
     if e - m <= 20 and G then
-      g, G = n5(g, G)
+      g, G = nb(g, G)
       t, e = E(g, 0, m)
       if #G == 0 and not v then
         G = nil
@@ -1731,7 +1731,7 @@ r, d, F = false, false, false
 j = {}
 
 function nr(n, e)
-  i, n3 = n, e
+  i, nw = n, e
   assert(false, n)
 end
 
@@ -1743,7 +1743,7 @@ function Y(n, e)
   return W("return " .. n, e, true)
 end
 
-function np(n)
+function nx(n)
   local e = cocreate(ni)
   ::n::
   local n, e = coresume(e, n)
@@ -1756,7 +1756,7 @@ function np(n)
   return n, e
 end
 
-function nw(n, e)
+function n3(n, e)
   local n, e = C(n, e)
   return "line " .. e + 1 .. " col " .. n + 1
 end
@@ -1806,7 +1806,7 @@ function nu(e, l)
     end
   end
   if i then
-    n, i = i .. "\nat " .. nw(e, n3)
+    n, i = i .. "\nat " .. n3(e, nw)
   end
   O = n
   j = {}
@@ -1850,7 +1850,7 @@ e.stat = function(n, ...)
   end
 end
 
-function nx(n)
+function nm(n)
   if _set_fps then
     _set_fps(n._update60 and 60 or 30)
   end
@@ -1901,7 +1901,7 @@ function ns(n)
     return n
   elseif q(n, {"cm", "compile"}) then
     return function(n)
-      return np(n)
+      return nx(n)
     end
   elseif q(n, {"x", "exec"}) then
     return function(n, e)
@@ -1922,7 +1922,7 @@ function ns(n)
   elseif q(n, {"rst", "reset"}) then
     run()
   elseif q(n, {"run"}) then
-    nx(e)
+    nm(e)
   else
     assert(false, "unknown \\-command")
   end

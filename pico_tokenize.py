@@ -202,9 +202,11 @@ class ConstToken(Token):
             lazy_property.clear(m, "value")
 
     @lazy_property
-    def value(m): # will not be called if minified normally, so output is suboptimal
+    def value(m): # used during going over chars for rename (tsk...) and for output when not minify-tokens
+                  # (but not used for output under minify-tokens)
         if e(m.fixnum_value):
-            return format_fixnum(m.fixnum_value, sign='')
+            allow_unary = can_replace_with_unary(m.parent)
+            return format_fixnum(m.fixnum_value, sign=None if allow_unary else "")
         else:
             return format_string_literal(m.string_value, long=False)
 
@@ -528,12 +530,14 @@ def tokenize(source, ctxt=None, all_comments=False):
 def count_tokens(tokens):
     count = 0
     for i, token in enumerate(tokens):
+        assert token.value != None
+
         if token.children:
             for comment in token.children:
                 if comment.hint == CommentHint.lint and k_lint_count_stop in comment.hintdata:
                     return count
 
-        if token.value in (",", ".", ":", ";", "::", ")", "]", "}", "end", "local", None):
+        if token.value in (",", ".", ":", ";", "::", ")", "]", "}", "end", "local"):
             continue
 
         if token.value in ("-", "~") and i+1 < len(tokens) and tokens[i+1].type == TokenType.number and \
@@ -652,6 +656,6 @@ def parse_string_literal(str):
                 
         return "".join(litparts)
 
-from pico_parse import Node, VarKind
+from pico_parse import Node, VarKind, can_replace_with_unary
 from pico_output import format_fixnum, format_string_literal
 from pico_process import Error

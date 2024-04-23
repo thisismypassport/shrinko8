@@ -1,8 +1,9 @@
 from utils import *
+from pico_defs import fixnum_is_negative
 from pico_tokenize import TokenType
 from pico_tokenize import StopTraverse, k_skip_children
 from pico_parse import Node, NodeType, VarKind
-from pico_parse import k_unary_ops_prec, get_precedence, is_right_assoc
+from pico_parse import k_unary_ops_prec, get_precedence, is_right_assoc, can_replace_with_unary
 from pico_parse import is_vararg_expr, is_short_block_stmt, is_global_or_builtin_local
 from pico_output import format_fixnum, format_string_literal
 from pico_output import output_min_wspace, output_original_wspace
@@ -292,6 +293,40 @@ def minify_code(ctxt, root, minify_opts):
 
             if node.type in (NodeType.if_, NodeType.while_) and node.short and (analysis.new_shorts[node.type] == False):
                 minify_change_shorthand(node, False)
+                
+            # remove unneeded groups
+
+            while node.type == NodeType.group:
+                inner, outer = node.child, node.parent
+                inner_prec, outer_prec = get_precedence(inner), get_precedence(outer)
+                needed = True
+                if e(inner_prec) and e(outer_prec) and (inner_prec > outer_prec or (inner_prec == outer_prec and
+                        (outer_prec == k_unary_ops_prec or is_right_assoc(outer) == (outer.right == node)))):
+                    needed = False
+                elif e(outer_prec) and inner.type in (NodeType.var, NodeType.index, NodeType.member, NodeType.call, NodeType.varargs):
+                    needed = False
+                elif e(outer_prec) and inner.type == NodeType.const and (focus.tokens or can_replace_with_unary(node) or
+                        not (inner.token.type == TokenType.number and fixnum_is_negative(inner.token.fixnum_value))):
+                    needed = False
+                elif outer.type in (NodeType.group, NodeType.table_member, NodeType.table_index, NodeType.op_assign):
+                    needed = False
+                elif outer.type == NodeType.call and (node in outer.args[:-1] or 
+                        (outer.args and node == outer.args[-1] and not is_vararg_expr(inner))):
+                    needed = False
+                elif outer.type in (NodeType.assign, NodeType.local) and (node in outer.sources[:-1] or 
+                        (outer.sources and node == outer.sources[-1] and (not is_vararg_expr(inner) or len(outer.targets) <= len(outer.sources)))):
+                    needed = False
+                elif outer.type in (NodeType.return_, NodeType.table) and (node in outer.items[:-1] or
+                        (outer.items and node == outer.items[-1] and not is_vararg_expr(inner))):
+                    needed = False
+                elif outer.type in (NodeType.if_, NodeType.elseif, NodeType.while_, NodeType.until) and not outer.short:
+                    needed = False
+                
+                if needed:
+                    break
+                else:
+                    node.replace_with(node.child.move())
+                    # node may now be another group, so loop
         
     def fixup_nodes_post(node):
         if minify_tokens:
@@ -310,10 +345,6 @@ def minify_code(ctxt, root, minify_opts):
                     prev = prev.prev_sibling()
                 if prev and prev.type == node.type:
                     minify_merge_assignments(prev, node, ctxt, safe_reorder)
-          
-    def remove_parens(token):
-        token.erase("(")
-        token.parent.erase_token(-1, ")")
 
     def fixup_tokens(token):
 
@@ -340,27 +371,9 @@ def minify_code(ctxt, root, minify_opts):
             if token.value == "(" and token.parent.type == NodeType.call and len(token.parent.args) == 1:
                 arg = token.parent.args[0]
                 if arg.type == NodeType.table or (arg.type == NodeType.const and arg.token.type == TokenType.string):
-                    return remove_parens(token)
-
-            if token.value == "(" and token.parent.type == NodeType.group:
-                inner, outer = token.parent.child, token.parent.parent
-                inner_prec, outer_prec = get_precedence(inner), get_precedence(outer)
-                if e(inner_prec) and e(outer_prec) and (inner_prec > outer_prec or (inner_prec == outer_prec and
-                        (outer_prec == k_unary_ops_prec or is_right_assoc(outer) == (outer.right == token.parent)))):
-                    return remove_parens(token)
-                if outer.type in (NodeType.group, NodeType.table_member, NodeType.table_index, NodeType.op_assign):
-                    return remove_parens(token)
-                if outer.type == NodeType.call and (token.parent in outer.args[:-1] or 
-                        (outer.args and token.parent == outer.args[-1] and not is_vararg_expr(inner))):
-                    return remove_parens(token)
-                if outer.type in (NodeType.assign, NodeType.local) and (token.parent in outer.sources[:-1] or 
-                        (outer.sources and token.parent == outer.sources[-1] and (not is_vararg_expr(inner) or len(outer.targets) <= len(outer.sources)))):
-                    return remove_parens(token)
-                if outer.type in (NodeType.return_, NodeType.table) and (token.parent in outer.items[:-1] or
-                        (outer.items and token.parent == outer.items[-1] and not is_vararg_expr(inner))):
-                    return remove_parens(token)
-                if outer.type in (NodeType.if_, NodeType.elseif, NodeType.while_, NodeType.until) and not outer.short:
-                    return remove_parens(token)
+                    token.erase("(")
+                    token.parent.erase_token(-1, ")")
+                    return
 
             # replace tokens for higher consistency
 
@@ -377,13 +390,14 @@ def minify_code(ctxt, root, minify_opts):
                 token.modify(minify_string_literal(ctxt, token, focus))
 
             if token.type == TokenType.number:
-                outer_prec = get_precedence(token.parent.parent) if token.parent.type == NodeType.const else None
-                allow_unary = outer_prec is None or outer_prec < k_unary_ops_prec
+                allow_unary = can_replace_with_unary(token.parent)
                 token.modify(format_fixnum(token.fixnum_value, sign=None if allow_unary else ''))
-                if token.value.startswith("-") or token.value.startswith("~"):
-                    # insert synthetic unary token, so that output_tokens's tokenize won't get confused
-                    token.parent.insert_token(0, TokenType.punct, token.value[0], near_next=True)
-                    token.modify(token.value[1:])
+        
+        if token.type == TokenType.number:
+            if token.value.startswith("-") or token.value.startswith("~"): # either due to format_fixnum above, or due to ConstToken.value
+                # insert synthetic unary token, so that output_tokens's tokenize and root.get_tokens() won't get confused
+                token.parent.insert_token(0, TokenType.punct, token.value[0], near_next=True)
+                token.modify(token.value[1:])
 
     root.traverse_nodes(fixup_nodes_pre, fixup_nodes_post, tokens=fixup_tokens)
 
