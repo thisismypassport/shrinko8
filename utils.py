@@ -1007,111 +1007,90 @@ class BinaryBitReader(BinaryBase):
 
     def __init__(m, f, big_end = False):
         m.f = f
-        m._byte = 0
-        m._bit = 8
+        m._bits = 0
+        m._nbits = 0
         m.big_end = big_end
-
-    def _u8(m, strict):
-        value = m.f.read(1)
-        if value:
-            return ord(value)
-        elif strict:
-            raise struct.error("end of file")
-        else:
-            return 0
 
     @property
     def bit_position(m):
-        return (m.pos() - 1) * 8 + m._bit
+        return m.pos() * 8 - m._nbits
 
-    def byte_align(m):
-        if m._bit < 8:
-            m._bit = 8
+    def byte_align(m): # effectively flushes
+        m.subpos(m._nbits // 8)
+        m._bits, m._nbits = 0, 0
 
-    def _bits_le(m, n, advance):
-        bit, byte = m._bit, m._byte
-        read_count = 0
+    def _add_bits_le(m, strict):
+        value = m.f.read(1)
+        if value:
+            m._bits |= ord(value) << m._nbits
+            m._nbits += 8
+        elif strict:
+            raise struct.error("end of file")
+
+    def _bits_le(m, n, advance=True):
+        while m._nbits < n:
+            m._add_bits_le(advance)
         
-        value = 0
-        target_bit = 0
-        while n > 0:
-            if bit >= 8:
-                bit = 0
-                byte = m._u8(advance)
-                read_count += 1
-
-            count = min(n, 8 - bit)
-            part = (byte >> bit) & ((1 << count) - 1)
-            bit += count
-            value |= part << target_bit
-            target_bit += count
-            n -= count
-            
+        value = m._bits & ((1 << n) - 1)
         if advance:
-            m._bit, m._byte = bit, byte
-        else:
-            m.subpos(read_count)
+            m._bits >>= n
+            m._nbits -= n
         return value
 
-    def _bits_be(m, n, advance):
-        bit, byte = m._bit, m._byte
-        read_count = 0
+    def _add_bits_be(m, strict):
+        value = m.f.read(1)
+        if value:
+            m._bits = (m._bits << 8) | ord(value)
+            m._nbits += 8
+        elif strict:
+            raise struct.error("end of file")
+
+    def _bits_be(m, n, advance=True):
+        while m._nbits < n:
+            m._add_bits_be(advance)
         
-        value = 0
-        while n > 0:
-            if bit >= 8:
-                bit = 0
-                byte = m._u8(advance)
-                read_count += 1
-
-            count = min(n, 8 - bit)
-            part = (byte >> (8 - (bit + count))) & ((1 << count) - 1)
-            bit += count
-            value = (value << count) | part
-            n -= count
-            
+        bottom_bits = m._nbits - n
+        value = m._bits >> bottom_bits
         if advance:
-            m._bit, m._byte = bit, byte
-        else:
-            m.subpos(read_count)
+            m._bits &= (1 << bottom_bits) - 1
+            m._nbits -= n
         return value
-
-    def bits_le(m, n):
-        return m._bits_le(n, True)
-
-    def bits_be(m, n):
-        return m._bits_be(n, True)
 
     def bits(m, n):
-        return m.bits_be(n) if m.big_end else m.bits_le(n)
+        return m._bits_be(n) if m.big_end else m._bits_le(n)
 
     def bit(m):
         return m.bits(1) != 0
 
-    def peek_bits_le(m, n):
-        return m._bits_le(n, False)
-
-    def peek_bits_be(m, n):
-        return m._bits_be(n, False)
-
     def peek_bits(m, n):
-        return m.peek_bits_be(n) if m.big_end else m.peek_bits_le(n)
+        return m._bits_be(n, False) if m.big_end else m._bits_le(n, False)
 
     def peek_bit(m):
         return m.peek_bits(1) != 0
-    
-    def advance_bits(m, n):
-        bit, byte = m._bit, m._byte
-        while n > 0:
-            if bit >= 8:
-                bit = 0
-                byte = m._u8(True)
 
-            count = min(n, 8 - bit)
-            bit += count
-            n -= count
-            
-        m._bit, m._byte = bit, byte
+    def _advance_bits_long(m, n):
+        n -= m._nbits
+        m._bits, m._nbits = 0, 0
+        m.addpos(n // 8)
+        n %= 8
+        if n:
+            m._add_bits_le(True) # le/be doesn't matter after above flush
+        return n # bits left to advance
+    
+    def _advance_bits_le(m, n):
+        if n > m._nbits:
+            n = m._advance_bits_long(n)
+        m._bits >>= n
+        m._nbits -= n
+    
+    def _advance_bits_be(m, n):
+        if n > m._nbits:
+            n = m._advance_bits_long(n)
+        m._bits &= (1 << (m._nbits - n)) - 1
+        m._nbits -= n
+
+    def advance_bits(m, n):
+        return m._advance_bits_be(n) if m.big_end else m._advance_bits_le(n)
 
 class BinaryWriter(BinaryBase):
     """Wraps a stream, allowing to easily write binary data to it"""
@@ -1246,51 +1225,46 @@ class BinaryBitWriter(BinaryBase):
 
     def __init__(m, f, big_end = False):
         m.f = f
-        m._byte = 0
-        m._bit = 0
+        m._bits = 0
+        m._nbits = 0
         m.big_end = big_end
-
-    def _u8(m, v):
-        m.f.write(byte(v))
 
     @property
     def bit_position(m):
-        return m.pos() * 8 + m._bit
+        return m.pos() * 8 - m._nbits
 
     def byte_align(m):
         m.flush()
 
-    def bits_le(m, n, v):
-        source_bit = 0
-        while n > 0:
-            if m._bit >= 8:
-                m.flush()
+    def _remove_bits_le(m):
+        m.f.write(byte(m._bits & 0xff))
+        m._bits >>= 8
+        m._nbits -= 8
 
-            count = min(n, 8 - m._bit)
-            part = (v >> source_bit) & ((1 << count) - 1)
-            m._byte |= part << m._bit
-            m._bit += count
-            source_bit += count
-            n -= count
+    def _bits_le(m, n, v):
+        m._bits |= v << m._nbits
+        m._nbits += n
 
-    def bits_be(m, n, v):
-        source_bit = n
-        while n > 0:
-            if m._bit >= 8:
-                m.flush()
+        while m._nbits >= 8:
+            m._remove_bits_le()
 
-            count = min(n, 8 - m._bit)
-            source_bit -= count
-            part = (v >> source_bit) & ((1 << count) - 1)
-            m._byte |= part << (8 - (m._bit + count))
-            m._bit += count
-            n -= count
+    def _remove_bits_be(m):
+        m._nbits -= 8
+        m.f.write(byte(m._bits >> m._nbits))
+        m._bits &= (1 << m._nbits) - 1
+
+    def _bits_be(m, n, v):
+        m._bits = (m._bits << n) | v
+        m._nbits += n
+
+        while m._nbits >= 8:
+            m._remove_bits_be()
 
     def bits(m, n, v):
         if m.big_end:
-            m.bits_be(n, v)
+            m._bits_be(n, v)
         else:
-            m.bits_le(n, v)
+            m._bits_le(n, v)
 
     def bit(m, v):
         m.bits(1, v)
@@ -1299,10 +1273,21 @@ class BinaryBitWriter(BinaryBase):
         m.flush()
         super().close()
         
+    def _flush_le(m):
+        if m._nbits:
+            m.f.write(byte(m._bits & 0xff))
+        m._bits, m._nbits = 0, 0
+        
+    def _flush_be(m):
+        if m._nbits:
+            m.f.write(byte(m._bits << (8 - m._nbits)))
+        m._bits, m._nbits = 0, 0
+            
     def flush(m):
-        if m._bit > 0:
-            m._u8(m._byte)
-            m._byte = m._bit = 0
+        if m.big_end:
+            m._flush_be()
+        else:
+            m._flush_le()
 
 class BinaryBuffer:
     """Wraps a bytearray, allowing to easily read & write binary data in it"""
@@ -1559,10 +1544,9 @@ def str_replace_batch(val, batch):
     
 str_replace_by_dict = str_replace_batch # compat.
 
-def list_split_by(list, size):
-    """Split a list into sublists of size 'size' each"""
-    count = len(list) // size
-    assert size * count == len(list)
+def list_chunk(list, size):
+    """Split a list into sublists of size 'size' each (except possibly the last sublist)"""
+    count = div_up(len(list), size)
     return [list[i * size : (i + 1) * size] for i in range(count)]
 
 def list_remove(list, func):
@@ -1610,6 +1594,7 @@ def list_set(list, i, val, defval = None):
 
 str_get = list_get
 str_rget = list_rget
+str_chunk = list_chunk
 
 def list_unpack(list, n, defval = None):
     """Return the 'n' first elements in the list, padding with 'defval' if needed"""
@@ -1842,7 +1827,7 @@ class Rect(Tuple):
     def __sub__(m, other):
         assert isinstance(other, Point)
         return Rect(m.x - other.x, m.y - other.y, m.w, m.h)
-
+        
     @classmethod
     def from_pos_size(cls, pos, size):
         return cls(pos.x, pos.y, size.x, size.y)
@@ -2508,6 +2493,11 @@ def quot(a, b):
 def rem(a, b):
     """Return the remainder of dividing 'a' by 'b'"""
     return quotrem(a, b)[1]
+
+def round_down(a, b):
+    """Round 'a' down by 'b'"""
+    m = a % b
+    return a - m if m else a
 
 def round_up(a, b):
     """Round 'a' up by 'b'"""

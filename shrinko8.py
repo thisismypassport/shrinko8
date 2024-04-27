@@ -9,7 +9,7 @@ from pico_constfold import parse_constant
 from pico_defs import get_default_version_id
 import argparse
 
-k_version = 'v1.2.0g'
+k_version = 'v1.2.0h'
 
 def SplitBySeps(val):
     return k_hint_split_re.split(val)

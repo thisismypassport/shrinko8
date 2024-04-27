@@ -172,10 +172,11 @@ class Lz77Entry(Tuple):
     offset = count = ...
 
 class Lz77Advance(Tuple):
-    """A strategy that ends at position 'i' with a given 'cost', using a linked list of lz77/literal/etc items."""
-    i = cost = ctxt = item = prev = ...
+    """A strategy that spans positions 'i' up to 'next_i' with a given 'cost', using a linked list of lz77/literal/etc items."""
+    i = next_i = cost = ctxt = item = prev = ...
 
-def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=None, max_o_steps=None, fast_c=None, no_repeat=False, litblock_idxs=None):
+def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=None,
+             get_cheaper_c=None, max_o_steps=None, fast_c=None, no_repeat=False, litblock_idxs=None):
     min_matches = defaultdict(list)
     next_litblock = litblock_idxs.popleft() if litblock_idxs else len(code)
 
@@ -226,21 +227,21 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
         do_replace = False
         for adv in advances:
             if insert_idx is None:
-                if next_i == adv.i:
+                if next_i == adv.next_i:
                     insert_idx, do_replace = adv_idx, True
-                elif next_i < adv.i:
+                elif next_i < adv.next_i:
                     insert_idx = adv_idx
 
             if insert_idx != None:
                 adv_cost = adv.cost
                 if min_cost:
-                    adv_cost -= min_cost(adv.i - next_i)
+                    adv_cost -= min_cost(adv.next_i - next_i)
 
                 if cost >= adv_cost:
                     return
             adv_idx += 1
         
-        next_adv = Lz77Advance(next_i, cost, ctxt, item, curr_adv)
+        next_adv = Lz77Advance(i, next_i, cost, ctxt, item, curr_adv)
         if do_replace:
             advances[insert_idx] = next_adv
         elif insert_idx != None:
@@ -252,7 +253,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
         while adv:
             yield adv.i, adv.item
             adv = adv.prev
-
+    
     while i < len(code):
         if i >= next_litblock:
             if curr_adv: # get rid of any advances
@@ -283,21 +284,37 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
                     lz_item = mktuple(i, best_j, best_c)
                     lz_cost, lz_ctxt = measure(curr_ctxt, lz_item)
                     add_advance(curr_cost + lz_cost, lz_ctxt, best_c, lz_item)
+                
+                    if get_cheaper_c:
+                        # try a shorter yet cheaper match
+                        cheap_c = get_cheaper_c(best_c)
+                        if best_c > cheap_c >= min_c:
+                            nr_item = mktuple(i, best_j, cheap_c)
+                            nr_cost, nr_ctxt = measure(curr_ctxt, nr_item)
+                            add_advance(curr_cost + nr_cost, nr_ctxt, cheap_c, nr_item)
 
-                if max_o_steps:
-                    # try a shorter yet closer match
-                    for step in max_o_steps:
-                        if i - best_j <= step:
-                            break
+                    if max_o_steps:
+                        # try a shorter yet closer match
+                        for step in max_o_steps:
+                            if i - best_j <= step:
+                                break
 
-                        sh_best_c, sh_best_j = find_match(i, max_o=step)
-                        if sh_best_c > 0:
-                            sh_item = mktuple(i, sh_best_j, sh_best_c)
-                            sh_cost, sh_ctxt = measure(curr_ctxt, sh_item)
-                            add_advance(curr_cost + sh_cost, sh_ctxt, sh_best_c, sh_item)
+                            sh_best_c, sh_best_j = find_match(i, max_o=step)
+                            if sh_best_c > 0:
+                                sh_item = mktuple(i, sh_best_j, sh_best_c)
+                                sh_cost, sh_ctxt = measure(curr_ctxt, sh_item)
+                                add_advance(curr_cost + sh_cost, sh_ctxt, sh_best_c, sh_item)
+                                
+                                if get_cheaper_c:
+                                    # try a shorter yet cheaper match
+                                    sh_cheap_c = get_cheaper_c(sh_best_c)
+                                    if sh_best_c > sh_cheap_c >= min_c:
+                                        shnr_item = mktuple(i, sh_best_j, sh_cheap_c)
+                                        shnr_cost, shnr_ctxt = measure(curr_ctxt, shnr_item)
+                                        add_advance(curr_cost + shnr_cost, shnr_ctxt, sh_cheap_c, shnr_item)
                 
                 curr_adv = advances.popleft()
-                i = curr_adv.i
+                i = curr_adv.next_i
                 
                 if not advances:
                     # have a best choice, flush it
@@ -458,12 +475,15 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
                 for ch in str:
                     bw.bits(8, ord(ch))
                 bw.bits(8, 0)
+            
+            def get_cheaper_c(c):
+                return round_down(c - min_c, 7) - 1 + min_c
 
             if fast_compress:
                 items = get_lz77(code, min_c=min_c, max_c=None, fast_c=16)
             else:
                 items = get_lz77(code, min_c=min_c, max_c=None, measure=measure, min_cost=min_cost,
-                                 max_o_steps=(0x20, 0x400), litblock_idxs=preprocess_litblock_idxs())
+                                 get_cheaper_c=get_cheaper_c, max_o_steps=(0x20, 0x400), litblock_idxs=preprocess_litblock_idxs())
 
             for i, item in items:
                 if isinstance(item, Lz77Entry):
