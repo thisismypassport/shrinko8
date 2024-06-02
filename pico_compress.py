@@ -56,7 +56,7 @@ def uncompress_code(r, size_handler=None, debug_handler=None, **_):
         
         mtf = [chr(i) for i in range(0x100)]
         br = BinaryBitReader(r.f)
-        if debug_handler: debug_handler.init(br)
+        if debug_handler: debug_handler.init(br, str)
         
         code = []
         while len(code) < unc_size:
@@ -104,7 +104,7 @@ def uncompress_code(r, size_handler=None, debug_handler=None, **_):
     elif header == k_old_compressed_code_header:
         unc_size = r.u16()
         assert r.u16() == 0 # ?
-        if debug_handler: debug_handler.init(r)
+        if debug_handler: debug_handler.init(r, str)
 
         code = []
         while True:
@@ -175,10 +175,14 @@ class Lz77Advance(Tuple):
     """A strategy that spans positions 'i' up to 'next_i' with a given 'cost', using a linked list of lz77/literal/etc items."""
     i = next_i = cost = ctxt = item = prev = ...
 
+class SubMatchDict(Struct):
+    dict = best_j = ...
+
 def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=None,
              get_cheaper_c=None, max_o_steps=None, fast_c=None, no_repeat=False, litblock_idxs=None):
     min_matches = defaultdict(list)
     next_litblock = litblock_idxs.popleft() if litblock_idxs else len(code)
+    empty_code = type(code)() # e.g. "" if code is an str
 
     def get_match_length(left, left_i, right, right_i, min_c):
         c = min_c
@@ -187,11 +191,29 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
             c += 1
         return c
 
-    def find_match(i, max_o=max_o):
+    def find_match(i, min_c=min_c, max_o=max_o, matches_dict=min_matches):
         """find the longest lz77 match at a given position"""
+        matches = matches_dict[code[i:i+min_c]]
+
+        if isinstance(matches, SubMatchDict):
+            best_c, best_j = find_match(i, min_c + 1, max_o, matches.dict)
+            if not best_c:
+                c, j = min_c, matches.best_j
+                if j >= 0:
+                    if max_c != None:
+                        c = min(c, max_c)
+                    if no_repeat:
+                        c = min(c, i - j)
+                    
+                    if not (max_o != None and j < i - max_o):
+                        best_c, best_j = c, j
+                
+            return best_c, best_j
+
         best_c, best_j = 0, -1
-        best_slice = type(code)() # e.g. "" if code is an str
-        for j in reversed(min_matches[code[i:i+min_c]]):
+        best_slice = empty_code
+
+        for j in reversed(matches):
             if best_slice == code[j:j+best_c]: # some speed-up, esp. for cpython
                 c = get_match_length(code, i, code, j, best_c if best_c > 0 else min_c)
             else:
@@ -210,6 +232,19 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
                 best_slice = code[i:i+best_c]
         
         return best_c, best_j
+
+    def convert_to_matches_dict(matches, min_i, c):
+        matches_dict = defaultdict(list)
+        best_j = -1
+
+        for j in matches:
+            if max_o != None and j < min_i - max_o:
+                continue
+            
+            matches_dict[code[j:j+c]].append(j)
+            best_j = j
+        
+        return SubMatchDict(matches_dict, best_j)
 
     def mktuple(i, j, count):
         return Lz77Entry(i - j, count)
@@ -338,7 +373,20 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
         
         if not (fast_c != None and best_c >= fast_c):
             for j in range(prev_i, i):
-                min_matches[code[j:j+min_c]].append(j)
+                matches_dict = min_matches
+                c = min_c
+                matches = matches_dict[code[j:j+c]]
+                
+                while isinstance(matches, SubMatchDict):
+                    matches.best_j = j
+                    matches_dict = matches.dict
+                    c += 1
+                    matches = matches_dict[code[j:j+c]]
+                
+                matches.append(j)
+                if len(matches) > 200 and len(matches_dict) > 5 and c < min_c * 6: # ?
+                    matches_dict[code[j:j+c]] = convert_to_matches_dict(matches, i, c + 1)
+            
         prev_i = i
     
     assert not curr_adv
@@ -357,7 +405,7 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
                 
         if is_new:
             bw = BinaryBitWriter(w.f)
-            if debug_handler: debug_handler.init(bw)
+            if debug_handler: debug_handler.init(bw, str)
             mtf = [chr(i) for i in range(0x100)]
 
             def mtf_cost_heuristic(ch_i):
@@ -498,7 +546,7 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
             bw.flush()
 
         else:
-            if debug_handler: debug_handler.init(w)
+            if debug_handler: debug_handler.init(w, str)
 
             def measure(ctxt, item):
                 if isinstance(item, Lz77Entry):
@@ -551,40 +599,49 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
 
 class CompressionTracer:
     """a debug_handler that traces compression to a file"""
-    def __init__(m, path):
-        m.file = file_create_text(path)
+    def __init__(m, path, lang):
+        m.file = file_create_maybe_text(path)
+        m.lang = lang
 
-    def init(m, reader):
+    def init(m, reader, type):
         m.reader = reader
-        m.old_bitpos = m.curr_bitpos()
+        m.old_pos = m.curr_pos()
         m.code = []
+        m.type = type
     
-    def curr_bitpos(m):
+    def curr_pos(m):
         if isinstance(m.reader, (BinaryBitReader, BinaryBitWriter)):
             return m.reader.bit_position
         elif isinstance(m.reader, (BinaryReader, BinaryWriter)):
-            return m.reader.position * 8
+            return m.reader.position
         fail()
 
-    def escape(m, str):
-        return '"%s"' % from_p8str(str).replace('"', '""') # let \n/etc go unescaped, good for excel/etc
+    def escape(m, value):
+        if not isinstance(value, str):
+            value = value.decode(errors="backslashreplace") # we don't pre-escape \\, so the result isn't properly parsable
+        return '"%s"' % from_langstr(value, m.lang).replace('"', '""') # let \n/etc go unescaped, good for excel/etc
 
     def update(m, item):
-        bitpos = m.curr_bitpos()
-        bitsize = bitpos - m.old_bitpos
+        pos = m.curr_pos()
+        size = pos - m.old_pos
 
         if isinstance(item, Lz77Entry):
             for _ in range(item.count):
                 m.code.append(m.code[-item.offset])
-            str = "".join(m.code[-item.count:])
-            m.file.write(f"{bitsize},{m.escape(str)},{item.offset}:{item.count}\n")
+            
+            if m.type is str:
+                old_code = "".join(m.code[-item.count:])
+            else:
+                old_code = bytes(m.code[-item.count:])
+
+            m.file.write(f"{size},{m.escape(old_code)},{item.offset}:{item.count}\n")
 
         else:
             for ch in item:
                 m.code.append(ch)
-            m.file.write(f"{bitsize},{m.escape(item)}\n")
+            m.file.write(f"{size},{m.escape(item)}\n")
 
-        m.old_bitpos = bitpos
+        m.old_pos = pos
 
     def end(m):
         m.file.close()

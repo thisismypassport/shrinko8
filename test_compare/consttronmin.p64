@@ -1,0 +1,352 @@
+picotron cartridge // www.picotron.net
+version 3
+
+:: main.lua
+local f=false function print(e)if type(e)=="number"then if math.type(e)=="integer"then e=string.format("0x%x",e)else e=string.format("%a",e)end end printh(tostr(e))end local e=1e333-1e333?0
+?-1
+?1
+?0x8000000000000000
+?0x8000000000000001
+?0x12345678edcba988
+?-0.
+?0.
+?-13.123
+?-1e333
+?1e333
+?-e
+if f then?-false
+end if f then?-nil
+end?33
+?33
+?abs(0x8000000000000000)
+?0x7fffffffffffffff
+?0.
+?abs(-0.)
+?1.3
+?1.3
+?1e333
+?abs(e)
+?5
+?-5
+?0x8000000000000001
+?5
+?5
+?5
+?0
+?-5
+?-6
+?-6
+?-1
+?flr(1e100)
+?flr(1e333)
+?flr(e)
+?5
+?-5
+?0x7fffffffffffffff
+?5
+?6
+?6
+?1
+?-5
+?-5
+?-5
+?0
+?ceil(1e100)
+?ceil(1e333)
+?ceil(e)
+?3
+?0x8000000000000000
+?0
+?4.2
+?4.6
+?1e333+-1e333
+?"1"+"2"
+?"1"+2
+if f then?l+1
+end if f then?1+l
+end?-1
+?0x8000000000000001
+?-1e-323
+if f then?"a"-"a"
+end?48
+?5535
+?-5535
+?0x8000000000000000
+?0x8000000000000000
+?0x689ca7312d84782d
+?0x976358ced27b87d3
+?4.5
+?0x3.4ccccccccccce
+?-93.48
+?1e333
+?1e333*0
+?e*1
+?4.
+?2.4
+?12/0
+?0/0
+?0x1p63
+?1e3
+?1e5
+?-0x.6276276276276
+?-.75
+?-.75
+?.75
+?1/0.
+?0./0.
+?1e333/1e333
+?4
+?2
+?-3
+?-3
+?2
+?4\0
+?0x8000000000000000
+?8.
+?-9.
+?0x1.fdafb60009cdp994
+?3.125e299
+?1e333\1e333
+?2
+?3
+?-3
+?-2
+?12%0
+?0x2.3333333333332
+?0x1.3333333333334
+?-0x1.3333333333334
+?-0x2.3333333333332
+?0x1p-51
+?.3
+?12%-0.
+?1e333%1e333
+?e%e
+?false
+?true
+?true
+?true
+?true
+?true
+?e==e
+?false
+?true
+?false
+?true
+?3==l
+?true
+?false
+?false
+?true
+?true
+?false
+?true
+?e~=e
+?true
+?false
+?""~={}
+?false
+?true
+?false
+?true
+?true
+?true
+?false
+?true
+?e<e
+?true
+?true
+if f then?3<"4"
+end?true
+?true
+?false
+?true
+?true
+?true
+?true
+?true
+?e<=e
+?false
+?true
+if f then?false<=true
+end?false
+?false
+?true
+?false
+?true
+?true
+?false
+?false
+?e>e
+?true
+?false
+?true
+?true
+?true
+?false
+?true
+?false
+?true
+?true
+?true
+?false
+?e>=e
+?true
+?true
+?true
+?23
+?1
+?23.3
+?3.4
+?3.
+?3
+?-0.
+?1e333
+?max(e,-4)
+?max(-4,e)
+?max(4)
+?-123
+?0x8000000000000000
+?3
+?-12.3
+?3.
+?3
+?-0.
+?-1e333
+?min(e,4)
+?min(4,e)
+?3
+?3
+?3
+?-3
+?123
+?-3.
+?3.
+?3
+?3.
+?3
+?3
+?3.
+?-0.
+?123.456
+?-3.2
+?mid(4,e,e)
+?mid(e,4,e)
+?mid(e,e,4)
+?-1
+?-2
+?0
+?-4
+?2
+if f then?~3.2
+end if f then?~true
+end if f then?~"x"
+end?0x220545010148aa0
+?2309737967
+?6
+?0xbabe577ddffdfefa
+?3
+?111
+?0xb89e032dcfe9745a
+?-4294967296
+?1
+?105
+if f then?3.2^^4
+end?20480
+?0x8000000000000000
+?81985529216486895
+?0
+?0
+?0x91a2b3c4d5e6f7
+?-16
+if f then?81985529216486895<<.9
+end if f then?-3.2<<2
+end?0
+?4294967296
+?0x8000000000000000>>31
+?0x123456789abcdef1
+?305419896
+?0xf23456789abcde12>>32
+?0xf23456789abcde12>>32767
+?0xe468acf13579bc24
+?-5.>>1.
+?true
+?true
+?false
+?false
+?4
+?nil
+?false
+?l
+?nil
+?a and l
+?a and 4
+?true
+?3
+?4
+?l
+?3
+?a or l
+?a or 4
+if f then?#123
+end?0
+?3
+?15
+?"12"
+?"blaÿà\r\n\0"
+?"12"
+?"12"
+?"32768-2"
+?"1"..2.
+?"1"..2.3
+if f then?"1"..false
+end function n()return 10 end?23
+?35
+local e=n()?e*3+36
+local function l()end local l=max()?8
+menuitem,chr=41,42 local l=4?-3*l
+?(-3)^l
+?l^-3
+?0xfffffffffffffffd^2
+?-0xfffffffffffffffd^2
+?2^-3
+?3
+?2
+?false
+if f then?#0xfffffffffffffffd
+end local l=4.?-3.*l
+?(-3.)^l
+?l^-3.
+?(-3.)^2
+?-(-3.)^2
+?2^-3.
+?3.
+?2
+?false
+if f then?#(-3.)
+end?61.5
+?579
+s=456,789?579
+?123
+?nil
+r,d=n(),n()?123
+r=n()?579
+x,u=n()?u
+i=nil?5
+i=1?5
+?nil
+local f?5
+f=1?5
+?nil
+local f f=f,f f,f=f?nil
+local f=n();({}).x=n();({}).x=n();({}).x=n()?n()
+;({}).x=4 print(true)?false
+print(true)print(false)print(true)print(nil)print(false)print(nil)print(0)print(false)if n then print(nil)else print(false)end print(nil)print(true)if n then print(true)else print(nil)end if n then print(true)else print(false)end if n then print(true)else print(nil)end if n then print(true)end if n then print(true)else print(nil)end if n then print(true)else print(0)end if n then print(true)else print(false)end if n then print(true)elseif r then print(1)else print(nil)end if n then print(true)elseif r then print(1)else print(false)end if n then print(true)elseif r then print(1)else print(nil)end if n then print(true)elseif r then print(1)end if n then print(true)elseif r then print(1)else print(nil)end if n then print(true)elseif r then print(1)else print(0)end if n then print(true)elseif r then print(1)else print(false)end?""
+?""
+do local e=3 end?e
+?e
+if n then local e=3 end?e
+?e
+do local function e()end end?e
+?e
+do do::l::end goto e end::e::do goto f end::f::do return end?3
+:: [eoc]

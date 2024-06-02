@@ -1,5 +1,8 @@
 from utils import *
-from sdl2_utils import Color
+from media_utils import Color
+
+class Language(Enum):
+    pico8 = picotron = ...
 
 class Memory(bytearray):
     """A block pico8 memory - a bytearray with some convenience functions like get/set16, get/set4, etc."""
@@ -218,6 +221,28 @@ def decode_p8str(bytes):
 to_pico_chars = to_p8str # legacy name
 from_pico_chars = from_p8str # legacy name
 
+# luastr - uses python's standard surrogate scheme to handle non-unicode chars
+
+def encode_luastr(text):
+    return text.encode(errors="surrogateescape")
+
+def decode_luastr(bytes):
+    return bytes.decode(errors="surrogateescape")
+
+# langstr - p8str or luastr
+
+def to_langstr(text, lang):
+    if lang == Language.pico8:
+        return to_p8str(text)
+    else:
+        return text # already valid
+    
+def from_langstr(text, lang):
+    if lang == Language.pico8:
+        return from_p8str(text)
+    else:
+        return text # up to caller to properly handle utf errors
+
 # fixnum - an integer representing a 16.16 pico8 fixed-point number
 # e.g. 
 # This may become a class in the future, but is a convention now.
@@ -243,6 +268,42 @@ def fixnum_to_num(value):
         value >>= 16 # preserve int-ness
     return -value if neg else value
 
+def fixnum_is_whole(value):
+    return (value & 0xffff) == 0
+
+def fixnum_to_whole(value):
+    return value >> 16
+
+def fixnum_to_signed(value):
+    if value & 0x80000000:
+        value -= 0x100000000
+    return value
+
+def is_signed_fixnum_in_range(value):
+    return -0x80000000 <= value < 0x80000000
+
+# luaint - a signed 64-bit integer, as supported by lua 5.4
+
+k_luaint_mask = 0xffffffffffffffff
+
+def num_to_luaint(value):
+    value &= k_luaint_mask
+    if value & 0x8000000000000000:
+        value -= 0x10000000000000000
+    return value
+
+def is_luaint_in_range(value):
+    # observed to not include smallest int
+    return -0x7fffffffffffffff <= value <= 0x7fffffffffffffff
+
+# floats are represented as-is, but here are some utils
+
+def float_is_negative(value):
+    return math.copysign(1.0, value) < 0
+
+def float_is_negzero(value):
+    return value == 0 and float_is_negative(value)
+
 # pico-8 versions
 
 k_version_tuples = {
@@ -262,7 +323,7 @@ k_version_tuples = {
     42: (0,2,6,1),
 }
 
-def get_default_version_id():
+def get_default_pico8_version():
     version_id = 42 # TODO - update as newer versions get more common
     return maybe_int(os.getenv("PICO8_VERSION_ID"), version_id)
 
@@ -277,7 +338,7 @@ def get_version_tuple(id):
     if version is None:
         if id >= 29:
             eprint(f"warning - unknown version id {id}, outputting wrong version number (should be benign)")
-            version = k_version_tuples.get(get_default_version_id(), (0,0,0,0)) # better than nothing?
+            version = k_version_tuples.get(get_default_pico8_version(), (0,0,0,0)) # better than nothing?
         elif id >= 19:
             version = (0,2,0,0)
         elif id >= 8:

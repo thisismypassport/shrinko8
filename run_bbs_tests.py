@@ -10,9 +10,10 @@ def CommaSep(val):
     return val.split(",")
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-c", "--carts", type=CommaSep, help="specify a specific cart or carts to run on (overrides -f)")
+parser.add_argument("-c", "--carts", type=CommaSep, help="specify a specific cart or carts (comma-separated) to run on (overrides -f)")
 parser.add_argument("-f", "--carts-file", help="specify which carts to run on via a file", default="bbs_tests.lst")
 parser.add_argument("-n", "--new-only", action="store_true", help="only test new carts")
+parser.add_argument("-r", "--target", type=Target, default=Target.pico8, help="specify target language")
 parser.add_argument("--input-redownload", action="store_true", help="download the carts again")
 parser.add_argument("--input-reprocess", action="store_true", help="process the downloaded carts again (count sizes and convert to p8)")
 parser.add_argument("--only-compress", action="store_true", help="only test compression")
@@ -35,6 +36,7 @@ parser.add_argument("-t", "--pico8-time", type=float, help="how long to run pico
 parser.add_argument("-T", "--pico8-interact", action="store_true", help="show real pico8 windows and randomly interact with them (windows-only!)")
 parser.add_argument("-j", "--parallel-jobs", type=int, help="how many processes to run in parallel")
 parser.add_argument("--profile", action="store_true", help="enable profiling")
+parser.add_argument("--private", action="store_true", help="store results in a private folder")
 g_opts = parser.parse_args()
 
 if not g_opts.pico8_time:
@@ -146,13 +148,13 @@ def run_for_cart(args):
     unminify_path = basepath + ".un.p8"
 
     if g_opts.input_redownload or not path_exists(download_path):
-        file_write(download_path, file_read(URLPath(get_bbs_cart_url("#" + cart))))
+        file_write(download_path, file_read(URLPath(get_bbs_cart_url("#" + cart, g_opts.target))))
     elif g_opts.new_only:
         return None
 
     new_cart_input = None
     if g_opts.input_reprocess or not cart_input:
-        process_results = run_code(download_path, uncompress_path, "--input-count", "--parsable-count", "--version")
+        process_results = run_code(g_opts.target, download_path, uncompress_path, "--input-count", "--parsable-count", "--version")
         new_cart_input = cart_input = check_run(f"{cart}.process", process_results, parse_meta=True)
     
     if not cart_output:
@@ -198,13 +200,13 @@ def run_for_cart(args):
     start_test()
 
     if g_opts.unminify:
-        unminify_results = run_code(uncompress_path, unminify_path, "--unminify")
+        unminify_results = run_code(g_opts.target, uncompress_path, unminify_path, "--unminify")
         check_run(f"{cart}:unminify", unminify_results)
         best_path_for_pico8 = unminify_path
     
     else:
         if g_opts.all or g_opts.only_compress:
-            compress_results = run_code(uncompress_path, compress_path, "--count", "--parsable-count", "--no-count-tokenize")
+            compress_results = run_code(g_opts.target, uncompress_path, compress_path, "--count", "--parsable-count", "--no-count-tokenize")
             process_output("compress", check_run(f"{cart}:compress", compress_results, parse_meta=True))
             best_path_for_pico8 = compress_path
 
@@ -215,23 +217,25 @@ def run_for_cart(args):
             minify_opts.append("--update-version")
         
         if g_opts.all or g_opts.only_safe_minify:
-            safe_minify_results = run_code(uncompress_path, safe_minify_path, "--minify-safe-only", "--count", "--parsable-count", *minify_opts)
+            safe_minify_results = run_code(g_opts.target, uncompress_path, safe_minify_path, "--minify-safe-only", "--count", "--parsable-count", *minify_opts)
             process_output("safe_minify", check_run(f"{cart}:safe_minify", safe_minify_results, parse_meta=True))
             best_path_for_pico8 = safe_minify_path
         
         if g_opts.all or g_opts.only_unsafe_minify:
-            unsafe_minify_results = run_code(uncompress_path, unsafe_minify_path, "--minify", "--count", "--parsable-count", *minify_opts)
+            unsafe_minify_results = run_code(g_opts.target, uncompress_path, unsafe_minify_path, "--minify", "--count", "--parsable-count", *minify_opts)
             process_output("unsafe_minify", check_run(f"{cart}:unsafe_minify", unsafe_minify_results, parse_meta=True))
 
     return (cart, get_test_results(), new_cart_input, cart_output, deltas, best_path_for_pico8)
 
 def run(focus):
     filename = str(focus) if focus else "normal"
+    prefix = f"{g_opts.target}_" if g_opts.target != Target.pico8 else ""
+    dir_prefix = "private_" if g_opts.private else ""
 
-    input_json = path_join("test_bbs", "input.json")
-    output_json = path_join("test_output", "bbs", filename + ".json")
-    compare_json = path_join("test_compare", "bbs", filename + ".json")
-    unfocused_json = path_join("test_compare", "bbs", "normal.json") if g_opts.compare_unfocused else None
+    input_json = path_join("test_bbs", prefix + "input.json")
+    output_json = path_join(dir_prefix + "test_output", "bbs", prefix + filename + ".json")
+    compare_json = path_join(dir_prefix + "test_compare", "bbs", prefix + filename + ".json")
+    unfocused_json = path_join(dir_prefix + "test_compare", "bbs", prefix + "normal.json") if g_opts.compare_unfocused else None
     inputs = try_file_read_json(input_json, {})
     outputs = try_file_read_json(output_json, {})
     compares = try_file_read_json(compare_json, {})
@@ -288,7 +292,9 @@ def run(focus):
             print(f"    WARNING: {info.max} max regression [@{info.max_ref}], {info.pos_average:.2f} regression average")
 
 def run_all():
-    if g_opts.focus_all:
+    if g_opts.target == Target.picotron:
+        run(None) # no focus
+    elif g_opts.focus_all:
         for focus in [None, "tokens", "chars", "compressed"]:
             print(f"Focus {focus}:")
             run(focus)
@@ -299,8 +305,9 @@ def run_all():
 if __name__ == "__main__":
     init_tests(g_opts)
     dir_ensure_exists("test_bbs")
+    prefix = "private_" if g_opts.private else ""
     for dir in ("test_output", "test_compare"):
-        dir_ensure_exists(path_join(dir, "bbs"))
+        dir_ensure_exists(path_join(prefix + dir, "bbs"))
     
     run_all()
     sys.exit(end_tests())

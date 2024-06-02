@@ -7,6 +7,7 @@ parser.add_argument("--measure", action="store_true", help="print the input/outp
 parser.add_argument("--no-measure", action="store_true", help="don't print the input/output counts for failed tests")
 parser.add_argument("--stdout", action="store_true", help="print the stdout of shrinko8 while running the tests")
 parser.add_argument("-t", "--test", action="append", help="specify a specific test to run, optionally with wildcards")
+parser.add_argument("-r", "--target", type=Target, help="run only tests with this target")
 parser.add_argument("--test-from", help="specify a specific test to start running from")
 parser.add_argument("--no-private", action="store_true", help="do not run private tests, if they exist")
 parser.add_argument("-v", "--verbose", action="store_true", help="print test successes")
@@ -22,10 +23,10 @@ os.environ["PICO8_PLATFORM_CHAR"] = 'w'
 def norm_paths(output):
     return output.replace("\\", "/")
 
-def measure(kind, path, input=False):
+def measure(target, kind, path, input=False):
     print(f"Measuring {kind}...")
     if path_exists(path):
-        _, stdout = run_code(path, "--input-count" if input else "--count")
+        _, stdout = run_code(target, path, "--input-count" if input else "--count")
         print(stdout, end="")
     else:
         print("MISSING!")
@@ -42,7 +43,8 @@ def try_read_dir_contents(dir):
 
 def run_test(name, input, output, *args, private=False, check_output=True, from_output=False,
              stdout_output=None, norm_stdout=nop, exit_code=0, extra_outputs=None, output_reader=try_file_read,
-             pico8_output_val=None, pico8_output=None, pico8_run=None, copy_in_to_out=False, update_version=True):
+             pico8_output_val=None, pico8_output=None, pico8_run=None, copy_in_to_out=False, update_version=True,
+             target=Target.pico8):
     if g_opts.test:
         for wanted_test in g_opts.test:
             if fnmatch.fnmatch(name, wanted_test):
@@ -54,6 +56,8 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
             g_opts.test_from = None
         else:
             return None
+    if e(g_opts.target) and g_opts.target != target:
+        return None
 
     start_test()
     prefix = "private_" if private else ""
@@ -75,7 +79,7 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
     else:
         args = (inpath, outpath) + args
 
-    run_success, run_stdout = run_code(*args, exit_code=exit_code)
+    run_success, run_stdout = run_code(target, *args, exit_code=exit_code)
     success = run_success
     stdouts = [run_stdout]
 
@@ -118,14 +122,14 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
         print(f"Args: {args}")
         print(stdout)
         if output and not g_opts.no_measure:
-            measure("new", outpath)
-            measure("old", cmppath)
+            measure(target, "new", outpath)
+            measure(target, "old", cmppath)
         fail_test()
         return False
     elif g_opts.measure:
         print(f"\nMeasuring {name}")
-        measure("in", inpath, input=True)
-        measure("out", outpath)
+        measure(target, "in", inpath, input=True)
+        measure(target, "out", outpath)
     elif g_opts.verbose:
         print(f"\nTest {name} succeeded")
     if g_opts.stdout:
@@ -253,6 +257,15 @@ def run():
 
     run_test("version-latest", "versioned.p8", "versioned-latest.p8", "-m", "-oc", pico8_output="versioned.p8.printh")
     run_test("version-orig", "versioned.p8", "versioned-orig.p8", "-m", "-oc", update_version=False, pico8_output="versioned.p8.printh")
+
+    # picotron tests (TODO: more tests, more testing support!)
+    run_test("TRON_test", "testtron.p64", "testtron.p64", "--minify", "--no-minify-consts", "--avoid-base64", target=Target.picotron)
+    if run_test("TRON_p2png", "testcvttron.p64", "testcvttron.png", target=Target.picotron):
+        run_test("TRON_png2p", "testcvttron.png", "testcvttron.p64", from_output=True, target=Target.picotron)
+    run_test("TRON_const", "consttron.p64", "consttron.p64", "--minify", "--avoid-base64",
+             "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename", "--no-minify-tokens", target=Target.picotron)
+    run_test("TRON_constmin", "consttron.p64", "consttronmin.p64", "--minify", "--avoid-base64", target=Target.picotron)
+    run_test("TRON_load", "loadtron.p64", "loadtron.p64", "--minify-safe-only", target=Target.picotron)
 
 def main(raw_args):
     global g_opts

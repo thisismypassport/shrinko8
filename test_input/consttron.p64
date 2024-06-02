@@ -1,0 +1,454 @@
+picotron cartridge // www.picotron.net
+version 3
+
+:: main.lua
+--[[non-const]] local ERROR = false
+function print(value)
+    -- TODO: tostr(value, true) doesn't do this right now..
+    if type(value) == "number" then
+        if math.type(value) == "integer" then
+            value = string.format("0x%x", value)
+        else
+            value = string.format("%a", value)
+        end
+    end
+    printh(tostr(value))
+end
+--[[const]] local NAN = 1e400-1e400 -- 0/0 doesn't give nan right now
+-- neg
+?-(0)
+?-(1)
+?-(-1)
+?-(0x8000000000000000)
+?-(0x7fffffffffffffff)
+?-(0xedcba98712345678)
+?-(0.0)
+?-(-0.0)
+?-(13.123)
+?-(1e500)
+?-(-1e500)
+?-(NAN)
+if (ERROR) ?-false
+if (ERROR) ?-nil
+-- abs
+?abs(33)
+?abs(-33)
+?abs(0x8000000000000000)
+?abs(0x8000000000000001)
+?abs(0.)
+?abs(-.0)
+?abs(1.3)
+?abs(-1.3)
+?abs(-1e444)
+?abs(NAN)
+-- flr
+?flr(5)
+?flr(-5)
+?flr(0x8000000000000001)
+?flr(5.0)
+?flr(5.2)
+?flr(5.9)
+?flr(0.1)
+?flr(-5.0)
+?flr(-5.2)
+?flr(-5.9)
+?flr(-0.1)
+?flr(1e100)
+?flr(1e444)
+?flr(NAN)
+-- ceil
+?ceil(5)
+?ceil(-5)
+?ceil(0x7fffffffffffffff)
+?ceil(5.0)
+?ceil(5.2)
+?ceil(5.9)
+?ceil(0.1)
+?ceil(-5.0)
+?ceil(-5.2)
+?ceil(-5.9)
+?ceil(-0.1)
+?ceil(1e100)
+?ceil(1e444)
+?ceil(NAN)
+-- add
+?1 + 2
+?0x7fffffffffffffff+1
+?0xffffffffffffffff+1
+?1.2 + 3
+?1.2 + 3.4
+?1e400 + -1e400
+?"1" + "2"
+?"1" + 2
+if (ERROR) ?me + 1
+if (ERROR) ?1 + me
+-- sub
+?1 - 2
+?0x8000000000000000+1
+?0 - 1e-323
+if (ERROR) ?"a" - "a"
+-- mul
+?4 * 12
+?123 * 45
+?123 * -45
+?0x4000000000000000 * 2
+?-0x4000000000000000 * 2
+?123123123123123 * 4561232131231
+?-123123123123123 * 4561232131231
+?3 * 1.5
+?3 * 1.1
+?-12.3 * 7.6
+?1e400 * 0.25
+?1e400 * 0
+?NAN * 1
+-- div
+?12 / 3
+?12 / 5
+?12 / 0
+?0 / 0
+?0x8000000000000000 / -1
+?1 / 0.001
+?100 / 0.001
+?-1 / 2.6
+?-3 / 4
+?3 / -4
+?-3 / -4
+?1 / 0.0
+?0.0 / 0.0
+?1e400 / 1e400
+-- idiv
+?12 \ 3
+?12 \ 5
+?-12 \ 5
+?12 \ -5
+?-12 \ -5
+?4 \ 0
+?0x8000000000000000 \ -1
+?10.5 \ 1.3
+?-10.5 \ 1.3
+?1e300 \ 3
+?1e300 \ 3.2
+?1e400 \ 1e400
+-- mod
+?12 % 5
+?-12 % 5
+?12 % -5
+?-12 % -5
+?12 % 0
+?5.6 % 3.4
+?-5.6 % 3.4
+?5.6 % -3.4
+?-5.6 % -3.4
+?12 % 0.3
+?0.3 % 12
+?12 % -0.0
+?1e400 % 1e400
+?NAN % NAN
+-- eq
+?3 == 4
+?3.1 == 3.1
+?3 == 3.0
+?3e0 == 3
+?0.0 == -0.0
+?1e400 == 1e400
+?NAN == NAN
+?3 == "3"
+?"3" == "3"
+?1 == true
+?false == false
+?3 == me
+-- neq
+?3 != 0x3.0001
+?4 ~= 4
+?4. ~= 4
+?"04" != "4"
+?4 != "4"
+?0.0 != -0.0
+?1e400 != -1e400
+?NAN != NAN
+?false != true
+?nil != nil
+?"" ~= {}
+-- lt
+?3 < 3
+?3 < 4
+?4 < 3
+?-3 < 4
+?3 < 3.01
+?3.0 < 3.01
+?0.0 < -0.0
+?100 < 1e400
+?NAN < NAN
+?"3" < "4"
+?"3" < "30"
+if (ERROR) ?3 < "4"
+-- le
+?3 <= 3
+?3 <= 4
+?4 <= 3
+?-3 <= 4
+?3 <= 3.
+?3.0 <= 3.01
+?0.0 <= -0.0
+?100 <= 1e400
+?NAN <= NAN
+?"\xe8" <= "z"
+?"3" <= "3"
+if (ERROR) ?false <= true
+-- gt
+?3 > 3
+?3 > 4
+?4 > 3
+?-3 > 4
+?3 > 2.5
+?3.0 > 2.5
+?0.0 > -0.0
+?100 > 1e400
+?NAN > NAN
+?"3" > ""
+?"" > ""
+?"3\0" > "3"
+?"\x80" > "a"
+-- ge
+?3 >= 3
+?3 >= 4
+?4 >= 3
+?-3 >= 4
+?3 >= 3.
+?3.0 >= 3.0
+?0.0 >= -0.0
+?100 >= 1e400
+?NAN >= NAN
+?"3" >= ""
+?"" >= ""
+?"\xff" >= "\xfe"
+-- max
+?max(-123, 23)
+?max(0x8000000000000000, 1)
+?max(23.3, 3)
+?max(-12.3, 3.4)
+?max(3, 3.0)
+?max(3.0, 3)
+?max(0.0, -0.0)
+?max(3, 1e400)
+?max(NAN, -4)
+?max(-4, NAN)
+?max(4)
+-- min
+?min(-123, 23)
+?min(0x8000000000000000, 1)
+?min(23.3, 3)
+?min(-12.3, 3.4)
+?min(3, 3.0)
+?min(3.0, 3)
+?min(0.0, -0.0)
+?min(3, -1e400)
+?min(NAN, 4)
+?min(4, NAN)
+-- mid
+?mid(3,0,5)
+?mid(0,3,5)
+?mid(5,3,0)
+?mid(-5,-3,0)
+?mid(0x8000000000000000,0x7fffffffffffffff,123)
+?mid(-5.,-3.,0.)
+?mid(3,3.0,3)
+?mid(3.0,3,3.0)
+?mid(3.0,5,3)
+?mid(3,5,3.0)
+?mid(3.0,2,3)
+?mid(3,2,3.0)
+?mid(0.0,-0.0,-0.0)
+?mid(0x8000000000000000,0x7fffffffffffffff,123.456)
+?mid(1e400, -1e400, -3.2)
+?mid(4, NAN, NAN)
+?mid(NAN, 4, NAN)
+?mid(NAN, NAN, 4)
+-- bnot
+?~(0)
+?~(1)
+?~(0xffffffffffffffff)
+?~(3.0)
+?~(-3.0)
+if (ERROR) ?~(3.2)
+if (ERROR) ?~true
+if (ERROR) ?~"x"
+-- band
+?0x123456789abcdef0&0xaaaa55555555aaaa
+?0x0123456789abcdef&0xffffffff
+?7.0&110.0
+-- bor
+?0x123456789abcdef0|0xaaaa55555555aaaa
+?1|2
+?7.0|110.0
+-- bxor
+?0x123456789abcdef0^^0xaaaa55555555aaaa
+?0xffffffff~0xffffffffffffffff
+?0x12345678^^0x12345679
+?7.0^^110.0
+if (ERROR) ?3.2^^4
+-- shl
+?0x5 << 0xc
+?0x1 << 63
+?0x0123456789abcdef << 0
+?0x0123456789abcdef << 64
+?0x0123456789abcdef << 0x7fffffffffffffff
+?0x0123456789abcdef << -1
+?-1.0 << 4.0
+if (ERROR) ?0x0123456789abcdef << 0.9
+if (ERROR) ?-3.2 << 2
+-- shr
+?0x5 >> 0xc
+?0x4000000000000000 >> 30
+?0x8000000000000000 >> 31
+?0x123456789abcdef1 >> 0
+?0x123456789abcdef1 >> 32
+?0xf23456789abcde12 >> 32
+?0xf23456789abcde12 >> 0x7fff
+?0xf23456789abcde12 >> -1
+?-0x5.0 >> 1.0
+-- lshr - gone?
+-- rotl - gone?
+-- rotr - gone?
+-- not
+?not nil
+?not false
+?not true
+?not 0
+-- and
+?3 and 4
+?nil and 4
+?false and 4
+?3 and me
+?nil and me
+?it and me
+?it and 4
+-- or
+?true or 4
+?3 or 4
+?nil or 4
+?nil or me
+?3 or me
+?it or me
+?it or 4
+-- len
+if (ERROR) ?#123
+?#""
+?#"123"
+?#"123➡️✽…"
+-- cat
+?"1" .. "2"
+?"bla" .. "\xff\xe0\r\n\1\0"
+?1 .. "2"
+?"1" .. 2
+?0x8000 .. -2
+?"1" .. 2.0
+?"1" .. 2.3
+if (ERROR) ?"1" .. false
+-- misc
+function foo() return 10 end
+?3 + 4 * 5
+?(3 + 4) * 5
+local a, --[[const]] b = foo(), 3 * 4
+local --[[const]] c = 1 | 2
+?a * c + b * c
+local function --[[const]] nocrash() end
+local --[[const]] d, --[[const]] e = nil, false
+local --[[const]] f = max()
+?3 + max(4, 5)
+menuitem,chr=41,42
+-- misc1.5
+local --[[non-const]] ncval = 4
+local --[[const]] cval = -3
+?(1-4)*ncval
+?(1-4)^ncval
+?ncval^(1-4)
+?cval^2
+?-cval^2
+?2^cval
+?-cval
+?~cval
+?not cval
+if (ERROR) ?#cval
+-- misc1.5.2
+local --[[non-const]] ncval = 4.0
+local --[[const]] cval = -3.0
+?(1.0-4)*ncval
+?(1.0-4)^ncval
+?ncval^(1-4.0)
+?cval^2
+?-cval^2
+?2^cval
+?-cval
+?~cval
+?not cval
+if (ERROR) ?#cval
+-- misc2
+--[[const]] ssog1 = 123; ?ssog1/2
+--[[const]] ssog2, --[[const]] ssog3 = 123, 456; ?ssog2+ssog3
+--[[const]] ssog4, --[[const]] ssog5 = 123, 456, 789; ?ssog4+ssog5
+--[[const]] ssog6, --[[const]] ssog7 = 123; ?ssog6
+?ssog7
+bar, --[[const]] ssog11, bar2 = foo(), 123, foo(); ?ssog11
+--[[const]] ssog12, bar, --[[const]] ssog13 = 123, foo(), 456; ?ssog12+ssog13
+--[[const]] ssog14, --[[const]] ssog15 = foo(); ?ssog15
+--[[const]] ssog21, --[[const]] ssog22 = max(4,5); ?ssog21
+ssog22=1
+--[[const]] ssog23, --[[const]] ssog24 = max(4,5); ?ssog23
+?ssog24
+local ssog25, ssog26 = max(4,5); ?ssog25
+ssog26=1
+local ssog27, ssog28 = 5; ?ssog27
+?ssog28
+local ssog30, ssog31; ssog31=ssog31,ssog31; ssog31,ssog31=ssog31; ?ssog30
+-- misc3
+local a0, a1 = foo(), 1
+({}).x=foo()
+--[[const]]ssogmisc3,({}).x=2,foo()
+local a2 = 44
+({}).x=foo()
+?foo()
+--[[const]]ssoga3, ({}).x = 3, 4
+-- if
+if (1==1) print(true) else ?false
+if (1==2) print(true) else ?false
+if 1==1 then print(true) else print(false) end
+if 1==2 then print(true) else print(false) end
+if 1==1 then print(true) elseif 1==1 then print(nil) else print(false) end
+if 1==2 then print(true) elseif 1==1 then print(nil) else print(false) end
+if 1==2 then print(true) elseif 1==3 then print(nil) else print(false) end
+if 1==2 then print(true) elseif 1==1 then print(nil) elseif 1==1 then print(0) else print(false) end
+if 1==2 then print(true) elseif 1==3 then print(nil) elseif 1==1 then print(0) else print(false) end
+if 1==2 then print(true) elseif 1==3 then print(nil) elseif 1==4 then print(0) else print(false) end
+if 1==2 then print(true) elseif foo then print(nil) else print(false) end
+if 1==2 then print(true) elseif 1==1 then print(nil) end
+if 1==2 then print(true) elseif 1==2 then print(nil) end
+if 1==1 then print(true) end
+if 1==2 then print(true) end
+if foo then print(true) elseif 1==1 then print(nil) else print(false) end
+if foo then print(true) elseif 1==2 then print(nil) else print(false) end
+if foo then print(true) elseif 1==1 then print(nil) end
+if foo then print(true) elseif 1==2 then print(nil) end
+if foo then print(true) elseif 1==1 then print(nil) elseif 1==1 then print(0) else print(false) end
+if foo then print(true) elseif 1==3 then print(nil) elseif 1==1 then print(0) else print(false) end
+if foo then print(true) elseif 1==3 then print(nil) elseif 1==4 then print(0) else print(false) end
+if foo then print(true) elseif bar then print(1) elseif 1==1 then print(nil) else print(false) end
+if foo then print(true) elseif bar then print(1) elseif 1==2 then print(nil) else print(false) end
+if foo then print(true) elseif bar then print(1) elseif 1==1 then print(nil) end
+if foo then print(true) elseif bar then print(1) elseif 1==2 then print(nil) end
+if foo then print(true) elseif bar then print(1) elseif 1==1 then print(nil) elseif 1==1 then print(0) else print(false) end
+if foo then print(true) elseif bar then print(1) elseif 1==3 then print(nil) elseif 1==1 then print(0) else print(false) end
+if foo then print(true) elseif bar then print(1) elseif 1==3 then print(nil) elseif 1==4 then print(0) else print(false) end
+?""
+-- if misc
+?""
+if 1==1 then --[[non-const]] local a=3 end ?a
+if 1==2 then --[[non-const]] local a=3 end ?a
+if 1==1 then if foo then --[[non-const]] local a=3 end end ?a
+if 1==2 then if foo then --[[non-const]] local a=3 end end ?a
+if 1==1 then local function a() end end ?a
+if 1==2 then local function a() end end ?a
+do if 1==1 then ::a:: end goto a end ::a::
+do if 1==2 then ::b:: end goto b end ::b::
+if 1==1 then return end ?3
+:: [eoc]

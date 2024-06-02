@@ -1,6 +1,7 @@
 from utils import *
 from unittest.mock import patch
 import subprocess, pstats, cProfile
+from pico_defs import Language as Target
 
 def init_tests(opts): # use: opts.exe and opts.profile
     global g_num_ran, g_num_failed
@@ -15,11 +16,17 @@ def init_tests(opts): # use: opts.exe and opts.profile
     global g_use_exe
     g_use_exe = opts.exe
     if g_use_exe:
-        global g_exe_path
-        g_exe_path = "dist/shrinko8/shrinko8.exe"
+        global g_exe_paths
+        g_exe_paths = {
+            Target.pico8: "dist/shrinko8/shrinko8.exe",
+            Target.picotron: "dist/shrinko8/shrinkotron.exe",
+        }
     else:
-        global g_code_file
-        g_code_file = "shrinko8.py"
+        global g_code_files
+        g_code_files = {
+            Target.pico8: "shrinko8.py",
+            Target.picotron: "shrinkotron.py",
+        }
 
 def start_test():
     global g_num_ran
@@ -72,7 +79,7 @@ def end_tests():
     
     return status
 
-def run_code(*args, exit_code=0):
+def run_code(target, *args, exit_code=0):
     actual_code = 0
     stdout = ""
     
@@ -82,7 +89,7 @@ def run_code(*args, exit_code=0):
     try:
         if g_use_exe:
             try:
-                stdout = subprocess.check_output([g_exe_path, *args], encoding="utf8")
+                stdout = subprocess.check_output([g_exe_paths[target], *args], encoding="utf8")
             except subprocess.CalledProcessError as e:
                 actual_code = e.returncode
                 stdout = e.stdout
@@ -91,7 +98,7 @@ def run_code(*args, exit_code=0):
             try:
                 with patch.object(sys, "argv", ["dontcare", *args]):
                     with patch.object(sys, "stdout", stdout_io):
-                        exec_script_by_path(g_code_file, name="__main__")
+                        exec_script_by_path(g_code_files[target], name="__main__")
             except SystemExit as e:
                 actual_code = e.code or 0
             except Exception:

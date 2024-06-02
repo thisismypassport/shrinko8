@@ -1,12 +1,13 @@
 from utils import *
 
-# dummy file, without sdl2 dependency
-
-class BlendMode(Enum):
-    none = blend = ...
+# (uses sdl terminology in places)
 
 class Color(Tuple):
     r = g = b = ...; a = 0xff
+
+    @staticmethod
+    def gray(c):
+        return Color(c, c, c)
 
     def set_a(m, a):
         return Color(m.r, m.g, m.b, a)
@@ -51,8 +52,11 @@ def _pil_module():
 
 class Surface:
     @staticmethod
-    def load(f):
-        return Surface(_pil_module().open(f))
+    def load(f, fmt=None):
+        surf = Surface(_pil_module().open(f))
+        if e(fmt) and surf.format != fmt:
+            surf = surf.convert(fmt)
+        return surf
 
     @staticmethod
     def create(w, h, fmt=PixelFormat.rgba8):
@@ -91,7 +95,14 @@ class Surface:
     @property
     def size(m):
         return Point(m.width, m.height)
-    
+
+    def scale(m, factor):
+        return Surface(m.pil.resize(m.size * factor, _pil_module().NEAREST))
+
+    @property
+    def alpha(m):
+        return Surface(m.pil.getchannel('A'))
+
     @property
     def format(m):
         if m.fmt is None:
@@ -100,25 +111,24 @@ class Surface:
 
     @property
     def pixels(m):
-        return SurfacePixels(m.pil.load())
+        return m.pil.load()
 
-    def draw(m, src, dest=None, srcpos=None):
-        src = src.pil.crop(_to_pil_tuple(srcpos)) if e(srcpos) else src
+    def copy(m):
+        return Surface(m.pil.copy())
+    
+    def slice(m, rect):
+        return Surface(m.pil.crop(_to_pil_tuple(rect)))
+
+    def draw(m, src, dest=None, srcrect=None):
+        src = src.pil.crop(_to_pil_tuple(srcrect)) if e(srcrect) else src.pil
         m.pil.alpha_composite(src, _to_pil_tuple(dest))
     
+    def fill(m, color, dest=None, mask=None):
+        m.pil.paste(color, _to_pil_tuple(dest), mask.pil if mask else None)
+
     @writeonly_property
     def palette(m, pal):
         m.pil.putpalette(pal.raw, "RGBA")
-
-class SurfacePixels:
-    def __init__(m, pa):
-        m.pa = pa
-    
-    def __getitem__(m, pos):
-        return m.pa[pos]
-    
-    def __setitem__(m, pos, color):
-        m.pa[pos] = color
 
 class Palette: # (pil's ImagePalette doesn't seem fit for purpose)
     @staticmethod

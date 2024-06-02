@@ -53,8 +53,8 @@ def lint_code(ctxt, root, lint_opts):
                 used_labels.add(node.var)
 
         elif node.type == NodeType.sublang:
-            for glob in node.lang.get_defined_globals():
-                if glob not in custom_globals and is_identifier(glob):
+            for glob in node.sublang.get_defined_globals():
+                if glob not in custom_globals and is_identifier(glob, ctxt.lang):
                     custom_globals.add(glob)
 
     root.traverse_nodes(preprocess_vars, tokens=preprocess_tokens, extra=True)
@@ -120,7 +120,7 @@ def lint_code(ctxt, root, lint_opts):
                             
         elif node.type == NodeType.sublang:
             add_lang_error = lambda msg: add_error(f"{node.name}: {msg}", node)
-            node.lang.lint(on_error=add_lang_error, builtins=builtin_globals, globals=custom_globals)
+            node.sublang.lint(on_error=add_lang_error, builtins=builtin_globals, globals=custom_globals)
 
     root.traverse_nodes(lint_pre, extra=True)
     return errors

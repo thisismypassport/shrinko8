@@ -3,12 +3,17 @@ importScripts("https://cdn.jsdelivr.net/npm/comlink@4.4.1/dist/umd/comlink.min.j
 importScripts("https://cdn.jsdelivr.net/pyodide/v0.23.3/full/pyodide.js")
 importScripts("utils.js")
 
-let inputFile = "input.p8";
+let targetLang = new URLSearchParams(location.search).get("target");
+let isPico8 = targetLang === "pico8";
+let isPicotron = targetLang === "picotron";
+let srcExt = isPico8 ? "p8" : isPicotron ? "p64" : null;
+
+let inputFile = "input." + srcExt;
 let inputSrcDir = "input.dir";
-let extraInputFileTmpl = "extrainput#.p8"
+let extraInputFileTmpl = "extrainput#." + srcExt;
 let outputFile = "output.unk";
 let outputDir = "output.dir";
-let previewFile = "preview.p8";
+let previewFile = "preview." + srcExt;
 let scriptFile = "script.py";
 let pico8Dat = "pico8.dat";
 
@@ -41,8 +46,8 @@ function run_main(main, args, fail) {
     }
 }
 
-function shrinko8(args, fail) {
-    return run_main(self.shrinko8_main, args, fail)
+function shrinko(args, fail) {
+    return run_main(self.shrinko_main, args, fail)
 }
 
 function onOutput(msg, loggerFunc) {
@@ -71,8 +76,10 @@ async function initShrinko() {
         let response = await fetch("shrinko8.zip");
         await pyodide.unpackArchive(await response.arrayBuffer(), "zip");
 
-        let module = pyodide.pyimport("shrinko8");
-        self.shrinko8_main = module.main
+        self.shrinko_main =
+            isPico8 ? pyodide.pyimport("shrinko8").main :
+            isPicotron ? pyodide.pyimport("shrinkotron").main :
+            null;
         initProgress = 100;
     } catch (e) {
         console.error(e);
@@ -144,7 +151,7 @@ function copyInputs(files, main) {
         fs.writeFile(path, new Uint8Array(data));
     }
 
-    return joinPath(inputSrcDir, main);
+    return joinPath(inputSrcDir, main); // main can be empty to just get dir
 }
 
 let api = {
@@ -164,7 +171,7 @@ let api = {
             if (subfile != null) {
                 args.push("--cart", subfile)
             }
-            shrinko8(args, true);
+            shrinko(args, true);
             let result = fs.readFile(inputFile, {encoding: "utf8"});
             
             // also convert/preprocess extra files
@@ -172,7 +179,7 @@ let api = {
             if (extras) {
                 for (let extra of extras) {
                     let extraInputFile = extraInputFileTmpl.replace("#", extraI++);
-                    shrinko8([joinPath(inputSrcDir, extra), extraInputFile], true);
+                    shrinko([joinPath(inputSrcDir, extra), extraInputFile], true);
                 }
             }
 
@@ -182,7 +189,7 @@ let api = {
     listInputFile: async (files, main) => {
         await initPromise;
         let mainPath = copyInputs(files, main);
-        let output = shrinko8([mainPath, "--list"], true);
+        let output = shrinko([mainPath, "--list"], true);
         return output.split("\n").filter(l => l);
     },
 
@@ -203,7 +210,7 @@ let api = {
     getProgress: () => initProgress,
     getVersion: async () => {
         await initPromise;
-        return shrinko8(["--version"], true);
+        return shrinko(["--version"], true);
     },
 
     runShrinko: async (args, argStr, useScript, encoding, usePreview, doZip, extraNames) => {
@@ -234,11 +241,11 @@ let api = {
         if (extraNames) {
             for (let i = 0; i < extraNames.length; i++) {
                 let extraInputFile = extraInputFileTmpl.replace("#", i);
-                cmdline.push("--extra-input", extraInputFile, "p8", extraNames[i]);
+                cmdline.push("--extra-input", extraInputFile, srcExt, extraNames[i]);
             }
         }
 
-        let [code, stdout] = shrinko8(cmdline);
+        let [code, stdout] = shrinko(cmdline);
 
         let output, preview;
         if (code == 0) {
@@ -259,23 +266,24 @@ let api = {
     runTests: async (argsStr, save) => {
         await initPromise;
         
-        if (!self.shrinko8_run_tests) {
+        if (!self.shrinko_run_tests) {
             let response = await fetch("shrinko8_test.zip");
             await pyodide.unpackArchive(await response.arrayBuffer(), "zip");
 
-            self.shrinko8_run_tests_args = [];
+            self.shrinko_run_tests_args = [];
             if (argsStr) {
-                self.shrinko8_run_tests_args.push(...shlex(argsStr))
+                self.shrinko_run_tests_args.push(...shlex(argsStr))
             }
             if (fs.analyzePath("private_pico_8").exists) {
-                self.shrinko8_run_tests_args.push("-p", "private_pico_8/pico8.exe", "-P");
+                // it'll pick up the pico8.dat based on this fictive path
+                self.shrinko_run_tests_args.push("-p", "private_pico_8/pico8.exe", "-P");
             }
 
             let run_tests = pyodide.pyimport("run_tests")
-            self.shrinko8_run_tests = run_tests.main
+            self.shrinko_run_tests = run_tests.main
         }
 
-        let [exitcode, output] = run_main(self.shrinko8_run_tests, self.shrinko8_run_tests_args);
+        let [exitcode, output] = run_main(self.shrinko_run_tests, self.shrinko_run_tests_args);
 
         let saveData = undefined
         if (save) {

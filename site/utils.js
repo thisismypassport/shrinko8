@@ -31,7 +31,7 @@ function joinPath(a, b) {
 }
 
 function isFormatText(fmt) {
-    return fmt == "lua" || fmt == "p8";
+    return fmt == "lua" || fmt == "p8" || fmt == "p64";
 }
 function isFormatImg(fmt) {
     return fmt == "png";
@@ -40,7 +40,7 @@ function isFormatExport(fmt) {
     return fmt == "pod" || fmt == "js" || fmt == "bin";
 }
 function isFormatNeedZip(fmt) {
-    return fmt == "bin";
+    return fmt == "bin" || fmt == "dir";
 }
 function isFormatUrl(fmt) {
     return fmt == "url";

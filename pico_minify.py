@@ -1,12 +1,10 @@
 from utils import *
-from pico_defs import fixnum_is_negative
-from pico_tokenize import TokenType
-from pico_tokenize import StopTraverse, k_skip_children
+from pico_defs import fixnum_is_negative, float_is_negative, Language
+from pico_tokenize import TokenType, StopTraverse, k_skip_children
 from pico_parse import Node, NodeType, VarKind
 from pico_parse import k_unary_ops_prec, get_precedence, is_right_assoc, can_replace_with_unary
 from pico_parse import is_vararg_expr, is_short_block_stmt, is_global_or_builtin_local
-from pico_output import format_fixnum, format_string_literal
-from pico_output import output_min_wspace, output_original_wspace
+from pico_output import format_luanum, format_fixnum, format_string_literal
 
 class Focus(Bitmask):
     chars = compressed = tokens = ...
@@ -14,7 +12,7 @@ class Focus(Bitmask):
 
 def minify_string_literal(ctxt, token, focus, value=None):
     if value is None:
-        value = token.string_value
+        value = token.parsed_value
     
     if focus.chars:
         return format_string_literal(value, use_complex_long=ctxt.version >= 40)
@@ -167,7 +165,7 @@ def expr_is_trivial(root, ctxt, safe_only, allow_member=True, allow_index=True, 
         elif expr.type == NodeType.call:
             func = expr.func
             if safe_only or not allow_call or \
-                    not (func.type == NodeType.var and is_global_or_builtin_local(func) and not func.var.reassigned and func.name not in ctxt.callback_builtins):
+                    not (func.type == NodeType.var and is_global_or_builtin_local(func) and not func.var.reassigned and func.name not in ctxt.builtins_with_callbacks):
                 raise StopTraverse()
         elif expr.type == NodeType.member and not allow_member:
             raise StopTraverse()
@@ -273,12 +271,17 @@ def minify_merge_assignments(prev, next, ctxt, safe_only):
 
     next.erase()
 
+def value_is_negative(ctxt, value):
+    if ctxt.lang == Language.pico8:
+        return fixnum_is_negative(value)
+    elif isinstance(value, int):
+        return value < 0
+    else:
+        return float_is_negative(value)
+
 def minify_code(ctxt, root, minify_opts):
     safe_reorder = minify_opts.get("safe-reorder", False)
-    minify_lines = minify_opts.get("lines", True)
-    minify_wspace = minify_opts.get("wspace", True)
     minify_tokens = minify_opts.get("tokens", True)
-    minify_comments = minify_opts.get("comments", True)
     minify_reorder = minify_opts.get("reorder", True)
     focus = Focus(minify_opts.get("focus"))
 
@@ -306,7 +309,7 @@ def minify_code(ctxt, root, minify_opts):
                 elif e(outer_prec) and inner.type in (NodeType.var, NodeType.index, NodeType.member, NodeType.call, NodeType.varargs):
                     needed = False
                 elif e(outer_prec) and inner.type == NodeType.const and (focus.tokens or can_replace_with_unary(node) or
-                        not (inner.token.type == TokenType.number and fixnum_is_negative(inner.token.fixnum_value))):
+                        not (inner.token.type == TokenType.number and value_is_negative(ctxt, inner.token.parsed_value))):
                     needed = False
                 elif outer.type in (NodeType.group, NodeType.table_member, NodeType.table_index, NodeType.op_assign):
                     needed = False
@@ -386,22 +389,30 @@ def minify_code(ctxt, root, minify_opts):
             if token.value == "^^" and ctxt.version >= 37:
                 token.modify("~")
 
+            if token.value == "//" and ctxt.lang == Language.picotron:
+                token.modify("\\")
+                
+            if token.value == "//=" and ctxt.lang == Language.picotron:
+                token.modify("\\=")
+
             if token.type == TokenType.string:
                 token.modify(minify_string_literal(ctxt, token, focus))
 
             if token.type == TokenType.number:
                 allow_unary = can_replace_with_unary(token.parent)
-                token.modify(format_fixnum(token.fixnum_value, sign=None if allow_unary else ''))
+                format_num = format_luanum if ctxt.lang == Language.picotron else format_fixnum
+                token.modify(format_num(token.parsed_value, sign=None if allow_unary else ''))
         
         if token.type == TokenType.number:
             if token.value.startswith("-") or token.value.startswith("~"): # either due to format_fixnum above, or due to ConstToken.value
                 # insert synthetic unary token, so that output_tokens's tokenize and root.get_tokens() won't get confused
                 token.parent.insert_token(0, TokenType.punct, token.value[0], near_next=True)
                 token.modify(token.value[1:])
+            elif token.value.startswith("("): # special case where a unary was forced on us
+                # insert synthetic unary tokens, as needed
+                token.parent.insert_token(0, TokenType.punct, token.value[0], near_next=True)
+                token.parent.insert_token(1, TokenType.punct, token.value[1], near_next=True)
+                token.parent.append_token(TokenType.punct, token.value[-1])
+                token.modify(token.value[2:-1])
 
     root.traverse_nodes(fixup_nodes_pre, fixup_nodes_post, tokens=fixup_tokens)
-
-    if minify_wspace:
-        return output_min_wspace(root, minify_lines)
-    else:
-        return output_original_wspace(root, minify_comments)

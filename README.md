@@ -18,8 +18,9 @@ The major supported features are:
 * [Linting](#linting) - Check for common code errors such as forgetting to declare a local.
 * [Getting Cart Size](#getting-cart-size) - Count the amount of tokens, characters, and compressed bytes your cart uses.
 * [Format Conversion](#format-conversion) - Convert between p8 files, pngs, and more. Achieves better code compression than Pico-8 when creating pngs.
-* [Unminification](#unminification) - Add spaces and newlines to the code of a minified cart, to make it more readable
-* [Custom Python Script](#custom-python-script) - Run a custom python script to preprocess or postprocess your cart
+* [Unminification](#unminification) - Add spaces and newlines to the code of a minified cart, to make it more readable.
+* [Custom Python Script](#custom-python-script) - Run a custom python script to preprocess or postprocess your cart.
+* [Experimental Picotron support](#picotron-support) - All of the above, plus ability to manipulate Picotron carts.
 
 # Minification
 
@@ -910,3 +911,26 @@ local table = splitkeys(--[[language::splitkeys]]"key1=val1,key2=val2,val3,val4"
 ```
 
 To run, use `--script <path>` as before.
+
+# Picotron Support
+
+The support is currently still experimental, and will remain as such at least while Picotron itself is experimental.
+
+To use, use `shrinkotron.py` instead of `shrinko8.py` - the rest is largely the same.
+
+Options specific for Shrinktron:
+* `--code-files` - specify which files to process. The default is all lua files (`*.lua`), but you can customize it, e.g. to `*.lua,!dont_touch.lua,minify_me_too.not_lua`.
+
+Cart manipulation features:
+* `--list` - list all files inside the cart.
+* `--filter` - specify which files to keep in the output. E.g. can be `--filter "*,!sfx/*"` to remove all files in the sfx folder.
+* `--insert` - insert a file or directory into the cart. E.g. `--insert data.bin`
+    * You can specify where to place the file or directory inside the cart, e.g: `--insert data.bin misc/data_in_cart.bin`
+    * You can also specify a filter for which files to take from the directory, e.g: `--insert data_dir misc/datadir_in_cart "*.lua,*.bin"`
+* `--extract` - extract a file or directory from the cart. E.g. `--extract main.lua` or `--extract sfx/1.sfx MyDocuments/1.sfx`
+* `--merge` - merge another cart into the cart. E.g. `--merge other.p64` or `--merge other.p64 "sfx/*,gfx/*"`
+
+Notes:
+* Shrinkotron assumes calls to `include` are used to include other unmodified lua files. If this is not the case, minify may break even under `--minify-safe-only`
+* Currently, shrinkotron does not remove metadata. This is planned for the future, however.
+* Currently, shrinkotron does not touch data files (gfx/sfx/etc). It may play with their compression in the future, however.

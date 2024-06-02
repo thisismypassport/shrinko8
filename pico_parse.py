@@ -1,6 +1,7 @@
 from utils import *
+from pico_defs import Language
 from pico_tokenize import TokenNodeBase, Token, TokenType
-from pico_tokenize import is_identifier, parse_string_literal, k_identifier_split_re
+from pico_tokenize import is_identifier, k_identifier_split_re
 
 k_nested = object()
 
@@ -130,7 +131,7 @@ class NodeType(Enum):
     table = table_index = table_member = varargs = assign = op_assign = ...
     local = function = if_ = elseif = else_ = while_ = repeat = until = ...
     for_ = for_in = return_ = break_ = goto = label = block = do = ...
-    sublang = ... # special
+    sublang = super_root = ... # special
 
 class Node(TokenNodeBase):
     """A pico8 syntax tree node, spanning 'source'.text['idx':'endidx']. Its 'type' is a NodeType
@@ -167,6 +168,9 @@ class Node(TokenNodeBase):
     @property
     def endidx(m):
         return m.last_token().endidx
+    @property
+    def lang(m):
+        return m.first_token().lang
 
     def _create_for_insert(m, i, type, value, near_next):
         if near_next:
@@ -229,10 +233,14 @@ class ParseError(Exception):
     pass
 
 k_unary_ops = {
-    "-", "~", "not", "#", "@", "%", "$",
+    "-", "~", "not", "#", "@", "%", "$", "*",
 }
 
 k_unary_ops_prec = 11
+
+k_unary_op_langs = {
+    "*": Language.picotron
+}
 
 k_binary_op_precs = {
     "or": 1, "and": 2,
@@ -241,7 +249,7 @@ k_binary_op_precs = {
     "<<": 7, ">>": 7, ">>>": 7, ">><": 7, "<<>": 7,
     "..": 8,
     "+": 9, "-": 9,
-    "*": 10, "/": 10, "\\": 10, "%": 10,
+    "*": 10, "/": 10, "//": 10, "\\": 10, "%": 10,
     "^": 12,
 }
 
@@ -249,11 +257,18 @@ k_right_binary_ops = {
     "^", ".."
 }
 
+k_binary_op_langs = {
+    ">>>": Language.pico8,
+    ">><": Language.pico8,
+    "<<>": Language.pico8,
+    "//": Language.picotron,
+}
+
 k_block_ends = ("end", "else", "elseif", "until")
 
 k_prefix_types = (NodeType.var, NodeType.member, NodeType.index, NodeType.call, NodeType.group)
 
-def parse(source, tokens, ctxt=None):
+def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False):
     idx = 0
     depth = -1 # incremented in parse_block
     funcdepth = -1 # incremented in parse_root
@@ -261,9 +276,18 @@ def parse(source, tokens, ctxt=None):
     labelscope = LabelScope(None, funcdepth)
     unresolved_labels = None
     errors = []
-    globals = LazyDict(lambda key: Global(key))
-    members = LazyDict(lambda key: Member(key))
-    has_env = False
+    if lang is None:
+        lang = ctxt.lang if ctxt else Language.pico8
+
+    is_pico8 = lang == Language.pico8
+    is_picotron = lang == Language.picotron
+    
+    if super_root and super_root.children:
+        globals, members, has_env = super_root.globals, super_root.members, super_root.has_env
+    else:
+        globals = LazyDict(lambda key: Global(key))
+        members = LazyDict(lambda key: Member(key))
+        has_env = False
     
     scope.add(Local("_ENV", scope))
 
@@ -312,12 +336,14 @@ def parse(source, tokens, ctxt=None):
             return peek(-1)
         add_error("identifier expected", fail=True)
 
-    def parse_var(token=None, new=None, member=False, label=False, implicit=False, const=None):
+    def parse_var(token=None, new=None, member=False, label=False, implicit=False, const=None, with_attr=False):
         token = token or require_ident()
+        tokens = [token]
         name = token.value
 
         var = None
         search_scope = None
+        attr = None
         
         if member:
             kind = VarKind.member
@@ -369,7 +395,14 @@ def parse(source, tokens, ctxt=None):
             if const != None:
                 var.is_const = const
 
-        node = Node(NodeType.var, [token], name=name, kind=kind, var_kind=var_kind, var=var, new=bool(new), scope=search_scope)
+        if with_attr and is_picotron and accept("<", tokens):
+            attr = take()
+            if attr.value not in ("const", "close"):
+                add_error(f"unknown attribute '{attr.value}'")
+            tokens.append(attr)
+            require(">", tokens)
+
+        node = Node(NodeType.var, tokens, name=name, kind=kind, var_kind=var_kind, var=var, new=bool(new), scope=search_scope, attr=attr)
 
         if label and not new:
             nonlocal unresolved_labels
@@ -520,9 +553,9 @@ def parse(source, tokens, ctxt=None):
         node = Node(NodeType.const, [token], token=token)
 
         if getattr(token, "var_kind", None):
-            node.extra_names = k_identifier_split_re.split(parse_string_literal(token.value))
+            node.extra_names = k_identifier_split_re.split(token.parsed_value)
             for i, value in enumerate(node.extra_names):
-                if is_identifier(value):
+                if is_identifier(value, lang):
                     subtoken = Token.synthetic(TokenType.ident, value, token)
                     subtoken.var_kind = token.var_kind
                     node.add_extra_child(parse_var(token=subtoken, member=True))
@@ -532,7 +565,7 @@ def parse(source, tokens, ctxt=None):
 
         if hasattr(token, "sublang"):
             sublang_token = Token.synthetic(TokenType.string, "", token)
-            node.add_extra_child(Node(NodeType.sublang, (sublang_token,), name=token.sublang_name, lang=token.sublang))
+            node.add_extra_child(Node(NodeType.sublang, (sublang_token,), name=token.sublang_name, sublang=token.sublang))
 
         return node
 
@@ -549,7 +582,7 @@ def parse(source, tokens, ctxt=None):
             expr = parse_expr()
             close = require(")")
             return Node(NodeType.group, [token, expr, close], child=expr)
-        elif value in k_unary_ops:
+        elif value in k_unary_ops and k_unary_op_langs.get(value, lang) == lang:
             expr = parse_expr(k_unary_ops_prec)
             return Node(NodeType.unary_op, [token, expr], child=expr, op=value)
         elif value == "?":
@@ -594,7 +627,7 @@ def parse(source, tokens, ctxt=None):
                 else:
                     require("(")
                     expr = parse_call(expr, extra_arg=var)
-            elif value in k_binary_op_precs and compare_prec(value, prec):
+            elif value in k_binary_op_precs and k_binary_op_langs.get(value, lang) == lang and compare_prec(value, prec):
                 other = parse_expr(k_binary_op_precs[value])
                 expr = Node(NodeType.binary_op, [expr, token, other], left=expr, right=other, op=value)
             else:
@@ -619,7 +652,7 @@ def parse(source, tokens, ctxt=None):
         else_ = None
         short = False
 
-        if accept("then", tokens) or accept("do", tokens):
+        if accept("then", tokens) or (is_pico8 and accept("do", tokens)):
             then = parse_block()
             tokens.append(then)
 
@@ -764,7 +797,7 @@ def parse(source, tokens, ctxt=None):
         newscope = Scope(scope, depth, funcdepth)
 
         const = getattr(tokens[0], "is_const", None)
-        targets = parse_list(tokens, lambda: parse_var(new=newscope, const=const))
+        targets = parse_list(tokens, lambda: parse_var(new=newscope, const=const, with_attr=True))
         sources = []
         if accept("=", tokens):
             sources = parse_list(tokens, parse_expr)
@@ -904,9 +937,6 @@ def parse(source, tokens, ctxt=None):
         funcdepth += 1
 
         root = parse_block()
-        root.globals = globals
-        root.members = members
-        root.has_env = has_env
 
         funcdepth -= 1
 
@@ -931,9 +961,32 @@ def parse(source, tokens, ctxt=None):
         assert idx == len(tokens)
 
     try:
-        return parse_root(), errors
+        if for_expr:
+            root = parse_expr()
+        else:
+            root = parse_root()
     except ParseError:
-        return None, errors
+        root = None
+    
+    if root and super_root:
+        root.parent = super_root
+        super_root.children.append(root)
+        super_root.roots[source.fspath] = root
+        root = super_root
+
+    if root:
+        root.globals, root.members, root.has_env = globals, members, has_env
+    
+    return root, errors
+
+def create_super_root():
+    return Node(NodeType.super_root, [], roots={})
+
+def get_sub_root(root, source):
+    if root.type != NodeType.super_root:
+        return root
+
+    return root.roots[source.fspath]
 
 # node utils
 

@@ -1,22 +1,54 @@
 from utils import *
-from pico_defs import fixnum_is_negative, k_fixnum_mask, to_p8str
+from pico_defs import *
 from pico_tokenize import Token, TokenType, ConstToken, k_skip_children, tokenize
 from pico_parse import Node, NodeType, VarKind, is_global_or_builtin_local, is_vararg_expr
-from pico_output import format_fixnum
+from pico_output import format_fixnum, format_luanum
 
 class LuaType(Enum):
-    nil = boolean = number = string = ...
+    nil = boolean = fixnum = integer = float = string = ...
 
 class LuaValue:
     def __init__(m, type, value):
         m.type, m.value = type, value
 
+    @property
+    def is_fixnum(m):
+        return m.type == LuaType.fixnum
+    @property
+    def is_integer(m):
+        return m.type == LuaType.integer
+    @property
+    def is_float(m):
+        return m.type == LuaType.float
+    @property
+    def is_float_cvt(m):
+        return m.type in (LuaType.integer, LuaType.float)
+    @property
+    def is_integer_cvt(m):
+        return m.type == LuaType.integer or \
+            (m.type == LuaType.float and m.value.is_integer() and is_luaint_in_range(m.value))
+    @property
     def is_number(m):
-        return m.type == LuaType.number
+        return m.type in (LuaType.fixnum, LuaType.integer, LuaType.float)
+    @property
     def is_string(m):
         return m.type == LuaType.string
+    
+    @property
     def is_truthy(m):
         return not (m.type == LuaType.nil or (m.type == LuaType.boolean and not m.value))
+    @property
+    def float_value(m):
+        return float(m.value)
+    @property
+    def uint_value(m):
+        return int(m.value) & k_luaint_mask # assumes is_integer_cvt, so can't overflow
+    @property
+    def signed_value(m):
+        if m.is_fixnum:
+            return fixnum_to_signed(m.value)
+        else:
+            return m.value
 
 class LuaNil(LuaValue):
     def __init__(m):
@@ -26,10 +58,20 @@ class LuaBoolean(LuaValue):
     def __init__(m, value):
         super().__init__(LuaType.boolean, bool(value))
 
-class LuaNumber(LuaValue):
+class LuaFixnum(LuaValue):
     # (value must be a fixnum)
     def __init__(m, value):
-        super().__init__(LuaType.number, value & k_fixnum_mask)
+        super().__init__(LuaType.fixnum, value & k_fixnum_mask)
+        
+class LuaInteger(LuaValue):
+    # (value must be an int)
+    def __init__(m, value):
+        super().__init__(LuaType.integer, num_to_luaint(value))
+        
+class LuaFloat(LuaValue):
+    # (value must be a float)
+    def __init__(m, value):
+        super().__init__(LuaType.float, float(value))
         
 class LuaString(LuaValue):
     # (value must be a string)
@@ -41,202 +83,282 @@ k_lua_true = LuaBoolean(True)
 k_lua_false = LuaBoolean(False)
 k_lua_maxint = 0x7fff
 
-def fixnum_is_whole(value):
-    return (value & 0xffff) == 0
-
-def fixnum_to_whole(value):
-    return value >> 16
-
-def fixnum_to_signed(value):
-    if value & 0x80000000:
-        value -= 0x100000000
-    return value
-
-# no need for fixnum_from_signed - LuaNumber's masking does the job
-
-def is_signed_fixnum_in_range(value):
-    if value >= 0:
-        return value < 0x80000000
-    else:
-        return value >= -0x80000000
-
 # ops
 
-def lua_neg(a):
-    if a.is_number():
-        return LuaNumber(-a.value)
+def lua_neg(lang, a):
+    if a.is_fixnum:
+        return LuaFixnum(-a.value)
+    elif a.is_integer:
+        return LuaInteger(-a.value)
+    elif a.is_float:
+        return LuaFloat(-a.value)
 
-def lua_abs(a):
-    if a.is_number() and a.value != 0x80000000: # avoid relying on clamping overflow behavior
-        return LuaNumber(abs(fixnum_to_signed(a.value)))
+def lua_abs(lang, a):
+    if a.is_fixnum and a.value != 0x80000000: # avoid relying on clamping overflow behavior
+        return LuaFixnum(abs(a.signed_value))
+    elif a.is_integer and a.value != -0x8000000000000000: # avoid relying on wrapping overflow behavior
+        return LuaInteger(abs(a.value))
+    elif a.is_float and not float_is_negzero(a.value): # avoid relying on wrong neg-0 behaviour
+        return LuaFloat(abs(a.value))
 
-def lua_floor(a):
-    if a.is_number():
-        return LuaNumber(a.value & 0xffff0000)
+def lua_floor(lang, a):
+    if a.is_fixnum:
+        return LuaFixnum(a.value & 0xffff0000)
+    elif a.is_integer:
+        return a
+    elif a.is_float:
+        try:
+            result = math.floor(a.value)
+            if is_luaint_in_range(result): # avoid relying on wrapping overflow behavior
+                return LuaInteger(result)
+        except (OverflowError, ValueError):
+            pass
 
-def lua_ceil(a):
-    if a.is_number():
-        if a.value & 0xffff:
-            a.value = (a.value & 0xffff0000) + 0x10000
-            if a.value == 0x80000000: # avoid relying on wrapping overflow behavior
+def lua_ceil(lang, a):
+    if a.is_fixnum:
+        result = a.value
+        if result & 0xffff:
+            result = (result & 0xffff0000) + 0x10000
+            if result == 0x80000000: # avoid relying on wrapping overflow behavior
                 return
-        return LuaNumber(a.value)
+        return LuaFixnum(result)
+    elif a.is_integer:
+        return a
+    elif a.is_float:
+        try:
+            result = math.ceil(a.value)
+            if is_luaint_in_range(result): # avoid relying on wrapping overflow behavior
+                return LuaInteger(result)
+        except (OverflowError, ValueError):
+            pass
 
-def lua_add(a, b):
-    if a.is_number() and b.is_number():
-        return LuaNumber(a.value + b.value)
+def lua_add(lang, a, b):
+    if a.is_fixnum and b.is_fixnum:
+        return LuaFixnum(a.value + b.value)
+    elif a.is_integer and b.is_integer:
+        return LuaInteger(a.value + b.value)
+    elif a.is_float_cvt and b.is_float_cvt:
+        result = a.float_value + b.float_value
+        if not math.isnan(result):
+            return LuaFloat(result)
 
-def lua_sub(a, b):
-    if a.is_number() and b.is_number():
-        return LuaNumber(a.value - b.value)
+def lua_sub(lang, a, b):
+    if a.is_fixnum and b.is_fixnum:
+        return LuaFixnum(a.value - b.value)
+    elif a.is_integer and b.is_integer:
+        return LuaInteger(a.value - b.value)
+    elif a.is_float_cvt and b.is_float_cvt:
+        result = a.float_value - b.float_value
+        if not math.isnan(result):
+            return LuaFloat(result)
 
-def lua_mul(a, b):
-    if a.is_number() and b.is_number():
-        result = (fixnum_to_signed(a.value) * fixnum_to_signed(b.value)) >> 16
+def lua_mul(lang, a, b):
+    if a.is_fixnum and b.is_fixnum:
+        result = (a.signed_value * b.signed_value) >> 16
         if is_signed_fixnum_in_range(result): # avoid relying on wrapping overflow behavior (or should we?)
-            return LuaNumber(result)
+            return LuaFixnum(result)
+    
+    elif a.is_integer and b.is_integer:
+        return LuaInteger(a.value * b.value)
+    elif a.is_float_cvt and b.is_float_cvt:
+        result = a.float_value * b.float_value
+        if not math.isnan(result):
+            return LuaFloat(result)
 
-def quot(a, b):
+def _div_trunc(a, b):
     if (a < 0) != (b < 0):
         return -(a // -b)
     else:
         return a // b
 
-def lua_div(a, b):
-    if a.is_number() and b.is_number() and b.value != 0: # avoid relying on div-by-0 behavior
-        result = quot(fixnum_to_signed(a.value) << 16, fixnum_to_signed(b.value))
+def lua_div(lang, a, b):
+    if a.is_fixnum and b.is_fixnum and b.value != 0: # avoid relying on div-by-0 behavior
+        result = _div_trunc(a.signed_value << 16, b.signed_value)
         if is_signed_fixnum_in_range(result): # avoid relying on clamping overflow behavior
-            return LuaNumber(result)
-
-def lua_idiv(a, b):
-    c = lua_div(a, b)
-    if c:
-        return lua_floor(c)
-
-def lua_mod(a, b):
-    if a.is_number() and b.is_number() and b.value != 0 and not fixnum_is_negative(b.value): # avoid relying on mod-by-0 behavior, or on non-standard mod-by-neg behavior
-        result = fixnum_to_signed(a.value) % fixnum_to_signed(b.value)
-        if is_signed_fixnum_in_range(result): # probably always true, but just in case
-            return LuaNumber(result)
-
-def lua_eq(a, b):
-    return LuaBoolean(a.type == b.type and a.value == b.value)
+            return LuaFixnum(result)
     
-def lua_not_eq(a, b):
-    return LuaBoolean(a.type != b.type or a.value != b.value)
+    elif a.is_float_cvt and b.is_float_cvt and b.value != 0: # avoid relying on non-standard div-by-0 behaviour
+        result = a.float_value / b.float_value
+        if not math.isnan(result):
+            return LuaFloat(result)
 
-def lua_less(a, b):
-    if a.is_number() and b.is_number():
-        return LuaBoolean(fixnum_to_signed(a.value) < fixnum_to_signed(b.value))
-    elif a.is_string() and b.is_string():
+def lua_idiv(lang, a, b):
+    if a.is_fixnum and b.is_fixnum:
+        c = lua_div(lang, a, b)
+        if c:
+            return lua_floor(lang, c)
+
+    elif a.is_integer and b.is_integer and b.value != 0: # avoid relying on non-standard div-by-0 behaviour
+        return LuaInteger(a.value // b.value)
+    elif a.is_float_cvt and b.is_float_cvt and b.value != 0: # avoid relying on non-standard div-by-0 behaviour
+        result = a.float_value // b.float_value
+        if not math.isnan(result):
+            return LuaFloat(result)
+
+def lua_mod(lang, a, b):
+    if a.is_fixnum and b.is_fixnum and b.value != 0 and not fixnum_is_negative(b.value): # avoid relying on mod-by-0 behavior, or on non-standard mod-by-neg behavior
+        result = a.signed_value % b.signed_value
+        if is_signed_fixnum_in_range(result): # probably always true, but just in case
+            return LuaFixnum(result)
+    
+    elif a.is_integer and b.is_integer and b.value != 0: # avoid relying on non-standard mod-by-0 behavior
+        return LuaInteger(a.value % b.value)
+    elif a.is_float_cvt and b.is_float_cvt and b.value != 0: # avoid relying on non-standard mod-by-0 behavior
+        result = a.float_value % b.float_value
+        if not math.isnan(result):
+            return LuaFloat(result)
+
+def lua_eq(lang, a, b):
+    if a.is_number and b.is_number:
+        return LuaBoolean(a.value == b.value)
+    else:
+        return LuaBoolean(a.type == b.type and a.value == b.value)
+    
+def lua_not_eq(lang, a, b):
+    if a.is_number and b.is_number:
+        return LuaBoolean(a.value != b.value)
+    else:
+        return LuaBoolean(a.type != b.type or a.value != b.value)
+
+def lua_less(lang, a, b):
+    if a.is_number and b.is_number:
+        return LuaBoolean(a.signed_value < b.signed_value)
+    elif a.is_string and b.is_string:
         return LuaBoolean(a.value < b.value)
 
-def lua_less_eq(a, b):
-    if a.is_number() and b.is_number():
-        return LuaBoolean(fixnum_to_signed(a.value) <= fixnum_to_signed(b.value))
-    elif a.is_string() and b.is_string():
+def lua_less_eq(lang, a, b):
+    if a.is_number and b.is_number:
+        return LuaBoolean(a.signed_value <= b.signed_value)
+    elif a.is_string and b.is_string:
         return LuaBoolean(a.value <= b.value)
 
-def lua_greater(a, b):
-    if a.is_number() and b.is_number():
-        return LuaBoolean(fixnum_to_signed(a.value) > fixnum_to_signed(b.value))
-    elif a.is_string() and b.is_string():
+def lua_greater(lang, a, b):
+    if a.is_number and b.is_number:
+        return LuaBoolean(a.signed_value > b.signed_value)
+    elif a.is_string and b.is_string:
         return LuaBoolean(a.value > b.value)
 
-def lua_greater_eq(a, b):
-    if a.is_number() and b.is_number():
-        return LuaBoolean(fixnum_to_signed(a.value) >= fixnum_to_signed(b.value))
-    elif a.is_string() and b.is_string():
+def lua_greater_eq(lang, a, b):
+    if a.is_number and b.is_number:
+        return LuaBoolean(a.signed_value >= b.signed_value)
+    elif a.is_string and b.is_string:
         return LuaBoolean(a.value >= b.value)
 
-def lua_max(a, b):
-    if a.is_number() and b.is_number():
-        return LuaNumber(max(fixnum_to_signed(a.value), fixnum_to_signed(b.value)))
+def lua_max(lang, a, b):
+    if a.is_number and b.is_number:
+        return a if a.signed_value > b.signed_value else b
 
-def lua_min(a, b):
-    if a.is_number() and b.is_number():
-        return LuaNumber(min(fixnum_to_signed(a.value), fixnum_to_signed(b.value)))
+def lua_min(lang, a, b):
+    if a.is_number and b.is_number:
+        return a if a.signed_value < b.signed_value else b
 
-def _mid(n1, n2, n3):
-    b12, b23, b13 = n1 <= n2, n2 <= n3, n1 <= n3
-    return n2 if b12 == b23 else n1 if b12 != b13 else n3
+def lua_mid(lang, a, b, c):
+    if a.is_number and b.is_number and c.is_number:
+        av, bv, cv = a.signed_value, b.signed_value, c.signed_value
+        condab, condbc, condac = av < bv, bv < cv, av < cv
+        return b if condab == condbc else a if condab != condac else c
 
-def lua_mid(a, b, c):
-    if a.is_number() and b.is_number() and c.is_number():
-        return LuaNumber(_mid(fixnum_to_signed(a.value), fixnum_to_signed(b.value), fixnum_to_signed(c.value)))
+def lua_bin_not(lang, a):
+    if a.is_fixnum:
+        return LuaFixnum(~a.value)
+    elif a.is_integer_cvt:
+        return LuaInteger(~a.uint_value)
 
-def lua_bin_not(a):
-    if a.is_number():
-        return LuaNumber(~a.value)
+def lua_bin_and(lang, a, b):
+    if a.is_fixnum and b.is_fixnum:
+        return LuaFixnum(a.value & b.value)
+    elif a.is_integer_cvt and b.is_integer_cvt:
+        return LuaInteger(a.uint_value & b.uint_value)
 
-def lua_bin_and(a, b):
-    if a.is_number() and b.is_number():
-        return LuaNumber(a.value & b.value)
+def lua_bin_or(lang, a, b):
+    if a.is_fixnum and b.is_fixnum:
+        return LuaFixnum(a.value | b.value)
+    elif a.is_integer_cvt and b.is_integer_cvt:
+        return LuaInteger(a.uint_value | b.uint_value)
 
-def lua_bin_or(a, b):
-    if a.is_number() and b.is_number():
-        return LuaNumber(a.value | b.value)
+def lua_bin_xor(lang, a, b):
+    if a.is_fixnum and b.is_fixnum:
+        return LuaFixnum(a.value ^ b.value)
+    elif a.is_integer_cvt and b.is_integer_cvt:
+        return LuaInteger(a.uint_value ^ b.uint_value)
 
-def lua_bin_xor(a, b):
-    if a.is_number() and b.is_number():
-        return LuaNumber(a.value ^ b.value)
-
-def lua_shl(a, b):
-    if a.is_number() and b.is_number():
+def lua_shl(lang, a, b):
+    if a.is_fixnum and b.is_fixnum:
         if fixnum_is_negative(b.value):
             if not fixnum_is_negative(a.value): # avoid relying on questionable shift-left-neg-by-neg behaviour
-                return lua_lshr(a, lua_neg(b))
+                return lua_lshr(lang, a, lua_neg(lang, b))
         elif fixnum_is_whole(b.value): # avoid relying on shift-by-fract behaviour
-            return LuaNumber(a.value << fixnum_to_whole(b.value))
-
-def lua_shr(a, b):
-    if a.is_number() and b.is_number():
-        if fixnum_is_negative(b.value):
-            return lua_shl(a, lua_neg(b))
-        elif fixnum_is_whole(b.value):
-            return LuaNumber(fixnum_to_signed(a.value) >> fixnum_to_whole(b.value))
-
-def lua_lshr(a, b):
-    if a.is_number() and b.is_number():
-        if fixnum_is_negative(b.value):
-            return lua_shl(a, lua_neg(b))
-        elif fixnum_is_whole(b.value):
-            return LuaNumber(a.value >> fixnum_to_whole(b.value))
-
-def lua_rotl(a, b):
-    if a.is_number() and b.is_number():
-        if fixnum_is_negative(b.value):
-            return lua_rotr(a, lua_neg(b))
-        elif fixnum_is_whole(b.value):
-            return LuaNumber(rotate_left(a.value, fixnum_to_whole(b.value), 32))
-
-def lua_rotr(a, b):
-    if a.is_number() and b.is_number():
-        if fixnum_is_negative(b.value):
-            return lua_rotl(a, lua_neg(b))
-        elif fixnum_is_whole(b.value):
-            return LuaNumber(rotate_right(a.value, fixnum_to_whole(b.value), 32))
-
-def lua_not(a):
-    return LuaBoolean(not a.is_truthy())
-
-def lua_and(a, b):
-    return b if a.is_truthy() else a
+            return LuaFixnum(a.value << min(fixnum_to_whole(b.value), 32))
     
-def lua_or(a, b):
-    return a if a.is_truthy() else b
+    elif a.is_integer_cvt and b.is_integer_cvt:
+        if b.value < 0:
+            return lua_shr(lang, a, lua_neg(lang, b))
+        else:
+            return LuaInteger(a.uint_value << min(b.uint_value, 64))
 
-def lua_len(a):
-    if a.is_string() and len(a.value) <= k_lua_maxint: # avoid relying on long string behavior
-        return LuaNumber(len(a.value) << 16)
+def lua_shr(lang, a, b):
+    if a.is_fixnum and b.is_fixnum:
+        if fixnum_is_negative(b.value):
+            return lua_shl(lang, a, lua_neg(lang, b))
+        elif fixnum_is_whole(b.value):
+            return LuaFixnum(fixnum_to_signed(a.value) >> min(fixnum_to_whole(b.value), 32))
+    
+    elif a.is_integer_cvt and b.is_integer_cvt:
+        if b.value < 0:
+            return lua_shl(lang, a, lua_neg(lang, b))
+        elif a.value >= 0: # avoid relying on inconsistent shift-right-neg behaviour (for now?)
+            return LuaInteger(a.uint_value >> min(b.uint_value, 64))
+
+def lua_lshr(lang, a, b):
+    if a.is_fixnum and b.is_fixnum:
+        if fixnum_is_negative(b.value):
+            return lua_shl(lang, a, lua_neg(lang, b))
+        elif fixnum_is_whole(b.value):
+            return LuaFixnum(a.value >> min(fixnum_to_whole(b.value), 32))
+    # not yet(?) impl. for picotron?
+
+def lua_rotl(lang, a, b):
+    if a.is_fixnum and b.is_fixnum:
+        if fixnum_is_negative(b.value):
+            return lua_rotr(lang, a, lua_neg(lang, b))
+        elif fixnum_is_whole(b.value):
+            return LuaFixnum(rotate_left(a.value, fixnum_to_whole(b.value), 32))
+    # not yet(?) impl. for picotron?
+
+def lua_rotr(lang, a, b):
+    if a.is_fixnum and b.is_fixnum:
+        if fixnum_is_negative(b.value):
+            return lua_rotl(lang, a, lua_neg(lang, b))
+        elif fixnum_is_whole(b.value):
+            return LuaFixnum(rotate_right(a.value, fixnum_to_whole(b.value), 32))
+    # not yet(?) impl. for picotron?
+
+def lua_not(lang, a):
+    return LuaBoolean(not a.is_truthy)
+
+def lua_and(lang, a, b):
+    return b if a.is_truthy else a
+    
+def lua_or(lang, a, b):
+    return a if a.is_truthy else b
+
+def lua_len(lang, a):
+    if a.is_string:
+        if lang == Language.pico8 and len(a.value) <= k_lua_maxint: # avoid relying on long string behavior
+            return LuaFixnum(len(a.value) << 16)
+        elif lang == Language.picotron:
+            return LuaInteger(len(encode_luastr(a.value)))
 
 def _lua_tostr(a):
-    if a.is_string():
+    if a.is_string:
         return a
-    elif a.is_number() and fixnum_is_whole(a.value): # avoid relying on fract. tostr
+    elif a.is_fixnum and fixnum_is_whole(a.value): # avoid relying on fract. tostr
         return LuaString(format_fixnum(a.value, base=10, sign='-' if fixnum_is_negative(a.value) else ''))
+    elif a.is_integer:
+        return LuaString(format_luanum(a.value, base=10, sign='-' if a.value < 0 else ''))
+    # avoid relying on float tostr
 
-def lua_cat(a, b):
+def lua_cat(lang, a, b):
     a, b = _lua_tostr(a), _lua_tostr(b)
     if a and b:
         return LuaString(a.value + b.value)
@@ -277,28 +399,34 @@ k_const_binary_ops = {
 }
 
 k_const_globals = {
-    "abs": (lua_abs, 1),
-    "band": (lua_bin_and, 2),
-    "bnot": (lua_bin_not, 1),
-    "bor": (lua_bin_or, 2),
-    "bxor": (lua_bin_xor, 2),
-    "ceil": (lua_ceil, 1),
-    "flr": (lua_floor, 1),
-    "lshr": (lua_lshr, 2),
-    "max": (lua_max, 2),
-    "mid": (lua_mid, 3),
-    "min": (lua_min, 2),
-    "rotl": (lua_rotl, 2),
-    "rotr": (lua_rotr, 2),
-    "shl": (lua_shl, 2),
-    "shr": (lua_shr, 2),
+    "abs": (lua_abs, 1, None),
+    "band": (lua_bin_and, 2, Language.pico8),
+    "bnot": (lua_bin_not, 1, Language.pico8),
+    "bor": (lua_bin_or, 2, Language.pico8),
+    "bxor": (lua_bin_xor, 2, Language.pico8),
+    "ceil": (lua_ceil, 1, None),
+    "flr": (lua_floor, 1, None),
+    "lshr": (lua_lshr, 2, Language.pico8),
+    "max": (lua_max, 2, None),
+    "mid": (lua_mid, 3, None),
+    "min": (lua_min, 2, None),
+    "rotl": (lua_rotl, 2, Language.pico8),
+    "rotr": (lua_rotr, 2, Language.pico8),
+    "shl": (lua_shl, 2, Language.pico8),
+    "shr": (lua_shr, 2, Language.pico8),
 }
 
 def const_from_token(token):
     if token.type == TokenType.number:
-        return LuaNumber(token.fixnum_value)
+        if token.lang == Language.picotron:
+            if isinstance(token.parsed_value, int):
+                return LuaInteger(token.parsed_value)
+            else:
+                return LuaFloat(token.parsed_value)
+        else:
+            return LuaFixnum(token.parsed_value)
     elif token.type == TokenType.string:
-        return LuaString(token.string_value)
+        return LuaString(token.parsed_value)
     elif token.value == "nil":
         return k_lua_nil
     elif token.value == "true":
@@ -310,7 +438,6 @@ def const_from_token(token):
 
 def get_const(node):
     if node.type == NodeType.const:
-        # compute & cache const value
         token = node.token
         constval = const_from_token(token)
         assert constval, "unexpected const token: %s" % token
@@ -321,10 +448,10 @@ def get_const(node):
         return None
 
 def set_const(node, value):
-    if value.type == LuaType.number:
-        token = ConstToken(TokenType.number, node, fixnum_value=value.value)
+    if value.is_number:
+        token = ConstToken(TokenType.number, node, parsed_value=value.value)
     elif value.type == LuaType.string:
-        token = ConstToken(TokenType.string, node, string_value=value.value)
+        token = ConstToken(TokenType.string, node, parsed_value=value.value)
     elif value.type == LuaType.boolean:
         token = ConstToken(TokenType.keyword, node, value="true" if value.value else "false")
     elif value.type == LuaType.nil:
@@ -430,6 +557,7 @@ def remove_else_node(node):
     node.append_existing(end_token)
 
 def fold_consts(ctxt, root, errors):
+    lang = ctxt.lang
 
     def add_error(msg, node):
         errors.append(Error(msg, node))
@@ -451,7 +579,7 @@ def fold_consts(ctxt, root, errors):
             if func:
                 child_const = get_const(node.child)
                 if child_const:
-                    constval = func(child_const)
+                    constval = func(lang, child_const)
                     if constval:
                         set_const(node, constval)
 
@@ -462,9 +590,9 @@ def fold_consts(ctxt, root, errors):
                 if left_const: # (optimization)
                     right_const = get_const(node.right)
                     if right_const:
-                        constval = func(left_const, right_const)
+                        constval = func(lang, left_const, right_const)
                     elif func in (lua_and, lua_or): # short-circuit
-                        constval = func(left_const, node.right)
+                        constval = func(lang, left_const, node.right)
                     else:
                         constval = None
                     
@@ -488,8 +616,8 @@ def fold_consts(ctxt, root, errors):
         # TODO: can we be smarter in the non-safe-only case?
         elif node.type == NodeType.call and node.func.type == NodeType.var and is_global_or_builtin_local(node.func) \
                 and not node.func.var.reassigned and (not root.has_env or in_const_ctxt):
-            func, num_args = k_const_globals.get(node.func.name, (None, None))
-            if func and (num_args is None or num_args == len(node.args)):
+            func, num_args, func_lang = k_const_globals.get(node.func.name, (None, None, None))
+            if func and (num_args is None or num_args == len(node.args)) and (func_lang is None or func_lang == lang):
                 arg_consts = []
                 for arg in node.args:
                     arg_const = get_const(arg)
@@ -498,14 +626,14 @@ def fold_consts(ctxt, root, errors):
                     else:
                         break # (optimization)
                 else:
-                    constval = func(*arg_consts)
+                    constval = func(lang, *arg_consts)
                     if constval:
                         set_const(node, constval)
         
         elif node.type == NodeType.if_:
             constval = get_const(node.cond)
             if constval:
-                if constval.is_truthy():
+                if constval.is_truthy:
                     node.replace_with(create_do_node_if_needed(node.then))
                 elif not node.else_:
                     node.erase()
@@ -519,7 +647,7 @@ def fold_consts(ctxt, root, errors):
         elif node.type == NodeType.elseif:
             constval = get_const(node.cond)
             if constval:
-                if constval.is_truthy():
+                if constval.is_truthy:
                     node.replace_with(create_else_node(node.then, node.short))
                 elif not node.else_:
                     remove_else_node(node.parent)
@@ -592,11 +720,11 @@ def fold_consts(ctxt, root, errors):
 
     root.traverse_nodes(pre=skip_special, post=update_node_constval)
 
-def parse_constant(value, as_str=False):
+def parse_constant(value, lang, as_str=False):
     if as_str:
-        return LuaString(to_p8str(value))
+        return LuaString(to_langstr(value, lang))
 
-    tokens, errors = tokenize(Source(None, to_p8str(value)))
+    tokens, errors = tokenize(Source("<const>", to_langstr(value, lang)), lang=lang)
     if not errors:
         token = None
         if len(tokens) == 1:

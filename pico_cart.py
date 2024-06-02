@@ -1,5 +1,5 @@
 from utils import *
-from sdl2_utils import Surface, BlendMode, Color
+from media_utils import Surface, PixelFormat
 from pico_defs import *
 from pico_compress import compress_code, uncompress_code, get_compressed_size, print_size
 import hashlib, base64
@@ -8,22 +8,37 @@ class CartFormat(Enum):
     """An enum representing the supported cart formats"""
     auto = p8 = png = lua = rom = tiny_rom = clip = url = code = js = pod = bin = label = spritesheet = ...
 
+    @property
     def is_input(m):
         return m != m.bin
+    @property
     def is_output(m):
         return m != m.auto
+    @property
     def is_ext(m):
         return m not in (m.auto, m.tiny_rom, m.code, m.label, m.spritesheet)
+    @property
     def is_src(m):
         return m in (m.p8, m.lua, m.code)
+    @property
     def is_export(m):
         return m in (m.js, m.pod, m.bin)
+    @property
+    def is_exposed(m):
+        return m != m.code
+    
+    @classproperty
+    def default_src(m):
+        return m.p8
+    @classproperty
+    def default_dir(m):
+        return None # since m.bin is output-only
 
 class Cart:
     """A pico8 cart, including its code (as a p8str), rom (as a Memory), and more"""
 
     def __init__(m, code="", rom=None, label=None, path="", name=""):
-        m.version_id = get_default_version_id()
+        m.version_id = get_default_pico8_version()
         m.version_tuple = get_version_tuple(m.version_id)
         m.platform = get_default_platform()
         m.rom = rom.copy() if rom else mem_create_rom()
@@ -57,6 +72,9 @@ class Cart:
     def title(m, value):
         """Sets the cart's title, from a p8str"""
         m.meta["title"] = from_p8str(value).splitlines()
+    
+    def set_raw_title(m, title_lines):
+        m.meta["title"] = title_lines
 
     def set_code_without_title(m, code):
         old_title = m.title
@@ -143,31 +161,32 @@ def write_cart_to_tiny_rom(cart, force_compress=False, keep_compression=False, *
         return io.getvalue()
 
 k_cart_image_size = Point(160, 205)
-k_screenshot_rect = Rect(0, 0, 128, 128)
+k_label_size = Point(128, 128)
 k_label_offset = Point(16, 24)
 k_title_offset = Point(18, 167)
 k_title_spacing = Point(0, 2)
 k_title_size = Point(31 * 4, 16)
 
 k_palette_rgb_6bpp_map = {(c.r & ~3, c.g & ~3, c.b & ~3): i for i, c in enumerate(k_palette)}
+k_png_header = b"\x89PNG\r\n\x1a\n"
 
-def load_image_of_size(f, valid_size):
+def load_image_of_size(f, valid_size, format=PixelFormat.rgba8):
     r = BinaryReader(f)
-    if r.bytes(8) != b"\x89PNG\r\n\x1a\n":
+    if r.bytes(8) != k_png_header:
         throw("Not a valid png")
     r.subpos(8)
 
-    image = Surface.load(f)
+    image = Surface.load(f, format)
     if image.size != valid_size:
         throw("Png has wrong size")
 
     return image
 
 def surface_pixels_to_screenshot(pixels, offset=Point.zero):
-    screenshot = MultidimArray(k_screenshot_rect.size, 0)
+    screenshot = MultidimArray(k_label_size, 0)
 
-    for y in range(k_screenshot_rect.h):
-        for x in range(k_screenshot_rect.w):
+    for y in range(k_label_size.y):
+        for x in range(k_label_size.x):
             r, g, b, a = pixels[Point(x, y) + offset]
             screenshot[x, y] = k_palette_rgb_6bpp_map.get((r & ~3, g & ~3, b & ~3), 0)
 
@@ -207,17 +226,17 @@ def draw_text_on_image(image, text, offset, size, spacing=Point.zero):
                 y += chrect.h + spacing.y
                 if y >= size.y:
                     break
-                elif ch == '\n':
+                else:
                     continue
             if new_x <= size.x:
                 image.draw(font_surf, offset + Point(x, y), chrect)
             x = new_x
 
 def create_screenshot_surface(screenshot, transparent=False):
-    screenshot_surf = Surface.create(*k_screenshot_rect.size)
+    screenshot_surf = Surface.create(*k_label_size)
     screenshot_pixels = screenshot_surf.pixels
-    for y in range(k_screenshot_rect.h):
-        for x in range(k_screenshot_rect.w):
+    for y in range(k_label_size.y):
+        for x in range(k_label_size.x):
             i = screenshot[x, y]
             color = k_palette[i]
             if transparent and i == 0:
@@ -238,7 +257,7 @@ def write_cart_to_image(cart, template_image=None, template_only=False, **opts):
         if not template_only:
             if cart.label:
                 label_surf = create_screenshot_surface(cart.label, transparent=True)
-                image.draw(label_surf, k_label_offset, k_screenshot_rect)        
+                image.draw(label_surf, k_label_offset)
             if cart.title:
                 draw_text_on_image(image, cart.title, k_title_offset, k_title_size, k_title_spacing)
         
@@ -258,13 +277,13 @@ def write_cart_to_image(cart, template_image=None, template_only=False, **opts):
         return image.save()
 
 def read_cart_label(data, path=None, **_):
-    image = load_image_of_size(BytesIO(data), k_screenshot_rect.size)
+    image = load_image_of_size(BytesIO(data), k_label_size)
     label = surface_pixels_to_screenshot(image.pixels)
 
     return Cart(path=path, label=label)
 
 def read_cart_spritesheet(data, path=None, **_):
-    image = load_image_of_size(BytesIO(data), k_screenshot_rect.size)
+    image = load_image_of_size(BytesIO(data), k_label_size)
     spritesheet = surface_pixels_to_screenshot(image.pixels)
 
     cart = Cart(path=path)
@@ -274,11 +293,11 @@ def read_cart_spritesheet(data, path=None, **_):
     return cart
 
 def write_cart_label(cart, **_):
-    label = cart.label or MultidimArray(k_screenshot_rect.size, 0)
+    label = cart.label or MultidimArray(k_label_size, 0)
     return create_screenshot_surface(label, transparent=True).save()
 
 def write_cart_spritesheet(cart, **_):
-    spritesheet = MultidimArray(k_screenshot_rect.size, 0)    
+    spritesheet = MultidimArray(k_label_size, 0)    
     for y in range(128):
         for x in range(128):
             spritesheet[x, y] = cart.rom.get4(mem_sprite_addr(x, y))
@@ -382,7 +401,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
 
             elif header == "label" and clean and y < 0x80:
                 if cart.label is None:
-                    cart.label = MultidimArray(k_screenshot_rect.size, 0)
+                    cart.label = MultidimArray(k_label_size, 0)
                 x = 0
                 for b in ext_nybbles(clean):
                     if x < 0x80:
@@ -662,7 +681,7 @@ def read_cart(path, format=None, **opts):
         return read_cart_label(file_read(path), path=path, **opts)
     elif format == CartFormat.spritesheet:
         return read_cart_spritesheet(file_read(path), path=path, **opts)
-    elif format.is_export():
+    elif format.is_export:
         return read_from_cart_export(path, format, **opts)
     else:
         throw(f"invalid format for reading: {format}")
@@ -689,17 +708,24 @@ def write_cart(path, cart, format, **opts):
         file_write(path, write_cart_label(cart, **opts))
     elif format == CartFormat.spritesheet:
         file_write(path, write_cart_spritesheet(cart, **opts))
-    elif format.is_export():
+    elif format.is_export:
         write_to_cart_export(path, cart, format, **opts)
     else:
         throw(f"invalid format for writing: {format}")
 
-def get_bbs_cart_url(id):
+def get_bbs_cart_url(id, lang=Language.pico8):
     if not id.startswith("#"):
         throw("invalid bbs id - # prefix expected")
 
+    if lang == Language.pico8:
+        category = 7
+    elif lang == Language.picotron:
+        category = 8
+    else:
+        throw("invalid bbs cart language")
+
     from urllib.parse import urlencode
-    params = {"lid": id[1:], "cat": 7}
+    params = {"lid": id[1:], "cat": category}
 
     return "https://www.lexaloffle.com/bbs/get_cart.php?" + urlencode(params)
 
@@ -724,6 +750,9 @@ def merge_cart(dest, src, sections):
             dest.meta[meta_name] = src.name[meta_name]
         else:
             throw(f"unknown cart section: '{section}'")
+
+def write_cart_version(cart):
+    print("version: %d, v%d.%d.%d:%d, %c" % (cart.version_id, *cart.version_tuple, cart.platform))
 
 from pico_export import read_from_cart_export, write_to_cart_export
 from pico_preprocess import preprocess_code

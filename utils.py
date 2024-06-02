@@ -132,14 +132,13 @@ def _metaclass_collect_fields(cls_dict, values):
     
     return tuple(fields), tuple(defaults)
 
-class EnumMetaclass(type):    
+class EnumMetaclass(type):
     def __new__(meta, cls_name, cls_bases, cls_dict, values=None):
         if not cls_bases or Enum not in cls_bases:
             return super().__new__(meta, cls_name, cls_bases, cls_dict)
         
         # collect
-        cls_bases = tuple(base for base in cls_bases if base != Enum)        
-        enum_bases = tuple(base for base in cls_bases if base.__class__ == EnumMetaclass)
+        enum_bases = tuple(base for base in cls_bases if base is not Enum and base.__class__ == EnumMetaclass)
         
         def next_auto(prev):
             if enum_bases:
@@ -234,8 +233,7 @@ class BitmaskMetaclass(type):
             return super().__new__(meta, cls_name, cls_bases, cls_dict)
         
         # collect
-        cls_bases = tuple(base for base in cls_bases if base != Bitmask)
-        bitmask_bases = tuple(base for base in cls_bases if base.__class__ == BitmaskMetaclass)
+        bitmask_bases = tuple(base for base in cls_bases if base is not Bitmask and base.__class__ == BitmaskMetaclass)
         
         def next_auto(prev):
             if bitmask_bases:
@@ -254,17 +252,23 @@ class BitmaskMetaclass(type):
         full_mask = reduce(lambda x,y:x|y, full_mask_name_map.keys(), 0)
         
         # dict
-        def __init__(m, value = None):
+        def __init__(m, value = None, **kwargs):
             if value is None:
                 m.value = 0
             elif isinstance(value, int) and (value & full_mask) == value:
                 m.value = value
             elif isinstance(value, str) and value in full_name_mask_map:
                 m.value = full_name_mask_map[value]
+            elif isinstance(value, m.__class__):
+                m.value = value.value
             elif isinstance(value, (tuple, list)):
                 m.value = reduce(lambda x,y:x|y, (full_name_mask_map[part] for part in value), 0)
             else:
                 raise ValueError(f"{value} not value of {cls_name}")
+        
+            if kwargs:
+                for key, value in kwargs.items():
+                    setattr(m, key, value)
     
         def __eq__(m, other):
             if m.__class__ != other.__class__:
@@ -360,6 +364,20 @@ class BitmaskMetaclass(type):
             def __set__(m, obj, value):
                 obj.value = (obj.value & ~m.mask) | ((value << m.shift) & m.mask)
                     
+        class typed_bitfield_property:
+            def __init__(m, mask, type):
+                m.mask, m.type = mask, type
+                m.shift = count_trailing_zero_bits(mask)
+            
+            def __get__(m, obj, cls):
+                if obj is None:
+                    return cls(m.mask)
+                else:
+                    return m.type((obj.value & m.mask) >> m.shift)
+    
+            def __set__(m, obj, value):
+                obj.value = (obj.value & ~m.mask) | ((int(value) << m.shift) & m.mask)
+                    
         bitmask_dict = {}
         bitmask_dict["__init__"] = __init__
         bitmask_dict["__eq__"] = __eq__
@@ -375,8 +393,12 @@ class BitmaskMetaclass(type):
         bitmask_dict["__slots__"] = ("value",)
         bitmask_dict["_fields"] = full_name_mask_map
     
+        annots = cls_dict.get("__annotations__", None)
+
         for name, mask in name_mask_map.items():
-            if mask == 0:
+            if annots and name in annots:
+                bitmask_dict[name] = typed_bitfield_property(mask, annots[name])
+            elif mask == 0:
                 bitmask_dict[name] = no_bits_property(mask)
             elif is_pow2(mask):
                 bitmask_dict[name] = bit_property(mask)
@@ -411,13 +433,11 @@ class Bitmask(metaclass=BitmaskMetaclass):
     
 class TupleMetaclass(type):
     def __new__(meta, cls_name, cls_bases, cls_dict, values=None):
-        if not cls_bases or Tuple not in cls_bases:
+        if not cls_bases or cls_bases == (tuple,) or Tuple not in cls_bases:
             return super().__new__(meta, cls_name, cls_bases, cls_dict)
         
         # collect
-        cls_bases = tuple(base for base in cls_bases if base != Tuple)
-        tuple_bases = tuple(base for base in cls_bases if base.__class__ == TupleMetaclass)
-        cls_bases = (tuple,) + cls_bases
+        tuple_bases = tuple(base for base in cls_bases if base is not Tuple and base.__class__ == TupleMetaclass)
         
         fields, defaults = _metaclass_collect_fields(cls_dict, values)
                 
@@ -476,7 +496,7 @@ class TupleMetaclass(type):
         
         return super().__new__(meta, cls_name, cls_bases, tuple_dict)
     
-class Tuple(metaclass=TupleMetaclass):
+class Tuple(tuple, metaclass=TupleMetaclass):
     """If a class has Tuple as a baseclass, it's transformed into a named tuple.
     All non-private attributes of the class other than functions and descriptors become tuple fields.
     Atributes with a value of ... are required, otherwise - optional with the given default value.
@@ -492,8 +512,7 @@ class StructMetaclass(type):
             return super().__new__(meta, cls_name, cls_bases, cls_dict)
         
         # collect
-        cls_bases = tuple(base for base in cls_bases if base != Struct)
-        struct_bases = tuple(base for base in cls_bases if base.__class__ == StructMetaclass)
+        struct_bases = tuple(base for base in cls_bases if base is not Struct and base.__class__ == StructMetaclass)
         
         fields, defaults = _metaclass_collect_fields(cls_dict, values)
         
@@ -1590,11 +1609,15 @@ def list_set(list, i, val, defval = None):
     assert i >= 0
     while i >= len(list):
         list.append(defval)
-    list[i] = val 
+    list[i] = val
 
 str_get = list_get
 str_rget = list_rget
 str_chunk = list_chunk
+
+def list_pop(list, defval = None):
+    """Pop the element from the list, or get 'defval' (default: None) if empty"""
+    return list.pop() if list else defval
 
 def list_unpack(list, n, defval = None):
     """Return the 'n' first elements in the list, padding with 'defval' if needed"""
@@ -2139,6 +2162,9 @@ class CustomPath(str):
     def create_text(m, encoding, errors, newline):
         raise FileNotFoundError(type(m))
 
+def path_is_native(path):
+    return not isinstance(path, CustomPath)
+
 class StdPath(CustomPath):
     """A path that refers to the standard streams"""
 
@@ -2194,6 +2220,9 @@ def file_open_text(path, encoding = "utf-8", errors = None, newline = None):
     else:
         return open(path, "r", encoding=encoding, errors=errors, newline=newline)
 
+def file_open_maybe_text(path, encoding = "utf-8", newline = "\n"):
+    return file_open_text(path, encoding, "surrogateescape", newline)
+
 def file_create(path):
     """Create or replace a binary file for writing"""
     if isinstance(path, CustomPath):
@@ -2207,6 +2236,9 @@ def file_create_text(path, encoding = "utf-8", errors = None, newline = "\n"):
         return path.create_text(encoding, errors, newline)
     else:
         return open(path, "w", encoding=encoding, errors=errors, newline=newline)
+
+def file_create_maybe_text(path, encoding = "utf-8", newline = "\n"):
+    return file_create_text(path, encoding, "surrogateescape", newline)
 
 def file_read(path, offset = 0, size = None):
     """Read all data from a binary file (or optionally, a subset of data)"""
@@ -2222,6 +2254,9 @@ def file_read_text(path, encoding = "utf-8", errors = None, newline = None):
     """Read all text from a text file"""
     with file_open_text(path, encoding, errors, newline) as f:
         return f.read()
+        
+def file_read_maybe_text(path, encoding = "utf-8", newline = None):
+    return file_read_text(path, encoding, "surrogateescape", newline)
 
 def file_read_json(path, **json_kwargs):
     """Read data from a json file"""
@@ -2237,6 +2272,9 @@ def file_write_text(path, value, encoding = "utf-8", errors = None, newline = "\
     """Create or replace a text file, writing 'value' into it"""
     with file_create_text(path, encoding, errors, newline) as f:
         f.write(value)
+        
+def file_write_maybe_text(path, value, encoding = "utf-8", newline = "\n"):
+    file_write_text(path, value, encoding, "surrogateescape", newline)
 
 def file_write_json(path, value, **json_kwargs):
     """Create or replace a json file, writing 'data' into it"""
@@ -2256,6 +2294,9 @@ def try_file_read_text(path, defval = None, encoding = "utf-8", errors = None, n
         return file_read_text(path, encoding, errors, newline)
     except Exception:
         return defval
+
+def try_file_read_maybe_text(path, defval = None, encoding = "utf-8", newline = None):
+    return try_file_read_text(path, defval, encoding, "surrogateescape", newline)
 
 def try_file_read_json(path, defval = None, **json_kwargs):
     """Try reading data from a json file, or return 'defval' on any error"""
@@ -2279,6 +2320,9 @@ def try_file_write_text(path, value, encoding = "utf-8", errors = None, newline 
         return True
     except Exception:
         return False
+
+def try_file_write_maybe_text(path, value, encoding = "utf-8", newline = None):
+    return try_file_write_text(path, value, encoding, "surrogateescape", newline)
 
 def try_file_write_json(path, value, **json_kwargs):
     """Try creating or replacing a json file, writing 'value' into it. Return if succeeded"""
@@ -2337,7 +2381,7 @@ def path_split_comps(path):
     comps.reverse()
     return comps
 
-def path_relative(path, base=None, fallback=False):
+def path_relative(path, base=None, fallback=True):
     try:
         return os.path.relpath(path, base)
     except ValueError:
@@ -2345,6 +2389,15 @@ def path_relative(path, base=None, fallback=False):
             return path
         else:
             raise
+
+def path_is_inside(path, base):
+    try:
+        relpath = path_relative(path, base, fallback=False)
+        if relpath == ".." or relpath.startswith(".." + os.sep):
+            return False
+        return True
+    except ValueError:
+        return False
 
 def path_modify_time(path):
     """Return the modify time of the file/directory at the given path"""

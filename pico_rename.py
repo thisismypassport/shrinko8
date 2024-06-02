@@ -1,24 +1,10 @@
 from utils import *
-from pico_defs import from_p8str
+from pico_defs import Language, from_langstr
 from pico_tokenize import TokenType, is_identifier, keywords, CommentHint
 from pico_output import format_string_literal
 from pico_parse import VarKind, NodeType, VarBase
 from pico_minify import Focus
 import fnmatch
-
-global_callbacks = {
-    "_init", "_draw", "_update", "_update60",
-}
-
-member_strings = {
-    "n",
-    "__index", "__newindex", "__len", "__eq", "__lt", "__le",
-    "__add", "__sub", "__mul", "__div", "__idiv", "__mod",
-    "__pow", "__and", "__or", "__xor", "__shl", "__shr",
-    "__lshr", "__rotl", "__rotr", "__concat", "__unm", "__not",
-    "__peek", "__peek2", "__peek4", "__call", "__tostring",
-    "__pairs", "__ipairs", "__metatable", "__gc", "__mode",
-}
 
 class IncludeExcludeMapping:
     """Defines which strings are included or excluded, through dicts & regexes"""
@@ -98,9 +84,9 @@ class TableMemberPairIncludeExcludeMapping:
         return bool(value)
 
 def rename_tokens(ctxt, root, rename_opts):
-    global_strings_cpy = ctxt.builtins | global_callbacks
+    global_strings_cpy = ctxt.builtins | ctxt.builtin_callbacks
     preserved_globals = IncludeExcludeMapping(global_strings_cpy)
-    preserved_members = TableMemberPairIncludeExcludeMapping(members=member_strings)
+    preserved_members = TableMemberPairIncludeExcludeMapping(members=ctxt.builtin_members)
     
     # read rename options (e.g. what to preserve)
 
@@ -180,8 +166,15 @@ def rename_tokens(ctxt, root, rename_opts):
     # (note - this assumes a "pure" cart with no hints for shrinko8)
 
     if safe_only:
+        can_access_globals = root.has_env
+
+        if ctxt.lang == Language.picotron and "load" in root.globals:
+            can_access_globals = True
+        # in theory, picotron's 'include' can also do this if used to include a non-code file or a written-at-runtime file
+        # but it seems more useful to assume it won't
+
         preserved_members.default = True # can't reasonably guarantee safety of this
-        preserved_globals.default = root.has_env
+        preserved_globals.default = can_access_globals
 
     # collect uses of identifier
     # (e.g. to give priority to more frequently used ones)
@@ -193,7 +186,7 @@ def rename_tokens(ctxt, root, rename_opts):
     
     # we avoid renaming into any names used by pico8/lua, as otherwise renamed variables may have a non-nill initial value
     global_excludes = global_strings_cpy
-    member_excludes = member_strings.copy()
+    member_excludes = ctxt.builtin_members.copy()
     local_excludes = defaultdict(set)
     label_excludes = defaultdict(set)
 
@@ -316,24 +309,25 @@ def rename_tokens(ctxt, root, rename_opts):
                 for scope in node.scope.chain():
                     scope.used_locals.add(node.var)
                     if scope == node.var.scope:
-                        break
+                        if not (node.kind == VarKind.label and ctxt.lang == Language.picotron): # lua 5.4 disallows dup. labels
+                            break
                         
         elif node.type == NodeType.sublang:
-            for name, count in node.lang.get_global_usages().items():
-                if is_identifier(name):
+            for name, count in node.sublang.get_global_usages().items():
+                if is_identifier(name, ctxt.lang):
                     if name in preserved_globals:
                         global_excludes.add(name)
                     else:
                         global_uses[name] += count
 
-            for name, count in node.lang.get_member_usages().items():
-                if is_identifier(name):
+            for name, count in node.sublang.get_member_usages().items():
+                if is_identifier(name, ctxt.lang):
                     if name in preserved_members:
                         member_excludes.add(name)
                     else:
                         member_uses[name] += count
 
-            for var, count in node.lang.get_local_usages().items():
+            for var, count in node.sublang.get_local_usages().items():
                 if not var.implicit:
                     local_uses[var] += count
 
@@ -365,7 +359,7 @@ def rename_tokens(ctxt, root, rename_opts):
             if next_ident not in keywords:
                 yield next_ident
 
-    def are_vars_compatible(var1, var2):
+    def are_vars_compatible(var1, var2): # it is assumed var1 and var2 have the same name
         is_global1 = var1.kind in (VarKind.global_, VarKind.member)
         is_global2 = var2.kind in (VarKind.global_, VarKind.member)
 
@@ -464,7 +458,7 @@ def rename_tokens(ctxt, root, rename_opts):
         for old, new in mapping.items():
             old_name = old.name if isinstance(old, VarBase) else old
 
-            ctxt.srcmap.append(f"{kind or old.kind} {from_p8str(new)} <- {from_p8str(old_name)}")
+            ctxt.srcmap.append(f"{kind or old.kind} {from_langstr(new, ctxt.lang)} <- {from_langstr(old_name, ctxt.lang)}")
 
     if e(ctxt.srcmap):
         update_srcmap(member_renames, VarKind.member)
@@ -498,10 +492,10 @@ def rename_tokens(ctxt, root, rename_opts):
                 node.parent.extra_names[node.extra_i] = node.name
                 node.parent.children[0].modify(format_string_literal("".join(node.parent.extra_names)))
             else:
-                assert len(node.children) == 1 and node.children[0].value == orig_name
+                assert len(node.children) >= 1 and node.children[0].value == orig_name
                 node.children[0].modify(node.name)
                 
         elif node.type == NodeType.sublang:
-            node.lang.rename(globals=global_renames, members=member_renames, locals=local_renames)
+            node.sublang.rename(globals=global_renames, members=member_renames, locals=local_renames)
             
     root.traverse_nodes(update_idents, extra=True)

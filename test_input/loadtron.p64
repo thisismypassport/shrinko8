@@ -1,0 +1,7 @@
+picotron cartridge // www.picotron.net
+version 3
+
+:: main.lua
+g_cant_rename = 1
+(load("g_cant_rename = 0"))()
+:: [eoc]

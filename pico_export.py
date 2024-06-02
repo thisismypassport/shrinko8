@@ -1,5 +1,5 @@
 from utils import *
-from sdl2_utils import Surface, Color, Palette, PixelFormat
+from media_utils import Surface, Color, Palette, PixelFormat
 from pico_defs import *
 from pico_cart import CartFormat, write_cart, read_cart_from_rom, write_cart_to_rom
 from pico_cart import read_cart_from_source, write_cart_to_source, create_screenshot_surface
@@ -95,13 +95,13 @@ class JsExport(CartExport):
         m.text = text
     
     def find_cartnames(m):
-        match = re.search("var\s+_cartname\s*=\s*\[(.*?)\]", m.text, re.S)
+        match = re.search(r"var\s+_cartname\s*=\s*\[(.*?)\]", m.text, re.S)
         if not match:
             throw("can't find _cartname var in js")
         return match
     
     def find_cartdata(m):
-        match = re.search("var\s+_cartdat\s*=\s*\[(.*?)\]", m.text, re.S)
+        match = re.search(r"var\s+_cartdat\s*=\s*\[(.*?)\]", m.text, re.S)
         if not match:
             throw("can't find _cartdat var in js")
         return match
@@ -163,7 +163,7 @@ class JsExport(CartExport):
         m.cartnames = m.cartdata = None # need reparse
     
     def find_pod(m):
-        matches = list(re.finditer("fileData0\.push\.apply\s*\(\s*fileData0\s*,\s*\[(.*?)\]\s*\)", m.text, re.S))
+        matches = list(re.finditer(r"fileData0\.push\.apply\s*\(\s*fileData0\s*,\s*\[(.*?)\]\s*\)", m.text, re.S))
         if not matches:
             throw("can't find fileData0 pushes in js")
         return matches
@@ -237,7 +237,7 @@ class PodFile:
                     size = r.u32()
                     name = r.zstr(0x40)
                     if header == m.k_cmpr_file_header:
-                        content = m.lz4_uncompress(r.bytes(r.u32()))
+                        content = lz4_uncompress(r.bytes(r.u32()))
                     else:
                         content = r.bytes(size)
                 
@@ -249,7 +249,7 @@ class PodFile:
                     check(r.u32() == 0, "unknown POD bmp header value")
                     check(r.u32() == 0, "unknown POD bmp header value")
                     if header == m.k_cmpr_bmp_header:
-                        data = m.lz4_uncompress(r.bytes(r.u32()))
+                        data = lz4_uncompress(r.bytes(r.u32()))
                     else:
                         data = r.bytes(size - 0x14)
                     
@@ -328,7 +328,7 @@ class PodFile:
         
         def write_bytes(w, data):
             if compress:
-                compressed = m.lz4_compress(data)
+                compressed = lz4_compress(data, fast=True)
                 w.u32(len(compressed))
                 w.bytes(compressed)
             else:
@@ -439,87 +439,129 @@ class PodFile:
         else:
             file_write(path_join(dest, filename_fixup(name)), content)
 
-    def lz4_uncompress(m, data):
-        def read_u8_sum(r):
-            sum = 0
+def lz4_uncompress(data, debug=None):
+    def read_u8_sum(r):
+        sum = 0
+        while True:
+            val = r.u8()
+            sum += val
+            if val != 0xff:
+                return sum
+
+    uncdata = bytearray()
+    with BinaryReader(BytesIO(data)) as r:
+        if debug: debug.init(r, bytes)
+
+        while not r.eof():
+            header = r.u8()
+            size = header >> 4
+            if size == 0xf:
+                size += read_u8_sum(r)
+            
+            for i in range(size):
+                uncdata.append(r.u8())
+            if debug and size: debug.update(uncdata[-size:])
+            
+            if not r.eof():
+                offset = r.u16()
+                count = 4 + (header & 0xf)
+                if count == 0x13:
+                    count += read_u8_sum(r)
+                
+                for i in range(count):
+                    uncdata.append(uncdata[-offset])
+                if debug: debug.update(Lz77Entry(offset, count))
+    
+    if debug: debug.end()
+    return bytes(uncdata)
+
+def lz4_compress(uncdata, fast=False, debug=None):
+    literals = []
+    min_c = 4
+
+    with BinaryWriter() as w:
+        if debug: debug.init(w, bytes)
+
+        def write_u8_sum(val):
             while True:
-                val = r.u8()
-                sum += val
-                if val != 0xff:
-                    return sum
+                byte = min(val, 0xff)
+                w.u8(byte)
+                val -= byte
+                if byte != 0xff:
+                    break
 
-        uncdata = bytearray()
-        with BinaryReader(BytesIO(data)) as r:
-            while not r.eof():
-                header = r.u8()
-                size = header >> 4
-                if size == 0xf:
-                    size += read_u8_sum(r)
+        def write_block(item):
+            size = len(literals)
+            count = (item.count - min_c) if item else 0
+
+            w.u8(min(count, 0xf) | (min(size, 0xf) << 4))
+            if size >= 0xf:
+                write_u8_sum(size - 0xf)
+            
+            for lit in literals:
+                w.u8(lit)
+            
+            if debug and literals: debug.update(bytes(literals))
+            literals.clear()
+
+            if item:
+                w.u16(item.offset)
+                if count >= 0xf:
+                    write_u8_sum(count - 0xf)
                 
-                for i in range(size):
-                    uncdata.append(r.u8())
-                
-                if not r.eof():
-                    offset = r.u16()
-                    count = 4 + (header & 0xf)
-                    if count == 0x13:
-                        count += read_u8_sum(r)
+                if debug: debug.update(item)
                     
-                    for i in range(count):
-                        uncdata.append(uncdata[-offset])
-        
-        return bytes(uncdata)
+        def measure(ctxt_litcount, item):
+            ctxt_litcount = ctxt_litcount or len(literals)
 
-    def lz4_compress(m, uncdata):
-        literals = []
-        min_c = 4
+            if isinstance(item, Lz77Entry):
+                count_bits = (item.count - min_c + 0xf0) // 0xff
+                cost = 3 + count_bits # + 1 for the next header
+                ctxt_litcount = 0
 
-        with BinaryWriter() as w:
-            def write_u8_sum(val):
-                while True:
-                    byte = min(val, 0xff)
-                    w.u8(byte)
-                    val -= byte
-                    if byte != 0xff:
-                        break
+            else:
+                cost = 1
+                ctxt_litcount += 1
+                if (ctxt_litcount + 0xf0) % 0xff == 0:
+                    cost += 1
 
-            def write_block(item):
-                size = len(literals)
-                count = (item.count - min_c) if item else 0
+            return cost, ctxt_litcount
 
-                w.u8(min(count, 0xf) | (min(size, 0xf) << 4))
-                if size >= 0xf:
-                    write_u8_sum(size - 0xf)
-                
-                for lit in literals:
-                    w.u8(lit)
-                literals.clear()
+        def get_cheaper_c(c):
+            return round_down (c - min_c + 0xf0, 0xff) - 1 - 0xf0 + min_c
 
-                if item:
-                    w.u16(item.offset)
-                    if count >= 0xf:
-                        write_u8_sum(count - 0xf)
+        def min_cost(dist):
+            # assume dist can be covered by an Lz77Entry without any overhead
+            # plus subtract possible overhead *savings* of an Lz77Entry (TODO: retest this later)
+            return max(((dist - min_c + 0xf0) // 0xff) - 1, 0)
 
-            end_of_lz77_reach = len(uncdata) - 5
-            end_of_lz77s = len(uncdata) - 12
+        end_of_lz77_reach = len(uncdata) - 5
+        end_of_lz77s = len(uncdata) - 12
 
-            for i, item in get_lz77(uncdata, min_c=min_c, max_c=None, max_o=0xffff):
-                if isinstance(item, Lz77Entry):
-                    if i < end_of_lz77s:
-                        if i + item.count <= end_of_lz77_reach:
-                            write_block(item)
-                        else:
-                            fixed_item = Lz77Entry(item.offset, end_of_lz77_reach - i)
-                            assert fixed_item.count >= min_c
-                            write_block(fixed_item)
-                            literals.extend(uncdata[end_of_lz77_reach:i+item.count])
-                    else:                    
-                        literals.extend(uncdata[i:i+item.count])
+        if fast:
+            items = get_lz77(uncdata, min_c=min_c, max_c=None, max_o=0xffff)
+        else:
+            items = get_lz77(uncdata, min_c=min_c, max_c=None, max_o=0xffff,
+                             get_cheaper_c=get_cheaper_c, measure=measure, min_cost=min_cost)
+
+        for i, item in items:
+            if isinstance(item, Lz77Entry):
+                if i < end_of_lz77s:
+                    if i + item.count <= end_of_lz77_reach:
+                        write_block(item)
+                    else:
+                        fixed_item = Lz77Entry(item.offset, end_of_lz77_reach - i)
+                        assert fixed_item.count >= min_c
+                        write_block(fixed_item)
+                        literals.extend(uncdata[end_of_lz77_reach:i+item.count])
                 else:
-                    literals.append(item)
-            write_block(None)
+                    literals.extend(uncdata[i:i+item.count])
+            else:
+                literals.append(item)
+        write_block(None)
 
-            return w.f.getvalue()
+        if debug: debug.end()
+        return w.f.getvalue()
 
 class PodExport(CartExport, PodFile):
     """A .pod file used in exports, containing one or more carts"""

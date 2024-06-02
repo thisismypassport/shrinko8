@@ -1,6 +1,6 @@
 from utils import *
 from pico_preprocess import k_wspace
-from pico_defs import num_to_fixnum
+from pico_defs import Language, num_to_fixnum, num_to_luaint, is_luaint_in_range
 
 keywords = {
     "and", "break", "do", "else", "elseif", "end", "false", 
@@ -31,7 +31,7 @@ class TokenNodeBase:
     def __init__(m):
         m.parent, m.children = None, ()
 
-    def __str__(m):
+    def __repr__(m):
         return repr(m.__dict__)
     
     @property
@@ -141,13 +141,12 @@ class TokenType(Enum):
 
 class Token(TokenNodeBase):
     """A pico8 token, at 'source'.text['idx':'endidx'] (which is equal to its 'value'). Its 'type' is a TokenType.
-    For string tokens, the actual string is 'string_value'
-    For number tokens, the actual fixnum value is 'fixnum_value'
+    For number/string tokens, the actual value is 'parsed_value'
     Its children are the comments *before* it, if any."""
 
-    def __init__(m, type, value, source, idx, endidx, vline=None, modified=False):
+    def __init__(m, type, value, source, idx, endidx, vline=None, lang=None, modified=False):
         super().__init__()
-        m.type, m.value, m.source, m.idx, m.endidx, m.vline, m.modified = type, value, source, idx, endidx, vline, modified
+        m.type, m.value, m.source, m.idx, m.endidx, m.vline, m.lang, m.modified = type, value, source, idx, endidx, vline, lang, modified
     
     def check(m, expected):
         if isinstance(expected, tuple):
@@ -160,8 +159,7 @@ class Token(TokenNodeBase):
             m.check(expected)
         m.value = value
         m.modified = True
-        lazy_property.clear(m, "fixnum_value")
-        lazy_property.clear(m, "string_value")
+        lazy_property.clear(m, "parsed_value")
     
     def erase(m, expected=None):
         if expected != None:
@@ -169,12 +167,16 @@ class Token(TokenNodeBase):
         m.type, m.value, m.modified = None, None, True
 
     @lazy_property
-    def fixnum_value(m):
-        return parse_fixnum(m.value)
-    
-    @lazy_property
-    def string_value(m):
-        return parse_string_literal(m.value)
+    def parsed_value(m):
+        if m.type == TokenType.number:
+            if m.lang == Language.picotron:
+                return parse_luanum(m.value)
+            else:
+                return parse_fixnum(m.value)
+        elif m.type == TokenType.string:
+            return parse_string_literal(m.value, m.lang)
+        else:
+            return None
 
     @classmethod
     def dummy(cls, source, idx=None, vline=None):
@@ -189,26 +191,26 @@ class Token(TokenNodeBase):
     def synthetic(cls, type, value, other, append=False, prepend=False):
         idx = other.endidx if append else other.idx
         endidx = other.idx if prepend else other.endidx
-        return cls(type, value, other.source, idx, endidx, modified=True)
+        return cls(type, value, other.source, idx, endidx, lang=other.lang, modified=True)
 
 Token.none = Token.dummy(None)
 
 class ConstToken(Token):
-    def __init__(m, type, other, fixnum_value=None, string_value=None, value=None):
-        super().__init__(type, value, other.source, other.idx, other.endidx, modified=True)
-        m.fixnum_value = fixnum_value
-        m.string_value = string_value
+    def __init__(m, type, other, value=None, parsed_value=None):
+        super().__init__(type, value, other.source, other.idx, other.endidx, lang=other.lang, modified=True)
+        m.parsed_value = parsed_value
         if value is None:
             lazy_property.clear(m, "value")
 
     @lazy_property
     def value(m): # used during going over chars for rename (tsk...) and for output when not minify-tokens
                   # (but not used for output under minify-tokens)
-        if e(m.fixnum_value):
+        if isinstance(m.parsed_value, (int, float)):
             allow_unary = can_replace_with_unary(m.parent)
-            return format_fixnum(m.fixnum_value, sign=None if allow_unary else "")
+            format_num = format_fixnum if m.lang == Language.pico8 else format_luanum
+            return format_num(m.parsed_value, sign=None if allow_unary else "")
         else:
-            return format_string_literal(m.string_value, long=False)
+            return format_string_literal(m.parsed_value, long=False)
 
 class CommentHint(Enum):
     none = preserve = lint = keep = ...
@@ -224,11 +226,12 @@ class Comment(TokenNodeBase):
     def value(m):
         return m.source_text
 
-def is_ident_char(ch):
-    return '0' <= ch <= '9' or 'a' <= ch <= 'z' or 'A' <= ch <= 'Z' or ch in ('_', '\x1e', '\x1f') or ch >= '\x80'
+def is_ident_char(ch, lang=Language.pico8):
+    return '0' <= ch <= '9' or 'a' <= ch <= 'z' or 'A' <= ch <= 'Z' or ch == '_' or \
+            (lang == Language.pico8 and (ch in ('\x1e', '\x1f') or ch >= '\x80'))
 
-def is_identifier(str):
-    return str and all(is_ident_char(ch) for ch in str) and not str[:1].isdigit() and str not in keywords
+def is_identifier(str, lang=Language.pico8):
+    return str and all(is_ident_char(ch, lang) for ch in str) and not str[:1].isdigit() and str not in keywords
     
 k_identifier_split_re = re.compile(r"([0-9A-Za-z_\x1e\x1f\x80-\xff]+)")
 
@@ -244,7 +247,7 @@ class NextTokenMods:
             m.comments = []
         m.comments.append(cmt)
 
-def tokenize(source, ctxt=None, all_comments=False):
+def tokenize(source, ctxt=None, all_comments=False, lang=None):
     text = source.text
     idx = 0
     vline = 0
@@ -252,6 +255,11 @@ def tokenize(source, ctxt=None, all_comments=False):
     errors = []
     next_mods = None
     process_hints = ctxt and ctxt.hint_comments
+    if lang is None:
+        lang = ctxt.lang if ctxt else Language.pico8
+    
+    is_pico8 = lang == Language.pico8
+    is_picotron = lang == Language.picotron
 
     def peek(off=0):
         i = idx + off
@@ -287,7 +295,7 @@ def tokenize(source, ctxt=None, all_comments=False):
         end = idx + end_off
         if value is None and type is not None: # (dummy tokens have type==value==None)
             value = text[start:end]
-        token = Token(type, value, source, start, end, vline)
+        token = Token(type, value, source, start, end, vline, lang)
         tokens.append(token)
         
         nonlocal next_mods
@@ -305,7 +313,7 @@ def tokenize(source, ctxt=None, all_comments=False):
             if sublang_cls:
                 add_lang_error = lambda msg: add_error(f"{sublang_name}: {msg}")
                 token.sublang_name = sublang_name
-                token.sublang = sublang_cls(parse_string_literal(token.value), on_error=add_lang_error)
+                token.sublang = sublang_cls(token.parsed_value, on_error=add_lang_error)
                 return
 
     def add_next_mods(token, mods):
@@ -415,24 +423,36 @@ def tokenize(source, ctxt=None, all_comments=False):
         idx += off
         orig_idx = idx
 
-        ch = peek()
-        if ch == '0' and peek(1) in ('b', 'B'):
-            idx += 2
-            digits = "01"
-        elif ch == '0' and peek(1) in ('x', 'X'):
-            idx += 2
-            digits = "0123456789aAbBcCdDeEfF"
-        else:
-            digits = "0123456789"
+        if is_picotron:
+            is_hex = peek() == '0' and peek(1) in ('x', 'X')
 
-        while True:
+            while True:
+                ch = peek()
+                if is_ident_char(ch, lang) or ch == '.' or \
+                        (ch in ('-', '+') and peek(-1) in (('p', 'P') if is_hex else ('e', 'E'))):
+                    idx += 1
+                else:
+                    break
+
+        else:
             ch = peek()
-            if ch and ch in digits:
-                idx += 1
-            elif ch == '.':
-                idx += 1
+            if ch == '0' and peek(1) in ('b', 'B'):
+                idx += 2
+                digits = "01"
+            elif ch == '0' and peek(1) in ('x', 'X'):
+                idx += 2
+                digits = "0123456789aAbBcCdDeEfF"
             else:
-                break
+                digits = "0123456789"
+
+            while True:
+                ch = peek()
+                if ch and ch in digits:
+                    idx += 1
+                elif ch == '.':
+                    idx += 1
+                else:
+                    break
 
         add_token(TokenType.number, orig_idx)
 
@@ -441,7 +461,7 @@ def tokenize(source, ctxt=None, all_comments=False):
         idx += off
         orig_idx = idx
         
-        while is_ident_char(peek()):
+        while is_ident_char(peek(), lang):
             idx += 1
             
         if text[orig_idx:idx] in keywords:
@@ -488,7 +508,7 @@ def tokenize(source, ctxt=None, all_comments=False):
         elif '0' <= ch <= '9' or (ch == '.' and '0' <= peek() <= '9'): # number
             tokenize_number(-1)
 
-        elif is_ident_char(ch): # identifier
+        elif is_ident_char(ch, lang): # identifier
             tokenize_ident(-1)
 
         elif ch in ('"', "'"): # string
@@ -501,17 +521,17 @@ def tokenize(source, ctxt=None, all_comments=False):
             if not tokenize_long_comment():
                 tokenize_line_comment()
 
-        elif ch == '/' and accept('/'): # c-style comment
+        elif ch == '/' and is_pico8 and accept('/'): # c-style comment
             tokenize_line_comment()
 
         elif ch in "+-*/\\%&|^<>=~#()[]{};,?@$.:": # punctuation
             orig_idx = idx - 1
-            if ch in ".:^<>" and accept(ch):
-                if ch in ".>" and accept(ch):
+            if ch in ".:/^<>" and accept(ch):
+                if ch in (".>" if is_pico8 else ".") and accept(ch):
                     if ch == ">": accept('=')
-                elif ch in "<>" and accept(">" if ch == "<" else "<"):
+                elif ch in "<>" and is_pico8 and accept(">" if ch == "<" else "<"):
                     accept('=')
-                elif ch in ".^<>":
+                elif ch in "./^<>":
                     accept('=')
             elif ch in "+-*/\\%&|^<>=~":
                 accept('=')
@@ -586,7 +606,7 @@ def parse_fixnum(origstr):
         value += dotvalue / (base ** dotdigits)
     
     if str:
-        throw(f"Invalid number: {origstr}")
+        throw(f"Invalid pico8 number: {origstr}")
     if neg:
         value = -value
     elif bnot:
@@ -594,13 +614,71 @@ def parse_fixnum(origstr):
 
     return num_to_fixnum(value)
 
+def parse_luanum(origstr):
+    str = origstr.lower()
+
+    try:
+        if str.startswith("0x"):
+            if "." in str or "p" in str:
+                try:
+                    return float.fromhex(str)
+                except OverflowError:
+                    return float('inf')
+            else:
+                return num_to_luaint(int(str, base=16))
+        
+        elif str.startswith("0b"):
+            # TODO: recheck this if ever fixed to support exponents?
+            # TODO: recheck this if current 0b2 through 0bf bug stays around, and support it if so?
+            dotpos = str.find(".")
+            if dotpos >= 0:
+                str = str_replace_at(str, dotpos, 1, "")
+            value = int(str, base=2)
+            if dotpos >= 0:
+                try:
+                    return math.ldexp(value, dotpos - len(str))
+                except OverflowError:
+                    return float('inf')
+            else:
+                return num_to_luaint(value)
+            
+        else:
+            if "." in str or "e" in str:
+                return float(str) # no OverflowError here
+            else:
+                value = int(str)
+                if is_luaint_in_range(value):
+                    return num_to_luaint(value)
+                else:
+                    return float(value)
+    except ValueError:
+        throw(f"Invalid lua number: {origstr}")
+
 k_char_escapes = {
     '*': '\1', '#': '\2', '-': '\3', '|': '\4', '+': '\5', '^': '\6',
     'a': '\a', 'b': '\b', 't': '\t', 'n': '\n', 'v': '\v', 'f': '\f', 'r': '\r',
     '\\': '\\', '"': '"', "'": "'", '\n': '\n',
 }
 
-def parse_string_literal(str):
+def lang_chr(value, lang):
+    if lang == Language.pico8 or value < 0x80:
+        return chr(value)
+    else:
+        return chr(0xdc00 + value) # surrogate escape
+
+def ext_unicode_to_lang_str(value, lang):
+    if value < 0x80:
+        return lang_chr(value, lang)
+    
+    suffix = ""
+    count = 0
+    while value >= (0x40 >> count):
+        suffix = lang_chr(0x80 + (value & 0x3f), lang) + suffix
+        value >>= 6
+        count += 1
+    return lang_chr(((-0x80 >> count) & 0xff) + value, lang) + suffix
+
+def parse_string_literal(str, lang=Language.pico8):
     """parse a pico8 string from a pico8 string literal"""
     if str.startswith("["):
         start = str.index("[", 1) + 1
@@ -638,8 +716,8 @@ def parse_string_literal(str):
                 hex_esc = str[end + 2 : start]
                 value = maybe_int(hex_esc, base=16)
                 if value is None:
-                    throw(f"Invalid hex escape: {hex_esc}")
-                litparts.append(chr(value))
+                    throw(f"Invalid hex escape: '{hex_esc}' in: '{str}'")
+                litparts.append(lang_chr(value, lang))
 
             elif '0' <= esc <= '9':
                 start = end + 2
@@ -648,14 +726,24 @@ def parse_string_literal(str):
                 dec_esc = str[end + 1 : start]
                 value = maybe_int(dec_esc)
                 if value is None or value >= 256:
-                    throw(f"Invalid dec escape: {dec_esc}")
-                litparts.append(chr(value))
+                    throw(f"Invalid dec escape: '{dec_esc}' in: '{str}'")
+                litparts.append(lang_chr(value, lang))
+
+            elif lang == Language.picotron and esc == 'u':
+                check(str_get(str, end + 2) == "{", f"Invalid unicode escape in: '{str}'")
+                start = str.find("}", end) + 1
+                check(start > 0, f"Unterminated unicode escape in: '{str}'")
+                uni_esc = str[end + 3 : start - 1]
+                value = maybe_int(uni_esc, base=16)
+                if value is None or value >= 0x80000000:
+                    throw(f"Invalid uni escape: '{uni_esc}' in: '{str}'")
+                litparts.append(ext_unicode_to_lang_str(value, lang))
 
             else:
-                throw(f"Invalid escape: {esc}")
+                throw(f"Invalid escape: '{esc}' in: '{str}'")
                 
         return "".join(litparts)
 
 from pico_parse import Node, VarKind, can_replace_with_unary
-from pico_output import format_fixnum, format_string_literal
+from pico_output import format_fixnum, format_luanum, format_string_literal
 from pico_process import Error

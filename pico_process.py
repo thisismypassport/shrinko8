@@ -1,13 +1,14 @@
 from utils import *
-from pico_defs import from_p8str
+from pico_defs import Language, from_langstr
 from pico_compress import print_size
 from pico_preprocess import k_tab_break
 
-# when adding new globals:
+# when adding new builtins:
 #   check whether to update builtins_copied_to_locals (find 'local ...=...' script inside pico8 binary; e.g. `strings $(which pico8) | grep "^local "`)
 #   consider whether to update builtins_with_callbacks
 
-main_builtins = {
+builtin_globals = {
+    # normal
     "abs", "add", "all", "assert", "atan2", "btn", "btnp",
     "camera", "cartdata", "ceil", "chr", "circ", "circfill",
     "clip", "cls", "cocreate", "color", "coresume", "cos",
@@ -25,24 +26,23 @@ main_builtins = {
     "spr", "sqrt", "srand", "sset", "sspr", "stat", "stop",
     "sub", "time", "tline", "tonum", "tostr", "trace", "type",
     "unpack", "yield", "t",
-}
-
-deprecated_builtins = {
+    # deprecated
     "band", "bnot", "bor", "bxor",
     "lshr", "rotl", "rotr", "shl", "shr",
     "mapdraw", 
-}
-
-undocumented_builtins = {
+    # undocumented
     "holdframe", "_set_fps", "_update_buttons", "_mark_cpu",
     "_startframe", "_update_framerate", "_set_mainloop_exists",
     "_map_display", "_get_menu_item_selected", "_pausemenu",
     "set_draw_slice", "tostring",
 }
 
-pattern_builtins = set(chr(ch) for ch in range(0x80, 0x9a))
+# pattern builtins
+builtin_globals |= set(chr(ch) for ch in range(0x80, 0x9a))
 
-builtins_copied_to_locals = { # builtins listed here should also be listed elsewhere above!
+# subset of builtins that pico8 copies to top-level locals
+# (builtins included here must also be in builtin_globals)
+builtins_copied_to_locals = {
     "time", "sub", "chr", "ord", "tostr", "tonum", "add",
     "del", "deli", "clip", "color", "pal", "palt", "fillp",
     "pget", "pset", "sget", "sset", "fget", "fset",
@@ -54,8 +54,28 @@ builtins_copied_to_locals = { # builtins listed here should also be listed elsew
     "bor", "bxor", "bnot", "shl", "shr", "lshr", "rotl", "rotr",
 }
 
-builtins_with_callbacks = { # builtins listed here may call user code before returning, NOT including far-fetched stuff like metamethods
+# subset of builtins that may call user code before returning, NOT including far-fetched stuff like metamethods
+# (builtins included here must also be in builtin_globals)
+builtins_with_callbacks = {
     "coresume", "foreach", "yield",
+}
+
+# callbacks that are called by the builtin mainloop logic
+builtin_callbacks = {
+    "_init", "_draw", "_update", "_update60",
+}
+
+# table members that are used by builtins
+builtin_members = {
+    # pack()
+    "n",
+    # metamethods:
+    "__index", "__newindex", "__len", "__eq", "__lt", "__le",
+    "__add", "__sub", "__mul", "__div", "__idiv", "__mod",
+    "__pow", "__and", "__or", "__xor", "__shl", "__shr",
+    "__lshr", "__rotl", "__rotr", "__concat", "__unm", "__not",
+    "__peek", "__peek2", "__peek4", "__call", "__tostring",
+    "__pairs", "__ipairs", "__metatable", "__gc", "__mode",
 }
 
 def get_line_col(text, idx, start=0): # (0-based)
@@ -103,13 +123,18 @@ class Source: # keep this light - created for temp. tokenizations
         
     def get_location(m, idx, tabs=False): # (0-based)
         return get_source_location(m.path, m.text, idx, tabs=tabs)
+    
+    # not a super-source
+    is_super = False
+    def __iter__(m):
+        yield m
 
 class CartSource(Source):
     """The source of a pico8 cart, maps indexes in the preprocessed code to individual source files"""
-    def __init__(m, cart):
+    def __init__(m, cart, _=None):
         m.cart = cart
         m.mappings = cart.code_map
-        # no __init__ - we override with properties
+        # no super().__init__ - we override with properties
 
     def get_location(m, idx, tabs=False):
         for mapping in reversed(m.mappings):
@@ -151,37 +176,37 @@ class SubLanguageBase:
         pass
     minify = None
 
-class PicoContext:
-    """Defines information for how pico8 code is to be processed, e.g. the supported builtins and the supported pico8 version"""
-    def __init__(m, deprecated=True, undocumented=True, patterns=True, srcmap=False, extra_builtins=None, not_builtins=None, 
-                 local_builtins=True, extra_local_builtins=None, sublang_getter=None, version=sys.maxsize, hint_comments=True,
-                 consts=None):
-        builtins = set(main_builtins)
-        local_builtins = set(builtins_copied_to_locals) if local_builtins else set()
-        if deprecated:
-            builtins |= deprecated_builtins
-        if undocumented:
-            builtins |= undocumented_builtins
-        if patterns:
-            builtins |= pattern_builtins
+class ContextBase:
+    """Defines information for how code is to be processed, e.g. the supported builtins, the supported version, the language, etc."""
+    def __init__(m, lang, builtins, local_builtins, builtins_with_callbacks, builtin_callbacks, builtin_members,
+                 extra_builtins=None, not_builtins=None, use_local_builtins=True, extra_local_builtins=None, 
+                 srcmap=False, sublang_getter=None, version=sys.maxsize, hint_comments=True, consts=None):
+        m.builtins = builtins.copy()
+        m.local_builtins = local_builtins.copy() if use_local_builtins else set()
+        m.builtins_with_callbacks = builtins_with_callbacks
+        m.builtin_callbacks = builtin_callbacks
+        m.builtin_members = builtin_members
+        
         if extra_builtins:
-            builtins |= set(extra_builtins)
+            m.builtins |= set(extra_builtins)
         if not_builtins:
-            builtins -= set(not_builtins)
-            local_builtins -= set(not_builtins)
+            m.builtins -= set(not_builtins)
+            m.local_builtins -= set(not_builtins)
         if extra_local_builtins:
-            builtins |= set(extra_local_builtins)
-            local_builtins |= set(extra_local_builtins)
-
-        m.builtins = builtins
-        m.local_builtins = local_builtins
-        m.callback_builtins = builtins_with_callbacks
+            m.builtins |= set(extra_local_builtins)
+            m.local_builtins |= set(extra_local_builtins)
 
         m.srcmap = [] if srcmap else None
         m.consts = consts
         m.sublang_getter = sublang_getter
         m.hint_comments = hint_comments
         m.version = version
+        m.lang = lang
+
+class PicoContext(ContextBase):
+    """Specialization of ContextBase to pico8"""
+    def __init__(m, **opts):
+        super().__init__(Language.pico8, builtin_globals, builtins_copied_to_locals, builtins_with_callbacks, builtin_callbacks, builtin_members, **opts)
 
 class ErrorFormat(Enum):
     common = absolute = tabbed = ...
@@ -199,7 +224,7 @@ class Error:
         tabbed = fmt == ErrorFormat.tabbed
         token = m.token
         loc = token.source.get_location(token.idx, tabs=tabbed) if token.source else SourceLocation("???", 0, 0, 0)
-        path = path_absolute(loc.path) if fmt == ErrorFormat.absolute else path_relative(loc.path, fallback=True)
+        path = path_absolute(loc.path) if fmt == ErrorFormat.absolute else path_relative(loc.path)
         if tabbed:
             return f"{path} (tab {loc.tab:X}, line {loc.line + 1}, col {loc.col + 1}): {m.msg}"
         else:
@@ -218,28 +243,32 @@ def fixup_process_args(args):
     return args_set, args
 
 def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, rename=False, unminify=False, 
-                 stop_on_lint=True, want_count=True):
+                 stop_on_lint=True, count_is_optional=False):
     need_lint, lint = fixup_process_args(lint)
     need_minify, minify = fixup_process_args(minify)
     need_rename, rename = fixup_process_args(rename)
     need_unminify, unminify = fixup_process_args(unminify)
 
-    if not need_lint and not need_minify and not need_unminify and not (want_count and (count or input_count)):
+    if not need_lint and not need_minify and not need_unminify and not ((count or input_count) and not count_is_optional):
         return True, ()
     
     need_parse = need_lint or need_minify or need_unminify
     need_all_comments = need_unminify or (need_minify and minify_needs_comments(minify))
 
-    ok = False
-    tokens, errors = tokenize(source, ctxt, need_all_comments)
-    if not errors and need_parse:
-        root, errors = parse(source, tokens, ctxt)
-    
-    new_text = None
-    if not errors:
-        ok = True
+    errors = ()
+    root = create_super_root() if source.is_super else None
+    subsrc_count = 0
+    for subsrc in source:
+        subsrc_count += 1
+        tokens, errors = tokenize(subsrc, ctxt, need_all_comments)
+        if not errors and need_parse:
+            root, errors = parse(subsrc, tokens, ctxt, root)
+        if errors:
+            return False, errors
 
+    if subsrc_count:
         if input_count:
+            assert not source.is_super
             print_token_count(count_tokens(tokens), prefix="input", handler=input_count)
 
         if need_lint:
@@ -252,19 +281,20 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
                 if need_rename:
                     rename_tokens(ctxt, root, rename)
 
-                new_text = minify_code(ctxt, root, minify)
+                minify_code(ctxt, root, minify)
+                for subsrc in source:
+                    subsrc.text = output_code(ctxt, get_sub_root(root, subsrc), minify)
             
             if need_unminify:
-                new_text = unminify_code(root, unminify)
+                for subsrc in source:
+                    subsrc.text = unminify_code(get_sub_root(root, subsrc), unminify)
 
             if count:
+                assert not source.is_super
                 new_tokens = root.get_tokens() if need_parse else tokens
                 print_token_count(count_tokens(new_tokens), handler=count)
 
-    if e(new_text):
-        source.text = new_text
-
-    return ok, errors
+    return True, errors
 
 def simplify_code(ctxt, root, minify, errors):
     fold = minify.get("consts", True)
@@ -272,20 +302,21 @@ def simplify_code(ctxt, root, minify, errors):
     if fold:
         fold_consts(ctxt, root, errors)
 
-def echo_code(code, echo=True):
-    code = from_p8str(code)
+def echo_code(code, ctxt, echo=True):
+    code = from_langstr(code, ctxt.lang)
     if echo == True:
         for line in code.splitlines():
             print(line)
     else:
-        file_write_text(echo, code)    
+        file_write_maybe_text(echo, code)    
 
 from pico_tokenize import tokenize, count_tokens
-from pico_parse import parse
+from pico_parse import parse, create_super_root, get_sub_root
 from pico_lint import lint_code
 from pico_minify import minify_code, minify_needs_comments
 from pico_unminify import unminify_code
 from pico_constfold import fold_consts
+from pico_output import output_code
 from pico_rename import rename_tokens
 
 # re-export some things for examples/etc.

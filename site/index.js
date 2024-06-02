@@ -1,5 +1,10 @@
 'use strict';
 
+let targetLang = $("html").data("target");
+let isPico8 = targetLang === "pico8";
+let isPicotron = targetLang === "picotron";
+let srcExt = isPico8 ? "p8" : isPicotron ? "p64" : null;
+
 $.fn.extend({
     isShown: function() { return this.css("display") != "none"; },
     isChecked: function() { return this.prop("checked"); },
@@ -7,7 +12,7 @@ $.fn.extend({
 
 let isLoading = true;
 
-// Show shrinko8 loading
+// Show shrinko loading
 function showLoading() {
     isLoading = true;
     $("#loading-overlay").show();
@@ -31,7 +36,7 @@ function showLoading() {
     updateProgress();
 }
 
-// Show shrinko8 version
+// Show shrinko version
 function showVersion() {
     api.getVersion().then(version => {
         $("#version").text(version);
@@ -111,11 +116,11 @@ class InputChangeMgr {
 }
 
 let inputMgr = new InputChangeMgr("#input-code", "updateInputFile");
-let outputMap = {};
+let outputCache = {};
 
 // Called when the input value changes
 function onInputChange(delta) {
-    outputMap = {}
+    outputCache = {}
     inputMgr.onChange(doShrinkoAction);
 }
 
@@ -172,16 +177,16 @@ async function loadInputFiles(inputs) {
     }
 
     let allFiles = new Map();
-    let firstP8 = undefined;
+    let firstSrc = undefined;
     async function processFile(file, relpath) {
         try {
             let path = joinPath(relpath, file.name);
             let data = await readFile(file);
             allFiles.set(path, data);
 
-            if (getLowExt(file.name) == "p8") {
-                if (firstP8 == undefined) {
-                    firstP8 = path;
+            if (getLowExt(file.name) == srcExt) {
+                if (firstSrc == undefined) {
+                    firstSrc = path;
                 }
             }
         } catch (e) {
@@ -191,6 +196,7 @@ async function loadInputFiles(inputs) {
     }
 
     // handle the files in parallel, as some browsers will not allow otherwise
+    let onlyDir = undefined;
     await Promise.all(Array.prototype.map.call(inputs, async input => {
         if (input instanceof DataTransferItem) {
             let content;
@@ -208,6 +214,9 @@ async function loadInputFiles(inputs) {
         if (input instanceof File) {
             await processFile(input, "");
         } else { // no fixed class name, assume it's a FileSystemEntry
+            if (input.isDirectory) {
+                onlyDir = onlyDir === undefined ? input.name : null
+            }
             for (let [file, relpath] of await readFSEntryRec(input, "", [])) {
                 await processFile(file, relpath);
             }
@@ -218,10 +227,22 @@ async function loadInputFiles(inputs) {
     if (allFiles.size == 0) {
         onerror("Failed reading any files from your local machine");
         return;
-    } else if (allFiles.size == 1) {
-        mainPath = allFiles.keys().next().value;
+    }
+    
+    if (isPico8) {
+        if (allFiles.size == 1) {
+            mainPath = allFiles.keys().next().value;
+        } else {
+            [mainPath, extraPaths] = await beginInputSelect(allFiles.keys(), "main", firstSrc);
+        }
     } else {
-        [mainPath, extraPaths] = await beginInputSelect(allFiles.keys(), "main", firstP8);
+        if (allFiles.size == 1 && !onlyDir) {
+            mainPath = allFiles.keys().next().value;
+        } else if (onlyDir) {
+            mainPath = onlyDir
+        } else {
+            mainPath = ""
+        }
     }
 
     let subfile = undefined;
@@ -402,7 +423,7 @@ async function loadPico8Dat(file) {
     
     hasPico8Dat = true;
     $("#minify-pico8dat-overlay").hide();
-    outputMap = {}
+    outputCache = {}
     doShrinkoAction();
 }
 
@@ -411,12 +432,12 @@ let scriptMgr = new InputChangeMgr("#script-code", "updateScriptFile");
 // Called when the script value changes
 function onScriptChange(delta) {
     scriptMgr.onChange();
-    outputMap = {}
+    outputCache = {}
 }
 
 // Called when the extra args changes (called in advanced tab, no need to update immediately)
 function OnExtraArgsChange() {
-    outputMap = {}
+    outputCache = {}
 }
 
 // set the url of the image from data bytes
@@ -439,14 +460,14 @@ function copyUrlToClipboard() {
 // download the output file
 async function saveOutputFile() {
     let format = $("#minify-format").val();
-    let output = outputMap[format];
+    let output = outputCache[format];
 
     let ext = format;
     if (ext == "tiny-rom") {
         ext = "rom";
     }
     if (ext == "png" || ext == "rom") {
-        ext = "p8." + ext;
+        ext = srcExt + "." + ext;
     }
 
     let name = getWithoutAllExts(inputMgr.fileName);
@@ -493,7 +514,7 @@ function applyErrors(code, stdouterr, selector) {
         stdouterr += "Lint succesful - no issues found.";
     }
 
-    if (stdouterr.match(/^.*cannot open included cart/i)) {
+    if (stdouterr.match(/^.*cannot open included cart/i)) { // pico8-specific
         stdouterr += "\nTo fix this, select (or drop) both the main p8 file and all its includes.";
         stdouterr += "\nIf your includes are inside subfolders, you can drag & drop the whole parent directory to the input area.";
     }
@@ -557,9 +578,12 @@ async function doMinify() {
     activeMinifies++;
 
     try {
-        // people are likely to copy stuff from the output/preview, so --unicode-caps helps there
-        // (they're legal in p8 files, so shouldn't be a problem)
-        let args = ["--count", "--parsable-count", "--no-count-compress", "--unicode-caps"]
+        let args = ["--count", "--parsable-count", "--no-count-compress"]; 
+        if (isPico8) {
+            // people are likely to copy stuff from the output/preview, so --unicode-caps helps there
+            // (they're legal in p8 files, so shouldn't be a problem)
+            args.push("--unicode-caps");
+        }
 
         let format = $("#minify-format").val();
         args.push("--format", format);
@@ -627,7 +651,7 @@ async function doMinify() {
             applyErrors(2, stdouterr, "#minify-diag-output");
         }
 
-        outputMap[format] = code != 0 ? false : output;
+        outputCache[format] = code != 0 ? false : output;
         $("#minify-error-overlay").toggle(code != 0);
         $("#minify-diag-output").toggle(code == 0 && stdouterr !== "");
     } finally {
@@ -660,7 +684,7 @@ async function doLint() {
 
         applyErrors(code, stdouterr, "#lint-output");
 
-        outputMap.lint = true;
+        outputCache.lint = true;
     } finally {
         if (--activeLints == 0) {
             $("#lint-overlay").hide();
@@ -678,14 +702,14 @@ function doShrinkoAction() {
     switch (activeTab) {
         case 0: { // minify
             let format = $("#minify-format").val();
-            if (!(format in outputMap)) {
-                outputMap[format] = null;
+            if (!(format in outputCache)) {
+                outputCache[format] = null;
                 return doMinify();
             }
             break;
         } case 1: { // lint
-            if (!("lint" in outputMap)) {
-                outputMap.lint = null;
+            if (!("lint" in outputCache)) {
+                outputCache.lint = null;
                 return doLint();
             }
             break;
@@ -703,7 +727,7 @@ function onMinifyOptsChange(event) {
 
     if (event) {
         $("#minify-format option").each(function () {
-            delete outputMap[this.value];
+            delete outputCache[this.value];
         });
         doShrinkoAction();
     }
@@ -720,7 +744,7 @@ function onMinifyFormatChange(event) {
     $("#row-compressed").toggle(!isFormatText(format) && !isFormatUrl(format));
     $("#row-url-compressed").toggle(isFormatUrl(format));
     $("#no-row-compressed").toggle(isFormatText(format));
-    $("#minify-error-overlay").toggle(outputMap[format] === false);
+    $("#minify-error-overlay").toggle(outputCache[format] === false);
     $("#minify-pico8dat-overlay").toggle(isFormatExport(format) && !hasPico8Dat);
 
     if (isFormatText(format)) {
@@ -739,7 +763,7 @@ function onMinifyFormatChange(event) {
 // called when the lint options change
 function onLintOptsChange(event) {
     if (event) {
-        delete outputMap.lint;
+        delete outputCache.lint;
         doShrinkoAction();
     }
 }
@@ -759,6 +783,18 @@ function onTabChange() {
         }
     }
     doShrinkoAction();
+}
+
+// called when the target (language) changes
+function onTargetChange() {
+    let newTarget = $("#target").val()
+    if (newTarget != targetLang) {
+        if (newTarget == "pico8") {
+            window.location.href = "index.html"
+        } else {
+            window.location.href = `index-${newTarget}.html`
+        }
+    }
 }
 
 // set up an ace textbox, unless already done
@@ -807,7 +843,7 @@ async function runTests(mode, argsStr) {
 }
 
 $(() => {
-    self.api = Comlink.wrap(new Worker("worker.js"));
+    self.api = Comlink.wrap(new Worker("worker.js?target=" + targetLang));
 
     showLoading();
     showVersion();

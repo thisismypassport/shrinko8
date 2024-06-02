@@ -1,7 +1,15 @@
 <!DOCTYPE html>
-<html style="height: 100%">
+{% set pico8 = (TARGET == 'pico8') %}
+{% set picotron = (TARGET == 'picotron') %}
+{% set webappname = 'Shrinko8' if pico8 else 'Shrinkotron' if picotron else '???' %}
+{% set targetname = 'Pico-8' if pico8 else 'Picotron' if picotron else '???' %}
+{% set srcext = 'p8' if pico8 else 'p64' if picotron else 'p?' %}
+{% set pngwidth = 160 if pico8 else 512/2 if picotron else 0 %}
+{% set pngheight = 205 if pico8 else 384/2 if picotron else 0 %}
+{% macro display(cond) %}{{'' if cond else 'display: none'}}{% endmacro %}
+<html style="height: 100%" data-target="{{TARGET}}">
   <head>
-    <title>Shrinko8 webapp</title>
+    <title>{{webappname}} webapp</title>
     <meta charset="utf-8">
     <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
     <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
@@ -131,8 +139,8 @@
       <div class="flex-column margin" style="flex: 1">
         <div class="flex-row">
           <div style="flex: 1">
-            <label style="font-weight: bold;">Open your Pico-8 file:
-              <input id="input-file" type="file" multiple style="margin-bottom: 10px;" accept=".p8,.lua,.png,.rom,.js,.pod"
+            <label style="font-weight: bold;">Open your {{targetname}} file:
+              <input id="input-file" type="file" multiple style="margin-bottom: 10px;" accept=".{{srcext}},.lua,.png,.rom{{',.js,.pod' if pico8}}"
                     onchange="loadSelectedFiles(this)" />
             </label>
             <span id="input-extra-files" style="display: none">
@@ -142,14 +150,18 @@
           <div>
             <span id="version" style="vertical-align: super"></span>
             <a href="https://github.com/thisismypassport/shrinko8" target="_blank">
-              <svg width="24" height="24" viewBox="0 0 98 96"><path fill-rule="evenodd" clip-rule="evenodd" d="M48.854 0C21.839 0 0 22 0 49.217c0 21.756 13.993 40.172 33.405 46.69 2.427.49 3.316-1.059 3.316-2.362 0-1.141-.08-5.052-.08-9.127-13.59 2.934-16.42-5.867-16.42-5.867-2.184-5.704-5.42-7.17-5.42-7.17-4.448-3.015.324-3.015.324-3.015 4.934.326 7.523 5.052 7.523 5.052 4.367 7.496 11.404 5.378 14.235 4.074.404-3.178 1.699-5.378 3.074-6.6-10.839-1.141-22.243-5.378-22.243-24.283 0-5.378 1.94-9.778 5.014-13.2-.485-1.222-2.184-6.275.486-13.038 0 0 4.125-1.304 13.426 5.052a46.97 46.97 0 0 1 12.214-1.63c4.125 0 8.33.571 12.213 1.63 9.302-6.356 13.427-5.052 13.427-5.052 2.67 6.763.97 11.816.485 13.038 3.155 3.422 5.015 7.822 5.015 13.2 0 18.905-11.404 23.06-22.324 24.283 1.78 1.548 3.316 4.481 3.316 9.126 0 6.6-.08 11.897-.08 13.526 0 1.304.89 2.853 3.316 2.364 19.412-6.52 33.405-24.935 33.405-46.691C97.707 22 75.788 0 48.854 0z" fill="#24292f"/></svg>
-            </a>
+              <svg width="24" height="24" viewBox="0 0 98 96"><path fill-rule="evenodd" clip-rule="evenodd" d="M48.854 0C21.839 0 0 22 0 49.217c0 21.756 13.993 40.172 33.405 46.69 2.427.49 3.316-1.059 3.316-2.362 0-1.141-.08-5.052-.08-9.127-13.59 2.934-16.42-5.867-16.42-5.867-2.184-5.704-5.42-7.17-5.42-7.17-4.448-3.015.324-3.015.324-3.015 4.934.326 7.523 5.052 7.523 5.052 4.367 7.496 11.404 5.378 14.235 4.074.404-3.178 1.699-5.378 3.074-6.6-10.839-1.141-22.243-5.378-22.243-24.283 0-5.378 1.94-9.778 5.014-13.2-.485-1.222-2.184-6.275.486-13.038 0 0 4.125-1.304 13.426 5.052a46.97 46.97 0 0 1 12.214-1.63c4.125 0 8.33.571 12.213 1.63 9.302-6.356 13.427-5.052 13.427-5.052 2.67 6.763.97 11.816.485 13.038 3.155 3.422 5.015 7.822 5.015 13.2 0 18.905-11.404 23.06-22.324 24.283 1.78 1.548 3.316 4.481 3.316 9.126 0 6.6-.08 11.897-.08 13.526 0 1.304.89 2.853 3.316 2.364 19.412-6.52 33.405-24.935 33.405-46.691C97.707 22 75.788 0 48.854 0z" fill="#24292f">
+            </svg></a>
+            <select id="target" style="vertical-align: super" onchange="onTargetChange()">
+              <option value="pico8" {{'selected' if pico8}}>Pico-8</option>
+              <option value="picotron" {{'selected' if picotron}}>Picotron</option>
+            </select>
           </div>
         </div>
         <div class="base" style="flex: 1">
           <div id="input-code" class="ace-textarea full" 
-               placeholder="You can also paste your code here, or drag & drop a Pico-8 file here.
-It can be a .p8 file, a .png cart, and more."></div>
+               placeholder="You can also paste your code here, or drag & drop a {{targetname}} file here.
+It can be a .{{srcext}} file, a .png cart, and more."></div>
           <div id="input-overlay" class="overlay">
             <div class="center">Opening...</div>
           </div>
@@ -198,8 +210,9 @@ It can be a .p8 file, a .png cart, and more."></div>
             <label style="display: block; margin-bottom: 10px;">Target format:
               <select id="minify-format">
                 <option value="png">.PNG cart</option>
-                <option value="p8">.P8 file</option>
+                <option value="{{srcext}}">.{{srcext|upper}} file</option>
                 <option value="rom">.ROM file</option>
+                {% if pico8 %}
                 <option value="" disabled>──────────</option>
                 <option value="lua">.LUA file (Code only)</option>
                 <option value="tiny-rom">Tiny .ROM file (Code only)</option>
@@ -208,6 +221,11 @@ It can be a .p8 file, a .png cart, and more."></div>
                 <option value="bin">All HTML + Binary exports</option>
                 <option value="js">.JS file (Advanced)</option>
                 <option value="pod">.POD file (Advanced)</option>
+                {% elif picotron %}
+                <option value="dir">Directory (Zipped)</option>
+                <option value="" disabled>──────────</option>
+                <option value="lua">main.lua file (Main code only)</option>
+                {% endif %}
               </select>
             </label>
             
@@ -230,13 +248,13 @@ It can be a .p8 file, a .png cart, and more."></div>
               <div id="minify-binary-div" class="full flex-row">
                 <div>
                   <div style="cursor: pointer" onclick="saveOutputFile()">
-                    <img id="minify-image" width="160" height="205" style="margin: 10px 0"></img>
+                    <img id="minify-image" width="{{pngwidth}}" height="{{pngheight}}" style="margin: 10px 0"></img>
                     <svg id="file-icon" width="86" height="86" viewBox="0 0 128 128"><path d="m82 6h-60v115h85v-90h-25v-25l25 25" fill="none" stroke="black"/></svg>
                   </div>
                   <button type="button" onclick="saveOutputFile()">Download</button>
                 </div>
                 <div style="flex: 1" class="flex-column margin">
-                  <div>Preview:<span style="color: gray"> (Shrinko-8 can compress better than Pico-8 itself, so you're recommended to 
+                  <div>Preview:<span style="color: gray"> ({{webappname}} can compress better than {{targetname}} itself, so you're recommended to 
                     <a onclick="saveOutputFile()">download</a> the file instead of copy/pasting)</span></div>
                   <div id="minify-preview" class="ace-textarea" style="flex: 1; margin-top: 10px" readonly></div>
                 </div>
@@ -258,7 +276,7 @@ It can be a .p8 file, a .png cart, and more."></div>
               </div>
               <div id="loading-overlay" class="overlay">
                 <div class="center">
-                  <h1 style="text-align: center">Loading Shrinko8...</h1>
+                  <h1 style="text-align: center">Loading {{webappname}}...</h1>
                   <progress id="loading-progress" value="0" max="100" style="width: 500px; height: 30px"></progress>
                   <h1 id="loading-failed" style="display: none; color: red">Failed! (See console for the gory details)</h1>
                 </div>
@@ -288,7 +306,7 @@ It can be a .p8 file, a .png cart, and more."></div>
                 </div>
               </div>
 
-              <label style="display: block; margin-top: 10px">Focus on reducing:
+              <label style="display: block; margin-top: 10px; {{display(pico8)}}">Focus on reducing:
                 <select id="minify-focus">
                   <option value="">(Balanced)</option>
                   <option value="--focus-tokens">Tokens</option>
@@ -304,12 +322,12 @@ It can be a .p8 file, a .png cart, and more."></div>
             
             <div style="flex: 0">
               <table class="count-table" style="margin-top: 15px">
-                <tr>
+                <tr style="{{display(pico8)}}">
                   <td>Tokens: </td>
                   <td id="count-tokens" style="width: 50px">0</td>
                   <td id="percent-tokens" style="width: 50px">0%</td>
                 </tr>
-                <tr>
+                <tr style="{{display(pico8)}}">
                   <td>Chars: </td>
                   <td id="count-chars">0</td>
                   <td id="percent-chars">0%</td>
@@ -354,9 +372,9 @@ It can be a .p8 file, a .png cart, and more."></div>
 
         <div id="tab-advanced" class="flex-column margin" style="flex: 1">
           <textarea id="extra-args" style="flex: 3; margin-bottom: 10px" spellcheck="false"
-              placeholder="You can add custom Shrinko8 command line arguments here (see readme)"></textarea>
+              placeholder="You can add custom {{webappname}} command line arguments here (see readme)"></textarea>
           <div id="script-code" class="ace-textarea" style="flex: 7"
-              placeholder="You can paste a custom python script here that customizes how Shrinko8 operates.
+              placeholder="You can paste a custom python script here that customizes how {{webappname}} operates.
 For example, you can paste the example sublanguage from the shrinko8 readme"></div>
         </div>
       </div>
