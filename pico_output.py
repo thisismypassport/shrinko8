@@ -129,7 +129,10 @@ def format_luanum(value, sign=None, base=None):
                 minvalue = decvalue
 
         if not base:
-            minvalue = hexvalue if len(hexvalue) < len(decvalue) else decvalue
+            if value == 0x8000000000000000:
+                minvalue = hexvalue # else, it won't be parsed as an integer
+            else:
+                minvalue = hexvalue if len(hexvalue) < len(decvalue) else decvalue
 
         if sign:
             minvalue = sign + minvalue

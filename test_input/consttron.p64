@@ -85,6 +85,7 @@ if (ERROR) ?1 + me
 -- sub
 ?1 - 2
 ?0x8000000000000000+1
+?-0x7fffffffffffffff-1
 ?0 - 1e-323
 if (ERROR) ?"a" - "a"
 -- mul

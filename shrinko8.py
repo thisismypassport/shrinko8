@@ -238,7 +238,6 @@ def create_main(lang):
         else:
             pgroup.set_defaults(avoid_base64=False)
         
-
         return parser
 
     def default_format(input, for_output=False):

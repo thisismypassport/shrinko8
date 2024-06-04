@@ -66,6 +66,7 @@ if f then?l+1
 end if f then?1+l
 end?-1
 ?0x8000000000000001
+?0x8000000000000000
 ?-1e-323
 if f then?"a"-"a"
 end?48

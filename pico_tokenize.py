@@ -1,6 +1,6 @@
 from utils import *
 from pico_preprocess import k_wspace
-from pico_defs import Language, num_to_fixnum, num_to_luaint, is_luaint_in_range
+from pico_defs import Language, k_fixnum_mask, num_to_fixnum, num_to_luaint, is_luaint_in_range
 
 keywords = {
     "and", "break", "do", "else", "elseif", "end", "false", 
@@ -572,6 +572,7 @@ def count_tokens(tokens):
 def parse_fixnum(origstr):
     """parse a fixnum from a pico8 string"""
     str = origstr.lower()
+    
     neg = bnot = False
     if str.startswith("-"):
         str = str[1:]
@@ -607,25 +608,32 @@ def parse_fixnum(origstr):
     
     if str:
         throw(f"Invalid pico8 number: {origstr}")
-    if neg:
-        value = -value
-    elif bnot:
-        value = ~value
 
-    return num_to_fixnum(value)
+    fixnum = num_to_fixnum(value)
+    if neg:
+        fixnum = -fixnum & k_fixnum_mask
+    elif bnot:
+        fixnum = ~fixnum & k_fixnum_mask
+
+    return fixnum
 
 def parse_luanum(origstr):
     str = origstr.lower()
+
+    neg = False
+    if str.startswith("-"):
+        str = str[1:]
+        neg = True
 
     try:
         if str.startswith("0x"):
             if "." in str or "p" in str:
                 try:
-                    return float.fromhex(str)
+                    value = float.fromhex(str)
                 except OverflowError:
-                    return float('inf')
+                    value = float('inf')
             else:
-                return num_to_luaint(int(str, base=16))
+                value = num_to_luaint(int(str, base=16))
         
         elif str.startswith("0b"):
             # TODO: recheck this if ever fixed to support exponents?
@@ -636,23 +644,27 @@ def parse_luanum(origstr):
             value = int(str, base=2)
             if dotpos >= 0:
                 try:
-                    return math.ldexp(value, dotpos - len(str))
+                    value = math.ldexp(value, dotpos - len(str))
                 except OverflowError:
-                    return float('inf')
+                    value = float('inf')
             else:
-                return num_to_luaint(value)
+                value = num_to_luaint(value)
             
         else:
             if "." in str or "e" in str:
-                return float(str) # no OverflowError here
+                value = float(str) # no OverflowError here
             else:
                 value = int(str)
-                if is_luaint_in_range(value):
-                    return num_to_luaint(value)
+                if is_luaint_in_range(value): # intentionally disregarding the possibility of 'neg'
+                    value = num_to_luaint(value)
                 else:
-                    return float(value)
+                    value = float(value)
     except ValueError:
         throw(f"Invalid lua number: {origstr}")
+    
+    if neg:
+        value = -value
+    return value
 
 k_char_escapes = {
     '*': '\1', '#': '\2', '-': '\3', '|': '\4', '+': '\5', '^': '\6',

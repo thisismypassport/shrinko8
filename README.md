@@ -1,6 +1,6 @@
 # Shrinko8
 
-A set of Pico-8 cart tools, with a focus on shrinking code size.
+A set of Pico-8 & Picotron cart tools, with a focus on shrinking code size.
 
 ## [You can run it online here.](https://thisismypassport.github.io/shrinko8)
 
@@ -932,5 +932,6 @@ Cart manipulation features:
 
 Notes:
 * Shrinkotron assumes calls to `include` are used to include other unmodified lua files. If this is not the case, minify may break even under `--minify-safe-only`
-* Currently, shrinkotron does not remove metadata. This is planned for the future, however.
-* Currently, shrinkotron does not touch data files (gfx/sfx/etc). It may play with their compression in the future, however.
+* Currently, Shrinkotron does not remove metadata. This is planned for the future, however.
+* Currently, Shrinkotron does not touch data files (gfx/sfx/etc). It may play with their compression in the future, however.
+* As Picotron evolves, there might be new globals or table keys that Shrinkotron isn't aware of. You can report such cases and use [`--preserve`](#preserving-identifiers-across-the-entire-cart) meanwhile.

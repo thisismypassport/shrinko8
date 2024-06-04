@@ -293,8 +293,7 @@ def num_to_luaint(value):
     return value
 
 def is_luaint_in_range(value):
-    # observed to not include smallest int
-    return -0x7fffffffffffffff <= value <= 0x7fffffffffffffff
+    return -0x8000000000000000 <= value <= 0x7fffffffffffffff
 
 # floats are represented as-is, but here are some utils
 
