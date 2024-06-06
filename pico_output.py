@@ -14,8 +14,8 @@ def float_str_add_1(str):
     else:
         return str[:-1] + chr(ord(str[-1]) + 1)
 
-def float_str_minify(value, str, parse=float, keep_float=False):
-    ok = parse(str) == value
+def float_str_minify(str, parse, cmpval, keep_float=False):
+    ok = parse(str) == cmpval
 
     while "." in str:
         ch = str[-1]
@@ -29,14 +29,14 @@ def float_str_minify(value, str, parse=float, keep_float=False):
 
         nextvalue = str[:-1]
         nextupvalue = float_str_add_1(nextvalue)
-        if parse(nextvalue) == value:
+        if parse(nextvalue) == cmpval:
             str = nextvalue
             ok = True
-        elif parse(nextupvalue) == value:
+        elif parse(nextupvalue) == cmpval:
             str = nextupvalue
             ok = True
         else:
-            #check(ok, "float_str_minify error") # can this happen? YES!
+            check(ok, "float_str_minify error")
             break
     
     if str.startswith("0.") and str != "0.":
@@ -69,7 +69,7 @@ def format_fixnum(value, sign=None, base=None):
         
     if base is None or base == 10:        
         numvalue = value / (1 << 16)
-        decvalue = float_str_minify(value, "%.6f" % numvalue, parse_fixnum)
+        decvalue = float_str_minify("%.6f" % numvalue, parse_fixnum, value)
             
         if base:
             minvalue = decvalue
@@ -94,11 +94,9 @@ def format_fixnum(value, sign=None, base=None):
 def float_sign(value):
     return "-" if float_is_negative(value) else ""
 
-def float_hex(value, keep_float=False): # like value.hex(), except doesn't use an exponent
-    precision = 56
-    dotpos = precision // 4
-    hexval = hex(int(abs(value) * (1 << precision)))[2:].rjust(dotpos, '0')
-    result = f"0x{hexval[:-dotpos]}.{hexval[-dotpos:]}".rstrip("0")
+def float_hex(value, hexdigits, keep_float=False): # like value.hex(), except doesn't use an exponent
+    hexval = hex(int(abs(value) * (1 << (hexdigits * 4))))[2:].rjust(hexdigits, '0')
+    result = f"0x{hexval[:-hexdigits]}.{hexval[-hexdigits:]}".rstrip("0")
     if not keep_float:
         result = result.rstrip(".")
     if result in ("0x", "0x."):
@@ -129,7 +127,7 @@ def format_luanum(value, sign=None, base=None):
                 minvalue = decvalue
 
         if not base:
-            if value == 0x8000000000000000:
+            if value >= 0x8000000000000000:
                 minvalue = hexvalue # else, it won't be parsed as an integer
             else:
                 minvalue = hexvalue if len(hexvalue) < len(decvalue) else decvalue
@@ -166,15 +164,15 @@ def format_luanum(value, sign=None, base=None):
             raise ValueError("nan not supported") # could output <inf>*0 in parens? (0/0 doesn't currently nan)
 
         else:
-            few_digits = value == 0 or 1e-30 <= abs(value) <= 1e30 # to avoid needless computation (also avoids python denormal bug)
+            # TODO: this is very not optimal (but at least it's correct this time...)
             
             if base is None or base == 16:
                 manvalue, expvalue = math.frexp(value)
                 manvalue *= 2; expvalue -= 1 # the 1..2 range is better for us
-                expvalue = f"{float_hex(manvalue)}p{expvalue}"
+                expvalue = f"{float_hex(manvalue, 56)}p{expvalue}"
 
-                if few_digits:
-                    hexvalue = float_hex(value, keep_float=True)
+                if value == 0 or 1e-4 <= abs(value) <= 1e24:
+                    hexvalue = float_hex(value, 88, keep_float=True)
                     hexvalue = expvalue if len(expvalue) < len(hexvalue) else hexvalue
                 else:
                     hexvalue = expvalue
@@ -183,13 +181,12 @@ def format_luanum(value, sign=None, base=None):
                     minvalue = hexvalue
                 
             if base is None or base == 10:
-                expvalue = int(math.log10(abs(value))) if value else 0
-                manvalue = value / math.pow(10, expvalue)
-                manvalue = float_str_minify(manvalue, "%.19f" % manvalue)
-                expvalue = f"{manvalue}e{expvalue}"
+                manstr, expstr = ("%.19e" % value).split("e")
+                expstr = f"e{int(expstr)}"
+                expvalue = float_str_minify(manstr, lambda v: float(v + expstr), value) + expstr
 
-                if few_digits:
-                    decvalue = float_str_minify(value, "%.19f" % value, keep_float=True)
+                if value == 0 or 1e-3 <= abs(value) <= 1e21:
+                    decvalue = float_str_minify("%.24f" % value, float, value, keep_float=True)
                     decvalue = expvalue if len(expvalue) < len(decvalue) else decvalue
                 else:
                     decvalue = expvalue
