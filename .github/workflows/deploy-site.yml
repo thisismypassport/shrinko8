@@ -32,7 +32,7 @@ jobs:
         
       - name: Zip
         run: |
-          zip -r site/shrinko8.zip `cat files.lst`
+          zip -r site/shrinko.zip `cat files.lst`
       
       - name: Create shrinkotron html
         uses: cuchi/jinja2-action@v1.2.2
