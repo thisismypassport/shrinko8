@@ -18,8 +18,8 @@ def init_tests(opts): # use: opts.exe and opts.profile
     if g_use_exe:
         global g_exe_paths
         g_exe_paths = {
-            Target.pico8: "dist/shrinko8/shrinko8.exe",
-            Target.picotron: "dist/shrinko8/shrinkotron.exe",
+            Target.pico8: "dist/shrinko/shrinko8.exe",
+            Target.picotron: "dist/shrinko/shrinkotron.exe",
         }
     else:
         global g_code_files

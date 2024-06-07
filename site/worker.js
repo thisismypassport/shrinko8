@@ -73,7 +73,7 @@ async function initShrinko() {
         await pyodide.loadPackage("pillow");
         initProgress = 90;
 
-        let response = await fetch("shrinko8.zip");
+        let response = await fetch("shrinko.zip");
         await pyodide.unpackArchive(await response.arrayBuffer(), "zip");
 
         self.shrinko_main =
@@ -267,23 +267,23 @@ let api = {
         await initPromise;
         
         if (!self.shrinko_run_tests) {
-            let response = await fetch("shrinko8_test.zip");
+            let response = await fetch("shrinko_test.zip");
             await pyodide.unpackArchive(await response.arrayBuffer(), "zip");
-
-            self.shrinko_run_tests_args = [];
-            if (argsStr) {
-                self.shrinko_run_tests_args.push(...shlex(argsStr))
-            }
-            if (fs.analyzePath("private_pico_8").exists) {
-                // it'll pick up the pico8.dat based on this fictive path
-                self.shrinko_run_tests_args.push("-p", "private_pico_8/pico8.exe", "-P");
-            }
 
             let run_tests = pyodide.pyimport("run_tests")
             self.shrinko_run_tests = run_tests.main
         }
 
-        let [exitcode, output] = run_main(self.shrinko_run_tests, self.shrinko_run_tests_args);
+        let args = [];
+        if (argsStr) {
+            args.push(...shlex(argsStr))
+        }
+        if (fs.analyzePath("private_pico_8").exists) {
+            // it'll pick up the pico8.dat based on this fictive path
+            args.push("-p", "private_pico_8/pico8.exe", "-P");
+        }
+
+        let [exitcode, output] = run_main(self.shrinko_run_tests, args);
 
         let saveData = undefined
         if (save) {

@@ -243,7 +243,7 @@ def create_main(lang):
         ext = path_extension(input)[1:].lower()
         if ext in CartFormatCls._values and CartFormatCls(ext).is_ext:
             return CartFormatCls(ext)
-        elif CartFormatCls.default_dir and path_is_native(input) and path_is_dir(input):
+        elif CartFormatCls.default_dir and path_is_native(input) and (path_is_dir(input) or not path_basename(input)):
             return CartFormatCls.default_dir
         elif for_output:
             return CartFormatCls.default_src

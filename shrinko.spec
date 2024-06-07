@@ -8,8 +8,8 @@ excludes = ['packaging']
 ana = Analysis(
     ['shrinko8.py'],
     pathex=[],
-    binaries=[('template.png', '.'), ('font.png', '.')],
-    datas=[],
+    binaries=[],
+    datas=[('template.png', '.'), ('font.png', '.')],
     hiddenimports=hidden_imports,
     excludes=excludes,
     win_no_prefer_redirects=False,
@@ -22,7 +22,7 @@ ana_tron = Analysis(
     ['shrinkotron.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('template64.png', '.'), ('font64.png', '.')],
     hiddenimports=hidden_imports,
     excludes=excludes,
     win_no_prefer_redirects=False,
@@ -30,9 +30,6 @@ ana_tron = Analysis(
     cipher=block_cipher,
     noarchive=True,
 )
-
-MERGE((ana, "shrinko8", "shrinko8"),
-      (ana_tron, "shrinkotron", "shrinkotron"))
 
 pyz = PYZ(ana.pure, ana.zipped_data, cipher=block_cipher)
 
@@ -88,5 +85,5 @@ coll = COLLECT(
     strip=False,
     upx=False,
     upx_exclude=[],
-    name='shrinko8',
+    name='shrinko',
 )
