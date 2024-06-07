@@ -249,7 +249,9 @@ It can be a .{{srcext}} file, a .png cart, and more."></div>
                 <div>
                   <div style="cursor: pointer" onclick="saveOutputFile()">
                     <img id="minify-image" width="{{pngwidth}}" height="{{pngheight}}" style="margin: 10px 0"></img>
-                    <svg id="file-icon" width="86" height="86" viewBox="0 0 128 128"><path d="m82 6h-60v115h85v-90h-25v-25l25 25" fill="none" stroke="black"/></svg>
+                    <svg id="file-icon" width="86" height="86" viewBox="0 0 128 128"><path d="m82 6h-60v115h85v-90h-25v-25l25 25" fill="none" stroke="black"/>
+                      <text id="file-icon-text" x="64" y="74" fill="gray" text-anchor="middle"></text>
+                    </svg>
                   </div>
                   <button type="button" onclick="saveOutputFile()">Download</button>
                 </div>

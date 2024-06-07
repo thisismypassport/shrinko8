@@ -457,15 +457,23 @@ function copyUrlToClipboard() {
     $("#minify-url-copied").show();
 }
 
-// download the output file
-async function saveOutputFile() {
-    let format = $("#minify-format").val();
-    let output = outputCache[format];
-
+function getFormatExt(format) {
     let ext = format;
     if (ext == "tiny-rom") {
         ext = "rom";
     }
+    if (isFormatNeedZip(format)) {
+        ext = "zip"
+    }
+    return ext;
+}
+
+// download the output file
+async function saveOutputFile() {
+    let format = $("#minify-format").val();
+    let output = outputCache[format].output;
+
+    let ext = getFormatExt(format);
     if (ext == "png" || ext == "rom") {
         ext = srcExt + "." + ext;
     }
@@ -482,7 +490,6 @@ async function saveOutputFile() {
         type = "image/png";
     } else if (isFormatNeedZip(format)) {
         type = "application/zip"
-        ext = "zip"
     } else {
         type = "application/octet-stream";
     }
@@ -629,36 +636,42 @@ async function doMinify() {
         let extraNames = isFormatExport(format) ? inputMgr.extraNames : undefined;
 
         let [code, stdouterr, output, preview] = await doShrinko(args, encoding, usePreview, doZip, extraNames);
-
-        stdouterr = applyCounts(stdouterr);
-
-        if (code != 0) {
-            applyErrors(code, stdouterr, "#minify-error-output");
-        } else {
-            if (isFormatText(format)) {
-                $("#minify-code").data("editor").setValue(output, -1);
-            } else if (isFormatUrl(format)) {
-                $("#minify-url").attr("href", output).text(output);
-                $("#minify-url-preview").data("editor").setValue(preview, -1);
-                $("#minify-url-copied").hide();
-            } else {
-                if (isFormatImg(format)) {
-                    setImageUrl("#minify-image", output);
-                }
-                $("#minify-preview").data("editor").setValue(preview, -1);
-            }
-            
-            applyErrors(2, stdouterr, "#minify-diag-output");
-        }
-
-        outputCache[format] = code != 0 ? false : output;
-        $("#minify-error-overlay").toggle(code != 0);
-        $("#minify-diag-output").toggle(code == 0 && stdouterr !== "");
+        
+        outputCache[format] = {code, stdouterr, output, preview};
+        updateMinifyResults(format);
     } finally {
         if (--activeMinifies == 0) {
             $("#minify-overlay").hide();
         }
     }
+}
+
+function updateMinifyResults(format) {
+    let {code, stdouterr, output, preview} = outputCache[format];
+
+    stdouterr = applyCounts(stdouterr);
+
+    if (code != 0) {
+        applyErrors(code, stdouterr, "#minify-error-output");
+    } else {
+        if (isFormatText(format)) {
+            $("#minify-code").data("editor").setValue(output, -1);
+        } else if (isFormatUrl(format)) {
+            $("#minify-url").attr("href", output).text(output);
+            $("#minify-url-preview").data("editor").setValue(preview, -1);
+            $("#minify-url-copied").hide();
+        } else {
+            if (isFormatImg(format)) {
+                setImageUrl("#minify-image", output);
+            }
+            $("#minify-preview").data("editor").setValue(preview, -1);
+        }
+        
+        applyErrors(2, stdouterr, "#minify-diag-output");
+    }
+
+    $("#minify-error-overlay").toggle(code != 0);
+    $("#minify-diag-output").toggle(code == 0 && stdouterr !== "");
 }
 
 let activeLints = 0;
@@ -682,14 +695,19 @@ async function doLint() {
 
         let [code, stdouterr] = await doShrinko(args);
 
-        applyErrors(code, stdouterr, "#lint-output");
-
-        outputCache.lint = true;
+        outputCache.lint = {code, stdouterr};
+        updateLintResults();
     } finally {
         if (--activeLints == 0) {
             $("#lint-overlay").hide();
         }
     }
+}
+
+function updateLintResults() {
+    let {code, stdouterr} = outputCache.lint;
+
+    applyErrors(code, stdouterr, "#lint-output");
 }
 
 // do the shrinko action for the current tab. returns awaitable
@@ -705,12 +723,16 @@ function doShrinkoAction() {
             if (!(format in outputCache)) {
                 outputCache[format] = null;
                 return doMinify();
+            } else {
+                updateMinifyResults(format);
             }
             break;
         } case 1: { // lint
             if (!("lint" in outputCache)) {
                 outputCache.lint = null;
                 return doLint();
+            } else {
+                updateLintResults();
             }
             break;
         }
@@ -744,8 +766,8 @@ function onMinifyFormatChange(event) {
     $("#row-compressed").toggle(!isFormatText(format) && !isFormatUrl(format));
     $("#row-url-compressed").toggle(isFormatUrl(format));
     $("#no-row-compressed").toggle(isFormatText(format));
-    $("#minify-error-overlay").toggle(outputCache[format] === false);
     $("#minify-pico8dat-overlay").toggle(isFormatExport(format) && !hasPico8Dat);
+    $("#file-icon-text").text(getFormatExt(format).toUpperCase());
 
     if (isFormatText(format)) {
         initAceIfNeeded("#minify-code", "lua");
