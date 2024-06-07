@@ -1,6 +1,6 @@
 'use strict';
 importScripts("https://cdn.jsdelivr.net/npm/comlink@4.4.1/dist/umd/comlink.min.js");
-importScripts("https://cdn.jsdelivr.net/pyodide/v0.23.3/full/pyodide.js")
+importScripts("https://cdn.jsdelivr.net/pyodide/v0.26.0/full/pyodide.js")
 importScripts("utils.js")
 
 let targetLang = new URLSearchParams(location.search).get("target");
