@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from utils import *
 from pico_process import PicoContext, process_code, CartSource, CustomPreprocessor, ErrorFormat
 from pico_compress import write_code_size, write_compressed_size, CompressionTracer
@@ -41,7 +40,7 @@ def create_main(lang):
     is_pico8 = lang == Language.pico8
     is_picotron = lang == Language.picotron
 
-    if lang == Language.pico8:
+    if is_pico8:
         CartFormatCls = CartFormat
         CartSourceCls = CartSource
         ContextCls = PicoContext
@@ -58,7 +57,7 @@ def create_main(lang):
 
         label_section = "label"
 
-    elif lang == Language.picotron:
+    elif is_picotron:
         CartFormatCls = Cart64Format
         CartSourceCls = Cart64Source
         ContextCls = PicotronContext
@@ -637,8 +636,3 @@ def create_main(lang):
             eprint("ERROR: " + str(err))
             return 1
     return main
-
-main = create_main(Language.pico8)
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))

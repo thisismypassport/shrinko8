@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from shrinko8 import create_main
+from shrinko import create_main
 from pico_defs import Language
 import sys
 
