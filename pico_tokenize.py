@@ -196,21 +196,24 @@ class Token(TokenNodeBase):
 Token.none = Token.dummy(None)
 
 class ConstToken(Token):
-    def __init__(m, type, other, value=None, parsed_value=None):
-        super().__init__(type, value, other.source, other.idx, other.endidx, lang=other.lang, modified=True)
+    def __init__(m, type, parsed_value, other):
+        super().__init__(type, None, other.source, other.idx, other.endidx, lang=other.lang, modified=True)
         m.parsed_value = parsed_value
-        if value is None:
-            lazy_property.clear(m, "value")
+        lazy_property.clear(m, "value")
 
     @lazy_property
     def value(m): # used during going over chars for rename (tsk...) and for output when not minify-tokens
                   # (but not used for output under minify-tokens)
         if isinstance(m.parsed_value, (int, float)):
-            allow_unary = can_replace_with_unary(m.parent)
+            allow_unary = can_replace_with_unary(m.parent) if m.parent else True
             format_num = format_fixnum if m.lang == Language.pico8 else format_luanum
             return format_num(m.parsed_value, sign=None if allow_unary else "")
         else:
             return format_string_literal(m.parsed_value, long=False)
+
+    @post_property_change
+    def parent(m, old, new):
+        lazy_property.clear(m, "value")
 
 class CommentHint(Enum):
     none = preserve = lint = keep = ...

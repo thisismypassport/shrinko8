@@ -298,9 +298,10 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
 
 def simplify_code(ctxt, root, minify, errors):
     fold = minify.get("consts", True)
+    focus = Focus(minify.get("focus"))
         
     if fold:
-        fold_consts(ctxt, root, errors)
+        fold_consts(ctxt, focus, root, errors)
 
 def echo_code(code, ctxt, echo=True):
     code = from_langstr(code, ctxt.lang)
@@ -313,7 +314,7 @@ def echo_code(code, ctxt, echo=True):
 from pico_tokenize import tokenize, count_tokens
 from pico_parse import parse, create_super_root, get_sub_root
 from pico_lint import lint_code
-from pico_minify import minify_code, minify_needs_comments
+from pico_minify import minify_code, minify_needs_comments, Focus
 from pico_unminify import unminify_code
 from pico_constfold import fold_consts
 from pico_output import output_code

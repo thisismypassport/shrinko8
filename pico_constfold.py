@@ -445,20 +445,27 @@ def get_const(node):
     elif node.type == NodeType.group:
         return get_const(node.child)
     else:
-        return None
+        return getattr(node, "worse_const", None)
 
-def set_const(node, value):
+def set_const(node, value, ctxt, focus, force):
     if value.is_number:
-        token = ConstToken(TokenType.number, node, parsed_value=value.value)
+        token = ConstToken(TokenType.number, value.value, node)
     elif value.type == LuaType.string:
-        token = ConstToken(TokenType.string, node, parsed_value=value.value)
+        token = ConstToken(TokenType.string, value.value, node)
     elif value.type == LuaType.boolean:
-        token = ConstToken(TokenType.keyword, node, value="true" if value.value else "false")
+        token = Token.synthetic(TokenType.keyword, "true" if value.value else "false", node)
     elif value.type == LuaType.nil:
-        token = ConstToken(TokenType.keyword, node, value="nil")
+        token = Token.synthetic(TokenType.keyword, "nil", node)
     else:
         assert False, "unexpected const value: %s" % value
     
+    if focus == Focus.chars and not force:
+        # the new token may take more chars than before
+        # though it may still be useful when further folded
+        if len(token.value) > len(output_min_wspace(node, ctxt)):
+            node.worse_const = value
+            return
+
     node.replace_with(create_const_node(token))
 
 def fixup_syntax_between(parent, prev, next):
@@ -556,7 +563,7 @@ def remove_else_node(node):
     end_token = Token.synthetic(TokenType.keyword, "end", node, append=True)
     node.append_existing(end_token)
 
-def fold_consts(ctxt, root, errors):
+def fold_consts(ctxt, focus, root, errors):
     lang = ctxt.lang
 
     def add_error(msg, node):
@@ -581,7 +588,7 @@ def fold_consts(ctxt, root, errors):
                 if child_const:
                     constval = func(lang, child_const)
                     if constval:
-                        set_const(node, constval)
+                        set_const(node, constval, ctxt, focus, in_const_ctxt)
 
         elif node.type == NodeType.binary_op:
             func = k_const_binary_ops.get(node.op, None)
@@ -600,11 +607,11 @@ def fold_consts(ctxt, root, errors):
                         if constval is node.right:
                             node.replace_with(node.right)
                         else:
-                            set_const(node, constval)
+                            set_const(node, constval, ctxt, focus, in_const_ctxt)
 
         elif node.type == NodeType.var and node.var and not node.new and not node.assignment:
             if node.var.constval:
-                set_const(node, node.var.constval)
+                set_const(node, node.var.constval, ctxt, focus, in_const_ctxt or node.var.is_const)
             elif node.var.is_const:
                 add_error(f"'{node.name}' is marked as constant but is used above where it is assigned to", node)
                 node.var.is_const = False
@@ -628,7 +635,7 @@ def fold_consts(ctxt, root, errors):
                 else:
                     constval = func(lang, *arg_consts)
                     if constval:
-                        set_const(node, constval)
+                        set_const(node, constval, ctxt, focus, in_const_ctxt)
         
         elif node.type == NodeType.if_:
             constval = get_const(node.cond)
@@ -693,7 +700,8 @@ def fold_consts(ctxt, root, errors):
                     node.sources[i].traverse_nodes(pre=skip_special, post=update_node_constval)
             
             if constval:
-                if is_const_ctxt or not isinstance(constval, LuaString): # string const folding may balloon total char count
+                const_unwanted = isinstance(constval, LuaString) or focus == Focus.chars # cases likely to make char count increase too much
+                if is_const_ctxt or not const_unwanted:
                     erasable.append(i)
                     if not target.var.constval: # may've been set to something else through ctxt.consts
                         target.var.constval = constval
@@ -739,3 +747,5 @@ def parse_constant(value, lang, as_str=False):
                 return constval
 
 from pico_process import Error, Source
+from pico_minify import Focus
+from pico_output import output_min_wspace

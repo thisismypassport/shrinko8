@@ -177,6 +177,7 @@ def run():
     run_test("constcl-1", "constcl.p8", "constcl-1.p8", "--minify", "--const", "DEBUG", "true", "--const", "SPEED", "2.5", "--str-const", "VERSION", "v1.2")
     run_test("constcl-2", "constcl.p8", "constcl-2.p8", "--minify", "--const", "DEBUG", "true", "--const", "SPEED", "-2.6", "--const", "hero", "~1")
     run_test("constmin", "const.p8", "constmin.p8", "--minify", pico8_output="const.p8.printh")
+    run_test("constchars", "constchars.p8", "constchars.p8", "--minify", "--focus-chars")
 
     if run_test("test", "test.p8", "test.p8", "--minify", "--no-minify-consts", pico8_output_val="DONE"):
         run_test("unmintest", "test.p8", "test-un.p8", "--unminify", from_output=True, pico8_output_val="DONE")
