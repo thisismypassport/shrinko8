@@ -11,7 +11,7 @@ from picotron_cart import Cart64Format, read_cart64, write_cart64, merge_cart64,
 from picotron_cart import write_cart64_compressed_size, write_cart64_version
 import argparse
 
-k_version = 'v1.2.2c'
+k_version = 'v1.2.2d'
 
 def SplitBySeps(val):
     return k_hint_split_re.split(val)
