@@ -636,3 +636,6 @@ def create_main(lang):
             eprint("ERROR: " + str(err))
             return 1
     return main
+
+if __name__ == "__main__":
+    eprint("The correct script to run is shrinko8.py (or shrinkotron.py)")
