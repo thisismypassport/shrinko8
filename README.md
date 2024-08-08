@@ -79,7 +79,7 @@ You can disable parts of the minification process via additional command-line op
 * `--no-minify-lines` : Disable removal of line breaks
 * `--no-minify-comments` : Disable removal of comments (requires `--no-minify-spaces`)
 * `--no-minify-tokens` : Disable removal and alteration of tokens (not including identifier renaming)
-* `--no-minify-reoder` : Disable reordering of statements
+* `--no-minify-reorder` : Disable reordering of statements
 
 You can control how safe the minification is (see [details about unsafe minifications](#pitfalls-of-full-minification)):
 * `--minify-safe-only` : Do only safe minification. Equivalent to specifying all of the below.
@@ -965,6 +965,7 @@ def preprocess_syntax_main(cart, root, on_error, args, **_):
             # the syntax tree format isn't really documented anywhere yet. you can:
             # - check examples of use in pico_lint.py
             # - search for the NodeType you're interested in, in pico_parse.py to see what it contains
+            # - print(node) -- not all fields will be printed, but it'll give you a decent idea of what the token is. see pico_parse.py for full details
 
         def post_visit(node):
             pass # just here as an example
