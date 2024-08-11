@@ -443,7 +443,9 @@ You can combine linting with other operations:
 You can disable certain lints globally via additional command-line options:
 
 * `--no-lint-unused` : Disable lint on unused variables
+    * `--no-lint-unused-global` : Disable lint on unused global variables
 * `--no-lint-duplicate` : Disable lint on duplicate variable names
+    * `--no-lint-duplicate-global` : Disable lint on duplicate variable names between a local and a global
 * `--no-lint-undefined` : Disable lint on undefined variables
 
 Normally, a lint failure prevents cart creation, but `--no-lint-fail` overrides that.
@@ -508,7 +510,7 @@ end
 
 ## Unused variable lints
 
-This lint alerts you when you've declared a local but never used it, which is usually a mistake.
+This lint alerts you when you've declared a variable but never used it, which is usually a mistake.
 
 It also tells you when the *last* parameter of a function is unused, as that's either a mistake or a waste of a token.
 
@@ -519,6 +521,8 @@ do
   do_stuff(x, x)
 end
 ```
+
+If you have false positives in your cart due to globals being used via `_ENV`, you can disable this check just for globals via `--no-lint-unused-global`.
 
 ## Duplicate variable lints
 
@@ -539,6 +543,19 @@ end
 The linter allows duplicate variables if they're all named `_`:
 ```lua
 local _, _, x, y, _, z = stuff()
+```
+
+It also alerts you when you declare a local with the same name as a global you defined or used elsewhere in your cart, which is similarly confusing, E.g.:
+
+```lua
+function maths(arg)
+    return sin(arg) + cos(arg)
+end
+function confess(sin) -- lint warning about sin
+    do_stuff(sin)
+    -- ...
+    show_some_ui(sin(3)) -- oops!
+end
 ```
 
 # Getting Cart Size
@@ -793,13 +810,26 @@ class MySubLanguage(SubLanguageBase):
         # is the token a member in our language? e.g. .my_member / .x
         return token.startswith(".") and self.is_global(token[1:])
         
+    def is_assignment(self, stmt):
+        return len(stmt) > 1 and stmt[1] == "<-" # our lang's assignment token
+
     # for --lint:
 
-    # called to get globals defined within the sub-language's code
+    # called to get globals defined (aka assigned to) within the sub-language's code
     def get_defined_globals(self, **_):
         for stmt in self.stmts:
-            if len(stmt) > 1 and stmt[1] == "<-": # our lang's assignment token
+            if self.is_assignment(stmt):
                 yield stmt[0]
+
+    # called to get globals used (aka read from) within the sub-language's code
+    def get_used_globals(self, **_):
+        for stmt in self.stmts:
+            if self.is_assignment(stmt):
+                stmt = stmt[2:] # ignore assigned to globals
+
+            for token in stmt:
+                if self.is_global(token):
+                    yield token
 
     # called to lint the sub-language's code
     def lint(self, builtins, globals, on_error, **_):

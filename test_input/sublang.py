@@ -20,13 +20,26 @@ class MySubLanguage(SubLanguageBase):
         # is the token a member in our language? e.g. .my_member / .x
         return token.startswith(".") and self.is_global(token[1:])
         
+    def is_assignment(self, stmt):
+        return len(stmt) > 1 and stmt[1] == "<-" # our lang's assignment token
+
     # for --lint:
 
-    # called to get globals defined within the sub-language's code
+    # called to get globals defined (aka assigned to) within the sub-language's code
     def get_defined_globals(self, **_):
         for stmt in self.stmts:
-            if len(stmt) > 1 and stmt[1] == "<-": # our lang's assignment token
+            if self.is_assignment(stmt):
                 yield stmt[0]
+
+    # called to get globals used (aka read from) within the sub-language's code
+    def get_used_globals(self, **_):
+        for stmt in self.stmts:
+            if self.is_assignment(stmt):
+                stmt = stmt[2:] # ignore assigned to globals
+
+            for token in stmt:
+                if self.is_global(token):
+                    yield token
 
     # called to lint the sub-language's code
     def lint(self, builtins, globals, on_error, **_):

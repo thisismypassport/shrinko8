@@ -46,6 +46,12 @@ function f3()
   end
   end
 end
+function maths(arg)
+  return sin(arg) + cos(arg)
+end
+function confess(sin, print)
+  sin(3); print(3)
+end
 -->8
 -- bugs
 function f3:foo()

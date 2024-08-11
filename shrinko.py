@@ -11,7 +11,7 @@ from picotron_cart import Cart64Format, read_cart64, write_cart64, merge_cart64,
 from picotron_cart import write_cart64_compressed_size, write_cart64_version
 import argparse
 
-k_version = 'v1.2.2d'
+k_version = 'v1.2.2e'
 
 def SplitBySeps(val):
     return k_hint_split_re.split(val)
@@ -131,7 +131,9 @@ def create_main(lang):
         pgroup = parser.add_argument_group("lint options")
         pgroup.add_argument("-l", "--lint", action="store_true", help="enable checking the cart for common issues")
         pgroup.add_argument("--no-lint-unused", action="store_true", help="don't print lint warnings on unused variables")
+        pgroup.add_argument("--no-lint-unused-global", action="store_true", help="don't print lint warnings on unused global variables")
         pgroup.add_argument("--no-lint-duplicate", action="store_true", help="don't print lint warnings on duplicate variables")
+        pgroup.add_argument("--no-lint-duplicate-global", action="store_true", help="don't print lint warnings on duplicate variables between a local and a global")
         pgroup.add_argument("--no-lint-undefined", action="store_true", help="don't print lint warnings on undefined variables")
         pgroup.add_argument("--no-lint-fail", action="store_true", help="create output cart even if there were lint warnings")
         pgroup.add_argument("--lint-global", type=SplitBySeps, action=extend_arg, help="don't print lint warnings for these globals (same as '--lint:' comment)")
@@ -310,7 +312,9 @@ def create_main(lang):
         if args.lint:
             args.lint = {
                 "unused": not args.no_lint_unused,
+                "unused-global": not args.no_lint_unused_global,
                 "duplicate": not args.no_lint_duplicate,
+                "duplicate-global": not args.no_lint_duplicate_global,
                 "undefined": not args.no_lint_undefined,
                 "globals": args.lint_global or (),
             }

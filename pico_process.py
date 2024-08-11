@@ -162,7 +162,9 @@ class SubLanguageBase:
     def __init__(m, str, **_):
         pass
     def get_defined_globals(m, **_):
-        return () 
+        return ()
+    def get_used_globals(m, **_):
+        return ()
     def lint(m, **_):
         pass
     get_unminified_chars = None

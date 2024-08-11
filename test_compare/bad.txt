@@ -1,19 +1,28 @@
 Lint warnings:
 test_input/badinc.p8:3:7: Local 'from_include' isn't used
+test_input/bad.p8:4:10: Global 'f0' is only ever assigned to, never used
 test_input/bad.p8:5:8: Identifier 'u' not found
 test_input/bad.p8:5:11: Identifier 'v' not found
 test_input/bad.p8:6:3: Identifier 'x' not found - did you mean to use 'local' to define it?
+test_input/bad.p8:6:3: Global 'x' is only ever assigned to, never used
 test_input/bad.p8:6:6: Identifier 'y' not found - did you mean to use 'local' to define it?
+test_input/bad.p8:6:6: Global 'y' is only ever assigned to, never used
 test_input/bad.p8:6:9: Built-in global 't' assigned outside _init - did you mean to use 'local'?
 test_input/bad.p8:7:12: Identifier 'f1' not found - did you mean to use 'local function' to define it?
+test_input/bad.p8:7:12: Global 'f1' is only ever assigned to, never used
 test_input/bad.p8:8:18: Local 'f12' isn't used
+test_input/bad.p8:10:10: Global 'f2' is only ever assigned to, never used
+test_input/bad.p8:14:10: Global 'f2d1' is only ever assigned to, never used
 test_input/bad.p8:15:12: Built-in global 'band' assigned outside _init - did you mean to use 'local function'?
+test_input/bad.p8:21:10: Global 'fx' is only ever assigned to, never used
 test_input/bad.p8:22:9: Local 'a' isn't used
 test_input/bad.p8:22:12: Local 'b' is only ever assigned to, never used
+test_input/bad.p8:26:10: Global 'ff' is only ever assigned to, never used
 test_input/bad.p8:26:13: Local 'd' is only ever assigned to, never used
 test_input/bad.p8:26:17: Local 'f' isn't used
 test_input/bad.p8:28:5: Label 'lbl' isn't used
 test_input/bad.p8:29:24: Label 'lbl' has the same name as a label declared in a parent scope
+test_input/bad.p8:33:1: Global 'g_a' is only ever assigned to, never used
 test_input/bad.p8:34:7: Local 'uu' isn't used
 test_input/bad.p8:37:14: Label 'dup' has the same name as a label declared at the top level
 test_input/bad.p8:38:9: Local 'z' isn't used
@@ -31,10 +40,14 @@ test_input/bad.p8:43:20: Local 'finner' isn't used
 test_input/bad.p8:43:27: Local 'z' has the same name as a local declared in a parent function
 test_input/bad.p8:43:27: Local 'z' isn't used
 test_input/bad.p8:44:18: Label 'dup' has the same name as a label declared in a parent function
-test_input/bad.p8:55:18: Local 'unused' isn't used
+test_input/bad.p8:49:10: Global 'maths' is only ever assigned to, never used
+test_input/bad.p8:52:10: Global 'confess' is only ever assigned to, never used
+test_input/bad.p8:52:18: Local 'sin' has the same name as a built-in global used elsewhere in the cart
+test_input/bad.p8:52:23: Local 'print' has the same name as a built-in global used elsewhere in the cart
+test_input/bad.p8:61:18: Local 'unused' isn't used
 test_input/badinc.p8.png:2:7: Local 'from_include' has the same name as a local declared in the same scope
 test_input/badinc.p8.png:2:7: Local 'from_include' isn't used
 test_input/badinc.lua:29:7: Local 'inc_tab_e' isn't used
 test_input/badinc.lua:19:7: Local 'inc_tab_9' isn't used
-test_input/bad.p8:81:7: Local 'tab_b' isn't used
-test_input/bad.p8:91:7: Local 'tab_still_f' isn't used
+test_input/bad.p8:87:7: Local 'tab_b' isn't used
+test_input/bad.p8:97:7: Local 'tab_still_f' isn't used
