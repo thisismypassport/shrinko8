@@ -245,16 +245,16 @@ def fixup_process_args(args):
     return args_set, args
 
 def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, rename=False, unminify=False, 
-                 stop_on_lint=True, count_is_optional=False):
+                 stop_on_lint=True, count_is_optional=False, preproc=None):
     need_lint, lint = fixup_process_args(lint)
     need_minify, minify = fixup_process_args(minify)
     need_rename, rename = fixup_process_args(rename)
     need_unminify, unminify = fixup_process_args(unminify)
 
-    if not need_lint and not need_minify and not need_unminify and not ((count or input_count) and not count_is_optional):
+    if not need_lint and not need_minify and not need_unminify and not ((count or input_count) and not count_is_optional) and not preproc:
         return True, ()
     
-    need_parse = need_lint or need_minify or need_unminify
+    need_parse = need_lint or need_minify or need_unminify or preproc
     need_all_comments = need_unminify or (need_minify and minify_needs_comments(minify))
 
     errors = ()
@@ -275,6 +275,11 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
 
         if need_lint:
             errors = lint_code(ctxt, root, lint)
+
+        if preproc: # can do linting and - theoretically - early transformations
+            def add_error(msg, node):
+                errors.append(Error(msg, node))
+            preproc(root, add_error)
         
         if not errors or not stop_on_lint:        
             if need_minify:

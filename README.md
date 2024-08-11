@@ -766,6 +766,7 @@ def postprocess_main(cart, **_):
     new_cart = Cart(code=to_p8str("-- rom-only cart 🐱"), rom=cart.rom)
     write_cart("new_cart2.rom", new_cart, CartFormat.rom)
 ```
+
 ## Advanced - custom sub-language
 
 For **really** advanced usecases, if you're embedding a custom language inside the strings of your pico-8 code, you can let Shrinko8 know how to lint & minify it.
@@ -813,32 +814,6 @@ class MySubLanguage(SubLanguageBase):
     def is_assignment(self, stmt):
         return len(stmt) > 1 and stmt[1] == "<-" # our lang's assignment token
 
-    # for --lint:
-
-    # called to get globals defined (aka assigned to) within the sub-language's code
-    def get_defined_globals(self, **_):
-        for stmt in self.stmts:
-            if self.is_assignment(stmt):
-                yield stmt[0]
-
-    # called to get globals used (aka read from) within the sub-language's code
-    def get_used_globals(self, **_):
-        for stmt in self.stmts:
-            if self.is_assignment(stmt):
-                stmt = stmt[2:] # ignore assigned to globals
-
-            for token in stmt:
-                if self.is_global(token):
-                    yield token
-
-    # called to lint the sub-language's code
-    def lint(self, builtins, globals, on_error, **_):
-        for stmt in self.stmts:
-            for token in stmt:
-                if self.is_global(token) and token not in builtins and token not in globals:
-                    on_error("Identifier '%s' not found" % token)
-        # could do custom lints too
-
     # for --minify:
 
     # called to get all characters that won't get removed or renamed by the minifier
@@ -883,6 +858,34 @@ class MySubLanguage(SubLanguageBase):
     # called (after rename) to return a minified string
     def minify(self, **_):
         return "\n".join(" ".join(stmt) for stmt in self.stmts)
+
+    # for --lint:
+
+    # called to get globals defined within the sub-language's code
+    # such globals can be used outside the sub-language too.
+    def get_defined_globals(self, **_):
+        for stmt in self.stmts:
+            # our language only allows assignment to globals, so any assignment defines a global
+            if self.is_assignment(stmt):
+                yield stmt[0]
+
+    # called to get globals used within the sub-language's code
+    def get_used_globals(self, **_):
+        for stmt in self.stmts:
+            if self.is_assignment(stmt):
+                stmt = stmt[2:] # don't return the assignment target, to get warnings if it isn't used
+
+            for token in stmt:
+                if self.is_global(token):
+                    yield token
+
+    # called to lint the sub-language's code
+    def lint(self, builtins, globals, on_error, **_):
+        for stmt in self.stmts:
+            for token in stmt:
+                if self.is_global(token) and token not in builtins and token not in globals:
+                    on_error("Identifier '%s' not found" % token)
+        # could do custom lints too
 
 # this is called to get a sub-language class by name
 def sublanguage_main(lang, **_):
@@ -940,7 +943,41 @@ local table = splitkeys(--[[language::splitkeys]]"key1=val1,key2=val2,val3,val4"
 ?table[1] -- "val3"
 ```
 
-To run, use `--script <path>` as before.
+To run, use `--script <path>` as described [before](#custom-python-script).
+
+## Advanced - access to the Syntax Tree
+
+For **really** advanced usecases, you may want to have access to the Syntax Tree of your code (from a python script) in order to, e.g. do custom linting and analysis.
+
+Keep in mind that the syntax tree and associated APIs are not fully documented here, and aren't guaranteed not to change in the future.
+
+```python
+# this is called after your cart is parsed into a syntax tree, but before it is transformed for minification
+def preprocess_syntax_main(cart, root, on_error, args, **_):
+    from pico_parse import NodeType
+
+    if args.lint: # do some custom linting, if linting was requested in the command line
+        def pre_visit(node):
+            # just as an example, add a lint error on any use of 'goto'
+            if node.type == NodeType.goto:
+                on_error("goto used", node)
+            
+            # the syntax tree format isn't really documented anywhere yet. you can:
+            # - check examples of use in pico_lint.py
+            # - search for the NodeType you're interested in, in pico_parse.py to see what it contains
+
+        def post_visit(node):
+            pass # just here as an example
+
+        # visit the entire syntax tree, calling pre_visit before each node, and post_visit after each node
+        # extra=True allows you to visit things not apparent in the source itself, such as:
+        # implicit parameters, implicit _ENV when accessing globals, etc.
+        root.traverse_nodes(pre=pre_visit, post=post_visit, extra=True)
+```
+
+To run, use `--script <path>` as described [before](#custom-python-script).
+
+You can check `pico_lint.py` for examples of how to use the syntax tree.
 
 # Picotron Support
 

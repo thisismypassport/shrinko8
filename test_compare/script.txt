@@ -1,0 +1,6 @@
+hello from preprocess_main!
+Received args: my-script-arg 123
+hello from postprocess_syntax_main!
+Lint warnings:
+test_input/script.p8:3:8596: goto used
+hello from postprocess_main!

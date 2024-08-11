@@ -62,3 +62,30 @@ def postprocess_main(cart, **_):
     assert(from_p8str(to_p8str(test_str)) == test_str)
     test_p8str = to_p8str(test_str)
     assert(decode_p8str(encode_p8str(test_p8str)) == test_p8str)
+
+# this is called after your cart is parsed into a syntax tree, but before it is transformed for minification
+def preprocess_syntax_main(cart, root, on_error, args, **_):
+    print("hello from postprocess_syntax_main!")
+
+    from pico_parse import NodeType
+
+    if args.lint: # do some custom linting, if linting was requested in the command line
+        def pre_visit(node):
+            # just as an example, add a lint error on any use of 'goto'
+            if node.type == NodeType.goto:
+                on_error("goto used", node)
+            
+            # the syntax tree format isn't really documented anywhere yet. you can:
+            # - check examples of use in pico_lint.py
+            # - search for the NodeType you're interested in, in pico_parse.py to see what it contains
+
+        def post_visit(node):
+            pass # just here as an example
+
+        # visit the entire syntax tree, calling pre_visit before each node, and post_visit after each node
+        # extra=True allows you to visit things not apparent in the source itself, such as:
+        # implicit parameters, implicit _ENV when accessing globals, etc.
+        root.traverse_nodes(pre=pre_visit, post=post_visit, extra=True)
+
+# internal note - yes, there is a bug in the test's output due to preprocess_main changing the code
+# yet this not impacting CodeMapping.src_code; will fix if reported.

@@ -219,7 +219,8 @@ def run():
     run_test("countminus", "minus.p8", None, "--count", stdout_output="minuscount.txt")
     run_test("error", "worse.p8", None, "--lint", stdout_output="worse.txt", norm_stdout=norm_paths, exit_code=1)
     run_test("script", "script.p8", "script.p8", "--script", path_join("test_input", "my_script.py"),
-             "--update-version", "--script-args", "my-script-arg", "--my-script-opt", "123", update_version=False)
+             "--lint", "--no-lint-fail", "--update-version", "--script-args", "my-script-arg", "--my-script-opt", "123",
+             stdout_output="script.txt", norm_stdout=norm_paths, update_version=False)
     run_test("sublang.lint", "sublang.p8", None, "--lint",
              "--script", path_join("test_input", "sublang.py"), stdout_output="sublang.txt", norm_stdout=norm_paths, exit_code=2)
     run_test("sublang", "sublang.p8", "sublang.p8", "--minify",

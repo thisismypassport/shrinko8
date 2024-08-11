@@ -364,12 +364,14 @@ def create_main(lang):
                 args.const = args.const or {}
                 args.const.update({name: parse_constant(val, lang, as_str=True) for name, val in args.str_const})
 
-        args.preproc_cb, args.postproc_cb, args.sublang_cb = None, None, None
+        args.preproc_cb, args.postproc_cb, args.preproc_syntax_cb, args.sublang_cb = None, None, None, None
         if args.script:
             for script in args.script:
-                preproc_main, postproc_main, sublang_main = import_from_script_by_path(script, "preprocess_main", "postprocess_main", "sublanguage_main")
+                preproc_main, postproc_main, preproc_syntax_main, sublang_main = import_from_script_by_path(script,
+                    "preprocess_main", "postprocess_main", "preprocess_syntax_main", "sublanguage_main")
                 args.preproc_cb = func_union(args.preproc_cb, preproc_main)
                 args.postproc_cb = func_union(postproc_main, args.postproc_cb) # (reverse order)
+                args.preproc_syntax_cb = func_union(args.preproc_syntax_cb, preproc_syntax_main)
                 args.sublang_cb = func_union(args.sublang_cb, sublang_main, return_early=e)
 
         base_count_handler = ParsableCountHandler if args.parsable_count else True
@@ -516,12 +518,16 @@ def create_main(lang):
             if args.preproc_cb:
                 args.preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args)
 
+            def preproc_syntax_call(root, on_error):
+                args.preproc_syntax_cb(cart=cart, src=src, root=root, on_error=on_error, ctxt=ctxt, args=args)
+
             ok, errors = process_code(ctxt, src,
                                       input_count=is_pico8 and args.input_count,
                                       count=is_pico8 and args.count,
                                       lint=args.lint, minify=args.minify, rename=args.rename,
                                       unminify=args.unminify, stop_on_lint=not args.no_lint_fail,
-                                      count_is_optional=args.no_count_tokenize)
+                                      count_is_optional=args.no_count_tokenize,
+                                      preproc=preproc_syntax_call if args.preproc_syntax_cb else None)
             if errors:
                 had_warns = True
 
