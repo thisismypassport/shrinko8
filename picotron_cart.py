@@ -20,7 +20,7 @@ class Cart64Format(Enum):
         return m != m.auto
     @property
     def is_ext(m):
-        return m not in (m.auto, m.dir, m.fs, m.label)
+        return m not in (m.auto, m.dir, m.fs, m.label, m.tiny_rom)
     @property
     def is_src(m):
         return m in (m.p64, m.lua, m.dir, m.fs)
