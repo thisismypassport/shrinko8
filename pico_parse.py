@@ -155,6 +155,38 @@ class Node(TokenNodeBase):
         m.traverse_tokens(on_token)
         return tokens
     
+    def __str__(m):
+        if m.type==NodeType.function:
+            return f"Node{{.type={m.type}, .name='{m.name}'}}"
+        elif m.type==NodeType.var:
+            return f"Node{{.type={m.type}, .name={m.name}}}"
+        elif m.type==NodeType.const:
+            return f"Node{{.type={m.type}, .token.value={str(m.token.value)}}}"
+        elif m.type==NodeType.call:
+            return f"Node{{.type={m.type}, .func={str(m.func)}}}"
+        elif m.type==NodeType.binary_op:
+            return f"Node{{.type={m.type}, .op={str(m.op)}}}"
+        elif m.type==NodeType.goto:
+            return f"Node{{.type={m.type}, .label={m.label}}}"
+        elif m.type==NodeType.index:
+            return f"Node{{.type={m.type}, .key={str(m.key)}}}"
+        elif m.type==NodeType.label:
+            return f"Node{{.type={m.type}, .label={m.label}}}"
+        elif m.type==NodeType.member:
+            return f"Node{{.type={m.type}, .key={str(m.key)}, .method={str(m.method)}}}"
+        elif m.type==NodeType.sublang:
+            return f"Node{{.type={m.type}, .name={str(m.name)}}}"
+        elif m.type==NodeType.table:
+            return f"Node{{.type={m.type}, .key={[str(it) for it in m.items]}}}"
+        elif m.type==NodeType.table_index:
+            return f"Node{{.type={m.type}, .key={str(m.key)}, .value={str(m.value)}}}"
+        elif m.type==NodeType.table_member:
+            return f"Node{{.type={m.type}, .key={str(m.key)}, .value={str(m.value)}}}"
+        elif m.type==NodeType.unary_op:
+            return f"Node{{.type={m.type}, .op={str(m.op)}}}"
+        else:
+            return f"Node{{.type={m.type}}}"
+
     short = False # default property
     assignment = False # default proprerty
     value = None # default proprty (TODO: bad, for consistency with Token)
