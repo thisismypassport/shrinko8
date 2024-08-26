@@ -3,14 +3,14 @@ from media_utils import Surface, Color
 from pico_cart import load_image_of_size, get_res_path, k_base64_alt_chars, k_png_header
 from pico_export import lz4_uncompress, lz4_compress
 from pico_defs import decode_luastr, encode_luastr
-from pico_compress import print_size
+from pico_compress import print_size, compress_code, encode_p8str, decode_p8str
 from picotron_defs import get_default_picotron_version, Cart64Glob
 from picotron_fs import PicotronFile, PicotronDir
 import base64
 
 class Cart64Format(Enum):
     """An enum representing the supported cart formats"""
-    auto = p64 = png = rom = lua = dir = fs = label = ...
+    auto = p64 = png = rom = tiny_rom = lua = dir = fs = label = ...
     
     @property
     def is_input(m):
@@ -145,6 +145,29 @@ def write_cart64_to_rom(cart, size_handler=None, debug_handler=None, padding=0,
             w.u8(0)
 
         return io.getvalue()
+
+def write_cart64_to_tiny_rom(cart, size_handler=None, debug_handler=None, **opts):
+    data = cart.files[k_p64_main_path].raw_payload
+
+    tiny_cart = Cart64()
+    tiny_cart.files[k_p64_main_path] = PicotronFile(data)
+    compressed_lz4 = write_cart64_to_rom(tiny_cart, debug_handler=debug_handler, **opts)
+
+    io = BytesIO()
+    with BinaryWriter(io, big_end = True) as w:
+        compress_code(w, decode_p8str(data), force_compress=True)
+        compressed_pxa = io.getvalue()
+
+    result = data
+    if len(compressed_pxa) < len(result):
+        result = compressed_pxa
+    if len(compressed_lz4) < len(result):
+        result = compressed_lz4
+
+    if size_handler:
+        print_rom_compressed_size(len(result), handler=size_handler)
+
+    return result
     
 k_cart64_image_size = Point(512, 384)
 k_label_size = Point(480, 270)
@@ -476,6 +499,8 @@ def write_cart64(path, cart, format, **opts):
         file_write(path, write_cart64_to_image(cart, **opts))
     elif format == Cart64Format.rom:
         file_write(path, write_cart64_to_rom(cart, **opts))
+    elif format == Cart64Format.tiny_rom:
+        file_write(path, write_cart64_to_tiny_rom(cart, **opts))
     elif format == Cart64Format.lua:
         file_write(path, write_cart64_to_raw_source(cart, **opts))
     elif format in (Cart64Format.dir, Cart64Format.fs):

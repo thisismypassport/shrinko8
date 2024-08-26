@@ -619,7 +619,7 @@ async function doMinify() {
         }
 
         // (adjust p8 preview)
-        if (format === "tiny-rom") {
+        if (isPico8 && format === "tiny-rom") {
             args.push("--output-sections", "lua");
         } else if (format === "url") {
             args.push("--output-sections", "lua,gfx");
