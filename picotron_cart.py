@@ -3,7 +3,7 @@ from media_utils import Surface, Color
 from pico_cart import load_image_of_size, get_res_path, k_base64_alt_chars, k_png_header
 from pico_export import lz4_uncompress, lz4_compress
 from pico_defs import decode_luastr, encode_luastr
-from pico_compress import print_size, compress_code, encode_p8str, decode_p8str
+from pico_compress import print_size, compress_code, uncompress_code, encode_p8str, decode_p8str
 from picotron_defs import get_default_picotron_version, Cart64Glob
 from picotron_fs import PicotronFile, PicotronDir
 import base64
@@ -146,8 +146,20 @@ def write_cart64_to_rom(cart, size_handler=None, debug_handler=None, padding=0,
 
         return io.getvalue()
 
+def read_cart64_from_tiny_rom(buffer, **opts):
+    with BinaryReader(BytesIO(buffer), big_end = True) as r:
+        if r.bytes(3) == k_rom_header_sig:
+            return read_cart64_from_rom(buffer, **opts)
+        else:
+            r.rewind()
+            tiny_cart = Cart64()
+            tiny_cart.files[k_p64_main_path] = PicotronFile(encode_p8str(uncompress_code(r, **opts)))
+            return tiny_cart
+
 def write_cart64_to_tiny_rom(cart, size_handler=None, debug_handler=None, **opts):
-    data = cart.files[k_p64_main_path].raw_payload
+    main = cart.files.get(k_p64_main_path)
+    check(main, "{k_p64_main_path} not found in cart")
+    data = main.raw_payload
 
     tiny_cart = Cart64()
     tiny_cart.files[k_p64_main_path] = PicotronFile(data)
@@ -482,6 +494,8 @@ def read_cart64(path, format=None, **opts):
         return read_cart64_from_image(file_read(path), path=path, **opts)
     elif format == Cart64Format.rom:
         return read_cart64_from_rom(file_read(path), path=path, **opts)
+    elif format == Cart64Format.tiny_rom:
+        return read_cart64_from_tiny_rom(file_read(path), path=path, **opts)
     elif format == Cart64Format.lua:
         return read_cart64_from_source(file_read(path), raw=True, path=path, **opts)
     elif format in (Cart64Format.dir, Cart64Format.fs):

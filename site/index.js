@@ -619,8 +619,12 @@ async function doMinify() {
         }
 
         // (adjust p8 preview)
-        if (isPico8 && format === "tiny-rom") {
-            args.push("--output-sections", "lua");
+        if (format === "tiny-rom") {
+            if (isPico8) {
+                args.push("--output-sections", "lua");
+            } else {
+                args.push("--filter", "main.lua");
+            }
         } else if (format === "url") {
             args.push("--output-sections", "lua,gfx");
         }
