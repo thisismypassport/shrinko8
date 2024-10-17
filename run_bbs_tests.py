@@ -2,7 +2,7 @@
 from test_utils import *
 from pico_cart import get_bbs_cart_url
 from threading import Thread
-import argparse
+import argparse, atexit
 import multiprocessing as mp
 import multiprocessing.dummy as mt
 
@@ -129,10 +129,11 @@ def check_run(name, result, parse_meta=False):
                 meta["version"] = str_after_first(line, ":").strip()
         return meta
 
-def init_for_process(opts):
+def init_for_process(opts, endpipe):
     global g_opts
     g_opts = opts
     init_tests(opts)
+    atexit.register(lambda: endpipe.send(get_test_results()))
 
 def run_for_cart(args):
     (cart, cart_input, cart_output, cart_compare, cart_unfocused, focus) = args
@@ -225,7 +226,7 @@ def run_for_cart(args):
             unsafe_minify_results = run_code(g_opts.target, uncompress_path, unsafe_minify_path, "--minify", "--count", "--parsable-count", *minify_opts)
             process_output("unsafe_minify", check_run(f"{cart}:unsafe_minify", unsafe_minify_results, parse_meta=True))
 
-    return (cart, get_test_results(), new_cart_input, cart_output, deltas, best_path_for_pico8)
+    return (cart, new_cart_input, cart_output, deltas, best_path_for_pico8)
 
 def run(focus):
     filename = str(focus) if focus else "normal"
@@ -245,7 +246,18 @@ def run(focus):
     if g_opts.pico8_interact:
         Thread(target=interact_with_pico8s, args=(g_opts.pico8, g_opts.pico8_time), daemon=True).start()
 
-    with mp.Pool(g_opts.parallel_jobs, init_for_process, (g_opts,)) as mp_pool, \
+    endpipe_recv, endpipe_send = mp.Pipe(duplex=False)
+
+    def handle_endpipe():
+        try:
+            while True:
+                add_test_results(endpipe_recv.recv())
+        except EOFError:
+            pass
+
+    Thread(target=handle_endpipe).start()
+
+    with mp.Pool(g_opts.parallel_jobs, init_for_process, (g_opts, endpipe_send)) as mp_pool, \
          mt.Pool(g_opts.parallel_jobs) as mt_pool:
         
         p8_results = []
@@ -254,8 +266,7 @@ def run(focus):
             if not mp_result:
                 continue
 
-            (cart, test_results, new_cart_input, cart_output, cart_deltas, cart_pico8_path) = mp_result
-            add_test_results(test_results)
+            (cart, new_cart_input, cart_output, cart_deltas, cart_pico8_path) = mp_result
             if new_cart_input:
                 inputs[cart] = new_cart_input
             outputs[cart] = cart_output
@@ -273,6 +284,8 @@ def run(focus):
 
         for p8_result in p8_results:
             check_run(f"p8-run", p8_result.get())
+
+    endpipe_send.close()
 
     file_write_json(input_json, inputs, sort_keys=True, indent=4)
     file_write_json(output_json, outputs, sort_keys=True, indent=4)

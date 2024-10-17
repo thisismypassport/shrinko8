@@ -5,7 +5,7 @@ from pico_defs import Language as Target
 
 def init_tests(opts): # use: opts.exe and opts.profile
     global g_num_ran, g_num_failed
-    g_num_ran = g_num_failed =0
+    g_num_ran = g_num_failed = 0
 
     global g_profile, g_profile_stats_files
     g_profile = opts.profile

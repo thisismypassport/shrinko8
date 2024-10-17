@@ -55,7 +55,7 @@ def preprocess_code(path, code, start_line=0, preprocessor=None):
         elif ch != '#':
             i += 1
 
-        elif list_get(code, i + 1) == '[' and list_get(code, i + 2) != '[': # #[...] inline directive (not used by pico preprocessor)
+        elif list_get(code, i + 1) == '[' and list_get(code, i + 2) != '[': # DEPRECATED
             flush_output()
             i, start_i, out_i = preprocessor.handle_inline(path, code, i, start_i, out_i, outparts, outmappings)
 
@@ -176,7 +176,7 @@ def trim_cart_to_tab(cart, target_tab):
 k_custom_pp_inline_delims = k_wspace + "[]"
     
 class CustomPreprocessor(PicoPreprocessor):
-    """A custom preprocessor that isn't enabled by default (and is quite quirky & weird)"""
+    """DEPRECATED - has no relation to pico8's preprocessor"""
 
     def __init__(m, defines=None, pp_handler=None, **kwargs):
         super().__init__(**kwargs)

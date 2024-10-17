@@ -48,6 +48,7 @@ def uncompress_code(r, size_handler=None, debug_handler=None, **_):
     header = r.bytes(4, allow_eof=True)
 
     if header == k_new_compressed_code_header:
+        # the new compression format - uses bit encoding & mtf (move-to-front)
         unc_size = r.u16()
         com_size = r.u16()
 
@@ -102,6 +103,7 @@ def uncompress_code(r, size_handler=None, debug_handler=None, **_):
         assert len(code) == unc_size
 
     elif header == k_old_compressed_code_header:
+        # the old compression format - byte-based and allows very limited matching
         unc_size = r.u16()
         assert r.u16() == 0 # ?
         if debug_handler: debug_handler.init(r, str)
@@ -172,15 +174,34 @@ class Lz77Entry(Tuple):
     offset = count = ...
 
 class Lz77Advance(Tuple):
-    """A strategy that spans positions 'i' up to 'next_i' with a given 'cost', using a linked list of lz77/literal/etc items."""
+    """A strategy that advances from 'i' to 'next_i' using 'item' (a literal/lz77/etc) with cost 'cost',
+       it was preceded by Lz77Advance 'prev'. (so Lz77Advance-s form a linked list)
+       ('ctxt' is the opaque context for measure)"""
     i = next_i = cost = ctxt = item = prev = ...
 
 class SubMatchDict(Struct):
+    """When the list of previous matches gets too long, a SubMatchDict can be used as a perf optimization,
+       grouping the list by an extra code character"""
     dict = best_j = ...
 
 def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=None,
              get_cheaper_c=None, max_o_steps=None, fast_c=None, no_repeat=False, litblock_idxs=None):
-    min_matches = defaultdict(list)
+    """a generic helper that transforms code (either bytes or str) into a sequence of items:
+         literals (bytes/chars), Lz77Entry-ies, and literal blocks.
+       min_c/max_c - min/max allowed counts in Lz77Entry-ies
+       max_o - max allowed offsets (distances) in Lz77Entry-ies
+       measure - measures the cost of a particular item. (any cost unit can be used)
+                 also returns a context, an opaque value to passed when measuring subsequent items
+       min_cost - the absolute minimum cost that the given number of bytes can correspond to
+                  anywhere in any code. (used for perf. optimization)
+       get_cheaper_c - given a count, return a smaller count that results in less cost
+                       (but may be a better choice if the next match catches up without increasing cost)
+       max_o_steps - (turn this to get_shorter_o?) - offset values that may be shorter but
+                     result in less cost.
+       litblock_idxs - indices of where to enter or exit a literal block (should be precomputed)
+    """    
+    min_matches = defaultdict(list) # for each min_c-sized sequence in the code - its previous matches
+                                    # as either a list or a SubMatchDict
     next_litblock = litblock_idxs.popleft() if litblock_idxs else len(code)
     empty_code = type(code)() # e.g. "" if code is an str
 
@@ -234,6 +255,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
         return best_c, best_j
 
     def convert_to_matches_dict(matches, min_i, c):
+        """list -> SubMatchDict"""
         matches_dict = defaultdict(list)
         best_j = -1
 
@@ -246,11 +268,11 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
         
         return SubMatchDict(matches_dict, best_j)
 
-    def mktuple(i, j, count):
+    def mklz77(i, j, count):
         return Lz77Entry(i - j, count)
 
-    i = 0
-    prev_i = 0
+    i = 0 # current position in the code
+    prev_i = 0 # previous position in the code
     advances = deque() if measure else None # potentially worthwhile ways to go from the current or past positions
     curr_adv = None
 
@@ -283,6 +305,11 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
             advances.insert(insert_idx, next_adv)
         else:
             advances.append(next_adv)
+
+    def add_lz77_advance(j, c):
+        item = mklz77(i, j, c)
+        cost, ctxt = measure(curr_ctxt, item)
+        add_advance(curr_cost + cost, ctxt, c, item)
     
     def get_advance_items(adv):
         while adv:
@@ -316,17 +343,13 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
                 # try using a match
                 best_c, best_j = find_match(i)
                 if best_c > 0:
-                    lz_item = mktuple(i, best_j, best_c)
-                    lz_cost, lz_ctxt = measure(curr_ctxt, lz_item)
-                    add_advance(curr_cost + lz_cost, lz_ctxt, best_c, lz_item)
+                    add_lz77_advance(best_j, best_c)
                 
                     if get_cheaper_c:
                         # try a shorter yet cheaper match
                         cheap_c = get_cheaper_c(best_c)
                         if best_c > cheap_c >= min_c:
-                            nr_item = mktuple(i, best_j, cheap_c)
-                            nr_cost, nr_ctxt = measure(curr_ctxt, nr_item)
-                            add_advance(curr_cost + nr_cost, nr_ctxt, cheap_c, nr_item)
+                            add_lz77_advance(best_j, cheap_c)
 
                     if max_o_steps:
                         # try a shorter yet closer match
@@ -336,17 +359,13 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
 
                             sh_best_c, sh_best_j = find_match(i, max_o=step)
                             if sh_best_c > 0:
-                                sh_item = mktuple(i, sh_best_j, sh_best_c)
-                                sh_cost, sh_ctxt = measure(curr_ctxt, sh_item)
-                                add_advance(curr_cost + sh_cost, sh_ctxt, sh_best_c, sh_item)
+                                add_lz77_advance(sh_best_j, sh_best_c)
                                 
                                 if get_cheaper_c:
                                     # try a shorter yet cheaper match
                                     sh_cheap_c = get_cheaper_c(sh_best_c)
                                     if sh_best_c > sh_cheap_c >= min_c:
-                                        shnr_item = mktuple(i, sh_best_j, sh_cheap_c)
-                                        shnr_cost, shnr_ctxt = measure(curr_ctxt, shnr_item)
-                                        add_advance(curr_cost + shnr_cost, shnr_ctxt, sh_cheap_c, shnr_item)
+                                        add_lz77_advance(sh_best_j, sh_cheap_c)
                 
                 curr_adv = advances.popleft()
                 i = curr_adv.next_i
@@ -356,7 +375,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
                     yield from reversed(tuple(get_advance_items(curr_adv)))
                     curr_adv = None
 
-            else:
+            else: # case when no 'measure' is provided - result is far less optimal
                 best_c, best_j = find_match(i)
                 if best_c > 0:
                     # check for obvious wins of not using matches
@@ -365,13 +384,15 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
                         yield i, code[i]
                         i += 1
                     else:
-                        yield i, mktuple(i, best_j, best_c)
+                        yield i, mklz77(i, best_j, best_c)
                         i += best_c
                 else:
                     yield i, code[i]
                     i += 1
         
-        if not (fast_c != None and best_c >= fast_c):
+        if fast_c is None or best_c < fast_c:
+            # add the matches we just passed through to min_matches
+
             for j in range(prev_i, i):
                 matches_dict = min_matches
                 c = min_c
@@ -384,7 +405,8 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
                     matches = matches_dict[code[j:j+c]]
                 
                 matches.append(j)
-                if len(matches) > 200 and len(matches_dict) > 5 and c < min_c * 6: # ?
+
+                if len(matches) > 200 and len(matches_dict) > 5 and c < min_c * 6: # shaky perf. heuristic
                     matches_dict[code[j:j+c]] = convert_to_matches_dict(matches, i, c + 1)
             
         prev_i = i
@@ -445,7 +467,7 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
                 pre_min_c = 4 # ignore questionable lz77s
                 last_cost_len = 0x20
                 last_cost_mask = last_cost_len - 1
-                last_costs = [0 for i in range(last_cost_len)]
+                last_costs = [0 for i in range(last_cost_len)] # cost deltas of using compression vs literal blocks
                 sum_costs = 0
                 litblock_idxs = deque()
 

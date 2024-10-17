@@ -5,7 +5,7 @@ class Language(Enum):
     pico8 = picotron = ...
 
 class Memory(bytearray):
-    """A block pico8 memory - a bytearray with some convenience functions like get/set16, get/set4, etc."""
+    """A pico8 memory block - a bytearray with some convenience functions like get/set16, get/set4, etc."""
 
     def copy(m):
         return Memory(m)

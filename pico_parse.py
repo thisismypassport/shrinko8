@@ -9,6 +9,7 @@ class VarKind(Enum):
     local = global_ = member = label = ...
     
 class VarBase():
+    """A variable (a Local, Global, table Member key, or Label)"""
     def __init__(m, kind, name):
         m.kind = kind
         m.name = name
@@ -21,7 +22,7 @@ class VarBase():
     constval = None
         
     def __repr__(m):
-        return f"{m.kind} {m.name}"
+        return f"{typename(m)}({m.name})"
 
 class Local(VarBase):
     def __init__(m, name, scope, builtin=False):
@@ -44,6 +45,7 @@ class Label(VarBase):
         m.scope = scope
 
 class Scope:
+    """A scope that defines new Locals. Note that in lua, every 'local' statement creates a new Scope"""
     def __init__(m, parent=None, depth=0, funcdepth=0):
         m.parent = parent
         m.depth = depth
@@ -87,6 +89,7 @@ class Scope:
         return lazy_property.is_set(m, "used_members")
 
 class LabelScope:
+    """A scope that defines the labels in a block"""
     def __init__(m, parent=None, funcdepth=0):
         m.parent = parent
         m.funcdepth = funcdepth

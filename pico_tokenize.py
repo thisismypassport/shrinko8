@@ -25,14 +25,23 @@ class StopTraverse(BaseException):
 k_skip_children = True # value returnable from traverse's pre-function
 
 class TokenNodeBase:
-    """Baseclass for both pico8 Tokens and pico8 Nodes.
+    """Baseclass for syntax Tokens, syntax Nodes, and Comments.
     The syntax tree is comprised of these and can be traversed via traverse_nodes or traverse_tokens"""
 
     def __init__(m):
         m.parent, m.children = None, ()
 
     def __repr__(m):
-        return repr(m.__dict__)
+        return "%s(type=%s)" % (typename(m), m.type)
+
+    def __str__(m):
+        reprlist = []
+        for key, val in m.__dict__.items():
+            if key in ("parent", "children", "idx", "endidx", "vline", "lang", "modified", "source",
+                       "scope", "extra_i", "extra_children"):
+                continue
+            reprlist.append("%s=%r" % (key, val))
+        return "%s(%s)" % (typename(m), ", ".join(reprlist))
     
     @property
     def source_text(m):

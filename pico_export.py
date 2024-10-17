@@ -439,6 +439,8 @@ class PodFile:
         else:
             file_write(path_join(dest, filename_fixup(name)), content)
 
+# (lz4 is used in both pico8 pods and in picotron)
+
 def lz4_uncompress(data, debug=None):
     def read_u8_sum(r):
         sum = 0

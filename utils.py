@@ -60,6 +60,10 @@ def import_from_script_by_path(path, *func_names):
     script_mod = exec_script_by_path(path)
     return tuple(getattr(script_mod, name, None) for name in func_names)
 
+def typename(obj):
+    """returns the name of the object's type"""
+    return type(obj).__name__
+
 class Dynamic(object):
     """An anonymous dynamic class with keyword-args-style initialization"""
     
@@ -69,7 +73,7 @@ class Dynamic(object):
     @recursive_repr()
     def __repr__(m):
         contents = ", ".join(f"{k}={repr(v)}" for k, v in m.__dict__.items())
-        return f"{m.__class__.__name__}({contents})"
+        return f"{typename(m)}({contents})"
 
 class DefaultDynamic(Dynamic):
     """Like Dynamic, but accessing an unknown key gives None"""

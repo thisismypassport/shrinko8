@@ -5,9 +5,12 @@ from pico_parse import Node, NodeType, VarKind, is_global_or_builtin_local, is_v
 from pico_output import format_fixnum, format_luanum
 
 class LuaType(Enum):
+    """A lua (or pico8) type for the purpose of constant folding"""
     nil = boolean = fixnum = integer = float = string = ...
 
 class LuaValue:
+    """A lua (or pico8) value for the purpose of constant folding"""
+
     def __init__(m, type, value):
         m.type, m.value = type, value
 
@@ -83,7 +86,8 @@ k_lua_true = LuaBoolean(True)
 k_lua_false = LuaBoolean(False)
 k_lua_maxint = 0x7fff
 
-# ops
+# lua ops - given the language and the parameters, return the result,
+#   or None if unable or unwilling to do the computation
 
 def lua_neg(lang, a):
     if a.is_fixnum:

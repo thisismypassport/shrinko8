@@ -77,7 +77,10 @@ def preprocess_syntax_main(cart, root, on_error, args, **_):
             
             # the syntax tree format isn't really documented anywhere yet. you can:
             # - check examples of use in pico_lint.py
-            # - search for the NodeType you're interested in, in pico_parse.py to see what it contains
+            # - print() nodes to see what they contain (ignores some attributes for better readability)
+            # - search for the NodeType you're interested in, in pico_parse.py, to see what it contains
+            
+            # print(node)
 
         def post_visit(node):
             pass # just here as an example
