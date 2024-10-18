@@ -170,7 +170,7 @@ def run():
     run_test("const", "const.p8", "const.p8", "--minify",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename", "--no-minify-tokens",
              pico8_output="const.p8.printh")
-    run_test("const2", "const2.p8", "const2.p8", "--minify",
+    run_test("const2", "const2.p8", "const2.p8", "--minify", "--builtins-safe-only",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename", "--no-minify-tokens",
              stdout_output="const2.txt", norm_stdout=norm_paths)
     run_test("constcl", "constcl.p8", "constcl.p8", "--minify")

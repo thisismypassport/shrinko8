@@ -11,7 +11,7 @@ from picotron_cart import Cart64Format, read_cart64, write_cart64, merge_cart64,
 from picotron_cart import write_cart64_compressed_size, write_cart64_version
 import argparse
 
-k_version = 'v1.2.2f'
+k_version = 'v1.2.3'
 
 def SplitBySeps(val):
     return k_hint_split_re.split(val)
@@ -121,9 +121,10 @@ def create_main(lang):
         pgroup.add_argument("--no-minify-reorder", action="store_true", help="disable statement reordering in minification")
         pgroup.add_argument("-p", "--preserve", type=SplitBySeps, action=extend_arg, help='preserve specific identifiers in minification, e.g. "global1, global2, *.member2, table3.*"')
         pgroup.add_argument("--no-preserve", type=SplitBySeps, action=extend_arg, help='do not preserve specific built-in identifiers in minification, e.g. "circfill, rectfill"')
-        pgroup.add_argument("--rename-safe-only", action="store_true", help="only do renaming that's always safe to do (subset of --minify-safe-only)")
         pgroup.add_argument("--rename-members-as-globals", action="store_true", help='rename globals and members the same way (same as --preserve "*=*.*")')
+        pgroup.add_argument("--rename-safe-only", action="store_true", help="only do renaming that's always safe to do (subset of --minify-safe-only)")
         pgroup.add_argument("--reorder-safe-only", action="store_true", help="only do statement reordering that's always safe to do (subset of --minify-safe-only)")
+        pgroup.add_argument("--builtins-safe-only", action="store_true", help="only assume a function is builtin when it's always safe to do (subset of --minify-safe-only)")
         pgroup.add_argument("--rename-map", help="log renaming of identifiers (from minify step) to this file")
         pgroup.add_argument("--const", nargs=2, action="append", metavar=("NAME", "VALUE"), help="define a constant that will be replaced with the VALUE across the entire file")
         pgroup.add_argument("--str-const", nargs=2, action="append", metavar=("NAME", "VALUE"), help="same as --const, but the value is interpreted as a string")
@@ -330,6 +331,7 @@ def create_main(lang):
         if args.minify or args.minify_safe_only:
             args.minify = {
                 "safe-reorder": args.minify_safe_only or args.reorder_safe_only,
+                "safe-builtins": args.minify_safe_only or args.builtins_safe_only,
                 "lines": not args.no_minify_lines,
                 "wspace": not args.no_minify_spaces,
                 "comments": not args.no_minify_comments,

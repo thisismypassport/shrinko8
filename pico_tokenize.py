@@ -239,8 +239,8 @@ class Comment(TokenNodeBase):
         return m.source_text
 
 def is_ident_char(ch, lang=Language.pico8):
-    return '0' <= ch <= '9' or 'a' <= ch <= 'z' or 'A' <= ch <= 'Z' or ch == '_' or \
-            (lang == Language.pico8 and (ch in ('\x1e', '\x1f') or ch >= '\x80'))
+    return ('0' <= ch <= '9' or 'a' <= ch <= 'z' or 'A' <= ch <= 'Z' or ch == '_' or
+            (lang == Language.pico8 and (ch in ('\x1e', '\x1f') or ch >= '\x80')))
 
 def is_identifier(str, lang=Language.pico8):
     return str and all(is_ident_char(ch, lang) for ch in str) and not str[:1].isdigit() and str not in keywords
@@ -440,8 +440,8 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
 
             while True:
                 ch = peek()
-                if is_ident_char(ch, lang) or ch == '.' or \
-                        (ch in ('-', '+') and peek(-1) in (('p', 'P') if is_hex else ('e', 'E'))):
+                if (is_ident_char(ch, lang) or ch == '.' or
+                        (ch in ('-', '+') and peek(-1) in (('p', 'P') if is_hex else ('e', 'E')))):
                     idx += 1
                 else:
                     break
@@ -572,10 +572,10 @@ def count_tokens(tokens):
         if token.value in (",", ".", ":", ";", "::", ")", "]", "}", "end", "local"):
             continue
 
-        if token.value in ("-", "~") and i+1 < len(tokens) and tokens[i+1].type == TokenType.number and \
-            token.endidx == tokens[i+1].idx and \
-            i-1 >= 0 and tokens[i-1].type not in (TokenType.number, TokenType.string, TokenType.ident) and \
-            tokens[i-1].value not in (")", "]", "}", ";", "end"):
+        if (token.value in ("-", "~") and i+1 < len(tokens) and tokens[i+1].type == TokenType.number and
+                token.endidx == tokens[i+1].idx and
+                i-1 >= 0 and tokens[i-1].type not in (TokenType.number, TokenType.string, TokenType.ident) and
+                tokens[i-1].value not in (")", "]", "}", ";", "end")):
             continue
 
         count += 1

@@ -1,7 +1,7 @@
 from utils import *
 from pico_defs import *
 from pico_tokenize import Token, TokenType, ConstToken, k_skip_children, tokenize
-from pico_parse import Node, NodeType, VarKind, is_global_or_builtin_local, is_vararg_expr
+from pico_parse import Node, NodeType, VarKind, is_root_global_or_builtin_local, is_vararg_expr
 from pico_output import format_fixnum, format_luanum
 
 class LuaType(Enum):
@@ -28,8 +28,8 @@ class LuaValue:
         return m.type in (LuaType.integer, LuaType.float)
     @property
     def is_integer_cvt(m):
-        return m.type == LuaType.integer or \
-            (m.type == LuaType.float and m.value.is_integer() and is_luaint_in_range(m.value))
+        return (m.type == LuaType.integer or
+                (m.type == LuaType.float and m.value.is_integer() and is_luaint_in_range(m.value)))
     @property
     def is_number(m):
         return m.type in (LuaType.fixnum, LuaType.integer, LuaType.float)
@@ -567,8 +567,11 @@ def remove_else_node(node):
     end_token = Token.synthetic(TokenType.keyword, "end", node, append=True)
     node.append_existing(end_token)
 
-def fold_consts(ctxt, focus, root, errors):
+def fold_consts(ctxt, minify_opts, root, errors):
     lang = ctxt.lang
+    
+    focus = Focus(minify_opts.get("focus"))
+    safe_builtins = minify_opts.get("safe-builtins", False)
 
     def add_error(msg, node):
         errors.append(Error(msg, node))
@@ -624,9 +627,8 @@ def fold_consts(ctxt, focus, root, errors):
             visit_assign(node)
         
         # we assume that in a const context, calls are always to builtins
-        # TODO: can we be smarter in the non-safe-only case?
-        elif node.type == NodeType.call and node.func.type == NodeType.var and is_global_or_builtin_local(node.func) \
-                and not node.func.var.reassigned and (not root.has_env or in_const_ctxt):
+        elif (node.type == NodeType.call and node.func.type == NodeType.var and is_root_global_or_builtin_local(node.func) and
+                not node.func.var.reassigned and (not root.has_env or not safe_builtins or in_const_ctxt)):
             func, num_args, func_lang = k_const_globals.get(node.func.name, (None, None, None))
             if func and (num_args is None or num_args == len(node.args)) and (func_lang is None or func_lang == lang):
                 arg_consts = []
@@ -682,8 +684,8 @@ def fold_consts(ctxt, focus, root, errors):
             if target.type == NodeType.var:
                 is_const_ctxt = target.var.is_const
                 # (even if a global is assigned once, it's hard to tell if all its uses are after the assignment, so we close globals under --[[const]])
-                is_const = (target.kind == VarKind.local and not target.var.reassigned) or \
-                           (is_const_ctxt and target.kind == VarKind.global_ and target.var.reassigned <= 1 and target.name not in ctxt.builtins)
+                is_const = ((target.kind == VarKind.local and not target.var.reassigned) or
+                            (is_const_ctxt and target.kind == VarKind.global_ and target.var.reassigned <= 1 and target.name not in ctxt.builtins))
             else:
                 is_const = is_const_ctxt = False
 

@@ -415,7 +415,9 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
         
         if kind == VarKind.global_:
             env_token = Token.synthetic(TokenType.ident, "_ENV", token)
-            node.add_extra_child(parse_var(token=env_token, implicit=True))
+            env_node = parse_var(token=env_token, implicit=True)
+            node.add_extra_child(env_node)
+            node.env_var = env_node.var
 
         return node
     
@@ -1002,8 +1004,13 @@ def is_function_target(node):
 def is_any_assign_target(node):
     return is_assign_target(node) or is_op_assign_target(node) or is_function_target(node)
 
-def is_global_or_builtin_local(node):
-    return node.kind == VarKind.global_ or (node.kind == VarKind.local and node.var.builtin)
+def is_root_global_or_builtin_local(node):
+    if node.kind == VarKind.global_:
+        return node.env_var.scope.funcdepth < 0 # is it using the 'real' _ENV (only useful as a heuristic)
+    elif node.kind == VarKind.local:
+        return node.var.builtin
+    else:
+        return False
 
 def is_vararg_expr(node):
     return node.type in (NodeType.call, NodeType.varargs)

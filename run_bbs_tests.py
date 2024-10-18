@@ -257,8 +257,8 @@ def run(focus):
 
     Thread(target=handle_endpipe).start()
 
-    with mp.Pool(g_opts.parallel_jobs, init_for_process, (g_opts, endpipe_send)) as mp_pool, \
-         mt.Pool(g_opts.parallel_jobs) as mt_pool:
+    with (mp.Pool(g_opts.parallel_jobs, init_for_process, (g_opts, endpipe_send)) as mp_pool,
+          mt.Pool(g_opts.parallel_jobs) as mt_pool):
         
         p8_results = []
         mp_inputs = [(cart, inputs.get(cart), outputs.get(cart), compares.get(cart), unfocuseds.get(cart), focus) for cart in g_opts.carts]

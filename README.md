@@ -84,7 +84,8 @@ You can disable parts of the minification process via additional command-line op
 You can control how safe the minification is (see [details about unsafe minifications](#pitfalls-of-full-minification)):
 * `--minify-safe-only` : Do only safe minification. Equivalent to specifying all of the below.
 * `--rename-safe-only` : Do only safe renaming (equivalent to preserving all table keys, and - if _ENV is used in the cart - all globals)
-* `--reorder-safe-only` : Do only safe statement reordering.
+* `--reorder-safe-only` : Do only safe statement reordering
+* `--builtins-safe-only` : Do only safe replacement of builtin function calls
 
 Additional options:
 
@@ -112,6 +113,9 @@ When using `--minify` without `--minify-safe-only`, Shrinko8 makes - by default 
 * Renaming assumptions: (`--rename-safe-only` disables these):
     * Your cart doesn't mix identifiers and strings when indexing tables or _ENV. (E.g. it doesn't access both `some_table.x` and `some_table["x"]`).
     * Your cart does not use _ENV (except for some simple cases)
+
+* Builtin usage assumptions (`--builtins-safe-only` disables these):
+    * Your cart does not override builtin functions via _ENV.
 
 * Reordering assumption: (Only relevant under `--focus-tokens`; `--reorder-safe-only` disables it; complex to describe but hard to break):
     * Your cart does not access freshly-assigned variables or table members inside meta-methods or builtins overridden via _ENV. (See example [here](#prevent-merging-of-specific-statements))

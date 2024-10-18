@@ -51,7 +51,7 @@ a,(printh"one"or{}).e=0,printh"two"
 f,(printh"three"or{}).l=0,printh"four"
 l()
 n,o=sqrt(4),sqrt(9)printh(n..o)
-n,o=flr(2.3),flr(3.9)printh(n..o)
+n,o=2,3printh(n..o)
 function max()return n end
 n=4o=max(5,6)printh(n..n)
 function u()return n end

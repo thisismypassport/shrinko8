@@ -3,7 +3,7 @@ from pico_defs import fixnum_is_negative, float_is_negative, Language
 from pico_tokenize import TokenType, StopTraverse, k_skip_children
 from pico_parse import Node, NodeType, VarKind
 from pico_parse import k_unary_ops_prec, get_precedence, is_right_assoc, can_replace_with_unary
-from pico_parse import is_vararg_expr, is_short_block_stmt, is_global_or_builtin_local
+from pico_parse import is_vararg_expr, is_short_block_stmt, is_root_global_or_builtin_local
 from pico_output import format_luanum, format_fixnum, format_string_literal
 
 class Focus(Bitmask):
@@ -135,6 +135,11 @@ def minify_change_shorthand(node, new_short):
         else:
             node.append_token(TokenType.keyword, "end", near_next=True)
 
+"""def minify_print_to_shorthand(node):
+    node.short = True
+    node.func.var.implicit = True
+    node.add_extra_child(node.func)""" 
+
 def node_contains_vars(root, vars):
     def visitor(node):
         if node.type == NodeType.var and node.var in vars:
@@ -164,8 +169,8 @@ def expr_is_trivial(root, ctxt, safe_only, allow_member=True, allow_index=True, 
         # nodes that may call user-defined code
         elif expr.type == NodeType.call:
             func = expr.func
-            if safe_only or not allow_call or \
-                    not (func.type == NodeType.var and is_global_or_builtin_local(func) and not func.var.reassigned and func.name not in ctxt.builtins_with_callbacks):
+            if (safe_only or not allow_call or
+                    not (func.type == NodeType.var and is_root_global_or_builtin_local(func) and not func.var.reassigned and func.name not in ctxt.builtins_with_callbacks)):
                 raise StopTraverse()
         elif expr.type == NodeType.member and not allow_member:
             raise StopTraverse()
@@ -184,8 +189,9 @@ def expr_is_trivial(root, ctxt, safe_only, allow_member=True, allow_index=True, 
 def minify_merge_assignments(prev, next, ctxt, safe_only):
     if len(prev.targets) < len(prev.sources):
         return
-    if len(prev.targets) > len(prev.sources) and \
-            ((prev.sources and is_vararg_expr(prev.sources[-1])) or (next.sources and is_vararg_expr(next.sources[-1])) or len(next.targets) < len(next.sources)):
+    
+    if (len(prev.targets) > len(prev.sources) and
+            ((prev.sources and is_vararg_expr(prev.sources[-1])) or (next.sources and is_vararg_expr(next.sources[-1])) or len(next.targets) < len(next.sources))):
         return
     
     merge_prev = getattr(next.first_token(), "merge_prev", None)
@@ -281,6 +287,7 @@ def value_is_negative(ctxt, value):
 
 def minify_code(ctxt, root, minify_opts):
     safe_reorder = minify_opts.get("safe-reorder", False)
+    safe_builtins = minify_opts.get("safe-builtins", False)
     minify_tokens = minify_opts.get("tokens", True)
     minify_reorder = minify_opts.get("reorder", True)
     focus = Focus(minify_opts.get("focus"))
@@ -335,9 +342,14 @@ def minify_code(ctxt, root, minify_opts):
         if minify_tokens:
             # create shorthands
             
-            if node.type in (NodeType.if_, NodeType.while_) and not node.short and \
-               (analysis.new_shorts[node.type] == True) and node in analysis.shortenables:
+            if (node.type in (NodeType.if_, NodeType.while_) and not node.short and
+                   (analysis.new_shorts[node.type] == True) and node in analysis.shortenables):
                 minify_change_shorthand(node, True)
+
+            if (node.type == NodeType.call and not node.short and node.func.type == NodeType.var and is_root_global_or_builtin_local(node.func) and
+                   node.func.name == "print" and node.func.var.name == "print" and # both before and after any rename
+                   not node.func.var.reassigned and (not root.has_env or not safe_builtins)):
+                pass #minify_print_to_shorthand(node)
 
         if minify_reorder:
             # merge assignments

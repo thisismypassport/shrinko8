@@ -244,7 +244,7 @@ def rename_tokens(ctxt, root, rename_opts):
 
         elif kind == VarKind.global_:
             if not explicit:
-                env_var = node.extra_children[0].var
+                env_var = node.env_var
                 if env_var and env_var.keys_kind != None:
                     return compute_effective_kind(node, env_var.keys_kind, explicit=True)
 
@@ -253,13 +253,7 @@ def rename_tokens(ctxt, root, rename_opts):
                 return None
 
         elif kind == VarKind.local:
-            if node.var.builtin and node.name not in preserved_globals:
-                # special case for when we wish to unpreserve a builtin local - turn it into a global
-                node.var = root.globals[node.name]
-                node.kind = VarKind.global_
-                return compute_effective_kind(node, node.kind, explicit=True)
-
-            if node.var.implicit or node.var.builtin:
+            if node.var.implicit or (node.var.builtin and node.name in preserved_globals):
                 local_excludes[node.name].add(node.var)
                 return None
             # best to keep this check, e.g. to avoid renaming _ENV locals that are unused unless local builtins are disabled
@@ -275,7 +269,7 @@ def rename_tokens(ctxt, root, rename_opts):
             if prev.type == TokenType.number and prev.value.endswith("0"):
                 return True
 
-    def collect_idents_pre(node):            
+    def collect_idents_pre(node):
         if node.type == NodeType.var:
             node.effective_kind = compute_effective_kind(node, default(node.var_kind, node.kind), explicit=e(node.var_kind))
             

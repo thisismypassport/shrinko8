@@ -305,10 +305,9 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
 
 def simplify_code(ctxt, root, minify, errors):
     fold = minify.get("consts", True)
-    focus = Focus(minify.get("focus"))
         
     if fold:
-        fold_consts(ctxt, focus, root, errors)
+        fold_consts(ctxt, minify, root, errors)
 
 def echo_code(code, ctxt, echo=True):
     code = from_langstr(code, ctxt.lang)
