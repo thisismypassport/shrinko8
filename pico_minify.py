@@ -426,8 +426,8 @@ def minify_code(ctxt, root, minify_opts):
             if token.value == "^^" and ctxt.version >= 37:
                 token.modify("~")
 
-            #if token.value == "then" and ctxt.lang == Language.pico8 and ctxt.version >= 42: # I HATE THIS :(
-            #    token.modify("do")
+            if token.value == "then" and ctxt.lang == Language.pico8 and ctxt.version >= 42:
+                token.modify("do") # I HATE THIS :(
 
             if token.value == "//" and ctxt.lang == Language.picotron:
                 token.modify("\\")

@@ -139,7 +139,7 @@ local moretests = {ord"1",[2]=3,x=4,(ord"1")}
 calls3 += 1
 calls1, calls2,calls1_,calls2_ = sin(1,2), cos((cos())),(cos((cos())))
 function xxx() return 1, 2, ord"1", (ord"1") end
-if 1 == 2 then elseif 1 == 2 then else end
+if 1 == 2 do elseif 1 == 2 do else end
 while 1 == 2 do end
 repeat until 1 == 1
 for a in (all{}) do end
@@ -149,8 +149,8 @@ print("test"..@16 .."str")
 -- shorthands
 if(true) ?"sh1"
 if (true) ?"sh2"
-if(true) if false then else print"sh3" end
-if (true) if false then else print"sh4" end 
+if(true) if false do else print"sh3" end
+if (true) if false do else print"sh4" end 
 l="renaming bug"
 function fff()
   local l1,l2,l3,l4,l5,l6,l7,l8,l9,l10,l11,l12,l13,l14,l15,l16,l17,l18,l19,l10,l20,l21,l22,l23,l24,l25,l26

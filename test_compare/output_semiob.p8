@@ -121,7 +121,7 @@ e += 1
 l, n = sin(1,2), cos((cos()))
 o, f = (cos((cos())))
 function r() return 1, 2, ord"1", (ord"1") end
-if 1 == 2 then elseif 1 == 2 then else end
+if 1 == 2 do elseif 1 == 2 do else end
 while 1 == 2 do end
 repeat until 1 == 1
 for e in (all{}) do end
@@ -130,8 +130,8 @@ print("test"..@16 .."str")
 
 if(true) ?"sh1"
 if (true) ?"sh2"
-if(true) if false then else print"sh3" end
-if (true) if false then else print"sh4" end 
+if(true) if false do else print"sh3" end
+if (true) if false do else print"sh4" end 
 j="renaming bug"
 function d()
   local e,l,n,o,f,i,c,r,d,a,t,h,u,s,x,k,y,v,p,b,w,g,_,m,E,N,D

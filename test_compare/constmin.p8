@@ -253,7 +253,7 @@ if(f)print(true)
 if(f)print(true)else print(nil)
 if(f)print(true)else print(0)
 if(f)print(true)else print(false)
-if f then print(true)elseif i then print(1)else print(nil)end if f then print(true)elseif i then print(1)else print(false)end if f then print(true)elseif i then print(1)else print(nil)end if f then print(true)elseif i then print(1)end if f then print(true)elseif i then print(1)else print(nil)end if f then print(true)elseif i then print(1)else print(0)end if f then print(true)elseif i then print(1)else print(false)end?""
+if f do print(true)elseif i do print(1)else print(nil)end if f do print(true)elseif i do print(1)else print(false)end if f do print(true)elseif i do print(1)else print(nil)end if f do print(true)elseif i do print(1)end if f do print(true)elseif i do print(1)else print(nil)end if f do print(true)elseif i do print(1)else print(0)end if f do print(true)elseif i do print(1)else print(false)end?""
 ?""
 do local e=3end?l
 ?l
