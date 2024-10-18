@@ -1,6 +1,6 @@
 from utils import *
 from pico_defs import fixnum_is_negative, float_is_negative, Language
-from pico_tokenize import TokenType, StopTraverse, k_skip_children
+from pico_tokenize import Token, TokenType, StopTraverse, k_skip_children
 from pico_parse import Node, NodeType, VarKind
 from pico_parse import k_unary_ops_prec, get_precedence, is_right_assoc, can_replace_with_unary
 from pico_parse import is_vararg_expr, is_short_block_stmt, is_root_global_or_builtin_local
@@ -32,7 +32,7 @@ def get_node_bodies(node):
     else:
         yield node.body
 
-def analyze_code_for_minify(root, focus, ctxt):
+def analyze_code_for_minify(root, focus, ctxt, safe_builtins):
     shorthands_can_nest = ctxt.version >= 42
     shorts = CounterDictionary()
     longs = CounterDictionary()
@@ -55,10 +55,31 @@ def analyze_code_for_minify(root, focus, ctxt):
             # in theory, could've supported nesting print even here, but never did
             return False
         
+    def allow_parent_shorthands(node):
+        allowed = True
+        prev_parent = node
+        def check_parent_shorthand(parent):
+            nonlocal prev_parent, allowed
+            if (parent.short or parent in allowed_shorts) and not allow_shorthand_nesting(parent, prev_parent, node):
+                allowed = False
+            prev_parent = parent
+            
+        node.traverse_parents(check_parent_shorthand)
+        return allowed
+    
+    def allow_child_shorthands(node, body):
+        allowed = True
+        def check_child_shorthand(child):
+            nonlocal allowed
+            if (child.short or child in allowed_shorts) and not allow_shorthand_nesting(node, body, child):
+                allowed = False
+        
+        body.traverse_nodes(post=check_child_shorthand)
+        return allowed
+        
     def analyze_node_post(node):
-
         if node.type in (NodeType.if_, NodeType.while_):
-            is_short = node.short
+            to_short = node.short
 
             weight = 1
             if node.type == NodeType.if_:
@@ -69,27 +90,14 @@ def analyze_code_for_minify(root, focus, ctxt):
             has_elseif = weight > 1
 
             # can the node be converted to shorthand?
-            if not is_short and not has_elseif:
-                has_bad_shorthand, has_empties, starts_with_do = False, False, False
-
-                # first check the parents
-                prev_parent = node
-                def check_parent_shorthand(parent):
-                    nonlocal prev_parent, has_bad_shorthand
-                    if (parent.short or parent in allowed_shorts) and not allow_shorthand_nesting(parent, prev_parent, node):
-                        has_bad_shorthand = True
-                    prev_parent = parent
-                    
-                node.traverse_parents(check_parent_shorthand)
+            if not to_short and not has_elseif:
+                has_empties, starts_with_do = False, False
+                allow_shorthand = allow_parent_shorthands(node)
                 
                 # now check the children
                 for i, body in enumerate(get_node_bodies(node)):
-                    def check_child_shorthand(child):
-                        nonlocal has_bad_shorthand
-                        if (child.short or child in allowed_shorts) and not allow_shorthand_nesting(node, body, child):
-                            has_bad_shorthand = True
-                    
-                    body.traverse_nodes(post=check_child_shorthand)
+                    if not allow_child_shorthands(node, body):
+                        allow_shorthand = False
                     
                     if not body.children:
                         has_empties = True
@@ -99,14 +107,24 @@ def analyze_code_for_minify(root, focus, ctxt):
                         starts_with_do = body.first_token().value == "do"
                 
                 # empty bodies require extra ';'s to shorten, which worsens compression
-                is_short = not has_bad_shorthand and not (has_empties and not focus.chars) and not starts_with_do
-                if is_short:
+                to_short = allow_shorthand and not (has_empties and not focus.chars) and not starts_with_do
+                if to_short:
                     allowed_shorts.add(node)
             
-            if is_short:
+            if to_short:
                 shorts[node.type] += weight
             else:
                 longs[node.type] += weight
+
+        # print shorthands save tokens, so we don't currently undo them
+        # note: could support calls to something other than the print builtin, but not sure it's safe...
+        elif (node.type == NodeType.call and node.func.type == NodeType.var and is_root_global_or_builtin_local(node.func) and
+                node.func.name == "print" and node.func.var.name == "print" and # both before and after any rename
+                not node.func.var.reassigned and (not root.has_env or not safe_builtins)):
+
+            # note: could support expressions, but only in non-vararg contexts, which mostly defeats the purpose
+            if not node.short and node.parent.type == NodeType.block and allow_parent_shorthands(node) and allow_child_shorthands(node, node):
+                allowed_shorts.add(node)
 
     root.traverse_nodes(post=analyze_node_post)
 
@@ -114,16 +132,28 @@ def analyze_code_for_minify(root, focus, ctxt):
     for type in (NodeType.if_, NodeType.while_):
         # if everything can be made short, that's always best.
         # else, consistency is better for compression while more shorts are better for chars
-        if focus.chars or not longs[type] or (not focus.compressed and longs[type] * 1.5 <= shorts[type]):
+        if focus.chars or not longs[type] or (not focus.compressed and longs[type] * 1.4 <= shorts[type]):
             new_shorts[type] = True
         elif focus.compressed:
             new_shorts[type] = False
         else:
             new_shorts[type] = None # leave alone
 
+    if focus.compressed and not (new_shorts[NodeType.if_] and new_shorts[NodeType.while_]):
+        new_shorts[NodeType.call] = None
+    else:
+        new_shorts[NodeType.call] = True
+
     return Dynamic(new_shorts=new_shorts, allowed_shorts=allowed_shorts)
 
-def minify_change_shorthand(node, new_short):
+def on_enable_shorthand(node):
+    # remove line breaks originally in the source
+    vline = node.first_token().vline
+    def fix_vlines(token):
+        token.vline = vline
+    node.traverse_tokens(fix_vlines)
+
+def minify_change_block_shorthand(node, new_short):
     if new_short:
         node.short = True
         node.remove_token(2, ("then", "do"))
@@ -145,11 +175,7 @@ def minify_change_shorthand(node, new_short):
             if not body.children:
                 body.append_token(TokenType.punct, ";")
         
-        # remove line breaks originally in the source
-        vline = node.first_token().vline
-        def fix_vlines(token):
-            token.vline = vline
-        node.traverse_tokens(fix_vlines)
+        on_enable_shorthand(node)
 
     else:
         node.short = False
@@ -160,10 +186,22 @@ def minify_change_shorthand(node, new_short):
         else:
             node.append_token(TokenType.keyword, "end", near_next=True)
 
-"""def minify_print_to_shorthand(node):
+def minify_change_print_shorthand(node, new_short):
+    assert new_short
     node.short = True
     node.func.var.implicit = True
-    node.add_extra_child(node.func)""" 
+    node.add_extra_child(node.func)
+
+    end_paren = node.children[-1]
+    if isinstance(end_paren, Token) and end_paren.value == ")": # else, this is a paren-less call
+        node.remove_token(1, "(")
+        node.remove_token(-1, ")")
+    
+    node.remove_child(0)
+    node.insert_token(0, TokenType.punct, "?", near_next=True)
+    node.func = node.children[0]
+
+    on_enable_shorthand(node)
 
 def node_contains_vars(root, vars):
     def visitor(node):
@@ -320,14 +358,14 @@ def minify_code(ctxt, root, minify_opts):
     if not focus.tokens:
         safe_reorder = True # nothing gained with False here, so set it to True just in case.
 
-    analysis = analyze_code_for_minify(root, focus, ctxt)
+    analysis = analyze_code_for_minify(root, focus, ctxt, safe_builtins)
 
     def fixup_nodes_pre(node):
         if minify_tokens:
             # remove shorthands
 
             if node.type in (NodeType.if_, NodeType.while_) and node.short and (analysis.new_shorts[node.type] == False):
-                minify_change_shorthand(node, False)
+                minify_change_block_shorthand(node, False)
                 
             # remove unneeded groups
 
@@ -368,13 +406,12 @@ def minify_code(ctxt, root, minify_opts):
             # create shorthands
             
             if (node.type in (NodeType.if_, NodeType.while_) and not node.short and
-                   (analysis.new_shorts[node.type] == True) and node in analysis.allowed_shorts):
-                minify_change_shorthand(node, True)
+                    analysis.new_shorts[node.type] and node in analysis.allowed_shorts):
+                minify_change_block_shorthand(node, True)
 
-            if (node.type == NodeType.call and not node.short and node.func.type == NodeType.var and is_root_global_or_builtin_local(node.func) and
-                   node.func.name == "print" and node.func.var.name == "print" and # both before and after any rename
-                   not node.func.var.reassigned and (not root.has_env or not safe_builtins)):
-                pass #minify_print_to_shorthand(node)
+            if (node.type == NodeType.call and not node.short and 
+                    analysis.new_shorts[node.type] and node in analysis.allowed_shorts):
+                minify_change_print_shorthand(node, True)
 
         if minify_reorder:
             # merge assignments

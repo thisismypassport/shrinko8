@@ -5,14 +5,14 @@
             "compressed": 8729
         },
         "safe_minify": {
-            "chars": 20674,
-            "compressed": 6480,
-            "tokens": 6821
+            "chars": 20644,
+            "compressed": 6481,
+            "tokens": 6815
         },
         "unsafe_minify": {
-            "chars": 17292,
-            "compressed": 6006,
-            "tokens": 6821
+            "chars": 17262,
+            "compressed": 6003,
+            "tokens": 6815
         }
     },
     "101541": {
@@ -21,14 +21,14 @@
             "compressed": 12495
         },
         "safe_minify": {
-            "chars": 30560,
-            "compressed": 11679,
-            "tokens": 2274
+            "chars": 30538,
+            "compressed": 11675,
+            "tokens": 2270
         },
         "unsafe_minify": {
-            "chars": 30215,
-            "compressed": 11592,
-            "tokens": 2274
+            "chars": 30193,
+            "compressed": 11588,
+            "tokens": 2270
         }
     },
     "103651": {
@@ -42,9 +42,9 @@
             "tokens": 6352
         },
         "unsafe_minify": {
-            "chars": 31477,
-            "compressed": 13080,
-            "tokens": 6352
+            "chars": 31439,
+            "compressed": 13078,
+            "tokens": 6345
         }
     },
     "10388": {
@@ -53,14 +53,14 @@
             "compressed": 11992
         },
         "safe_minify": {
-            "chars": 19467,
-            "compressed": 8904,
-            "tokens": 7853
+            "chars": 19357,
+            "compressed": 8899,
+            "tokens": 7828
         },
         "unsafe_minify": {
-            "chars": 18932,
-            "compressed": 8764,
-            "tokens": 7853
+            "chars": 18822,
+            "compressed": 8756,
+            "tokens": 7828
         }
     },
     "107459": {
@@ -69,14 +69,14 @@
             "compressed": 15124
         },
         "safe_minify": {
-            "chars": 26960,
-            "compressed": 12013,
-            "tokens": 8154
+            "chars": 26920,
+            "compressed": 12006,
+            "tokens": 8146
         },
         "unsafe_minify": {
-            "chars": 25964,
-            "compressed": 11818,
-            "tokens": 8154
+            "chars": 25924,
+            "compressed": 11808,
+            "tokens": 8146
         }
     },
     "109575": {
@@ -85,14 +85,14 @@
             "compressed": 10275
         },
         "safe_minify": {
-            "chars": 19632,
-            "compressed": 6944,
-            "tokens": 7144
+            "chars": 19584,
+            "compressed": 6946,
+            "tokens": 7135
         },
         "unsafe_minify": {
-            "chars": 17236,
-            "compressed": 6621,
-            "tokens": 7144
+            "chars": 17188,
+            "compressed": 6626,
+            "tokens": 7135
         }
     },
     "109673": {
@@ -101,14 +101,14 @@
             "compressed": 5233
         },
         "safe_minify": {
-            "chars": 7487,
-            "compressed": 3528,
-            "tokens": 3104
+            "chars": 7428,
+            "compressed": 3532,
+            "tokens": 3092
         },
         "unsafe_minify": {
-            "chars": 7341,
-            "compressed": 3484,
-            "tokens": 3104
+            "chars": 7282,
+            "compressed": 3488,
+            "tokens": 3092
         }
     },
     "109822": {
@@ -122,9 +122,9 @@
             "tokens": 8100
         },
         "unsafe_minify": {
-            "chars": 34252,
-            "compressed": 14446,
-            "tokens": 8100
+            "chars": 34243,
+            "compressed": 14447,
+            "tokens": 8097
         }
     },
     "112308": {
@@ -133,14 +133,14 @@
             "compressed": 14923
         },
         "safe_minify": {
-            "chars": 24640,
-            "compressed": 8664,
-            "tokens": 8081
+            "chars": 24635,
+            "compressed": 8661,
+            "tokens": 8080
         },
         "unsafe_minify": {
-            "chars": 19170,
-            "compressed": 8037,
-            "tokens": 8081
+            "chars": 19165,
+            "compressed": 8032,
+            "tokens": 8080
         }
     },
     "112740": {
@@ -181,14 +181,14 @@
             "compressed": 13747
         },
         "safe_minify": {
-            "chars": 22396,
-            "compressed": 8625,
-            "tokens": 8053
+            "chars": 22342,
+            "compressed": 8616,
+            "tokens": 8044
         },
         "unsafe_minify": {
-            "chars": 20340,
-            "compressed": 8310,
-            "tokens": 8053
+            "chars": 20286,
+            "compressed": 8302,
+            "tokens": 8044
         }
     },
     "114663": {
@@ -197,14 +197,14 @@
             "compressed": 14968
         },
         "safe_minify": {
-            "chars": 24531,
-            "compressed": 9276,
-            "tokens": 7927
+            "chars": 24461,
+            "compressed": 9268,
+            "tokens": 7914
         },
         "unsafe_minify": {
-            "chars": 20082,
-            "compressed": 8693,
-            "tokens": 7927
+            "chars": 20012,
+            "compressed": 8685,
+            "tokens": 7914
         }
     },
     "115136": {
@@ -245,14 +245,14 @@
             "compressed": 12606
         },
         "safe_minify": {
-            "chars": 22821,
-            "compressed": 8549,
-            "tokens": 7629
+            "chars": 22810,
+            "compressed": 8545,
+            "tokens": 7627
         },
         "unsafe_minify": {
-            "chars": 20063,
-            "compressed": 8157,
-            "tokens": 7629
+            "chars": 20052,
+            "compressed": 8153,
+            "tokens": 7627
         }
     },
     "11722": {
@@ -261,14 +261,14 @@
             "compressed": 7604
         },
         "safe_minify": {
-            "chars": 14388,
-            "compressed": 5167,
-            "tokens": 5847
+            "chars": 14340,
+            "compressed": 5163,
+            "tokens": 5836
         },
         "unsafe_minify": {
-            "chars": 12293,
-            "compressed": 4864,
-            "tokens": 5847
+            "chars": 12245,
+            "compressed": 4861,
+            "tokens": 5836
         }
     },
     "119614": {
@@ -282,9 +282,9 @@
             "tokens": 4790
         },
         "unsafe_minify": {
-            "chars": 26172,
-            "compressed": 11074,
-            "tokens": 4790
+            "chars": 26167,
+            "compressed": 11071,
+            "tokens": 4789
         }
     },
     "12502": {
@@ -293,14 +293,14 @@
             "compressed": 5304
         },
         "safe_minify": {
-            "chars": 5073,
+            "chars": 5057,
             "compressed": 2520,
-            "tokens": 2321
+            "tokens": 2318
         },
         "unsafe_minify": {
-            "chars": 5073,
+            "chars": 5057,
             "compressed": 2520,
-            "tokens": 2321
+            "tokens": 2318
         }
     },
     "12682": {
@@ -309,14 +309,14 @@
             "compressed": 9938
         },
         "safe_minify": {
-            "chars": 14726,
+            "chars": 14694,
             "compressed": 6540,
-            "tokens": 6200
+            "tokens": 6193
         },
         "unsafe_minify": {
-            "chars": 14485,
+            "chars": 14453,
             "compressed": 6501,
-            "tokens": 6200
+            "tokens": 6193
         }
     },
     "13057": {
@@ -325,14 +325,14 @@
             "compressed": 6040
         },
         "safe_minify": {
-            "chars": 10332,
-            "compressed": 4844,
-            "tokens": 3190
+            "chars": 10062,
+            "compressed": 4843,
+            "tokens": 3129
         },
         "unsafe_minify": {
-            "chars": 10332,
-            "compressed": 4844,
-            "tokens": 3190
+            "chars": 10062,
+            "compressed": 4843,
+            "tokens": 3129
         }
     },
     "131586": {
@@ -341,14 +341,14 @@
             "compressed": 8774
         },
         "safe_minify": {
-            "chars": 15426,
-            "compressed": 6135,
-            "tokens": 4723
+            "chars": 15239,
+            "compressed": 6125,
+            "tokens": 4685
         },
         "unsafe_minify": {
-            "chars": 15266,
-            "compressed": 6109,
-            "tokens": 4723
+            "chars": 15079,
+            "compressed": 6099,
+            "tokens": 4685
         }
     },
     "132559": {
@@ -357,14 +357,30 @@
             "compressed": 14528
         },
         "safe_minify": {
-            "chars": 26710,
-            "compressed": 11685,
-            "tokens": 8015
+            "chars": 26698,
+            "compressed": 11682,
+            "tokens": 8012
         },
         "unsafe_minify": {
-            "chars": 25614,
-            "compressed": 11527,
-            "tokens": 8015
+            "chars": 25602,
+            "compressed": 11524,
+            "tokens": 8012
+        }
+    },
+    "140954": {
+        "compress": {
+            "chars": 33192,
+            "compressed": 11389
+        },
+        "safe_minify": {
+            "chars": 22329,
+            "compressed": 8677,
+            "tokens": 5858
+        },
+        "unsafe_minify": {
+            "chars": 18108,
+            "compressed": 8037,
+            "tokens": 5849
         }
     },
     "142353": {
@@ -383,20 +399,52 @@
             "tokens": 6098
         }
     },
+    "149271": {
+        "compress": {
+            "chars": 43287,
+            "compressed": 12915
+        },
+        "safe_minify": {
+            "chars": 43073,
+            "compressed": 12868,
+            "tokens": 8176
+        },
+        "unsafe_minify": {
+            "chars": 34985,
+            "compressed": 11647,
+            "tokens": 8169
+        }
+    },
+    "149969": {
+        "compress": {
+            "chars": 33840,
+            "compressed": 9426
+        },
+        "safe_minify": {
+            "chars": 16611,
+            "compressed": 6464,
+            "tokens": 5665
+        },
+        "unsafe_minify": {
+            "chars": 16611,
+            "compressed": 6464,
+            "tokens": 5665
+        }
+    },
     "15116": {
         "compress": {
             "chars": 23927,
             "compressed": 6443
         },
         "safe_minify": {
-            "chars": 7793,
-            "compressed": 3377,
-            "tokens": 3643
+            "chars": 7749,
+            "compressed": 3373,
+            "tokens": 3633
         },
         "unsafe_minify": {
-            "chars": 7359,
-            "compressed": 3332,
-            "tokens": 3643
+            "chars": 7315,
+            "compressed": 3328,
+            "tokens": 3633
         }
     },
     "18483": {
@@ -405,14 +453,14 @@
             "compressed": 9017
         },
         "safe_minify": {
-            "chars": 18579,
-            "compressed": 6995,
-            "tokens": 7421
+            "chars": 18567,
+            "compressed": 6991,
+            "tokens": 7419
         },
         "unsafe_minify": {
-            "chars": 17047,
-            "compressed": 6817,
-            "tokens": 7421
+            "chars": 17035,
+            "compressed": 6814,
+            "tokens": 7419
         }
     },
     "20407": {
@@ -421,14 +469,14 @@
             "compressed": 2741
         },
         "safe_minify": {
-            "chars": 3195,
-            "compressed": 1487,
-            "tokens": 1324
+            "chars": 3180,
+            "compressed": 1484,
+            "tokens": 1321
         },
         "unsafe_minify": {
-            "chars": 3096,
-            "compressed": 1462,
-            "tokens": 1324
+            "chars": 3081,
+            "compressed": 1460,
+            "tokens": 1321
         }
     },
     "21098": {
@@ -437,14 +485,14 @@
             "compressed": 11607
         },
         "safe_minify": {
-            "chars": 19110,
-            "compressed": 8548,
-            "tokens": 8107
+            "chars": 19054,
+            "compressed": 8554,
+            "tokens": 8094
         },
         "unsafe_minify": {
-            "chars": 17638,
-            "compressed": 8293,
-            "tokens": 8107
+            "chars": 17582,
+            "compressed": 8300,
+            "tokens": 8094
         }
     },
     "24899": {
@@ -453,14 +501,14 @@
             "compressed": 12553
         },
         "safe_minify": {
-            "chars": 21587,
-            "compressed": 9962,
-            "tokens": 7659
+            "chars": 21535,
+            "compressed": 9965,
+            "tokens": 7647
         },
         "unsafe_minify": {
-            "chars": 20880,
-            "compressed": 9869,
-            "tokens": 7659
+            "chars": 20828,
+            "compressed": 9874,
+            "tokens": 7647
         }
     },
     "26851": {
@@ -469,14 +517,14 @@
             "compressed": 13203
         },
         "safe_minify": {
-            "chars": 25173,
+            "chars": 25129,
             "compressed": 11804,
-            "tokens": 8081
+            "tokens": 8072
         },
         "unsafe_minify": {
-            "chars": 24647,
-            "compressed": 11650,
-            "tokens": 8081
+            "chars": 24603,
+            "compressed": 11652,
+            "tokens": 8072
         }
     },
     "33331": {
@@ -485,14 +533,14 @@
             "compressed": 5796
         },
         "safe_minify": {
-            "chars": 9800,
-            "compressed": 4214,
-            "tokens": 4017
+            "chars": 9700,
+            "compressed": 4209,
+            "tokens": 3995
         },
         "unsafe_minify": {
-            "chars": 9311,
-            "compressed": 4147,
-            "tokens": 4017
+            "chars": 9211,
+            "compressed": 4142,
+            "tokens": 3995
         }
     },
     "41037": {
@@ -501,14 +549,14 @@
             "compressed": 12855
         },
         "safe_minify": {
-            "chars": 32466,
-            "compressed": 10528,
-            "tokens": 7294
+            "chars": 32380,
+            "compressed": 10527,
+            "tokens": 7274
         },
         "unsafe_minify": {
-            "chars": 32395,
-            "compressed": 10511,
-            "tokens": 7294
+            "chars": 32309,
+            "compressed": 10510,
+            "tokens": 7274
         }
     },
     "42655": {
@@ -517,14 +565,14 @@
             "compressed": 7961
         },
         "safe_minify": {
-            "chars": 15035,
-            "compressed": 6066,
-            "tokens": 6163
+            "chars": 15006,
+            "compressed": 6064,
+            "tokens": 6157
         },
         "unsafe_minify": {
-            "chars": 13590,
-            "compressed": 5816,
-            "tokens": 6163
+            "chars": 13561,
+            "compressed": 5813,
+            "tokens": 6157
         }
     },
     "43229": {
@@ -533,14 +581,14 @@
             "compressed": 11556
         },
         "safe_minify": {
-            "chars": 23680,
-            "compressed": 9020,
-            "tokens": 8111
+            "chars": 23622,
+            "compressed": 9013,
+            "tokens": 8099
         },
         "unsafe_minify": {
-            "chars": 20976,
-            "compressed": 8712,
-            "tokens": 8111
+            "chars": 20918,
+            "compressed": 8707,
+            "tokens": 8099
         }
     },
     "44028": {
@@ -549,14 +597,14 @@
             "compressed": 12462
         },
         "safe_minify": {
-            "chars": 22334,
+            "chars": 22308,
             "compressed": 7528,
-            "tokens": 7428
+            "tokens": 7423
         },
         "unsafe_minify": {
-            "chars": 18511,
-            "compressed": 6994,
-            "tokens": 7428
+            "chars": 18485,
+            "compressed": 6993,
+            "tokens": 7423
         }
     },
     "47025": {
@@ -565,14 +613,14 @@
             "compressed": 4209
         },
         "safe_minify": {
-            "chars": 9145,
-            "compressed": 3410,
-            "tokens": 3763
+            "chars": 9130,
+            "compressed": 3407,
+            "tokens": 3760
         },
         "unsafe_minify": {
-            "chars": 8071,
-            "compressed": 3318,
-            "tokens": 3763
+            "chars": 8056,
+            "compressed": 3315,
+            "tokens": 3760
         }
     },
     "59366": {
@@ -581,14 +629,14 @@
             "compressed": 12046
         },
         "safe_minify": {
-            "chars": 27374,
-            "compressed": 10365,
-            "tokens": 7377
+            "chars": 27363,
+            "compressed": 10360,
+            "tokens": 7375
         },
         "unsafe_minify": {
-            "chars": 24300,
-            "compressed": 9912,
-            "tokens": 7377
+            "chars": 24289,
+            "compressed": 9907,
+            "tokens": 7375
         }
     },
     "59497": {
@@ -597,14 +645,14 @@
             "compressed": 11282
         },
         "safe_minify": {
-            "chars": 19227,
-            "compressed": 10328,
-            "tokens": 2882
+            "chars": 19192,
+            "compressed": 10329,
+            "tokens": 2875
         },
         "unsafe_minify": {
-            "chars": 19227,
-            "compressed": 10328,
-            "tokens": 2882
+            "chars": 19192,
+            "compressed": 10329,
+            "tokens": 2875
         }
     },
     "59509": {
@@ -613,14 +661,14 @@
             "compressed": 11602
         },
         "safe_minify": {
-            "chars": 21137,
-            "compressed": 7306,
-            "tokens": 8085
+            "chars": 21120,
+            "compressed": 7301,
+            "tokens": 8082
         },
         "unsafe_minify": {
-            "chars": 18870,
-            "compressed": 7031,
-            "tokens": 8085
+            "chars": 18853,
+            "compressed": 7027,
+            "tokens": 8082
         }
     },
     "66786": {
@@ -629,14 +677,14 @@
             "compressed": 8078
         },
         "safe_minify": {
-            "chars": 13357,
-            "compressed": 5371,
-            "tokens": 5502
+            "chars": 13352,
+            "compressed": 5367,
+            "tokens": 5501
         },
         "unsafe_minify": {
-            "chars": 12235,
-            "compressed": 5198,
-            "tokens": 5502
+            "chars": 12230,
+            "compressed": 5195,
+            "tokens": 5501
         }
     },
     "66935": {
@@ -645,14 +693,14 @@
             "compressed": 12453
         },
         "safe_minify": {
-            "chars": 34742,
-            "compressed": 11255,
-            "tokens": 7055
+            "chars": 34637,
+            "compressed": 11254,
+            "tokens": 7035
         },
         "unsafe_minify": {
-            "chars": 31554,
-            "compressed": 10789,
-            "tokens": 7055
+            "chars": 31449,
+            "compressed": 10788,
+            "tokens": 7035
         }
     },
     "69899": {
@@ -661,14 +709,14 @@
             "compressed": 12077
         },
         "safe_minify": {
-            "chars": 20832,
-            "compressed": 7847,
-            "tokens": 5448
+            "chars": 20799,
+            "compressed": 7849,
+            "tokens": 5441
         },
         "unsafe_minify": {
-            "chars": 17317,
-            "compressed": 7367,
-            "tokens": 5448
+            "chars": 17284,
+            "compressed": 7370,
+            "tokens": 5441
         }
     },
     "72921": {
@@ -677,14 +725,14 @@
             "compressed": 13879
         },
         "safe_minify": {
-            "chars": 23113,
-            "compressed": 10892,
-            "tokens": 8101
+            "chars": 23028,
+            "compressed": 10891,
+            "tokens": 8087
         },
         "unsafe_minify": {
-            "chars": 20657,
-            "compressed": 10500,
-            "tokens": 8101
+            "chars": 20572,
+            "compressed": 10501,
+            "tokens": 8087
         }
     },
     "75108": {
@@ -693,14 +741,14 @@
             "compressed": 3091
         },
         "safe_minify": {
-            "chars": 5066,
-            "compressed": 2229,
-            "tokens": 2695
+            "chars": 5055,
+            "compressed": 2227,
+            "tokens": 2693
         },
         "unsafe_minify": {
-            "chars": 5056,
-            "compressed": 2226,
-            "tokens": 2695
+            "chars": 5045,
+            "compressed": 2224,
+            "tokens": 2693
         }
     },
     "75741": {
@@ -709,14 +757,14 @@
             "compressed": 8662
         },
         "safe_minify": {
-            "chars": 16757,
-            "compressed": 6435,
-            "tokens": 4596
+            "chars": 16712,
+            "compressed": 6437,
+            "tokens": 4587
         },
         "unsafe_minify": {
-            "chars": 16757,
-            "compressed": 6435,
-            "tokens": 4596
+            "chars": 16712,
+            "compressed": 6437,
+            "tokens": 4587
         }
     },
     "78599": {
@@ -725,14 +773,14 @@
             "compressed": 15084
         },
         "safe_minify": {
-            "chars": 25478,
-            "compressed": 11140,
-            "tokens": 8056
+            "chars": 25479,
+            "compressed": 11138,
+            "tokens": 8055
         },
         "unsafe_minify": {
-            "chars": 23622,
-            "compressed": 10846,
-            "tokens": 8056
+            "chars": 23623,
+            "compressed": 10844,
+            "tokens": 8055
         }
     },
     "82023": {
@@ -741,14 +789,14 @@
             "compressed": 9206
         },
         "safe_minify": {
-            "chars": 15016,
-            "compressed": 6430,
-            "tokens": 6308
+            "chars": 14962,
+            "compressed": 6425,
+            "tokens": 6296
         },
         "unsafe_minify": {
-            "chars": 14468,
-            "compressed": 6302,
-            "tokens": 6308
+            "chars": 14414,
+            "compressed": 6296,
+            "tokens": 6296
         }
     },
     "83367": {
@@ -757,14 +805,14 @@
             "compressed": 15136
         },
         "safe_minify": {
-            "chars": 33558,
-            "compressed": 14080,
-            "tokens": 8075
+            "chars": 33510,
+            "compressed": 14085,
+            "tokens": 8064
         },
         "unsafe_minify": {
-            "chars": 31341,
-            "compressed": 13826,
-            "tokens": 8075
+            "chars": 31293,
+            "compressed": 13832,
+            "tokens": 8064
         }
     },
     "85620": {
@@ -773,14 +821,14 @@
             "compressed": 15095
         },
         "safe_minify": {
-            "chars": 28370,
-            "compressed": 12269,
-            "tokens": 8132
+            "chars": 28346,
+            "compressed": 12264,
+            "tokens": 8128
         },
         "unsafe_minify": {
-            "chars": 28345,
-            "compressed": 12253,
-            "tokens": 8132
+            "chars": 28321,
+            "compressed": 12249,
+            "tokens": 8128
         }
     },
     "86280": {
@@ -789,14 +837,14 @@
             "compressed": 14504
         },
         "safe_minify": {
-            "chars": 28303,
-            "compressed": 13230,
-            "tokens": 7707
+            "chars": 28286,
+            "compressed": 13228,
+            "tokens": 7704
         },
         "unsafe_minify": {
-            "chars": 27798,
-            "compressed": 13173,
-            "tokens": 7707
+            "chars": 27781,
+            "compressed": 13171,
+            "tokens": 7704
         }
     },
     "89823": {
@@ -805,14 +853,14 @@
             "compressed": 10061
         },
         "safe_minify": {
-            "chars": 23365,
-            "compressed": 7711,
-            "tokens": 8108
+            "chars": 23305,
+            "compressed": 7710,
+            "tokens": 8097
         },
         "unsafe_minify": {
-            "chars": 21024,
-            "compressed": 7454,
-            "tokens": 8108
+            "chars": 20964,
+            "compressed": 7451,
+            "tokens": 8097
         }
     },
     "89915": {
@@ -821,14 +869,14 @@
             "compressed": 14387
         },
         "safe_minify": {
-            "chars": 29459,
-            "compressed": 14215,
-            "tokens": 8147
+            "chars": 29396,
+            "compressed": 14220,
+            "tokens": 8135
         },
         "unsafe_minify": {
-            "chars": 29457,
-            "compressed": 14215,
-            "tokens": 8147
+            "chars": 29394,
+            "compressed": 14221,
+            "tokens": 8135
         }
     },
     "90020": {
@@ -837,14 +885,14 @@
             "compressed": 12391
         },
         "safe_minify": {
-            "chars": 17642,
-            "compressed": 7271,
-            "tokens": 7590
+            "chars": 17596,
+            "compressed": 7276,
+            "tokens": 7575
         },
         "unsafe_minify": {
-            "chars": 17631,
-            "compressed": 7255,
-            "tokens": 7590
+            "chars": 17585,
+            "compressed": 7259,
+            "tokens": 7575
         }
     },
     "91453": {
@@ -853,14 +901,14 @@
             "compressed": 13208
         },
         "safe_minify": {
-            "chars": 26407,
-            "compressed": 9110,
-            "tokens": 7965
+            "chars": 26396,
+            "compressed": 9106,
+            "tokens": 7963
         },
         "unsafe_minify": {
-            "chars": 20042,
-            "compressed": 8284,
-            "tokens": 7965
+            "chars": 20031,
+            "compressed": 8281,
+            "tokens": 7963
         }
     },
     "94408": {
@@ -869,14 +917,14 @@
             "compressed": 13520
         },
         "safe_minify": {
-            "chars": 33826,
+            "chars": 33788,
             "compressed": 11276,
-            "tokens": 4504
+            "tokens": 4497
         },
         "unsafe_minify": {
-            "chars": 33790,
+            "chars": 33752,
             "compressed": 11272,
-            "tokens": 4504
+            "tokens": 4497
         }
     },
     "96334": {
@@ -885,14 +933,14 @@
             "compressed": 14789
         },
         "safe_minify": {
-            "chars": 24198,
-            "compressed": 8786,
-            "tokens": 8148
+            "chars": 24193,
+            "compressed": 8782,
+            "tokens": 8147
         },
         "unsafe_minify": {
-            "chars": 19415,
-            "compressed": 8215,
-            "tokens": 8148
+            "chars": 19410,
+            "compressed": 8211,
+            "tokens": 8147
         }
     },
     "97636": {
@@ -901,14 +949,14 @@
             "compressed": 5807
         },
         "safe_minify": {
-            "chars": 9494,
-            "compressed": 3965,
-            "tokens": 4284
+            "chars": 9482,
+            "compressed": 3959,
+            "tokens": 4282
         },
         "unsafe_minify": {
-            "chars": 9047,
-            "compressed": 3884,
-            "tokens": 4284
+            "chars": 9035,
+            "compressed": 3878,
+            "tokens": 4282
         }
     },
     "9983": {
@@ -917,14 +965,14 @@
             "compressed": 6091
         },
         "safe_minify": {
-            "chars": 10903,
-            "compressed": 5104,
-            "tokens": 5096
+            "chars": 10866,
+            "compressed": 5100,
+            "tokens": 5089
         },
         "unsafe_minify": {
-            "chars": 10367,
-            "compressed": 5012,
-            "tokens": 5096
+            "chars": 10330,
+            "compressed": 5006,
+            "tokens": 5089
         }
     }
 }

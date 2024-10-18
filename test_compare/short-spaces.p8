@@ -11,4 +11,9 @@ else
 end
 
 ?((function() if e==0 do e=1 end end)())
-?((function() if (e==0) e=1 end)())
+?((function() if (e==0) e=1 end)()) 
+?"bla"
+?"bla",1,2,3,4
+?"bla",1,2,3,4
+n = print"bla"
+n, l = print"bla2"

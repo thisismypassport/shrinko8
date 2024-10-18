@@ -19,3 +19,7 @@ end
 
 ?((function() if x==0 then x=1 end end)())
 ?((function() if (x==0) x=1 end)())
+
+print("bla");print("bla",1,2,3,4);print("bla",1,2,3,4)
+prout = print("bla")
+prout, prout2 = print("bla2")

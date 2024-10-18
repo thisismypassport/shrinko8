@@ -7,3 +7,7 @@ if e==0do?1
 else?2
 end?((function()if e==0do e=1end end)())
 ?((function()if(e==0)e=1end)())
+?"bla"
+?"bla",1,2,3,4
+?"bla",1,2,3,4
+n=print"bla"n,l=print"bla2"
