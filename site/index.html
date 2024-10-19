@@ -7,10 +7,12 @@
 {% set pngwidth = 160 if pico8 else 512/2 if picotron else 0 %}
 {% set pngheight = 205 if pico8 else 384/2 if picotron else 0 %}
 {% macro display(cond) %}{{'' if cond else 'display: none'}}{% endmacro %}
-<html style="height: 100%" data-target="{{TARGET}}">
+<html lang="en" style="height: 100%" data-target="{{TARGET}}">
   <head>
     <title>{{webappname}} webapp</title>
     <meta charset="utf-8">
+    <meta name="description" content="{{webappname}} - minifier for {{targetname}} carts">
+    <link rel="icon" href="favicon.svg">
     <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
     <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
     <link href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css" rel="stylesheet">
@@ -150,9 +152,9 @@
           <div>
             <span id="version" style="vertical-align: super"></span>
             <a href="https://github.com/thisismypassport/shrinko8" target="_blank">
-              <svg width="24" height="24" viewBox="0 0 98 96"><path fill-rule="evenodd" clip-rule="evenodd" d="M48.854 0C21.839 0 0 22 0 49.217c0 21.756 13.993 40.172 33.405 46.69 2.427.49 3.316-1.059 3.316-2.362 0-1.141-.08-5.052-.08-9.127-13.59 2.934-16.42-5.867-16.42-5.867-2.184-5.704-5.42-7.17-5.42-7.17-4.448-3.015.324-3.015.324-3.015 4.934.326 7.523 5.052 7.523 5.052 4.367 7.496 11.404 5.378 14.235 4.074.404-3.178 1.699-5.378 3.074-6.6-10.839-1.141-22.243-5.378-22.243-24.283 0-5.378 1.94-9.778 5.014-13.2-.485-1.222-2.184-6.275.486-13.038 0 0 4.125-1.304 13.426 5.052a46.97 46.97 0 0 1 12.214-1.63c4.125 0 8.33.571 12.213 1.63 9.302-6.356 13.427-5.052 13.427-5.052 2.67 6.763.97 11.816.485 13.038 3.155 3.422 5.015 7.822 5.015 13.2 0 18.905-11.404 23.06-22.324 24.283 1.78 1.548 3.316 4.481 3.316 9.126 0 6.6-.08 11.897-.08 13.526 0 1.304.89 2.853 3.316 2.364 19.412-6.52 33.405-24.935 33.405-46.691C97.707 22 75.788 0 48.854 0z" fill="#24292f">
-            </svg></a>
-            <select id="target" style="vertical-align: super" onchange="onTargetChange()">
+              <svg width="24" height="24" viewBox="0 0 98 96"><title>GitHub</title><path fill-rule="evenodd" clip-rule="evenodd" d="M48.854 0C21.839 0 0 22 0 49.217c0 21.756 13.993 40.172 33.405 46.69 2.427.49 3.316-1.059 3.316-2.362 0-1.141-.08-5.052-.08-9.127-13.59 2.934-16.42-5.867-16.42-5.867-2.184-5.704-5.42-7.17-5.42-7.17-4.448-3.015.324-3.015.324-3.015 4.934.326 7.523 5.052 7.523 5.052 4.367 7.496 11.404 5.378 14.235 4.074.404-3.178 1.699-5.378 3.074-6.6-10.839-1.141-22.243-5.378-22.243-24.283 0-5.378 1.94-9.778 5.014-13.2-.485-1.222-2.184-6.275.486-13.038 0 0 4.125-1.304 13.426 5.052a46.97 46.97 0 0 1 12.214-1.63c4.125 0 8.33.571 12.213 1.63 9.302-6.356 13.427-5.052 13.427-5.052 2.67 6.763.97 11.816.485 13.038 3.155 3.422 5.015 7.822 5.015 13.2 0 18.905-11.404 23.06-22.324 24.283 1.78 1.548 3.316 4.481 3.316 9.126 0 6.6-.08 11.897-.08 13.526 0 1.304.89 2.853 3.316 2.364 19.412-6.52 33.405-24.935 33.405-46.691C97.707 22 75.788 0 48.854 0z" fill="#24292f" /></svg><!--
+            --></a>
+            <select id="target" style="vertical-align: super" onchange="onTargetChange()" aria-label="Cart Type">
               <option value="pico8" {{'selected' if pico8}}>Pico-8</option>
               <option value="picotron" {{'selected' if picotron}}>Picotron</option>
             </select>
@@ -216,7 +218,7 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
                 <option value="" disabled>──────────</option>
                 <option value="lua">.LUA file (Code only)</option>
                 <option value="tiny-rom">Tiny .ROM file (Code only)</option>
-                <option value="url">Edu URL (Code & gfx only)</option>
+                <option value="url">Edu URL (Code &amp; gfx only)</option>
                 <option value="" disabled>──────────</option>
                 <option value="bin">All HTML + Binary exports</option>
                 <option value="js">.JS file (Advanced)</option>
@@ -249,7 +251,7 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
               <div id="minify-binary-div" class="full flex-row">
                 <div>
                   <div style="cursor: pointer" onclick="saveOutputFile()">
-                    <img id="minify-image" width="{{pngwidth}}" height="{{pngheight}}" style="margin: 10px 0"></img>
+                    <img id="minify-image" width="{{pngwidth}}" height="{{pngheight}}" style="margin: 10px 0" alt="Cart Image">
                     <svg id="file-icon" width="86" height="86" viewBox="0 0 128 128"><path d="m82 6h-60v115h85v-90h-25v-25l25 25" fill="none" stroke="black"/>
                       <text id="file-icon-text" x="64" y="74" fill="gray" text-anchor="middle"></text>
                     </svg>
@@ -294,7 +296,7 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
               <label><input type="radio" name="minify" value="--unminify">Undo Minification (Reformat)</label><br/>
               <label><input type="radio" name="minify" value="">No Minification</label><br/>
               <label><input type="radio" name="minify" 
-                value="--minify-safe-only --no-minify-rename --no-minify-lines">Minimal Minification (Easy to read & debug)</label><br/>
+                value="--minify-safe-only --no-minify-rename --no-minify-lines">Minimal Minification (Easy to read &amp; debug)</label><br/>
               <label><input type="radio" name="minify" value="--minify-safe-only" checked>Safe Minification</label><br/>
               <label><input type="radio" name="minify" value="--minify" id="minify-agg">Aggressive Minification</label><br/>
 
@@ -303,7 +305,7 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
                   See <a href="https://github.com/thisismypassport/shrinko8#pitfalls-of-full-minification" target="_blank">readme</a>
                   for what can go wrong with aggresive minification and how to resolve it.
                 </div>
-                <div id="minify-max-table" class=border>
+                <div id="minify-max-table" class="border">
                   <label><input type="checkbox" id="minify-rename-max" checked>Rename aggressively</label><br/>
                   <label><input type="checkbox" id="minify-reorder-max" checked>Reorder aggressively</label><br/>
                 </div>
@@ -315,8 +317,8 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
                   <option value="--focus-tokens">Tokens</option>
                   <option value="--focus-chars">Character count</option>
                   <option value="--focus-compressed">Compressed size</option>
-                  <option value="--focus-tokens --focus-chars">Tokens & Character count</option>
-                  <option value="--focus-tokens --focus-compressed">Tokens & Compressed size</option>
+                  <option value="--focus-tokens --focus-chars">Tokens &amp; Character count</option>
+                  <option value="--focus-tokens --focus-compressed">Tokens &amp; Compressed size</option>
                 </select>
               </label>
 
@@ -384,7 +386,7 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
 For example, you can paste the example sublanguage from the readme"></div>
         </div>
       </div>
-    </div>
+    </form>
 
     <script src="utils.js"></script>
     <script src="index.js"></script>
