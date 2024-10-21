@@ -38,7 +38,7 @@ class TokenNodeBase:
         reprlist = []
         for key, val in m.__dict__.items():
             if key in ("parent", "children", "idx", "endidx", "vline", "lang", "modified", "source",
-                       "scope", "extra_i", "extra_children"):
+                       "scope", "extra_i", "extra_children", "stmts", "globals", "members"):
                 continue
             reprlist.append("%s=%r" % (key, val))
         return "%s(%s)" % (typename(m), ", ".join(reprlist))
