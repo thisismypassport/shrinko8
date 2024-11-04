@@ -23,3 +23,15 @@ end
 print("bla");print("bla",1,2,3,4);print("bla",1,2,3,4)
 prout = print("bla")
 prout, prout2 = print("bla2")
+
+if (function()
+    print"hello 1"
+    return true
+end)
+() then
+print"hello 2"
+end
+
+if print"hello 1" then
+    print"hello 2"
+end

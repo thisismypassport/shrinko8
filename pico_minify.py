@@ -93,8 +93,11 @@ def analyze_code_for_minify(root, focus, ctxt, safe_builtins):
             if not to_short and not has_elseif:
                 has_empties, starts_with_do = False, False
                 allow_shorthand = allow_parent_shorthands(node)
-                
+
                 # now check the children
+                if not allow_child_shorthands(node, node.cond):
+                    allow_shorthand = False
+                
                 for i, body in enumerate(get_node_bodies(node)):
                     if not allow_child_shorthands(node, body):
                         allow_shorthand = False
