@@ -53,6 +53,11 @@ function confess(sin, print)
   sin(3); print(3)
 end
 -->8
+-- exceptions
+--lint: used::ok_unused, ok_unreferenced
+function ok_unused()
+  return ok_unreferenced
+end
 -- bugs
 function f3:foo()
   return self

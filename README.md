@@ -528,6 +528,13 @@ end
 
 If you have false positives in your cart due to globals being used via `_ENV`, you can disable this check just for globals via `--no-lint-unused-global`.
 
+Another option is to use the `--lint: used::<var>` hint:
+```lua
+--lint: used::global_1, used::global_2
+function global_1() end
+global_2 = ""
+```
+
 ## Duplicate variable lints
 
 This lint alerts you when you declare a local with the same name as a local in a parent scope (even across functions).

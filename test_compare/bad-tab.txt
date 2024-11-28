@@ -44,7 +44,7 @@ test_input/bad.p8 (tab 2, line 19, col 10): Global 'maths' is only ever assigned
 test_input/bad.p8 (tab 2, line 22, col 10): Global 'confess' is only ever assigned to, never used
 test_input/bad.p8 (tab 2, line 22, col 18): Local 'sin' has the same name as a built-in global used elsewhere in the cart
 test_input/bad.p8 (tab 2, line 22, col 23): Local 'print' has the same name as a built-in global used elsewhere in the cart
-test_input/bad.p8 (tab 3, line 7, col 18): Local 'unused' isn't used
+test_input/bad.p8 (tab 3, line 12, col 18): Local 'unused' isn't used
 test_input/badinc.p8.png (tab 0, line 2, col 7): Local 'from_include' has the same name as a local declared in the same scope
 test_input/badinc.p8.png (tab 0, line 2, col 7): Local 'from_include' isn't used
 test_input/badinc.lua (tab E, line 1, col 7): Local 'inc_tab_e' isn't used
