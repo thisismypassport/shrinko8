@@ -35,14 +35,14 @@ jobs:
           zip -r site/shrinko.zip `cat files.lst`
       
       - name: Create shrinkotron html
-        uses: cuchi/jinja2-action@v1.2.2
+        uses: cuchi/jinja2-action@v1.3.0
         with:
           template: site/index.html
           output_file: site/index-picotron.html
           variables: TARGET=picotron
         
       - name: Create shrinko8 html
-        uses: cuchi/jinja2-action@v1.2.2
+        uses: cuchi/jinja2-action@v1.3.0
         with:
           template: site/index.html
           output_file: site/index.html
