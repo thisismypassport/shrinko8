@@ -6,7 +6,7 @@ A set of Pico-8 & Picotron cart tools, with a focus on shrinking code size.
 
 [You can download a recent Windows Executable here.](https://github.com/thisismypassport/shrinko8/releases)
 
-Otherwise, requires [Python](https://www.python.org/) 3.7 or above to run.
+Otherwise, requires [Python](https://www.python.org/) 3.8 or above to run.
 
 Reading/Writing PNGs additionally requires the Pillow module (`python -m pip install pillow` to install)
 

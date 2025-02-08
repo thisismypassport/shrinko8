@@ -415,7 +415,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
             elif header == None and clean.startswith("version "):
                 cart.set_version(int(clean.split()[1]))
 
-        except Exception as e:
+        except ValueError:
             throw(f"Invalid {header} line in p8 file (line #{line_i + 1})")
             
     cart.code, cart.code_map = preprocess_code(path, "".join(code), code_line, preprocessor=preprocessor)

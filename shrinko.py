@@ -78,7 +78,6 @@ def create_main(lang):
         fail("unknown language")
 
     def create_parser():
-        extend_arg = "extend" if sys.version_info >= (3,8) else None
         src_ext = CartFormatCls.default_src
 
         if is_pico8:
@@ -119,8 +118,8 @@ def create_main(lang):
         pgroup.add_argument("--no-minify-comments", action="store_true", help="disable comment removal in minification (requires --no-minify-spaces)")
         pgroup.add_argument("--no-minify-tokens", action="store_true", help="disable token removal/changes in minification")
         pgroup.add_argument("--no-minify-reorder", action="store_true", help="disable statement reordering in minification")
-        pgroup.add_argument("-p", "--preserve", type=SplitBySeps, action=extend_arg, help='preserve specific identifiers in minification, e.g. "global1, global2, *.member2, table3.*"')
-        pgroup.add_argument("--no-preserve", type=SplitBySeps, action=extend_arg, help='do not preserve specific built-in identifiers in minification, e.g. "circfill, rectfill"')
+        pgroup.add_argument("-p", "--preserve", type=SplitBySeps, action="extend", help='preserve specific identifiers in minification, e.g. "global1, global2, *.member2, table3.*"')
+        pgroup.add_argument("--no-preserve", type=SplitBySeps, action="extend", help='do not preserve specific built-in identifiers in minification, e.g. "circfill, rectfill"')
         pgroup.add_argument("--rename-members-as-globals", action="store_true", help='rename globals and members the same way (same as --preserve "*=*.*")')
         pgroup.add_argument("--rename-safe-only", action="store_true", help="only do renaming that's always safe to do (subset of --minify-safe-only)")
         pgroup.add_argument("--reorder-safe-only", action="store_true", help="only do statement reordering that's always safe to do (subset of --minify-safe-only)")
@@ -137,7 +136,7 @@ def create_main(lang):
         pgroup.add_argument("--no-lint-duplicate-global", action="store_true", help="don't print lint warnings on duplicate variables between a local and a global")
         pgroup.add_argument("--no-lint-undefined", action="store_true", help="don't print lint warnings on undefined variables")
         pgroup.add_argument("--no-lint-fail", action="store_true", help="create output cart even if there were lint warnings")
-        pgroup.add_argument("--lint-global", type=SplitBySeps, action=extend_arg, help="don't print lint warnings for these globals (same as '--lint:' comment)")
+        pgroup.add_argument("--lint-global", type=SplitBySeps, action="extend", help="don't print lint warnings for these globals (same as '--lint:' comment)")
         pgroup.add_argument("--error-format", type=EnumFromStr(ErrorFormat), help="how to format lint warnings & compilation errors {%s}" % EnumList(ErrorFormat))
 
         pgroup = parser.add_argument_group("count options")
@@ -163,10 +162,10 @@ def create_main(lang):
 
         if is_picotron:
             pgroup = parser.add_argument_group("picotron filesystem options")
-            pgroup.add_argument("--code-files", dest="code_sections", type=SplitBySeps, action=extend_arg,
+            pgroup.add_argument("--code-files", dest="code_sections", type=SplitBySeps, action="extend",
                                 help=f"specify a {sections_desc} that contain lua code to process (default: *.lua)")
             pgroup.add_argument("--list", action="store_true", help="list all files inside the cart")
-            pgroup.add_argument("--filter", type=SplitBySeps, action=extend_arg, help=f"specify a {sections_desc} to keep in the output")
+            pgroup.add_argument("--filter", type=SplitBySeps, action="extend", help=f"specify a {sections_desc} to keep in the output")
             pgroup.add_argument("--insert", nargs='+', action="append", metavar=(f"INPUT [FSPATH] [FILES_FILTER]", ""),
                                 help=f"insert the specified INPUT file or directory at FSPATH")
             pgroup.add_argument("--extract", nargs='+', action="append", metavar=(f"FSPATH [OUTPUT]", ""),
@@ -224,12 +223,12 @@ def create_main(lang):
 
         pgroup = parser.add_argument_group("other uninteresting options (semi-undocumented)")
         pgroup.add_argument("--ignore-hints", action="store_true", help="ignore shrinko8 hint comments")
-        pgroup.add_argument("--builtin", type=SplitBySeps, action=extend_arg, help="treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
-        pgroup.add_argument("--not-builtin", type=SplitBySeps, action=extend_arg, help="do not treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
+        pgroup.add_argument("--builtin", type=SplitBySeps, action="extend", help="treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
+        pgroup.add_argument("--not-builtin", type=SplitBySeps, action="extend", help="do not treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
         if is_pico8:
             pgroup.add_argument("--global-builtins-only", action="store_true", help="assume all builtins are global, corresponds to pico8's -global_api option")
-            pgroup.add_argument("--local-builtin", type=SplitBySeps, action=extend_arg, help="treat identifier(s) as a local builtin (probably no use outside of testing)")
-            pgroup.add_argument("--output-sections", type=SplitBySeps, action=extend_arg, help=f"specifies a {sections_desc} to write to the p8")
+            pgroup.add_argument("--local-builtin", type=SplitBySeps, action="extend", help="treat identifier(s) as a local builtin (probably no use outside of testing)")
+            pgroup.add_argument("--output-sections", type=SplitBySeps, action="extend", help=f"specifies a {sections_desc} to write to the p8")
             pgroup.add_argument("--export-name", help="name to use for the export (by default, taken from output name)")
             pgroup.add_argument("--custom-preprocessor", action="store_true", help=argparse.SUPPRESS) # might remove this one day
         else:

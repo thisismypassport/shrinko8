@@ -232,6 +232,7 @@ def run():
              "--local-builtin", "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z")
     run_test("tinyrom", "tiny.rom", "tiny.lua")
     run_test("title", "title.p8", "title.p8.png", update_version=False)
+    run_test("uni8", "uni8.lua", "uni8.p8")
 
     if run_test("repl", "repl.p8", "repl.p8", "--minify",
                 "--rename-map", "test_output/repl.map", extra_outputs=["repl.map"], pico8_output_val="finished"):
