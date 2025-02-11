@@ -530,6 +530,23 @@ def filter_cart64(cart, sections):
     for path in to_delete:
         del cart.files[path]
 
+def preproc_cart64(cart, delete_meta):
+    if delete_meta:
+        to_delete = []
+        
+        glob = Cart64Glob(delete_meta)
+        for path, file in cart.files.items():
+            if glob.matches(path) and not file.is_dir:
+                if str_after_last(path, "/") == ".info.pod": # contains no useful data
+                    to_delete.append(path)
+                elif file.is_raw:
+                    file.metadata = None
+                else:
+                    file.metadata = {}
+        
+        for path in to_delete:
+            del cart.files[path]
+
 def merge_cart64(dest, src, sections):
     glob = Cart64Glob(sections) if e(sections) else None
     for path, file in sorted(src.files.items()): # sort to get dirs first

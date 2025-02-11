@@ -7,11 +7,11 @@ from pico_tokenize import k_hint_split_re
 from pico_constfold import parse_constant
 from pico_defs import Language, get_default_pico8_version
 from picotron_defs import PicotronContext, Cart64Source, get_default_picotron_version
-from picotron_cart import Cart64Format, read_cart64, write_cart64, merge_cart64, filter_cart64
+from picotron_cart import Cart64Format, read_cart64, write_cart64, merge_cart64, filter_cart64, preproc_cart64
 from picotron_cart import write_cart64_compressed_size, write_cart64_version
 import argparse
 
-k_version = 'v1.2.3b'
+k_version = 'v1.2.3c'
 
 def SplitBySeps(val):
     return k_hint_split_re.split(val)
@@ -49,6 +49,7 @@ def create_main(lang):
         read_cart_export_func = read_cart_export
         merge_cart_func = merge_cart
         filter_cart_func = lang_not_supported
+        preproc_cart_func = lang_not_supported
         write_cart_func = write_cart
         write_code_size_func = write_code_size
         write_compressed_size_func = write_compressed_size
@@ -66,6 +67,7 @@ def create_main(lang):
         read_cart_export_func = lang_not_supported
         merge_cart_func = merge_cart64
         filter_cart_func = filter_cart64
+        preproc_cart_func = preproc_cart64
         write_cart_func = write_cart64
         write_code_size_func = lang_do_nothing
         write_compressed_size_func = write_cart64_compressed_size
@@ -164,6 +166,8 @@ def create_main(lang):
             pgroup = parser.add_argument_group("picotron filesystem options")
             pgroup.add_argument("--code-files", dest="code_sections", type=SplitBySeps, action="extend",
                                 help=f"specify a {sections_desc} that contain lua code to process (default: *.lua)")
+            pgroup.add_argument("--delete-meta", type=SplitBySeps, action="extend",
+                                help=f"specify a {sections_desc} to delete metadata of (default: * if minifying unsafely, else none)")
             pgroup.add_argument("--list", action="store_true", help="list all files inside the cart")
             pgroup.add_argument("--filter", type=SplitBySeps, action="extend", help=f"specify a {sections_desc} to keep in the output")
             pgroup.add_argument("--insert", nargs='+', action="append", metavar=(f"INPUT [FSPATH] [FILES_FILTER]", ""),
@@ -171,7 +175,7 @@ def create_main(lang):
             pgroup.add_argument("--extract", nargs='+', action="append", metavar=(f"FSPATH [OUTPUT]", ""),
                                 help=f"extract the specified file or directory from FSPATH to OUTPUT ")
         else:
-            pgroup.set_defaults(code_sections=None, filter=None, insert=None, extract=None)
+            pgroup.set_defaults(code_sections=None, delete_meta=None, filter=None, insert=None, extract=None)
         
         pgroup.add_argument("--merge", nargs='+', action="append", metavar=(f"INPUT {sections_meta} [FORMAT]", ""),
                             help=f"merge {sections_str} from the specified INPUT file, where {sections_meta} is a {sections_desc}")
@@ -365,6 +369,9 @@ def create_main(lang):
                 args.const = args.const or {}
                 args.const.update({name: parse_constant(val, lang, as_str=True) for name, val in args.str_const})
 
+        if is_picotron and not args.delete_meta and args.minify and not args.minify_safe_only:
+            args.delete_meta = ["*"]
+
         args.preproc_cb, args.postproc_cb, args.preproc_syntax_cb, args.sublang_cb = None, None, None, None
         if args.script:
             for script in args.script:
@@ -439,14 +446,13 @@ def create_main(lang):
             if not output_is_export:
                 throw("--extra-input can only be used when creating exports")
             
-            if args.extra_input:
-                for extra in args.extra_input:
-                    if len(extra) == 1:
-                        extra_inputs.append(InputDef(extra[0], default_format(extra[0], for_output=True)))
-                    elif 3 >= len(extra) >= 2:
-                        extra_inputs.append(InputDef(extra[0], CartFormatCls(extra[1]), name=list_get(extra, 2)))
-                    else:
-                        throw("too many arguments to --extra-output")
+            for extra in args.extra_input:
+                if len(extra) == 1:
+                    extra_inputs.append(InputDef(extra[0], default_format(extra[0], for_output=True)))
+                elif 3 >= len(extra) >= 2:
+                    extra_inputs.append(InputDef(extra[0], CartFormatCls(extra[1]), name=list_get(extra, 2)))
+                else:
+                    throw("too many arguments to --extra-output")
         
         if args.insert:
             for insert in args.insert:
@@ -505,6 +511,8 @@ def create_main(lang):
         
             if args.filter:
                 filter_cart_func(cart, args.filter)
+            if args.delete_meta:
+                preproc_cart_func(cart, delete_meta=args.delete_meta)
 
             src = CartSourceCls(cart, args.code_sections)
             

@@ -2,8 +2,10 @@ from utils import *
 from pico_defs import Language, encode_luastr, decode_luastr
 
 k_pod = b"pod"
-k_pod_prefix = k_pod + b","
+k_pod_str = k_pod.decode()
+k_pod_prefix_str = k_pod_str + ","
 k_pod_format = b"pod_format"
+k_pod_format_str = k_pod_format.decode()
 k_pod_raw_format = k_pod_format + b"=\"raw\""
 k_meta_prefix = b"--[["
 k_meta_pod_prefix = k_meta_prefix + k_pod
@@ -72,17 +74,14 @@ def parse_pod(pod):
             eprint("  " + error.format())
     return value
 
-def escape_meta(pod):
-    i = 0
-    while True:
-        i = pod.find("]]", i)
-        if i < 0:
-            break
-        repl = "\\93\\093" if str_get(pod, i+2, "").isdigit() else "\\93\\93"
-        pod = str_replace_at(pod, i, 2, repl)
-    return pod
+def parse_meta_pod(pod):
+    if pod == k_pod_str:
+        return {}
 
-def format_pod(value, meta=False):
+    pod = str_remove_prefix(pod, k_pod_prefix_str)
+    return parse_pod("{" + pod + "}")
+
+def format_pod(value):
     if value is None:
         return "nil"
     elif value is False:
@@ -103,13 +102,7 @@ def format_pod(value, meta=False):
     elif isinstance(value, dict):
         index = 1
         parts = []
-        
-        if meta and k_pod_format in value: # put it first
-            parts.append(f"{k_pod_format}={format_pod(value[k_pod_format])}")
-            value = value.copy()
-            del value[k_pod_format]
-
-        for key, child in value:
+        for key, child in value.items():
             if key == index:
                 parts.append(format_pod(child))
                 index += 1
@@ -120,6 +113,27 @@ def format_pod(value, meta=False):
         return "{" + ",".join(parts) + "}"
     else:
         throw(f"invalid pod value {value}")
+
+def escape_meta(pod):
+    i = 0
+    while True:
+        i = pod.find("]]", i)
+        if i < 0:
+            break
+        repl = "\\93\\093" if str_get(pod, i+2, "").isdigit() else "\\93\\93"
+        pod = str_replace_at(pod, i, 2, repl)
+    return pod
+
+def format_meta_pod(value):
+    if k_pod_format_str in value: # put it first
+        prefix = f"{k_pod_format_str}={format_pod(value[k_pod_format_str])}"
+        value = value.copy()
+        del value[k_pod_format_str]
+    else:
+        prefix = k_pod_str
+    
+    rest = escape_meta(format_pod(value)[1:-1])
+    return f"{prefix},{rest}" if rest else prefix
 
 class PicotronFile:
     def __init__(m, data, line=0):
@@ -151,8 +165,7 @@ class PicotronFile:
     def metadata(m):
         metadata = m.raw_metadata
         if metadata != None:
-            metadata = "{" + decode_luastr(str_remove_prefix(metadata, k_pod_prefix)) + "}"
-            metadata = parse_pod(metadata)
+            metadata = parse_meta_pod(decode_luastr(metadata))
         return metadata
 
     @metadata.setter
@@ -160,8 +173,8 @@ class PicotronFile:
         if value is None:
             m.raw_metadata = None
         else:
-            check(isinstance(value, dict))
-            m.raw_metadata = encode_luastr(escape_meta(format_pod(value, meta=True))[1:-1])
+            assert isinstance(value, dict)
+            m.raw_metadata = encode_luastr(format_meta_pod(value))
 
     @property
     def raw_payload(m):
