@@ -1014,5 +1014,5 @@ Cart manipulation features:
 
 Notes:
 * Shrinkotron assumes calls to `include` are used to include other unmodified lua files. If this is not the case, minify may break even under `--minify-safe-only`
-* Currently, Shrinkotron does not touch data files (gfx/sfx/etc). It may play with their compression in the future, however.
+* Shrinkotron repacks all POD files for better compression. (There are options to change this - `--uncompress-pods` and `--keep-pod-compression`)
 * As Picotron evolves, there might be new globals or table keys that Shrinkotron isn't aware of. You can report such cases and use [`--preserve`](#preserving-identifiers-across-the-entire-cart) meanwhile.

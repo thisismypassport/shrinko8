@@ -369,16 +369,18 @@ def preview_order_key(pair):
     # we prefer to sort p64 files for better visibility of code, e.g. in the webapp's preview
     # (this is NOT what picotron does currently, hopefully doesn't matter)
     dirname, filename = str_split_last(pair[0], "/")
-    if filename == k_p64_main_path:
-        order = 0
+    if filename == "": # directory itself must be first
+        order = -3
+    elif filename == k_p64_main_path:
+        order = -2
     elif filename.endswith(".lua"):
-        order = 1
+        order = -1
     elif filename == k_label_file:
-        order = 3
+        order = 1
     elif filename.startswith("."):
-        order = 4
-    else:
         order = 2
+    else:
+        order = 0
     return (dirname, order, filename)
 
 def write_cart64_to_source(cart, avoid_base64=False, **opts):
@@ -530,7 +532,7 @@ def filter_cart64(cart, sections):
     for path in to_delete:
         del cart.files[path]
 
-def preproc_cart64(cart, delete_meta):
+def preproc_cart64(cart, delete_meta=None, uncompress_pods=False, keep_pod_compression=False, need_pod_compression=False):
     if delete_meta:
         to_delete = []
         
@@ -546,6 +548,16 @@ def preproc_cart64(cart, delete_meta):
         
         for path in to_delete:
             del cart.files[path]
+    
+    if not keep_pod_compression:
+        for path, file in cart.files.items():
+            if not file.is_raw and not file.is_dir:
+                if uncompress_pods:
+                    file.set_payload(file.payload, compress=False, use_pxu=False)
+                elif need_pod_compression:
+                    file.set_payload(file.payload, compress=True, use_pxu=True)
+                else:
+                    file.set_payload(file.payload, compress=False, use_pxu=True)
 
 def merge_cart64(dest, src, sections):
     glob = Cart64Glob(sections) if e(sections) else None
