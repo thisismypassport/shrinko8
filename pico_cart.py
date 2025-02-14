@@ -522,6 +522,12 @@ k_base64_chars = string.ascii_uppercase + string.ascii_lowercase + string.digits
 k_base64_alt_chars = k_base64_chars[62:].encode()
 k_base64_char_map = {ch: i for i, ch in enumerate(k_base64_chars)}
 
+def pico_base64_encode(data):
+    return base64.b64encode(data, k_base64_alt_chars)
+
+def pico_base64_decode(data, validate=False):
+    return base64.b64decode(data, k_base64_alt_chars, validate=validate)
+
 def print_url_size(size, **kwargs):
     print_size("url", size - k_url_prefix_size, k_url_size, **kwargs)
 
@@ -550,7 +556,7 @@ def read_cart_from_url(url, size_handler=None, **opts):
     cart = Cart()
 
     if code:
-        codebuf = base64.b64decode(code, k_base64_alt_chars, validate=True).ljust(k_code_size, b'\0')
+        codebuf = pico_base64_decode(code, validate=True).ljust(k_code_size, b'\0')
         with BinaryReader(BytesIO(codebuf), big_end = True) as r:
             cart.code, cart.code_rom = read_code_from_rom(r, **opts)
 
@@ -577,7 +583,7 @@ k_url_prefix = "https://www.pico-8-edu.com"
 
 def write_cart_to_url(cart, url_prefix=k_url_prefix, force_compress=False, size_handler=None, **opts):
     raw_code = write_cart_to_tiny_rom(cart, **opts)        
-    code = base64.b64encode(raw_code, k_base64_alt_chars)
+    code = pico_base64_encode(raw_code)
 
     rect = iter_rect(128, 128)
     gfx = []

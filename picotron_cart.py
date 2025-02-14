@@ -1,16 +1,15 @@
 from utils import *
 from media_utils import Surface, Color
-from pico_cart import load_image_of_size, get_res_path, k_base64_alt_chars, k_png_header
+from pico_cart import load_image_of_size, get_res_path, pico_base64_decode, pico_base64_encode, k_png_header
 from pico_export import lz4_uncompress, lz4_compress
 from pico_defs import decode_luastr, encode_luastr
 from pico_compress import print_size, compress_code, uncompress_code, encode_p8str, decode_p8str
 from picotron_defs import get_default_picotron_version, Cart64Glob
-from picotron_fs import PicotronFile, PicotronDir
-import base64
+from picotron_fs import PicotronFile, PicotronDir, k_pod
 
 class Cart64Format(Enum):
     """An enum representing the supported cart formats"""
-    auto = p64 = png = rom = tiny_rom = lua = dir = fs = label = ...
+    auto = p64 = png = rom = tiny_rom = lua = pod = dir = fs = label = ...
     
     @property
     def is_input(m):
@@ -23,7 +22,7 @@ class Cart64Format(Enum):
         return m not in (m.auto, m.dir, m.fs, m.label, m.tiny_rom)
     @property
     def is_src(m):
-        return m in (m.p64, m.lua, m.dir, m.fs)
+        return m in (m.p64, m.lua, m.pod, m.dir, m.fs)
     @property
     def is_export(m):
         return False
@@ -338,7 +337,7 @@ def read_cart64_from_source(data, path=None, raw=False, **_):
             else:
                 data = b"\n".join(lines)
                 if data.startswith(k_p64_b64_prefix):
-                    data = base64.b64decode(data[4:], k_base64_alt_chars)
+                    data = pico_base64_decode(data[4:])
 
                 cart.files[fspath] = PicotronFile(data, line_start)
 
@@ -394,7 +393,7 @@ def write_cart64_to_source(cart, avoid_base64=False, **opts):
         lines.append(k_p64_file_prefix + encode_luastr(fspath))
         if e(file.data):
             if bad_p64_char_re.search(file.data):
-                data = k_p64_b64_prefix + base64.b64encode(file.data, k_base64_alt_chars)
+                data = k_p64_b64_prefix + pico_base64_encode(file.data)
                 for line in str_chunk(data, k_p64_b64_line_size):
                     lines.append(line)
             else:
@@ -407,6 +406,23 @@ def write_cart64_to_source(cart, avoid_base64=False, **opts):
 def write_cart64_to_raw_source(cart, **_):
     main = cart.files.get(k_p64_main_path)
     check(main, "{k_p64_main_path} not found in cart")
+    return main.data
+
+k_fictive_main_pod = "main.pod" # not a real picotron concept
+
+def read_cart64_from_single_pod(data, path=None, **_):
+    cart = Cart64(path=path)
+    main = PicotronFile(data)
+    if main.raw_metadata is None:
+        main.raw_metadata = k_pod
+    cart.files[k_fictive_main_pod] = main
+    return cart
+
+def write_cart64_to_single_pod(cart, **_):
+    main = cart.files.get(k_fictive_main_pod)
+    check(main, "{k_fictive_main_pod} not found in cart")
+    if main.raw_metadata == k_pod:
+        main.raw_metadata = None
     return main.data
 
 def read_cart64_from_fs(path, is_dir=None, target_cart=None, fspath=None, sections=None, **opts):
@@ -500,6 +516,8 @@ def read_cart64(path, format=None, **opts):
         return read_cart64_from_tiny_rom(file_read(path), path=path, **opts)
     elif format == Cart64Format.lua:
         return read_cart64_from_source(file_read(path), raw=True, path=path, **opts)
+    elif format == Cart64Format.pod:
+        return read_cart64_from_single_pod(file_read(path), path=path, **opts)
     elif format in (Cart64Format.dir, Cart64Format.fs):
         return read_cart64_from_fs(path, is_dir=True if format == Cart64Format.dir else None, **opts)
     elif format == Cart64Format.label:
@@ -519,6 +537,8 @@ def write_cart64(path, cart, format, **opts):
         file_write(path, write_cart64_to_tiny_rom(cart, **opts))
     elif format == Cart64Format.lua:
         file_write(path, write_cart64_to_raw_source(cart, **opts))
+    elif format == Cart64Format.pod:
+        file_write(path, write_cart64_to_single_pod(cart, **opts))
     elif format in (Cart64Format.dir, Cart64Format.fs):
         write_cart64_to_fs(cart, path, is_dir=True if format == Cart64Format.dir else None, **opts)
     elif format == Cart64Format.label:
@@ -532,7 +552,7 @@ def filter_cart64(cart, sections):
     for path in to_delete:
         del cart.files[path]
 
-def preproc_cart64(cart, delete_meta=None, uncompress_pods=False, keep_pod_compression=False, need_pod_compression=False):
+def preproc_cart64(cart, delete_meta=None, uncompress_pods=False, base64_pods=False, keep_pod_compression=False, need_pod_compression=False):
     if delete_meta:
         to_delete = []
         
@@ -553,11 +573,11 @@ def preproc_cart64(cart, delete_meta=None, uncompress_pods=False, keep_pod_compr
         for path, file in cart.files.items():
             if not file.is_raw and not file.is_dir:
                 if uncompress_pods:
-                    file.set_payload(file.payload, compress=False, use_pxu=False)
+                    file.set_payload(file.payload, compress=False, use_pxu=False, use_base64=base64_pods)
                 elif need_pod_compression:
-                    file.set_payload(file.payload, compress=True, use_pxu=True)
+                    file.set_payload(file.payload, compress=True, use_pxu=True, use_base64=base64_pods)
                 else:
-                    file.set_payload(file.payload, compress=False, use_pxu=True)
+                    file.set_payload(file.payload, compress=False, use_pxu=True, use_base64=base64_pods)
 
 def merge_cart64(dest, src, sections):
     glob = Cart64Glob(sections) if e(sections) else None

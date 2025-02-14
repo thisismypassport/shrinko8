@@ -1,5 +1,6 @@
 from utils import *
 from pico_defs import Language, encode_luastr, decode_luastr
+from pico_cart import pico_base64_decode, pico_base64_encode
 from pico_export import lz4_compress, lz4_uncompress
 from pico_compress import update_mtf
 
@@ -78,15 +79,27 @@ def parse_pod(pod, ud_handler=None):
                         table[index] = value
                     index += 1
             return table
+        
+        elif node.type == NodeType.call and node.func.type == NodeType.var and node.func.name == "unpod" and len(node.args) == 1:
+            value = node_to_value(node.args[0])
+            if isinstance(value, str):
+                return read_pod(encode_luastr(value))
+                
+            add_error(f"unknown unpod param: {value}")
+
         else:
             add_error(f"unknown pod syntax {node.type}", node)
 
     value = node_to_value(root) if root else None
 
     if token_errors or parse_errors or value_errors:
-        eprint(f"warning - errors while parsing pod: {pod}")
+        print(f"Parsing errors for POD:\n{pod}")
+
         for error in token_errors + parse_errors + value_errors:
-            eprint("  " + error.format())
+            print(error.format())
+        
+        throw(f"Unrecognized POD format - please report issue and use --keep-pod-compression for now")
+
     return value
 
 def parse_meta_pod(pod):
@@ -162,6 +175,7 @@ def format_meta_pod(value):
 
 k_lz4_prefix = b"lz4\0"
 k_pxu_prefix = b"pxu\0"
+k_b64_prefix = b"b64:"
 
 class PxuFlags(Bitmask):
     unk_type = 0x3
@@ -184,12 +198,9 @@ def read_pxu(data, idx):
         size = width * height
 
         bits = r.u8()
-        check(bits == 4, "unsupported pxu bits") # TODO - allow more?
+        check(bits == 4, "unsupported pxu bits") # TODO - allow more? (entirely untested)
         mask = (1 << bits) - 1
         ext_count = 1 << (8 - bits)
-
-        # the general idea behind the complexity is that repeated pixels can
-        # take up spots from low-valued pixels.
 
         data = bytearray()
         mapping = [i for i in range(mask)]
@@ -223,6 +234,9 @@ def read_pxu(data, idx):
 
 def read_pod(value):
     """Reads a picotron pod from possibly compressed bytes"""
+
+    if value.startswith(k_b64_prefix):
+        value = pico_base64_decode(value[4:])
 
     if value.startswith(k_lz4_prefix):
         with BinaryReader(BytesIO(value)) as r:
@@ -312,7 +326,7 @@ def write_pxu(ud):
 
         return w.f.getvalue()
 
-def write_pod(pod, compress=True, use_pxu=True):
+def write_pod(pod, compress=True, use_pxu=True, use_base64=False):
     """Writes a picotron pod into optionally compressed bytes"""
     
     pxu_datas = None
@@ -345,6 +359,9 @@ def write_pod(pod, compress=True, use_pxu=True):
             w.bytes(compressed)
             value = w.f.getvalue()
     
+    if use_base64:
+        value = k_b64_prefix + pico_base64_encode(value)
+
     return value
 
 class PicotronFile:
@@ -421,11 +438,11 @@ class PicotronFile:
     def payload(m, value):
         m.set_payload(value)
 
-    def set_payload(m, value, compress=True, use_pxu=True):
+    def set_payload(m, value, compress=True, use_pxu=True, use_base64=False):
         if m.is_raw:
             m.raw_payload = value
         else:
-            m.raw_payload = write_pod(value, compress=compress, use_pxu=use_pxu)
+            m.raw_payload = write_pod(value, compress=compress, use_pxu=use_pxu, use_base64=use_base64)
 
     is_dir = False
 

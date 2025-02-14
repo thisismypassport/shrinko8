@@ -169,7 +169,8 @@ def create_main(lang):
             pgroup.add_argument("--delete-meta", type=SplitBySeps, action="extend",
                                 help=f"specify a {sections_desc} to delete metadata of (default: * if minifying unsafely, else none)")
             pgroup.add_argument("--keep-pod-compression", action="store_true", help="keep compression of all pod files as-is")
-            pgroup.add_argument("--uncompress-pods", action="store_true", help="uncompress all pod files to plain text")
+            pgroup.add_argument("-u", "--uncompress-pods", action="store_true", help="uncompress all pod files to plain text")
+            pgroup.add_argument("--base64-pods", action="store_true", help="base64 all pod files")
             pgroup.add_argument("--list", action="store_true", help="list all files inside the cart")
             pgroup.add_argument("--filter", type=SplitBySeps, action="extend", help=f"specify a {sections_desc} to keep in the output")
             pgroup.add_argument("--insert", nargs='+', action="append", metavar=(f"INPUT [FSPATH] [FILES_FILTER]", ""),
@@ -177,7 +178,7 @@ def create_main(lang):
             pgroup.add_argument("--extract", nargs='+', action="append", metavar=(f"FSPATH [OUTPUT]", ""),
                                 help=f"extract the specified file or directory from FSPATH to OUTPUT ")
         else:
-            pgroup.set_defaults(code_sections=None, delete_meta=None, uncompress_pods=None, keep_pod_compression=None,
+            pgroup.set_defaults(code_sections=None, delete_meta=None, uncompress_pods=None, keep_pod_compression=None, base64_pods=None,
                                 filter=None, insert=None, extract=None)
         
         pgroup.add_argument("--merge", nargs='+', action="append", metavar=(f"INPUT {sections_meta} [FORMAT]", ""),
@@ -518,7 +519,7 @@ def create_main(lang):
             if is_picotron:
                 preproc_cart_func(cart, delete_meta=args.delete_meta,
                                   keep_pod_compression=args.keep_pod_compression,
-                                  uncompress_pods=args.uncompress_pods,
+                                  uncompress_pods=args.uncompress_pods, base64_pods=args.base64_pods,
                                   # binary formats are already compressed, so pod compression just hurts
                                   need_pod_compression=args.format and args.format.is_src)
 

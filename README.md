@@ -1012,7 +1012,22 @@ Cart manipulation features:
 * `--extract` - extract a file or directory from the cart. E.g. `--extract main.lua` or `--extract sfx/1.sfx MyDocuments/1.sfx`
 * `--merge` - merge another cart into the cart. E.g. `--merge other.p64` or `--merge other.p64 "sfx/*,gfx/*"`
 
+Cart formats:
+* p8 - Picotron cart source
+* dir - Picotron cart exported into a directory
+* png - Picotron cart exported into a png
+* rom - Picotron cart exported into a rom
+* tiny-rom - Picotron cart exported into a tiny rom (code only)
+* lua - raw lua code (as main.lua)
+* pod - raw POD file (for easier manipulation of single pods)
+* label - A 480x270 image of a cart's label (label only)
+
+POD files:
+By default, Shrinkotron repacks all POD files for better compression. There are options to change this:
+* `--uncompress-pods` (or `-u`) - uncompress all PODs
+* `--keep-pod-compression` - do not touch the PODs - keep them as-is
+* `--base64-pods` - output base64 version of PODs (probably not useful unless manipulating single pods via the 'pod' format)
+
 Notes:
 * Shrinkotron assumes calls to `include` are used to include other unmodified lua files. If this is not the case, minify may break even under `--minify-safe-only`
-* Shrinkotron repacks all POD files for better compression. (There are options to change this - `--uncompress-pods` and `--keep-pod-compression`)
 * As Picotron evolves, there might be new globals or table keys that Shrinkotron isn't aware of. You can report such cases and use [`--preserve`](#preserving-identifiers-across-the-entire-cart) meanwhile.
