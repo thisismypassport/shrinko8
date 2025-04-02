@@ -233,6 +233,7 @@ def run():
     run_test("tinyrom", "tiny.rom", "tiny.lua")
     run_test("title", "title.p8", "title.p8.png", update_version=False)
     run_test("uni8", "uni8.lua", "uni8.p8")
+    run_test("raw8", "raw8.p8", "raw8.p8")
 
     if run_test("repl", "repl.p8", "repl.p8", "--minify",
                 "--rename-map", "test_output/repl.map", extra_outputs=["repl.map"], pico8_output_val="finished"):

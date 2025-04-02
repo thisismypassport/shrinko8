@@ -329,6 +329,12 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
             else:
                 yield int(b, 16)
       
+    def p8_split_lines(str):
+        split = re.split("\r?\n", str)
+        if split and not split[-1]:
+            split.pop()
+        return split
+
     if not raw and not data.startswith(k_p8_prefix) and not data.startswith("__lua__"): # fallback to raw
         raw = True
     
@@ -336,7 +342,7 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
     code = []
     code_line = 0
     y = 0
-    for line_i, line in enumerate(data.splitlines()): # splitlines eats a trailing empty line, like pico8 does
+    for line_i, line in enumerate(p8_split_lines(data)):
         try:
             clean = line.strip()
             
@@ -644,35 +650,34 @@ def write_cart_to_clip(cart, **opts):
     return write_raw_to_clip(write_cart_to_image(cart, **opts))
 
 def read_cart_autodetect(path, **opts):
-    try:
-        text = file_read_text(path)
+    data = file_read(path)
 
-        # cart?
-        if text.startswith(k_p8_prefix) or text.startswith("__lua__"):
-            return read_cart_from_source(text, path=path, **opts)
-            
-        rtext = text.rstrip()
+    if data.startswith(k_png_header):
+        return read_cart_from_image(data, path=path, **opts)
 
-        # clip?
-        if rtext.startswith(k_clip_prefix):
-            return read_cart_from_clip(rtext, path=path, **opts)
+    text = data.decode(errors="surrogateescape")
 
-        # url?
-        if rtext.startswith(k_url_prefix):
-            return read_cart_from_url(rtext, path=path, **opts)
-
-        # plain text?
-        return read_cart_from_source(text, raw=True, path=path, **opts)
+    # cart?
+    if text.startswith(k_p8_prefix) or text.startswith("__lua__"):
+        return read_cart_from_source(text, path=path, **opts)
         
-    except UnicodeDecodeError: # required to happen for pngs
-        return read_cart(path, CartFormat.png, **opts)
+    # clip?
+    if text.startswith(k_clip_prefix):
+        return read_cart_from_clip(text.rstrip(), path=path, **opts)
+
+    # url?
+    if text.startswith(k_url_prefix):
+        return read_cart_from_url(text.rstrip(), path=path, **opts)
+
+    # plain text?
+    return read_cart_from_source(text, raw=True, path=path, **opts)
 
 def read_cart(path, format=None, **opts):
     """Read a cart from the given path, assuming it is in the given format"""
     if format in (None, CartFormat.auto):
         return read_cart_autodetect(path, **opts)
     elif format in (CartFormat.p8, CartFormat.code):
-        return read_cart_from_source(file_read_text(path), path=path, **opts)
+        return read_cart_from_source(file_read_maybe_text(path), path=path, **opts)
     elif format == CartFormat.png:
         return read_cart_from_image(file_read(path), path=path, **opts)
     elif format in (CartFormat.rom, CartFormat.tiny_rom):
@@ -682,7 +687,7 @@ def read_cart(path, format=None, **opts):
     elif format == CartFormat.url:
         return read_cart_from_url(file_read_text(path).rstrip(), path=path, **opts)
     elif format == CartFormat.lua:
-        return read_cart_from_source(file_read_text(path), raw=True, path=path, **opts)
+        return read_cart_from_source(file_read_maybe_text(path), raw=True, path=path, **opts)
     elif format == CartFormat.label:
         return read_cart_label(file_read(path), path=path, **opts)
     elif format == CartFormat.spritesheet:
