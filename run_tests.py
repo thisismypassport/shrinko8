@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from test_utils import *
-import argparse, fnmatch
+import argparse, fnmatch, sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--measure", action="store_true", help="print the input/output counts for successful tests")
@@ -271,8 +271,9 @@ def run():
     run_test("TRON_constmin", "consttron.p64", "consttronmin.p64", "--minify", "--avoid-base64", target=Target.picotron)
     run_test("TRON_load", "loadtron.p64", "loadtron.p64", "--minify-safe-only", target=Target.picotron)
 
-def main(raw_args):
+def main(raw_args=None):
     global g_opts
+    raw_args = raw_args if raw_args else sys.argv[1:]
     g_opts = parser.parse_args(raw_args)
     init_tests(g_opts)
     
@@ -290,4 +291,4 @@ def main(raw_args):
     return end_tests()
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(main())

@@ -9,7 +9,7 @@ from pico_defs import Language, get_default_pico8_version
 from picotron_defs import PicotronContext, Cart64Source, get_default_picotron_version
 from picotron_cart import Cart64Format, read_cart64, write_cart64, merge_cart64, filter_cart64, preproc_cart64
 from picotron_cart import write_cart64_compressed_size, write_cart64_version
-import argparse
+import argparse, sys
 
 k_version = 'v1.2.3c'
 
@@ -651,7 +651,8 @@ def create_main(lang):
 
     parser = create_parser()
 
-    def main(raw_args):
+    def main(raw_args=None):
+        raw_args = raw_args if raw_args else sys.argv[1:]
         try:
             if not raw_args: # help is better than usage
                 parser.print_help(sys.stderr)
