@@ -651,8 +651,10 @@ def create_main(lang):
 
     parser = create_parser()
 
-    def main(raw_args):
+    def main(raw_args=None):
         try:
+            raw_args = default(raw_args, sys.argv[1:])
+
             if not raw_args: # help is better than usage
                 parser.print_help(sys.stderr)
                 return 1

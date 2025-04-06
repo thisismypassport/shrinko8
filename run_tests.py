@@ -271,7 +271,9 @@ def run():
     run_test("TRON_constmin", "consttron.p64", "consttronmin.p64", "--minify", "--avoid-base64", target=Target.picotron)
     run_test("TRON_load", "loadtron.p64", "loadtron.p64", "--minify-safe-only", target=Target.picotron)
 
-def main(raw_args):
+def main(raw_args=None):
+    raw_args = default(raw_args, sys.argv[1:])
+
     global g_opts
     g_opts = parser.parse_args(raw_args)
     init_tests(g_opts)
@@ -290,4 +292,4 @@ def main(raw_args):
     return end_tests()
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(main())

@@ -6,4 +6,4 @@ import sys
 main = create_main(Language.picotron)
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+    sys.exit(main())
