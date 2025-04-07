@@ -208,11 +208,9 @@ def to_p8str(text):
         elif (chpair := ch + str_get(text, i + 1, '')) in k_charset_map:
             result.append(chr(k_charset_map[chpair]))
             ignore_next = True
-        elif 0xdc80 <= ord(ch) <= 0xdcff: # from 'surrogateescape'
-            result.append(chr(ord(ch) - 0xdc00))
         else:
             # pico8 just reinterprets characters it doesn't understand as bytes
-            for byte in ch.encode():
+            for byte in ch.encode(errors="surrogateescape"):
                 result.append(chr(byte))
     return "".join(result)
 

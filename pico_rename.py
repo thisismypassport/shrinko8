@@ -385,7 +385,7 @@ def rename_tokens(ctxt, root, rename_opts):
     local_renames, global_renames, member_renames, label_renames = {}, {}, {}, {}
 
     def try_select_var(sel, excluded, renames, avoids, ident, var_map=None):
-        sel_var = var_map[sel] if var_map else sel
+        sel_var = var_map[sel] if e(var_map) else sel
         
         if sel in avoids:
             return False
