@@ -150,13 +150,11 @@ def format_pod(value, ud_handler=None):
         throw(f"invalid pod value {value}")
 
 def escape_meta(pod):
-    i = 0
     while True:
-        i = pod.find("]]", i)
+        i = pod.rfind("]]")
         if i < 0:
             break
-        repl = "\\93\\093" if str_get(pod, i+2, "").isdigit() else "\\93\\93"
-        pod = str_replace_at(pod, i, 2, repl)
+        pod = str_replace_at(pod, i, 2, "\\93]")
     return pod
 
 def format_meta_pod(value):

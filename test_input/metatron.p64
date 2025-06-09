@@ -1,0 +1,10 @@
+picotron cartridge // www.picotron.net
+version 3
+
+:: main2.pod
+--[[pod,str="[\93\93\93\93]"]]
+{icon=userdata("u8",2,2,"07040506"),sandbox=false,runtime=18,prop=-9.9,workspaces={{location="main.lua#1",workspace_index=1},{location="main2.lua#2",workspace_index=2}}}
+:: main3.pod
+--[[pod]]
+unpod("-0.0")
+:: [eoc]

@@ -150,28 +150,30 @@ def format_luanum(value, sign=None, base=None):
             # only thing we can do is surround result in parens
             sign = None
             parens = True
+            
+        if sign is None:
+            sign = float_sign(value)
+        
+        value = abs(value)
         
         if math.isinf(value):
-            if sign is None:
-                sign = float_sign(value)
-
             if base == 16:
-                minvalue = sign + "0x1p1111"
+                minvalue = "0x1p1111"
             else:
-                minvalue = sign + "1e333"
+                minvalue = "1e333"
 
         elif math.isnan(value):
             raise ValueError("nan not supported") # could output <inf>*0 in parens? (0/0 doesn't currently nan)
 
         else:
             # TODO: this is very not optimal (but at least it's correct this time...)
-            
+
             if base is None or base == 16:
                 manvalue, expvalue = math.frexp(value)
                 manvalue *= 2; expvalue -= 1 # the 1..2 range is better for us
                 expvalue = f"{float_hex(manvalue, 56)}p{expvalue}"
 
-                if value == 0 or 1e-4 <= abs(value) <= 1e24:
+                if value == 0 or 1e-4 <= value <= 1e24:
                     hexvalue = float_hex(value, 88, keep_float=True)
                     hexvalue = expvalue if len(expvalue) < len(hexvalue) else hexvalue
                 else:
@@ -185,7 +187,7 @@ def format_luanum(value, sign=None, base=None):
                 expstr = f"e{int(expstr)}"
                 expvalue = float_str_minify(manstr, lambda v: float(v + expstr), value) + expstr
 
-                if value == 0 or 1e-3 <= abs(value) <= 1e21:
+                if value == 0 or 1e-3 <= value <= 1e21:
                     decvalue = float_str_minify("%.24f" % value, float, value, keep_float=True)
                     decvalue = expvalue if len(expvalue) < len(decvalue) else decvalue
                 else:
@@ -197,6 +199,7 @@ def format_luanum(value, sign=None, base=None):
             if not base:
                 minvalue = hexvalue if len(hexvalue) < len(decvalue) else decvalue
         
+        minvalue = sign + minvalue
         if parens:
             minvalue = "(" + minvalue + ")"
 
