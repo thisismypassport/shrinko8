@@ -169,12 +169,18 @@ k_title_size = Point(31 * 4, 16)
 
 k_palette_rgb_6bpp_map = {(c.r & ~3, c.g & ~3, c.b & ~3): i for i, c in enumerate(k_palette)}
 k_png_header = b"\x89PNG\r\n\x1a\n"
+k_qoi_header = b"qoif"
 
-def load_image_of_size(f, valid_size, format=PixelFormat.rgba8):
+def load_image_of_size(f, valid_size, format=PixelFormat.rgba8, is_qoi=False):
     r = BinaryReader(f)
-    if r.bytes(8) != k_png_header:
-        throw("Not a valid png")
-    r.subpos(8)
+    if is_qoi:
+        if r.bytes(4) != k_qoi_header:
+            throw("Not a valid qoi")
+        r.subpos(4)
+    else:
+        if r.bytes(8) != k_png_header:
+            throw("Not a valid png")
+        r.subpos(8)
 
     image = Surface.load(f, format)
     if image.size != valid_size:

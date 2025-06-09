@@ -1,6 +1,7 @@
 from utils import *
 from media_utils import Surface, Color
-from pico_cart import load_image_of_size, get_res_path, pico_base64_decode, pico_base64_encode, k_png_header
+from pico_cart import load_image_of_size, get_res_path, pico_base64_decode, pico_base64_encode
+from pico_cart import k_png_header, k_qoi_header
 from pico_export import lz4_uncompress, lz4_compress
 from pico_defs import decode_luastr, encode_luastr
 from pico_compress import print_size, compress_code, uncompress_code, encode_p8str, decode_p8str
@@ -68,10 +69,6 @@ class Cart64:
     def set_version(m, version):
         m.version_id = version
     
-    @classmethod
-    def glob_matches(m, glob):
-        pass
-
 k_cart64_size = 0x40000 # + 0x2000 ?
 k_rom_header_sig = b"p64"
 k_rom_header_size = 8
@@ -111,7 +108,7 @@ def write_cart64_to_rom(cart, size_handler=None, debug_handler=None, padding=0,
 
     with BinaryWriter(io) as w:
         for fspath, file in (cart.files.items()): # TODO - sorting by extension gives some benefits but is it safe given directories?
-            if fspath == k_label_file:
+            if fspath in k_label_files:
                 continue
 
             w.zbytes(encode_luastr(fspath))
@@ -183,7 +180,9 @@ def write_cart64_to_tiny_rom(cart, size_handler=None, debug_handler=None, **opts
 k_cart64_image_size = Point(512, 384)
 k_label_size = Point(480, 270)
 k_label_offset = Point(16, 38)
-k_label_file = "label.png"
+k_label_png_file = "label.png"
+k_label_qoi_file = "label.qoi"
+k_label_files = (k_label_qoi_file, k_label_png_file)
 k_title_offset = Point(80, 330)
 k_title_width = 352 # ?
 k_subtitle_suboffset = Point(0, 26)
@@ -213,7 +212,8 @@ def read_cart64_from_image(data, **opts):
             r, g, b, a = pixels[k_label_offset.x + x, k_label_offset.y + y]
             label_pixels[x, y] = (r & ~7, g & ~7, b & ~7, 0xff)
 
-    cart.files[k_label_file] = PicotronFile(label.save())
+    # TODO - also save in qoi format? but pillow doesn't support it...
+    cart.files[k_label_png_file] = PicotronFile(label.save())
     return cart
 
 def draw_title_on_image(image, title, subtitle, offset, width, suboffset):
@@ -274,14 +274,16 @@ def write_cart64_to_image(cart, template_image=None, template_only=False, **opts
         width, height = image.size
 
         if not template_only:
-            label = cart.files.get(k_label_file)
-            if label:
-                try:
-                    check(label.is_raw, "label is not a raw file")
-                    label_surf = load_image_of_size(BytesIO(label.raw_payload), k_label_size)
-                    image.draw(label_surf, k_label_offset)
-                except CheckError as e:
-                    eprint("ignoring invalid label due to: %s" % e)                    
+            for label_file in k_label_files:
+                label = cart.files.get(label_file)
+                if label:
+                    try:
+                        check(label.is_raw, "label is not a raw file")
+                        label_surf = load_image_of_size(BytesIO(label.raw_payload), k_label_size, is_qoi=(label_file == k_label_qoi_file))
+                        image.draw(label_surf, k_label_offset)
+                    except CheckError as e:
+                        eprint("ignoring invalid label due to: %s" % e)
+                    break
             
             title = cart.title
             if title:
@@ -304,14 +306,25 @@ def write_cart64_to_image(cart, template_image=None, template_only=False, **opts
 
 def read_cart64_label(data, path=None, **_):
     cart = Cart64(path=path)
-    cart.files[k_label_file] = PicotronFile(data)
+    if data.startswith(k_png_header):
+        label_file = k_label_png_file
+    elif data.startswith(k_qoi_header):
+        label_file = k_label_qoi_file
+    else:
+        throw("label in unexpected format")
+    
+    cart.files[label_file] = PicotronFile(data)
     return cart
 
 def write_cart64_label(cart, **_):
-    label = cart.files.get(k_label_file)
-    if label is None:
-        throw("no label to write")
-    return label.data
+    for label_file in k_label_files:
+        label = cart.files.get(label_file)
+        if e(label):
+            if label_file == k_label_qoi_file: # we probably want to save a png
+                return Surface.load(BytesIO(label.data)).save()
+            else:
+                return label.data
+    throw("no label to write")
 
 k_p64_prefix = b"picotron cartridge"
 k_p64_main_path = "main.lua"
@@ -374,7 +387,7 @@ def preview_order_key(pair):
         order = -2
     elif filename.endswith(".lua"):
         order = -1
-    elif filename == k_label_file:
+    elif filename in k_label_files:
         order = 1
     elif filename.startswith("."):
         order = 2
