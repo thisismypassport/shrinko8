@@ -75,13 +75,13 @@ class Surface:
             fmt = m.format
         return m.pil.tobytes("raw", fmt._pil_raw_fmt, 0, -1 if flip else 1)
 
-    def save(m, dest=None):
+    def save(m, dest=None, format="png"):
         if dest is None:
             dest = BytesIO()
-            m.save(dest)
+            m.save(dest, format)
             return dest.getvalue()
         
-        m.pil.save(dest, "png")
+        m.pil.save(dest, format)
 
     def convert(m, fmt):
         return Surface(m.pil.convert(fmt._pil_fmt))

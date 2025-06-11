@@ -1,5 +1,5 @@
 picotron cartridge // www.picotron.net
-version 3
+version 2
 
 :: main.lua
 local f=false function print(e)if type(e)=="number"then if math.type(e)=="integer"then e=string.format("0x%x",e)else e=string.format("%a",e)end end printh(tostr(e))end local e=1e333-1e333?0

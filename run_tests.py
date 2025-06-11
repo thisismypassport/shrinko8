@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from test_utils import *
+from media_utils import Surface
 import argparse, fnmatch
 
 parser = argparse.ArgumentParser()
@@ -31,6 +32,18 @@ def measure(target, kind, path, input=False):
     else:
         print("MISSING!")
 
+def try_read_file_norm(path, ext=None):
+    data = try_file_read(path)
+    if not ext:
+        ext = path_extension(path)
+    if ext == ".png" and data:
+        img = Surface.load(BytesIO(data))
+        data = (img.size, img.format, img.to_data())
+    return data
+
+def try_read_file_png(path):
+    return try_read_file_norm(path, ".png")
+
 def try_read_dir_contents(dir):
     results = []
     for name in sorted(try_dir_names(dir, ())):
@@ -38,11 +51,11 @@ def try_read_dir_contents(dir):
         if path_is_dir(child):
             results.append((name, try_read_dir_contents(child)))
         else:
-            results.append((name, try_file_read(child)))
+            results.append((name, try_read_file_norm(child)))
     return results
 
 def run_test(name, input, output, *args, private=False, check_output=True, from_output=False,
-             stdout_output=None, norm_stdout=nop, exit_code=0, extra_outputs=None, output_reader=try_file_read,
+             stdout_output=None, norm_stdout=nop, exit_code=0, extra_outputs=None, output_reader=try_read_file_norm,
              pico8_output_val=None, pico8_output=None, pico8_run=None, copy_in_to_out=False, update_version=True,
              target=Target.pico8):
     if g_opts.test:
@@ -101,7 +114,7 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
         for extra_output in extra_outputs:
             extra_outpath = path_join(prefix + "test_output", extra_output)
             extra_cmppath = path_join(prefix + "test_compare", extra_output)
-            if try_file_read(extra_outpath) != try_file_read(extra_cmppath):
+            if output_reader(extra_outpath) != output_reader(extra_cmppath):
                 stdouts.append(f"ERROR: Extra output difference: {extra_outpath}, {extra_cmppath}")
                 success = False
 
@@ -205,7 +218,8 @@ def run():
     run_test("rom2p8", "test.rom", "test.rom.p8")
     run_test("p82rom", "testcvt.p8", "test.p8.rom")
     run_test("clip2p8", "test.clip", "test.clip.p8")
-    run_test("p82clip", "testcvt.p8", "testcvt.clip")
+    if run_test("p82clip", "testcvt.p8", "testcvt.clip", check_output=False):
+        run_test("p82clip_check", "testcvt.clip", "testcvt.clip.png", "-F", "clip", from_output=True)
     if run_test("url2p8", "test.url", "test.url.p8"):
         run_test("p82url", "test.url.p8", "test.url", from_output=True)
 
@@ -226,7 +240,8 @@ def run():
     run_test("sublang", "sublang.p8", "sublang.p8", "--minify",
              "--script", path_join("test_input", "sublang.py"))
     run_test("unkform1", "unkform1", "unkform1", update_version=False)
-    run_test("unkform2", "unkform2.png", "unkform2", "--format", "png", "--input-format", "auto", update_version=False)
+    run_test("unkform2", "unkform2.png", "unkform2", "--format", "png", "--input-format", "auto",
+             update_version=False, output_reader=try_read_file_png)
     run_test("mini", "mini.p8", "mini.p8", "--minify", "--no-minify-lines", "--no-minify-consts",
              "--builtin", "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z",
              "--local-builtin", "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z")

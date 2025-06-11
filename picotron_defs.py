@@ -4,37 +4,35 @@ from pico_process import ContextBase, Source, get_source_location
 import fnmatch
 
 def get_default_picotron_version():
-    version_id = 3 # TODO - update as newer versions get more common
+    version_id = 2 # TODO - update as newer versions get more common
     return maybe_int(os.getenv("PICOTRON_VERSION_ID"), version_id)
 
 builtin_globals = {
-    "USERDATA", "_G", "_VERSION", "_fetch_remote_result",
-    "_get_key_from_scancode", "_process_event_messages",
-    "_strindex", "_update_buttons", "abs", "add", "all",
-    "apply_delta", "assert", "atan2", "blit", "btn", "btnp", "camera",
-    "cd", "ceil", "chr", "circ", "circfill", "clear_key", "clip",
+    "USERDATA", "_G", "_VERSION", "abs", "add",  "all", "apply_delta",
+    "assert", "atan2", "blit", "btn", "btnp", "camera", "cd",
+    "ceil", "chr", "circ", "circfill", "clear_key", "clip",
     "cls", "cocreate", "collectgarbage", "color", "coresume", "coroutine",
     "cos", "costatus", "count", "cp", "create_delta", "create_gui",
-    "create_meta_key", "create_process", "create_undo_stack", "cursor",
-    "date", "debug", "del", "deli", "dtime", "env", "error", "exit",
+    "create_process", "create_socket", "create_undo_stack", "cursor",
+    "date", "debug", "del", "deli", "env", "error", "exit",
     "fetch", "fetch_metadata", "fget", "fillp", "flip", "flr", "foreach",
     "fset", "fstat", "fullpath", "get", "get_clipboard", "get_display",
     "get_draw_target", "get_spr", "getmetatable", "include", "ipairs",
     "key", "keyp", "line", "load", "ls", "map", "math", "max", "memcpy",
     "memmap", "memset", "menuitem", "mget", "mid", "min", "mkdir",
     "mount", "mouse", "mouselock", "mset", "music", "mv", "next",
-    "note", "notify", "on_event", "ord", "oval", "ovalfill", "pack",
+    "note", "notify", "on_event", "open", "ord", "oval", "ovalfill", "pack",
     "pairs", "pal", "palt", "pcall", "peek", "peek2", "peek4", "peek8",
     "peektext", "pget", "pid", "pod", "poke", "poke2", "poke4", "poke8",
     "print", "printh", "pset", "pwd", "pwf", "rawequal", "rawget",
-    "rawlen", "rawset", "readtext", "rect", "rectfill", "reset",
-    "rm", "rnd", "select", "send_message", "set", "set_clipboard",
-    "set_draw_target", "set_spr", "setmetatable", "sfx", "sgn", "sin",
-    "split", "spr", "sqrt", "srand", "sspr", "stat", "stop", "store",
-    "store_metadata", "string", "sub", "t", "table", "theme", "time",
-    "tline3d", "tokenoid", "tonum", "tonumber", "tostr", "tostring",
-    "type", "unmap", "unpack", "unpod", "userdata", "utf8", "vec",
-    "vid", "warn", "window", "wrangle_working_file", "yield",
+    "rawlen", "rawset", "readtext", "rect", "rectfill", "reset", "rm",
+    "rnd", "rrect", "rrectfill", "select", "send_message", "set",
+    "set_clipboard", "set_draw_target", "set_spr", "setmetatable",
+    "sfx", "sgn", "sin", "split", "spr", "sqrt", "srand", "sspr", "stat",
+    "stop", "store", "store_metadata", "string", "sub", "t", "table",
+    "theme", "time", "tline3d", "tokenoid", "tonum", "tonumber", "tostr",
+    "tostring", "type", "unmap", "unpack", "unpod", "userdata", "utf8",
+    "vec", "vid", "warn", "window", "wrangle_working_file", "yield",
 }
 
 # subset of builtins that may call user code before returning, NOT including far-fetched stuff like metamethods
@@ -53,10 +51,11 @@ builtin_callbacks = {
 # TODO: there are likely tons more not covered here...
 builtin_members = {
     # USERDATA
-    "add", "attribs", "band", "bor", "bxor", "clear", "convert",
-    "copy", "cross", "distance", "div", "dot", "get", "height", "magnitude",
-    "matmul", "matmul2d", "matmul3d", "mod", "mul", "set", "shl",
-    "shr", "sort", "sub", "transpose", "width",
+    "abs", "add", "attribs", "band", "blit", "bor", "bxor", "clear", "column",
+    "convert", "copy", "cross", "distance", "div", "dot", "get", "height",
+    "idiv", "lerp", "magnitude", "matmul", "matmul2d", "matmul3d", "max", "min",
+    "mod", "mul", "mutate", "peek", "poke", "pow", "row", "set", "sgn", "sgn0",
+    "shl", "shr", "sort", "sub", "take", "transpose", "width",
     # coroutine
     "close", "create", "isyieldable", "resume", "running", "status",
     "wrap", "yield",
@@ -81,7 +80,7 @@ builtin_members = {
     "char", "charpattern", "codepoint", "codes", "len", "offset",
 
     # env()
-    "argv", "parent_pid", "prog_name", "title", "window_attribs",
+    "argv", "parent_pid", "path", "window_attribs",
     # create_gui()
     "child", "clip_to_parent", "draw_all", "el_at_pointer", "el_at_xy",
     "get_keyboard_focus_element", "get_pointer_element", "head",
@@ -89,9 +88,9 @@ builtin_members = {
     "width", "width_rel", "x", "y", "z",
 
     # window attrs
-    "x", "y", "z", "dx", "dy", "width", "height",
-    "wallpaper", "fullscreen", "tabbed", "show_in_workspace",
-    "moveable", "resizeable", "has_frame", "video_mode",
+    "x", "y", "z", "dx", "dy", "width", "height", "title", "pauseable",
+    "wallpaper", "fullscreen", "tabbed", "show_in_workspace", "autoclose",
+    "moveable", "resizeable", "has_frame", "video_mode", "cursor", "squashable",
 
     # pod metadata
     "created", "modified", "pod_format", "revision",

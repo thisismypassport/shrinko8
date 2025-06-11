@@ -415,7 +415,7 @@ def create_main(lang):
         input = format = name = sections = fspath = None
 
     def handle_input(args):
-        output_is_export = args.format and args.format.is_export
+        allow_extra_input = is_pico8 and args.format and args.format.is_export
 
         # read the main cart
         extra_carts = []
@@ -434,7 +434,7 @@ def create_main(lang):
             main_cart = read_cart_func(args.input, args.input_format, size_handler=args.input_count, 
                                        debug_handler=args.trace_input_compression, cart_name=args.cart,
                                        keep_compression=args.keep_compression, preprocessor=preprocessor,
-                                       extra_carts=extra_carts if output_is_export and not args.cart else None)
+                                       extra_carts=extra_carts if allow_extra_input and not args.cart else None)
         except OSError as err:
             throw(f"cannot read cart: {err}")
         
@@ -447,7 +447,7 @@ def create_main(lang):
 
         extra_inputs = []
         if args.extra_input:
-            if not output_is_export:
+            if not allow_extra_input:
                 throw("--extra-input can only be used when creating exports")
             
             for extra in args.extra_input:

@@ -10,7 +10,7 @@ from picotron_fs import PicotronFile, PicotronDir, k_pod
 
 class Cart64Format(Enum):
     """An enum representing the supported cart formats"""
-    auto = p64 = png = rom = tiny_rom = lua = pod = dir = fs = label = ...
+    auto = p64 = png = rom = tiny_rom = lua = pod = dir = dat = fs = label = ...
     
     @property
     def is_input(m):
@@ -26,7 +26,7 @@ class Cart64Format(Enum):
         return m in (m.p64, m.lua, m.pod, m.dir, m.fs)
     @property
     def is_export(m):
-        return False
+        return m == m.dat
     @property
     def is_exposed(m):
         return m != m.fs
@@ -212,8 +212,12 @@ def read_cart64_from_image(data, **opts):
             r, g, b, a = pixels[k_label_offset.x + x, k_label_offset.y + y]
             label_pixels[x, y] = (r & ~7, g & ~7, b & ~7, 0xff)
 
-    # TODO - also save in qoi format? but pillow doesn't support it...
-    cart.files[k_label_png_file] = PicotronFile(label.save())
+    try:
+        cart.files[k_label_qoi_file] = PicotronFile(label.save(format="qoi"))
+        cart.files.pop(k_label_png_file, None)
+    except:
+        cart.files[k_label_png_file] = PicotronFile(label.save())
+        cart.files.pop(k_label_qoi_file, None)
     return cart
 
 def draw_title_on_image(image, title, subtitle, offset, width, suboffset):
