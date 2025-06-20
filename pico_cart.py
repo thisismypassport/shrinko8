@@ -32,7 +32,7 @@ class CartFormat(Enum):
         return m.p8
     @classproperty
     def default_dir(m):
-        return None # since m.bin is output-only
+        return None
 
 class Cart:
     """A pico8 cart, including its code (as a p8str), rom (as a Memory), and more"""
@@ -214,9 +214,6 @@ def read_cart_from_image(data, **opts):
     cart = read_cart_from_rom(data, **opts)
     cart.label = surface_pixels_to_screenshot(pixels, k_label_offset)
     return cart
-
-def get_res_path():
-    return path_dirname(path_resolve(__file__))
 
 def draw_text_on_image(image, text, offset, size, spacing=Point.zero):
     with file_open(path_join(get_res_path(), "font.png")) as font_f:

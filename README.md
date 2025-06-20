@@ -1002,6 +1002,7 @@ To use, use `shrinkotron.py` instead of `shrinko8.py` - the rest is largely the 
 Options specific for Shrinktron:
 * `--code-files` - specify which files to process. The default is all lua files (`*.lua`), but you can customize it, e.g. to `*.lua,!dont_touch.lua,minify_me_too.not_lua`.
 * `--delete-meta` - specify which files to delete metadata for. The default is all (`*`) under `--minify` or none under `--minify-safe-only`.
+* `--keep-label`, `--delete-label` - specify whether the cart label is kept or deleted. The default is to delete it only when saving a png.
 
 Cart manipulation features:
 * `--list` - list all files inside the cart.

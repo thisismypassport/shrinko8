@@ -4,6 +4,8 @@ from pico_defs import *
 from pico_cart import CartFormat, write_cart, read_cart_from_rom, write_cart_to_rom
 from pico_cart import read_cart_from_source, write_cart_to_source, create_screenshot_surface
 from pico_compress import get_lz77, Lz77Entry
+from zipfile import ZipFile, ZipInfo, ZIP_STORED, ZIP_DEFLATED
+import base64
 
 class ListOp(Enum):
     insert = replace = delete = rename = ...
@@ -658,51 +660,9 @@ class PodExport(CartExport, PodFile):
             m.append_content("", bytes(new_pod.data))
         return m
 
-class FullExport(CartExport):
-    def __init__(m, pico8_dat, cart):
-        m.pico8_dat = pico8_dat
-        m.cart = cart
-
-    @classmethod
-    def create(cls, pico8_dat, cart=None, export_name="", **opts):
-        opts["cart"] = cart
-        opts["export_name"] = export_name
-
-        m = FullExport(pico8_dat, cart)
-        m.html_pod = PodFile(pico8_dat.find_named("pod/f_html5.pod"))
-        m.bin_pod = PodFile(pico8_dat.find_named("pod/f_bin.pod"))
-
-        m.pod = PodExport.create(pico8_dat, **opts)
-        m.js = JsExport.create(pico8_dat, html_pod=m.html_pod, **opts)
-        m.wjs = JsExport.create(pico8_dat, html_pod=m.html_pod, for_wasm=True, **opts)
-        m.exports = [m.pod, m.js, m.wjs]
-        
-        m.export_name = export_name
+class FullExportBase:
+    def __init__(m):
         m.curr_time = time.localtime(maybe_float(os.getenv("PICO8_EXPORT_REPRO_TIME", time.time())))[:6]
-        return m
-
-    def write_cart(m, *args, **opts):
-        for export in m.exports:
-            export.write_cart(*args, **opts)
-
-    def find_zstr(m, data, prefix, infix):
-        start = 0
-        while True:
-            start = data.find(prefix, start)
-            if start < 0:
-                break
-
-            end = data.find(b"\0", start)
-            if end < 0:
-                break
-            
-            zstr = data[start:end]
-            if infix in zstr:
-                return zstr.decode()
-            
-            start = end + 1
-        
-        raise Exception("'%s' with '%s' not found in data")
 
     def find_icon_offset_in_exe(m, exe_data):
         r = BinaryReader(BytesIO(exe_data))
@@ -768,7 +728,9 @@ class FullExport(CartExport):
         assert e(icon_offset)
         return icon_offset + 0x28
 
-    def create_icns_data(m, raw_data):
+    def create_icns_data(m, raw_data, has_alpha=False):
+        num_chan = 4 if has_alpha else 3
+
         w = BinaryWriter(big_end=True)
         w.str("icns")
         w.u32(0) # filled below
@@ -781,50 +743,94 @@ class FullExport(CartExport):
             for y in range(0x80):
                 w.u8(0x7f)
                 for x in range(0x80):
-                    w.u8(raw_data[(x + y*0x80)*3 + chan])
+                    w.u8(raw_data[(x + y*0x80)*num_chan + chan])
 
         w.str("t8mk")
-        mask_len = 0x80 * 0x80
-        w.u32(0x8 + mask_len)
-        for i in range(mask_len):
-            w.u8(0xff)
+        w.u32(0x8 + 0x80 * 0x80)
+        for y in range(0x80):
+            for x in range(0x80):
+                w.u8(raw_data[(x + y*0x80)*num_chan + 3] if has_alpha else 0xff)
 
         w.setpos(4)
         w.u32(w.len())
         return w.f.getvalue()
 
-    def save(m, path):
-        import base64
-        from zipfile import ZipFile, ZipInfo, ZIP_STORED, ZIP_DEFLATED
+    def find_zstr(m, data, prefix, infix):
+        start = 0
+        while True:
+            start = data.find(prefix, start)
+            if start < 0:
+                break
 
-        def zip_write(zip, dir, name, data, exec=False, is_dir=False):
-            info = ZipInfo(dir + "/" + name, m.curr_time)
-            info.create_system = 3 # unix
-            info.external_attr = (0o775 if exec or is_dir else 0o644) << 16
-            if is_dir:
-                info.external_attr |= 0x10 # w/o 0x40000000
-                info.compress_type = ZIP_STORED
-                info.filename += "/"
-                zip.writestr(info, b"") # zip.mkdir is too new...
-            else:
-                info.external_attr |= 0x80000000
-                info.compress_type = ZIP_DEFLATED
-                zip.writestr(info, data)
+            end = data.find(b"\0", start)
+            if end < 0:
+                break
+            
+            zstr = data[start:end]
+            if infix in zstr:
+                return zstr.decode()
+            
+            start = end + 1
         
-        def zip_mkdir(zip, dir, name):
-            zip_write(zip, dir, name, None, is_dir=True)
-            return dir + "/" + name
+        return None
 
-        def zip_copy(zip, dir, pod, exclude=None):
-            for e in pod.entries:
-                if e.name and e.name.startswith("./"): # many unnamed entries?
-                    if exclude and exclude in e.name:
-                        continue
+    def zip_write(m, zip, dir, name, data, exec=False, is_dir=False):
 
-                    exec = "." not in path_basename(e.name) # ???
-                    is_dir = not e.content # ???
-                    zip_write(zip, dir, e.name[2:], e.content, exec=exec, is_dir=is_dir)
+        info = ZipInfo(dir + "/" + name, m.curr_time)
+        info.create_system = 3 # unix
+        info.external_attr = (0o775 if exec or is_dir else 0o644) << 16
+        if is_dir:
+            info.external_attr |= 0x10 # w/o 0x40000000
+            info.compress_type = ZIP_STORED
+            info.filename += "/"
+            zip.writestr(info, b"") # zip.mkdir is too new...
+        else:
+            info.external_attr |= 0x80000000
+            info.compress_type = ZIP_DEFLATED
+            zip.writestr(info, data)
+    
+    def zip_mkdir(m, zip, dir, name):
+        m.zip_write(zip, dir, name, None, is_dir=True)
+        return dir + "/" + name
 
+class FullExport(CartExport, FullExportBase):
+    def __init__(m, pico8_dat, cart):
+        super().__init__()
+        m.pico8_dat = pico8_dat
+        m.cart = cart
+
+    @classmethod
+    def create(cls, pico8_dat, cart=None, export_name="", **opts):
+        opts["cart"] = cart
+        opts["export_name"] = export_name
+
+        m = FullExport(pico8_dat, cart)
+        m.html_pod = PodFile(pico8_dat.find_named("pod/f_html5.pod"))
+        m.bin_pod = PodFile(pico8_dat.find_named("pod/f_bin.pod"))
+
+        m.pod = PodExport.create(pico8_dat, **opts)
+        m.js = JsExport.create(pico8_dat, html_pod=m.html_pod, **opts)
+        m.wjs = JsExport.create(pico8_dat, html_pod=m.html_pod, for_wasm=True, **opts)
+        m.exports = [m.pod, m.js, m.wjs]
+        
+        m.export_name = export_name
+        return m
+
+    def write_cart(m, *args, **opts):
+        for export in m.exports:
+            export.write_cart(*args, **opts)
+
+    def zip_copy(m, zip, dir, pod, exclude=None):
+        for e in pod.entries:
+            if e.name and e.name.startswith("./"): # many unnamed entries?
+                if exclude and exclude in e.name:
+                    continue
+
+                exec = "." not in path_basename(e.name) # ???
+                is_dir = not e.content # ???
+                m.zip_write(zip, dir, e.name[2:], e.content, exec=exec, is_dir=is_dir)
+
+    def save(m, path):
         dir_ensure_exists(path)
         basename = m.export_name
 
@@ -864,22 +870,22 @@ class FullExport(CartExport):
 
         win_dir = "%s_windows" % basename
         with ZipFile(path_join(path, win_dir + ".zip"), "w") as win_zip:
-            zip_write(win_zip, win_dir, "%s.exe" % basename, exe_data, exec=True)
-            zip_write(win_zip, win_dir, "data.pod", m.pod.data)
-            zip_write(win_zip, win_dir, "SDL2.dll", m.bin_pod.find_named("bin/SDL2.dll"))
+            m.zip_write(win_zip, win_dir, "%s.exe" % basename, exe_data, exec=True)
+            m.zip_write(win_zip, win_dir, "data.pod", m.pod.data)
+            m.zip_write(win_zip, win_dir, "SDL2.dll", m.bin_pod.find_named("bin/SDL2.dll"))
 
         linux_dir = "%s_linux" % basename
         with ZipFile(path_join(path, linux_dir + ".zip"), "w") as linux_zip:
-            zip_write(linux_zip, linux_dir, "data.pod", m.pod.data)
-            if label_png: zip_write(linux_zip, linux_dir, "%s.png" % basename, label_png)
-            zip_write(linux_zip, linux_dir, basename, m.bin_pod.find_named("bin/pico8_dyn.amd64"), exec=True)
+            m.zip_write(linux_zip, linux_dir, "data.pod", m.pod.data)
+            if label_png: m.zip_write(linux_zip, linux_dir, "%s.png" % basename, label_png)
+            m.zip_write(linux_zip, linux_dir, basename, m.bin_pod.find_named("bin/pico8_dyn.amd64"), exec=True)
         
         raspi_dir = "%s_raspi" % basename
         with ZipFile(path_join(path, raspi_dir + ".zip"), "w") as raspi_zip:
-            zip_write(raspi_zip, raspi_dir, "data.pod", m.pod.data)
-            if label_png: zip_write(raspi_zip, raspi_dir, "%s.png" % basename, label_png)
+            m.zip_write(raspi_zip, raspi_dir, "data.pod", m.pod.data)
+            if label_png: m.zip_write(raspi_zip, raspi_dir, "%s.png" % basename, label_png)
             for suffix, content in m.bin_pod.find_prefix("builds/pi_builds/pico8_player"):
-                zip_write(raspi_zip, raspi_dir, basename + suffix, content, exec=True)
+                m.zip_write(raspi_zip, raspi_dir, basename + suffix, content, exec=True)
 
         if label_icnsdata:
             icns_data = m.create_icns_data(label_icnsdata) # doesn't seem to use "builds/osx_builds/pico8.icns" in the pod
@@ -888,26 +894,28 @@ class FullExport(CartExport):
 
         # unfortunately, the plist template isn't in the pods - only in the exe. well, the exe's in the pod, so...
         info_plist = m.find_zstr(exe_data, b"<?xml", b"<key>CFBundleExecutable</key>")
+        if info_plist is None: # in case it's ever not there anymore
+            info_plist = file_read_text(path_join(get_res_path(), "template.plist"))
         info_plist = info_plist.replace("%s.%s", "pico8_author.%s" % basename)
         info_plist = info_plist.replace("%s", basename)
 
         osx_dir = "%s.app" % basename
         with ZipFile(path_join(path, "%s_osx.zip" % basename), "w") as osx_zip:
-            osx_cont_dir = zip_mkdir(osx_zip, osx_dir, "Contents")
-            osx_mac_dir = zip_mkdir(osx_zip, osx_cont_dir, "MacOS")
-            osx_res_dir = zip_mkdir(osx_zip, osx_cont_dir, "Resources")
-            zip_write(osx_zip, osx_mac_dir, "data.pod", m.pod.data)
-            zip_write(osx_zip, osx_mac_dir, basename, m.bin_pod.find_named("builds/osx_builds/pico8_player"), exec=True)
-            zip_write(osx_zip, osx_res_dir, "%s.icns" % basename, icns_data)
-            zip_write(osx_zip, osx_cont_dir, "Info.plist", info_plist.encode())
+            osx_cont_dir = m.zip_mkdir(osx_zip, osx_dir, "Contents")
+            osx_mac_dir = m.zip_mkdir(osx_zip, osx_cont_dir, "MacOS")
+            osx_res_dir = m.zip_mkdir(osx_zip, osx_cont_dir, "Resources")
+            m.zip_write(osx_zip, osx_mac_dir, "data.pod", m.pod.data)
+            m.zip_write(osx_zip, osx_mac_dir, basename, m.bin_pod.find_named("builds/osx_builds/pico8_player"), exec=True)
+            m.zip_write(osx_zip, osx_res_dir, "%s.icns" % basename, icns_data)
+            m.zip_write(osx_zip, osx_cont_dir, "Info.plist", info_plist.encode())
 
             osx_sdlfw_pod = PodFile(list(m.bin_pod.find_prefix("builds/osx_builds/sdl2_framework"))[0][1])
-            osx_fw_dir = zip_mkdir(osx_zip, osx_cont_dir, "Frameworks")
-            osx_sdlfw_dir = zip_mkdir(osx_zip, osx_fw_dir, "SDL2.framework")
-            zip_copy(osx_zip, osx_sdlfw_dir, osx_sdlfw_pod, exclude="/_CodeSignature")
-            osx_sdlver_dir = zip_mkdir(osx_zip, osx_sdlfw_dir, "Versions")
-            zip_copy(osx_zip, zip_mkdir(osx_zip, osx_sdlver_dir, "Current"), osx_sdlfw_pod)
-            zip_copy(osx_zip, zip_mkdir(osx_zip, osx_sdlver_dir, "A"), osx_sdlfw_pod)
+            osx_fw_dir = m.zip_mkdir(osx_zip, osx_cont_dir, "Frameworks")
+            osx_sdlfw_dir = m.zip_mkdir(osx_zip, osx_fw_dir, "SDL2.framework")
+            m.zip_copy(osx_zip, osx_sdlfw_dir, osx_sdlfw_pod, exclude="/_CodeSignature")
+            osx_sdlver_dir = m.zip_mkdir(osx_zip, osx_sdlfw_dir, "Versions")
+            m.zip_copy(osx_zip, m.zip_mkdir(osx_zip, osx_sdlver_dir, "Current"), osx_sdlfw_pod)
+            m.zip_copy(osx_zip, m.zip_mkdir(osx_zip, osx_sdlver_dir, "A"), osx_sdlfw_pod)
 
 def read_pod_file(path):
     return PodFile(file_read(path))
@@ -919,7 +927,7 @@ def read_cart_export(path, format):
     if format == CartFormat.pod:
         return PodExport(file_read(path))
     else:
-        throw(f"invalid format for listing: {format}")
+        throw(f"invalid export format: {format}")
 
 def write_cart_export(path, export):
     """Write a CartExport to the given path"""
@@ -960,14 +968,14 @@ def read_from_cart_export(path, format, cart_name=None, extra_carts=None, **opts
         return export.read_cart(cart_name, **opts)
 
 def write_to_cart_export(path, cart, format, extra_carts=None, cart_name=None, target_name=None, cart_op=None, 
-                         target_export=None, export_name=None, pico8_dat=None, **opts):
+                         target_export=None, export_name=None, pico_dat=None, **opts):
     """Create or edit a CartExport in the given path, depending on cart_op/cart_args arguments"""
     if not export_name:
         export_name = path_basename_no_extension(path)
 
     if cart_op is None:
-        assert isinstance(pico8_dat, PodFile)
-        export = create_cart_export(format, pico8_dat, cart=cart, export_name=export_name)
+        assert isinstance(pico_dat, PodFile)
+        export = create_cart_export(format, pico_dat, cart=cart, export_name=export_name)
     else:
         assert isinstance(target_export, CartExport)
         export = target_export

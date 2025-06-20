@@ -1,6 +1,6 @@
 from utils import *
 
-# (uses sdl terminology in places)
+# (used to use sdl, now uses pil)
 
 class Color(Tuple):
     r = g = b = ...; a = 0xff
@@ -96,8 +96,10 @@ class Surface:
     def size(m):
         return Point(m.width, m.height)
 
+    def resize(m, size):
+        return Surface(m.pil.resize(size, _pil_module().NEAREST))
     def scale(m, factor):
-        return Surface(m.pil.resize(m.size * factor, _pil_module().NEAREST))
+        return m.resize(m.size * factor)
 
     @property
     def alpha(m):

@@ -15,11 +15,11 @@ let outputFile = "output.unk";
 let outputDir = "output.dir";
 let previewFile = "preview." + srcExt;
 let scriptFile = "script.py";
-let pico8Dat = "pico8.dat";
+let picoDat = targetLang + ".dat";
 
 let outputCapture = undefined;
 let initProgress = 0;
-let hasPico8Dat = false;
+let hasPicoDat = false;
 
 function run_main(main, args, fail) {
     try {
@@ -201,10 +201,10 @@ let api = {
         await initPromise; // includes fs init
         fs.writeFile(scriptFile, text);
     },
-    updatePico8Dat: async (data) => {
+    updatePicoDat: async (data) => {
         await initPromise; // includes fs init
-        fs.writeFile(pico8Dat, new Uint8Array(data));
-        hasPico8Dat = true;
+        fs.writeFile(picoDat, new Uint8Array(data));
+        hasPicoDat = true;
     },
     
     getProgress: () => initProgress,
@@ -235,8 +235,8 @@ let api = {
         if (usePreview) {
             cmdline.push("--extra-output", previewFile);
         }
-        if (hasPico8Dat) {
-            cmdline.push("--pico8-dat", pico8Dat); // won't hurt to always pass - only read if needed
+        if (hasPicoDat) {
+            cmdline.push("--" + targetLang + "-dat", picoDat); // won't hurt to always pass - only read if needed
         }
         if (extraNames) {
             for (let i = 0; i < extraNames.length; i++) {

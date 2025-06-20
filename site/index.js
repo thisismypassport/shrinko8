@@ -246,7 +246,7 @@ async function loadInputFiles(inputs) {
     }
 
     let subfile = undefined;
-    if (isFormatExport(getLowExt(mainPath))) {
+    if (isFormatExport(getLowExt(mainPath)) && isPico8) {
         let subfiles = await api.listInputFile(allFiles, mainPath);
         if (subfiles.length == 1) {
             subfile = subfiles[0];
@@ -415,14 +415,14 @@ function onInputSelectClose() {
     $('#input-select-overlay').hide();
 }
 
-let hasPico8Dat = false;
+let hasPicoDat = false;
 
-async function loadPico8Dat(file) {
+async function loadPicoDat(file) {
     let data = await readFile(file);
-    await api.updatePico8Dat(data);
+    await api.updatePicoDat(data);
     
-    hasPico8Dat = true;
-    $("#minify-pico8dat-overlay").hide();
+    hasPicoDat = true;
+    $("#minify-picodat-overlay").hide();
     outputCache = {}
     doShrinkoAction();
 }
@@ -631,7 +631,9 @@ async function doMinify() {
 
         if (isFormatExport(format)) {
             args.push("--export-name", getWithoutAllExts(inputMgr.fileName));
-            args.push("--output-cart", inputMgr.fileName);
+            if (isPico8) {
+                args.push("--output-cart", inputMgr.fileName);
+            }
         }
 
         let encoding = isFormatText(format) || isFormatUrl(format) ? "utf8" : "binary";
@@ -770,7 +772,7 @@ function onMinifyFormatChange(event) {
     $("#row-compressed").toggle(!isFormatText(format) && !isFormatUrl(format));
     $("#row-url-compressed").toggle(isFormatUrl(format));
     $("#no-row-compressed").toggle(isFormatText(format));
-    $("#minify-pico8dat-overlay").toggle(isFormatExport(format) && !hasPico8Dat);
+    $("#minify-picodat-overlay").toggle(isFormatExport(format) && !hasPicoDat);
     $("#file-icon-text").text(getFormatExt(format).toUpperCase());
 
     if (isFormatText(format)) {

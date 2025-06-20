@@ -9,6 +9,7 @@ from pico_defs import Language, get_default_pico8_version
 from picotron_defs import PicotronContext, Cart64Source, get_default_picotron_version
 from picotron_cart import Cart64Format, read_cart64, write_cart64, merge_cart64, filter_cart64, preproc_cart64
 from picotron_cart import write_cart64_compressed_size, write_cart64_version
+from picotron_export import read_cart64_export, read_sysrom_file
 import argparse
 
 k_version = 'v1.2.3d'
@@ -47,6 +48,7 @@ def create_main(lang):
 
         read_cart_func = read_cart
         read_cart_export_func = read_cart_export
+        read_pico_dat_func = read_pod_file
         merge_cart_func = merge_cart
         filter_cart_func = lang_not_supported
         preproc_cart_func = lang_not_supported
@@ -56,6 +58,7 @@ def create_main(lang):
         write_cart_version_func = write_cart_version
         get_default_version_func = get_default_pico8_version
 
+        pico_name = "pico8"
         label_section = "label"
 
     elif is_picotron:
@@ -64,7 +67,8 @@ def create_main(lang):
         ContextCls = PicotronContext
         
         read_cart_func = read_cart64
-        read_cart_export_func = lang_not_supported
+        read_cart_export_func = read_cart64_export
+        read_pico_dat_func = read_sysrom_file
         merge_cart_func = merge_cart64
         filter_cart_func = filter_cart64
         preproc_cart_func = preproc_cart64
@@ -74,6 +78,7 @@ def create_main(lang):
         write_cart_version_func = write_cart64_version
         get_default_version_func = get_default_picotron_version
         
+        pico_name = "picotron"
         label_section = "label.png"
     
     else:
@@ -168,6 +173,8 @@ def create_main(lang):
                                 help=f"specify a {sections_desc} that contain lua code to process (default: *.lua)")
             pgroup.add_argument("--delete-meta", type=SplitBySeps, action="extend",
                                 help=f"specify a {sections_desc} to delete metadata of (default: * if minifying unsafely, else none)")
+            pgroup.add_argument("--delete-label", action="store_true", default=None, help="always delete the label")
+            pgroup.add_argument("--keep-label", action="store_false", dest="delete_label", help="always keep the label")
             pgroup.add_argument("--keep-pod-compression", action="store_true", help="keep compression of all pod files as-is")
             pgroup.add_argument("-u", "--uncompress-pods", action="store_true", help="uncompress all pod files to plain text")
             pgroup.add_argument("--base64-pods", action="store_true", help="base64 all pod files")
@@ -178,7 +185,7 @@ def create_main(lang):
             pgroup.add_argument("--extract", nargs='+', action="append", metavar=(f"FSPATH [OUTPUT]", ""),
                                 help=f"extract the specified file or directory from FSPATH to OUTPUT ")
         else:
-            pgroup.set_defaults(code_sections=None, delete_meta=None, uncompress_pods=None, keep_pod_compression=None, base64_pods=None,
+            pgroup.set_defaults(code_sections=None, delete_meta=None, keep_label=None, uncompress_pods=None, keep_pod_compression=None, base64_pods=None,
                                 filter=None, insert=None, extract=None)
         
         pgroup.add_argument("--merge", nargs='+', action="append", metavar=(f"INPUT {sections_meta} [FORMAT]", ""),
@@ -189,12 +196,14 @@ def create_main(lang):
             pgroup.add_argument("--list", action="store_true", help="list all cart names inside the export")
             pgroup.add_argument("--dump", help="dump all carts inside the export to the specified folder. -f can be used to specify the output format")
             pgroup.add_argument("--cart", help="name of cart to extract from the export")
-            pgroup.add_argument("--pico8-dat", help="path to the pico8.dat file in the pico8 directory. needed to create new exports")
+            pgroup.add_argument("--pico8-dat", dest="pico_dat", help="path to the pico8.dat file in the pico8 directory. needed to create new exports")
             pgroup.add_argument("--output-cart", help="override name to use for the main cart in the export")
             pgroup.add_argument("--extra-input", nargs='+', action="append", metavar=("INPUT [FORMAT [NAME]]", ""),
                                 help="additional input file to place in export (and optionally, the format of the file & the name to use for it in the export)")
         else:
-            pgroup.set_defaults(dump=None, cart=None, pico8_dat=None, output_cart=None, extra_input=())
+            pgroup.add_argument("--picotron-dat", dest="pico_dat", help="path to the picotron.dat file in the picotron directory. needed to create exports")
+            pgroup.add_argument("--dump-misc", dest="dump", help="dump the cart, sysrom, etc. inside a sysrom.dat to the specified folder. -f can be used to specify the output format")
+            pgroup.set_defaults(cart=None, output_cart=None, extra_input=())
 
         pgroup = parser.add_argument_group("other interesting options (semi-undocumented)")
         pgroup.add_argument("--template-image", help=f"template image to use for png carts, instead of the default {lang} template")
@@ -207,7 +216,7 @@ def create_main(lang):
         if is_pico8:
             pgroup.add_argument("--dump-misc-too", action="store_true", help="causes --dump to also dump misc. files inside the export")
         else:
-            pgroup.set_defaults(dump_misc_too=False)
+            pgroup.set_defaults(dump_misc_too=True)
 
         if is_pico8:
             pgroup = parser.add_argument_group("export editing options (semi-undocumented)")
@@ -231,17 +240,16 @@ def create_main(lang):
 
         pgroup = parser.add_argument_group("other uninteresting options (semi-undocumented)")
         pgroup.add_argument("--ignore-hints", action="store_true", help="ignore shrinko8 hint comments")
-        pgroup.add_argument("--builtin", type=SplitBySeps, action="extend", help="treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
-        pgroup.add_argument("--not-builtin", type=SplitBySeps, action="extend", help="do not treat identifier(s) as a pico-8 builtin (for minify, lint, etc.)")
+        pgroup.add_argument("--builtin", type=SplitBySeps, action="extend", help=f"treat identifier(s) as a {pico_name} builtin (for minify, lint, etc.)")
+        pgroup.add_argument("--not-builtin", type=SplitBySeps, action="extend", help=f"do not treat identifier(s) as a {pico_name} builtin (for minify, lint, etc.)")
+        pgroup.add_argument("--export-name", help="name to use for the export (by default, taken from output name)")
         if is_pico8:
             pgroup.add_argument("--global-builtins-only", action="store_true", help="assume all builtins are global, corresponds to pico8's -global_api option")
             pgroup.add_argument("--local-builtin", type=SplitBySeps, action="extend", help="treat identifier(s) as a local builtin (probably no use outside of testing)")
             pgroup.add_argument("--output-sections", type=SplitBySeps, action="extend", help=f"specifies a {sections_desc} to write to the p8")
-            pgroup.add_argument("--export-name", help="name to use for the export (by default, taken from output name)")
             pgroup.add_argument("--custom-preprocessor", action="store_true", help=argparse.SUPPRESS) # might remove this one day
         else:
-            pgroup.set_defaults(global_builtins_only=False, local_builtin=None, output_sections=None,
-                                export_name=None, custom_preprocessor=False)
+            pgroup.set_defaults(global_builtins_only=False, local_builtin=None, output_sections=None, custom_preprocessor=False)
         if is_picotron:
             pgroup.add_argument("--avoid-base64", action="store_true", help=f"avoid using base64 in p64 files in more cases")
         else:
@@ -420,7 +428,7 @@ def create_main(lang):
         # read the main cart
         extra_carts = []
         try:
-            if is_pico8 and (args.list or args.dump):
+            if (is_pico8 and args.list) or args.dump:
                 export = read_cart_export_func(args.input, args.input_format)
                 if args.list:
                     for entry in export.list_carts():
@@ -518,6 +526,7 @@ def create_main(lang):
 
             if is_picotron:
                 preproc_cart_func(cart, delete_meta=args.delete_meta,
+                                  delete_label=default(args.delete_label, args.format == CartFormatCls.png),
                                   keep_pod_compression=args.keep_pod_compression,
                                   uncompress_pods=args.uncompress_pods, base64_pods=args.base64_pods,
                                   # binary formats are already compressed, so pod compression just hurts
@@ -621,7 +630,7 @@ def create_main(lang):
                     throw("too many arguments to --extract (must be 1 or 2)")
 
         for output, format, fspath in all_outputs:
-            target_export, pico8_dat = None, None
+            target_export, pico_dat = None, None
             if format.is_export:
                 if e(output_cart_op):
                     try:
@@ -629,12 +638,12 @@ def create_main(lang):
                     except OSError as err:
                         throw(f"cannot read export for editing: {err}")
                 else:
-                    if not args.pico8_dat:
-                        throw("Creating a new export requires passing --pico8-dat <path to pico8 dat>")
+                    if not args.pico_dat:
+                        throw(f"Creating a new export requires passing --{pico_name}-dat <path to {pico_name}.dat>")
                     try:
-                        pico8_dat = read_pod_file(args.pico8_dat)
+                        pico_dat = read_pico_dat_func(args.pico_dat)
                     except OSError as err:
-                        throw(f"cannot read pico8 dat: {err}")
+                        throw(f"cannot read {pico_name} dat: {err}")
 
             try:
                 write_cart_func(output, cart, format, extra_carts=extra_carts, fspath=fspath,
@@ -645,7 +654,7 @@ def create_main(lang):
                                 template_image=args.template_image, template_only=args.template_only,
                                 sections=args.output_sections, avoid_base64=args.avoid_base64,
                                 cart_op=output_cart_op, cart_name=output_cart_name, target_name=output_cart_target,
-                                target_export=target_export, export_name=args.export_name, pico8_dat=pico8_dat)
+                                target_export=target_export, export_name=args.export_name, pico_dat=pico_dat)
             except OSError as err:
                 throw(f"cannot write cart: {err}")
 

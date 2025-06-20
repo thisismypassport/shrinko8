@@ -142,7 +142,7 @@
         <div class="flex-row">
           <div style="flex: 1">
             <label style="font-weight: bold;">Open your {{targetname}} file:
-              <input id="input-file" type="file" multiple style="margin-bottom: 10px;" accept=".{{srcext}},.lua,.png,.rom{{',.js,.pod' if pico8}}"
+              <input id="input-file" type="file" multiple style="margin-bottom: 10px;" accept=".{{srcext}},.lua,.png,.rom{{',.js,.pod' if pico8}}{{',.html,.dat' if picotron}}"
                     onchange="loadSelectedFiles(this)" />
             </label>
             <span id="input-extra-files" style="display: none">
@@ -228,6 +228,10 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
                 <option value="" disabled>──────────</option>
                 <option value="lua">main.lua file (Main code only)</option>
                 <option value="tiny-rom">Tiny .ROM file (Main code only)</option>
+                <option value="" disabled>──────────</option>
+                <option value="bin">All HTML + Binary exports</option>
+                <option value="html">.HTML export</option>
+                <option value="dat">sysrom.DAT file (Advanced)</option>
                 {% endif %}
               </select>
             </label>
@@ -271,11 +275,11 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
               <div id="minify-error-overlay" class="overlay minioverlay flex-column">
                 <div id="minify-error-output" class="scroll border asis" style="flex: 1"></div>
               </div>
-              <div id="minify-pico8dat-overlay" class="overlay flex-column">
+              <div id="minify-picodat-overlay" class="overlay flex-column">
                 <div class="center">
-                  Creating exports requires the pico8.dat file from your pico8 folder.<br/>
-                  <label style="font-weight: bold;">Open pico8.dat:
-                    <input id="pico8dat-file" type="file" accept=".dat" onchange="loadPico8Dat(this.files[0])" />
+                  Creating exports requires the {{TARGET}}.dat file from your {{TARGET}} folder.<br/>
+                  <label style="font-weight: bold;">Open {{TARGET}}.dat:
+                    <input id="picodat-file" type="file" accept=".dat" onchange="loadPicoDat(this.files[0])" />
                   </label>
                 </div>
               </div>

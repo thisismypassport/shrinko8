@@ -354,3 +354,6 @@ def get_version_tuple(id):
         else:
             version = (0,0,0,0)
     return version
+
+def get_res_path():
+    return path_dirname(path_resolve(__file__))

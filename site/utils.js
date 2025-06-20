@@ -37,7 +37,7 @@ function isFormatImg(fmt) {
     return fmt == "png";
 }
 function isFormatExport(fmt) {
-    return fmt == "pod" || fmt == "js" || fmt == "bin";
+    return fmt == "pod" || fmt == "js" || fmt == "dat" || fmt == "html" || fmt == "bin";
 }
 function isFormatNeedZip(fmt) {
     return fmt == "bin" || fmt == "dir";

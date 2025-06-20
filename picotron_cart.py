@@ -1,20 +1,20 @@
 from utils import *
-from media_utils import Surface, Color
+from media_utils import Surface, Color, PixelFormat
 from pico_cart import load_image_of_size, get_res_path, pico_base64_decode, pico_base64_encode
 from pico_cart import k_png_header, k_qoi_header
 from pico_export import lz4_uncompress, lz4_compress
 from pico_defs import decode_luastr, encode_luastr
 from pico_compress import print_size, compress_code, uncompress_code, encode_p8str, decode_p8str
-from picotron_defs import get_default_picotron_version, Cart64Glob
-from picotron_fs import PicotronFile, PicotronDir, k_pod
+from picotron_defs import get_default_picotron_version, Cart64Glob, k_palette_64
+from picotron_fs import PicotronFile, PicotronDir, k_pod, UserData
 
 class Cart64Format(Enum):
     """An enum representing the supported cart formats"""
-    auto = p64 = png = rom = tiny_rom = lua = pod = dir = dat = fs = label = ...
+    auto = p64 = png = rom = tiny_rom = lua = pod = dir = dat = html = bin = fs = label = ...
     
     @property
     def is_input(m):
-        return True
+        return m != m.bin
     @property
     def is_output(m):
         return m != m.auto
@@ -26,7 +26,7 @@ class Cart64Format(Enum):
         return m in (m.p64, m.lua, m.pod, m.dir, m.fs)
     @property
     def is_export(m):
-        return m == m.dat
+        return m in (m.dat, m.html, m.bin)
     @property
     def is_exposed(m):
         return m != m.fs
@@ -39,6 +39,9 @@ class Cart64Format(Enum):
         return m.dir
 
 k_info_file = ".info.pod"
+k_label_png_file = "label.png"
+k_label_qoi_file = "label.qoi"
+k_label_files = (k_label_qoi_file, k_label_png_file)
 
 class Cart64:
     """A picotron cart - a collection of all its files"""
@@ -47,7 +50,7 @@ class Cart64:
         m.path = path
         m.name = name if name else path_basename(path) if path else ""
         m.files = {}
-        m.raw_title = None
+        m.raw_title = m.raw_label = m.raw_icon = None
 
     @property
     def title(m):
@@ -65,6 +68,55 @@ class Cart64:
 
     def set_raw_title(m, title_lines):
         m.raw_title = title_lines
+
+    @property
+    def label(m):
+        if m.raw_label:
+            return m.raw_label
+        
+        for label_file in k_label_files:
+            label = m.files.get(label_file)
+            if e(label):
+                return label_file, label
+        
+        return None, None
+
+    def load_label(m):
+        label_file, label = m.label
+        if label:
+            try:
+                check(label.is_raw, "label is not a raw file")
+                return load_image_of_size(BytesIO(label.raw_payload), k_label_size, is_qoi=label_file == k_label_qoi_file)
+            except CheckError as e:
+                eprint("ignoring invalid label due to: %s" % e)
+    
+    def set_raw_label(m, label_file, label):
+        m.raw_label = (label_file, label)
+
+    @property
+    def icon(m):
+        if m.raw_icon:
+            return m.raw_icon
+
+        top_info = m.files.get(k_info_file)
+        top_meta = top_info.metadata if top_info else None
+        if not top_meta:
+            return None
+        icon = top_meta.get("icon")
+        return icon if isinstance(icon, UserData) else None
+
+    def load_icon(m):
+        icon = m.icon
+        if icon and icon.type == "u8" and icon.width and icon.height:
+            data = bytearray()
+            for i in bytes.fromhex(icon.data):
+                if i >= len(k_palette_64):
+                    i = 0
+                data += bytes(k_palette_64[i] if i else Color(0, 0, 0, 0))
+            return Surface.from_data(icon.width, icon.height, PixelFormat.rgba8, data)
+
+    def set_raw_icon(m, icon):
+        m.raw_icon = icon
 
     def set_version(m, version):
         m.version_id = version
@@ -108,9 +160,6 @@ def write_cart64_to_rom(cart, size_handler=None, debug_handler=None, padding=0,
 
     with BinaryWriter(io) as w:
         for fspath, file in (cart.files.items()): # TODO - sorting by extension gives some benefits but is it safe given directories?
-            if fspath in k_label_files:
-                continue
-
             w.zbytes(encode_luastr(fspath))
             check(not fspath.endswith("/") == e(file.data), "wrong picotron file/directory path")
             if e(file.data):
@@ -180,9 +229,6 @@ def write_cart64_to_tiny_rom(cart, size_handler=None, debug_handler=None, **opts
 k_cart64_image_size = Point(512, 384)
 k_label_size = Point(480, 270)
 k_label_offset = Point(16, 38)
-k_label_png_file = "label.png"
-k_label_qoi_file = "label.qoi"
-k_label_files = (k_label_qoi_file, k_label_png_file)
 k_title_offset = Point(80, 330)
 k_title_width = 352 # ?
 k_subtitle_suboffset = Point(0, 26)
@@ -204,20 +250,21 @@ def read_cart64_from_image(data, **opts):
 
     cart = read_cart64_from_rom(data, **opts)
 
-    label = Surface.create(*k_label_size)
-    label_pixels = label.pixels
-    
-    for y in range(k_label_size.y):
-        for x in range(k_label_size.x):
-            r, g, b, a = pixels[k_label_offset.x + x, k_label_offset.y + y]
-            label_pixels[x, y] = (r & ~7, g & ~7, b & ~7, 0xff)
+    _, label = cart.label
+    if label is None:
+        label = Surface.create(*k_label_size)
+        label_pixels = label.pixels
+        
+        for y in range(k_label_size.y):
+            for x in range(k_label_size.x):
+                r, g, b, a = pixels[k_label_offset.x + x, k_label_offset.y + y]
+                label_pixels[x, y] = (r & ~7, g & ~7, b & ~7, 0xff)
 
-    try:
-        cart.files[k_label_qoi_file] = PicotronFile(label.save(format="qoi"))
-        cart.files.pop(k_label_png_file, None)
-    except:
-        cart.files[k_label_png_file] = PicotronFile(label.save())
-        cart.files.pop(k_label_qoi_file, None)
+        try:
+            cart.files[k_label_qoi_file] = PicotronFile(label.save(format="qoi"))
+        except:
+            cart.files[k_label_png_file] = PicotronFile(label.save())
+    
     return cart
 
 def draw_title_on_image(image, title, subtitle, offset, width, suboffset):
@@ -278,16 +325,9 @@ def write_cart64_to_image(cart, template_image=None, template_only=False, **opts
         width, height = image.size
 
         if not template_only:
-            for label_file in k_label_files:
-                label = cart.files.get(label_file)
-                if label:
-                    try:
-                        check(label.is_raw, "label is not a raw file")
-                        label_surf = load_image_of_size(BytesIO(label.raw_payload), k_label_size, is_qoi=(label_file == k_label_qoi_file))
-                        image.draw(label_surf, k_label_offset)
-                    except CheckError as e:
-                        eprint("ignoring invalid label due to: %s" % e)
-                    break
+            label = cart.load_label()
+            if label:
+                image.draw(label, k_label_offset)
             
             title = cart.title
             if title:
@@ -321,14 +361,11 @@ def read_cart64_label(data, path=None, **_):
     return cart
 
 def write_cart64_label(cart, **_):
-    for label_file in k_label_files:
-        label = cart.files.get(label_file)
-        if e(label):
-            if label_file == k_label_qoi_file: # we probably want to save a png
-                return Surface.load(BytesIO(label.data)).save()
-            else:
-                return label.data
-    throw("no label to write")
+    label = cart.load_label()
+    if label:
+        return label.save()
+    else:
+        throw("no label to write")
 
 k_p64_prefix = b"picotron cartridge"
 k_p64_main_path = "main.lua"
@@ -539,6 +576,8 @@ def read_cart64(path, format=None, **opts):
         return read_cart64_from_fs(path, is_dir=True if format == Cart64Format.dir else None, **opts)
     elif format == Cart64Format.label:
         return read_cart64_label(file_read(path), path=path, **opts)
+    elif format.is_export:
+        return read_cart64_export(path, format).get_cart(path=path, **opts)
     else:
         throw(f"invalid format for reading: {format}")
 
@@ -560,6 +599,8 @@ def write_cart64(path, cart, format, **opts):
         write_cart64_to_fs(cart, path, is_dir=True if format == Cart64Format.dir else None, **opts)
     elif format == Cart64Format.label:
         file_write(path, write_cart64_label(cart, **opts))
+    elif format.is_export:
+        write_to_cart64_export(path, cart, format, **opts)
     else:
         throw(f"invalid format for writing: {format}")
 
@@ -569,8 +610,12 @@ def filter_cart64(cart, sections):
     for path in to_delete:
         del cart.files[path]
 
-def preproc_cart64(cart, delete_meta=None, uncompress_pods=False, base64_pods=False, keep_pod_compression=False, need_pod_compression=False):
+def preproc_cart64(cart, delete_meta=None, delete_label=None, uncompress_pods=False, base64_pods=False,
+                   keep_pod_compression=False, need_pod_compression=False):
     if delete_meta:
+        cart.set_raw_title(cart.title)
+        cart.set_raw_icon(cart.icon)
+        
         to_delete = []
         
         glob = Cart64Glob(delete_meta)
@@ -585,6 +630,12 @@ def preproc_cart64(cart, delete_meta=None, uncompress_pods=False, base64_pods=Fa
         
         for path in to_delete:
             del cart.files[path]
+    
+    if delete_label:
+        label_file, label = cart.label
+        for any_label_file in k_label_files:
+            cart.files.pop(any_label_file, None)
+        cart.set_raw_label(label_file, label)
     
     if not keep_pod_compression:
         for path, file in cart.files.items():
@@ -614,4 +665,4 @@ def write_cart64_compressed_size(cart, handler=True, **opts):
 def write_cart64_version(cart):
     print("version: %d" % cart.version_id) # that's it?
 
-from pico_parse import parse
+from picotron_export import read_cart64_export, write_to_cart64_export
