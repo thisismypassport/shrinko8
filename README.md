@@ -1023,6 +1023,13 @@ Cart formats:
 * pod - raw POD file (for easier manipulation of single pods)
 * label - A 480x270 image of a cart's label (label only)
 
+Cart export formats:
+* bin - A directory containing all exports (both binary and web). (write-only)
+* html - The web export as an .html file. (read/write)
+* dat - A sysrom.dat file used by binary exports, containing the cart. (read/write)
+
+Writing export formats requires passing the picotron.dat file from your picotron directory: `--picotron-dat <path to picotron.dat>`
+
 POD files:
 By default, Shrinkotron repacks all POD files for better compression. There are options to change this:
 * `--uncompress-pods` (or `-u`) - uncompress all PODs
