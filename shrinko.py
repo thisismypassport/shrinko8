@@ -1,5 +1,5 @@
 from utils import *
-from pico_process import PicoContext, process_code, CartSource, CustomPreprocessor, ErrorFormat
+from pico_process import PicoContext, process_code, CartSource, ErrorFormat
 from pico_compress import write_code_size, write_compressed_size, CompressionTracer
 from pico_cart import CartFormat, read_cart, write_cart, get_bbs_cart_url, merge_cart, write_cart_version
 from pico_export import read_cart_export, read_pod_file, ListOp
@@ -250,9 +250,8 @@ def create_main(lang):
             pgroup.add_argument("--global-builtins-only", action="store_true", help="assume all builtins are global, corresponds to pico8's -global_api option")
             pgroup.add_argument("--local-builtin", type=SplitBySeps, action="extend", help="treat identifier(s) as a local builtin (probably no use outside of testing)")
             pgroup.add_argument("--output-sections", type=SplitBySeps, action="extend", help=f"specifies a {sections_desc} to write to the p8")
-            pgroup.add_argument("--custom-preprocessor", action="store_true", help=argparse.SUPPRESS) # might remove this one day
         else:
-            pgroup.set_defaults(global_builtins_only=False, local_builtin=None, output_sections=None, custom_preprocessor=False)
+            pgroup.set_defaults(global_builtins_only=False, local_builtin=None, output_sections=None)
         
         return parser
 
@@ -438,10 +437,9 @@ def create_main(lang):
                     export.dump_contents(args.dump, default(args.format, CartFormatCls.default_src), misc=args.dump_misc_too)
                 return None, None
 
-            preprocessor = CustomPreprocessor() if args.custom_preprocessor else None
             main_cart = read_cart_func(args.input, args.input_format, size_handler=args.input_count, 
                                        debug_handler=args.trace_input_compression, cart_name=args.cart,
-                                       keep_compression=args.keep_compression, preprocessor=preprocessor,
+                                       keep_compression=args.keep_compression,
                                        extra_carts=extra_carts if allow_extra_input and not args.cart else None)
         except OSError as err:
             throw(f"cannot read cart: {err}")
@@ -493,9 +491,8 @@ def create_main(lang):
 
         # read additional carts
         for input, input_format, input_name, merge_sections, fspath in extra_inputs:
-            preprocessor = CustomPreprocessor() if args.custom_preprocessor else None
             cart = read_cart_func(input, input_format, fspath=fspath, sections=merge_sections,
-                                  keep_compression=args.keep_compression, preprocessor=preprocessor)
+                                  keep_compression=args.keep_compression)
             
             if input_name:
                 cart.name = input_name

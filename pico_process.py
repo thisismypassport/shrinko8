@@ -332,4 +332,3 @@ from pico_rename import rename_tokens
 # re-export some things for examples/etc.
 from pico_tokenize import is_identifier, is_ident_char
 from pico_parse import Local, Global, Scope
-from pico_preprocess import CustomPreprocessor

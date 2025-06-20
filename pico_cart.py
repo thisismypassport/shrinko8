@@ -310,7 +310,7 @@ def write_cart_spritesheet(cart, **_):
 k_p8_prefix = "pico-8 cartridge"
 k_meta_prefix = "meta:"
 
-def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
+def read_cart_from_source(data, path=None, raw=False, preprocess_hook=None, **_):
     cart = Cart(path=path)
     
     def nybbles(line):
@@ -427,7 +427,8 @@ def read_cart_from_source(data, path=None, raw=False, preprocessor=None, **_):
         except ValueError:
             throw(f"Invalid {header} line in p8 file (line #{line_i + 1})")
             
-    cart.code, cart.code_map = preprocess_code(path, "".join(code), code_line, preprocessor=preprocessor)
+    preprocess = default(preprocess_hook, preprocess_code)
+    cart.code, cart.code_map = preprocess(path, "".join(code), code_line)
     return cart
 
 def write_cart_to_source(cart, unicode_caps=False, sections=None, **_):
