@@ -1,0 +1,24 @@
+picotron cartridge // www.picotron.net
+version 2
+
+:: a.lua
+--[[const]] A = 1
+include"b.lua"
+include"c.lua"
+print(A+B+C)
+:: b.lua
+--[[const]] B = 2
+print(B)
+:: c.lua
+--[[const]] C = 4
+include"b.lua"
+print(B+C)
+:: main.lua
+include"a.lua"
+include"circle.lua"
+print(A+B+C)
+:: circle.lua
+include"main.lua"
+:: unrelated.lua
+print"hi"
+:: [eoc]

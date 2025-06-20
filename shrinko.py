@@ -111,7 +111,8 @@ def create_main(lang):
 
         pgroup = parser.add_argument_group("minify options")
         pgroup.add_argument("-m", "--minify", action="store_true", help="enable minification of the cart")
-        pgroup.add_argument("-M", "--minify-safe-only", action="store_true", help="only do minifaction that's always safe to do")
+        pgroup.add_argument("-M", "--minify-safe-only", action="store_true", help="only do minification that's always safe to do")
+        pgroup.add_argument("--minify-consts-only", action="store_true", help="only do constant folding - no other minification")
         if is_pico8:
             pgroup.add_argument("-ot", "--focus-tokens", action="store_true", help="when minifying, focus on reducing the amount of tokens")
             pgroup.add_argument("-oc", "--focus-chars", action="store_true", help="when minifying, focus on reducing the amount of characters")
@@ -215,7 +216,9 @@ def create_main(lang):
         pgroup.add_argument("--url", action="store_true", help="interpret input as a URL, and download it from the internet")
         if is_pico8:
             pgroup.add_argument("--dump-misc-too", action="store_true", help="causes --dump to also dump misc. files inside the export")
+            pgroup.set_defaults(avoid_base64=False)
         else:
+            pgroup.add_argument("--avoid-base64", action="store_true", help=f"avoid using base64 in p64 files whenever possible")
             pgroup.set_defaults(dump_misc_too=True)
 
         if is_pico8:
@@ -250,10 +253,6 @@ def create_main(lang):
             pgroup.add_argument("--custom-preprocessor", action="store_true", help=argparse.SUPPRESS) # might remove this one day
         else:
             pgroup.set_defaults(global_builtins_only=False, local_builtin=None, output_sections=None, custom_preprocessor=False)
-        if is_picotron:
-            pgroup.add_argument("--avoid-base64", action="store_true", help=f"avoid using base64 in p64 files in more cases")
-        else:
-            pgroup.set_defaults(avoid_base64=False)
         
         return parser
 
@@ -343,17 +342,18 @@ def create_main(lang):
         if args.focus_tokens:
             args.focus.append("tokens")
 
-        if args.minify or args.minify_safe_only:
+        if args.minify or args.minify_safe_only or args.minify_consts_only:
+            minify_default = not args.minify_consts_only
             args.minify = {
                 "safe-reorder": args.minify_safe_only or args.reorder_safe_only,
                 "safe-builtins": args.minify_safe_only or args.builtins_safe_only,
-                "lines": not args.no_minify_lines,
-                "wspace": not args.no_minify_spaces,
-                "comments": not args.no_minify_comments,
-                "tokens": not args.no_minify_tokens,
-                "reorder": not args.no_minify_reorder,
-                "focus": args.focus,
+                "lines": minify_default and not args.no_minify_lines,
+                "wspace": minify_default and not args.no_minify_spaces,
+                "comments": minify_default and not args.no_minify_comments,
+                "tokens": minify_default and not args.no_minify_tokens,
+                "reorder": minify_default and not args.no_minify_reorder,
                 "consts": not args.no_minify_consts,
+                "focus": args.focus,
             }
 
         args.rename = bool(args.minify) and not args.no_minify_rename

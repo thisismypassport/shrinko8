@@ -332,6 +332,8 @@ func('the answer is: '..1+3*2)
 func('the answer is: 7')
 ```
 
+If you don't want to minify, but still want to replace constants, you can pass `--minify-consts-only` to the command line.
+
 In addition, variables that are declared with the `--[[const]]` hint are treated as constants:
 
 ```lua
@@ -1038,4 +1040,6 @@ By default, Shrinkotron repacks all POD files for better compression. There are 
 
 Notes:
 * Shrinkotron assumes calls to `include` are used to include other unmodified lua files. If this is not the case, minify may break even under `--minify-safe-only`
+* Shrinkotron processes the code files in `include` order, allowing you to use `--[[const]]` globals from an included code file.
+    * This requires you to use `include` with literal strings specifying an absolute path (e.g. `include "utils.lua"`).
 * As Picotron evolves, there might be new globals or table keys that Shrinkotron isn't aware of. You can report such cases and use [`--preserve`](#preserving-identifiers-across-the-entire-cart) meanwhile.

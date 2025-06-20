@@ -976,7 +976,7 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
     if root and super_root:
         root.parent = super_root
         super_root.children.append(root)
-        super_root.roots[source.fspath] = root
+        super_root.roots[source.key] = root
         root = super_root
 
     if root:
@@ -991,7 +991,7 @@ def get_sub_root(root, source):
     if root.type != NodeType.super_root:
         return root
 
-    return root.roots[source.fspath]
+    return root.roots[source.key]
 
 # node utils
 

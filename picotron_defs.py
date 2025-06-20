@@ -107,14 +107,27 @@ builtin_members = {
     "get_keyboard_focus_element", "get_pointer_element", "head",
     "height", "height_rel", "id", "new", "sx", "sy", "t0", "update_all",
     "width", "width_rel", "x", "y", "z",
+    # create_gui() meta
+    "attach", "attach_button", "attach_field", "attach_pulldown",
+    "attach_pulldown_item", "attach_scrollbars", "attach_text_editor",
+    "bring_to_front", "detach", "draw", "event", "has_keyboard_focus",
+    "new", "push_to_back", "set_keyboard_focus",
 
     # window attrs
     "x", "y", "z", "dx", "dy", "width", "height", "title", "pauseable",
     "wallpaper", "fullscreen", "tabbed", "show_in_workspace", "autoclose",
     "moveable", "resizeable", "has_frame", "video_mode", "cursor", "squashable",
+    # more gui stuff (INCOMPLETE...)
+    "action", "divider", "label", "bgcol", "fgcol", "border", "hidden", "ghost",
+    "justify", "vjustify", "parent", "child", "min_width", "min_height",
+    "squash_to_parent", "confine_to_parent", "squash_to_clip", "confine_to_clip",
+    "click", "tap", "drag", "autohide",
+    
+    # event msgs
+    "items", "filename", "attrib", "fullpath",
 
     # pod metadata
-    "created", "modified", "pod_format", "revision",
+    "created", "modified", "pod_type", "pod_format", "revision", "icon",
 
     # pack()
     "n",
@@ -159,6 +172,10 @@ class Cart64Source(Source):
             # no super().__init__ - we override with properties
         
         @property
+        def key(m):
+            return m.fspath
+
+        @property
         def path(m):
             return m.parent.path + "/" + m.fspath
 
@@ -194,3 +211,52 @@ class Cart64Source(Source):
     is_super = True
     def __iter__(m):
         return iter(m.subsources)
+    
+    @staticmethod
+    def topologic_sort(graph): # should gracefully ignore cycles
+        backcount = CounterDictionary()
+        for node, deps in graph.items():
+            for dep in deps:
+                backcount[dep] += 1
+        
+        next = [node for node in graph if backcount[node] == 0]
+        result = []
+        while next:
+            node = next.pop()
+            result.append(node)
+
+            for dep in graph[node]:
+                backcount[dep] -= 1
+                if backcount[dep] == 0:
+                    next.append(dep)
+        
+        for node, count in backcount.items():
+            if count != 0:
+                result.append(node)
+        return result
+
+    def sort_root(m, root):
+        deps = {}
+
+        for node in root.roots.values():
+            node_deps = []
+
+            def find_includes(node):
+                # since this is best-effort, we don't check var.reassigned/etc
+                if node.type == NodeType.call and node.func.type == NodeType.var and is_root_global_or_builtin_local(node.func) and node.func.var.name == "include":
+                    arg = list_get(node.args, 0)
+                    if arg.type == NodeType.const and arg.token.type == TokenType.string:
+                        include = arg.token.parsed_value
+                        # we assume include is an absolute path in the cart (we can't deal with much else)
+                        # TODO: could handle . and .. and //, though?
+                        deproot = root.roots.get(include)
+                        if deproot:
+                            node_deps.append(deproot)
+                            
+            node.traverse_nodes(find_includes, extra=True)
+            deps[node] = node_deps
+
+        root.children = m.topologic_sort(deps)
+
+from pico_tokenize import TokenType
+from pico_parse import NodeType, is_root_global_or_builtin_local

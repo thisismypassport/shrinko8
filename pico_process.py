@@ -269,6 +269,9 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
             return False, errors
 
     if subsrc_count:
+        if source.is_super:
+            source.sort_root(root)
+
         if input_count:
             assert not source.is_super
             print_token_count(count_tokens(tokens), prefix="input", handler=input_count)
