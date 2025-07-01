@@ -21,4 +21,8 @@ print(A+B+C)
 include"main.lua"
 :: unrelated.lua
 print"hi"
+v = {
+    1, -- comment1
+    0x1|0x2, -- comment2
+}
 :: [eoc]

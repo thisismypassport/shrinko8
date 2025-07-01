@@ -172,6 +172,9 @@ class Node(TokenNodeBase):
     def endidx(m):
         return m.last_token().endidx
     @property
+    def vline(m):
+        return m.first_token().vline
+    @property
     def lang(m):
         return m.first_token().lang
 
@@ -210,7 +213,7 @@ class Node(TokenNodeBase):
         src = m._create_for_insert(i, None, None, near_next)
         def reset_location(token):
             token.idx, token.endidx = src.idx, src.endidx
-            token.vline, token.modified = None, True
+            token.vline, token.modified = src.vline, True
 
         existing.traverse_tokens(reset_location)
         m.children.insert(i, existing)

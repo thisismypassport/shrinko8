@@ -305,7 +305,7 @@ def output_node(root, ctxt, minify_wspace=True, minify_lines=True, exclude_comme
         if (prev_token.endidx < token.idx or prev_token.modified or token.modified) and prev_token.value:
             # TODO: can we systemtically add whitespace to imrpove compression? (failed so far)
 
-            if need_linebreak or (not minify_lines and e(token.vline) and token.vline != prev_vline):
+            if need_linebreak or (not minify_lines and token.vline != prev_vline):
                 output.append("\n")
                 need_linebreak = False
             elif need_whitespace_between(ctxt, prev_token, token):
@@ -313,8 +313,7 @@ def output_node(root, ctxt, minify_wspace=True, minify_lines=True, exclude_comme
 
         output.append(token.value)
         prev_token = token
-        if e(token.vline):
-            prev_vline = token.vline
+        prev_vline = token.vline
 
     def output_with_orig_wspace(token):
         nonlocal prev_token, prev_vline, need_linebreak
@@ -323,7 +322,7 @@ def output_node(root, ctxt, minify_wspace=True, minify_lines=True, exclude_comme
             return
         
         if prev_token.endidx != token.idx or prev_token.modified or token.modified:
-            allow_linebreaks = e(token.vline) and token.vline != prev_vline
+            allow_linebreaks = token.vline != prev_vline
             wspace = get_orig_wspace(prev_token, token, ctxt, allow_linebreaks, need_linebreak)
 
             if not wspace and prev_token.value != None and need_whitespace_between(ctxt, prev_token, token):
@@ -350,8 +349,7 @@ def output_node(root, ctxt, minify_wspace=True, minify_lines=True, exclude_comme
         
         output.append(token.value)            
         prev_token = token
-        if e(token.vline):
-            prev_vline = token.vline
+        prev_vline = token.vline
     
     def pre_node_output(node):
         nonlocal short_level

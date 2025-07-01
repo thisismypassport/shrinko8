@@ -153,7 +153,7 @@ class Token(TokenNodeBase):
     For number/string tokens, the actual value is 'parsed_value'
     Its children are the comments *before* it, if any."""
 
-    def __init__(m, type, value, source, idx, endidx, vline=None, lang=None, modified=False):
+    def __init__(m, type, value, source, idx, endidx, vline, lang, modified=False):
         super().__init__()
         m.type, m.value, m.source, m.idx, m.endidx, m.vline, m.lang, m.modified = type, value, source, idx, endidx, vline, lang, modified
     
@@ -188,25 +188,22 @@ class Token(TokenNodeBase):
             return None
 
     @classmethod
-    def dummy(cls, source, idx=None, vline=None):
-        if idx is None:
-            idx = len(source.text) if source else 0
-            vline = sys.maxsize if source else 0
-        return cls(None, None, source, idx, idx, vline)
-
-    # note: vline is kept only for initial parsing and is not to be relied upon
+    def dummy(cls, source):
+        idx = len(source.text) if source else 0
+        vline = sys.maxsize if source else 0
+        return cls(None, None, source, idx, idx, vline, None)
 
     @classmethod
     def synthetic(cls, type, value, other, append=False, prepend=False):
         idx = other.endidx if append else other.idx
         endidx = other.idx if prepend else other.endidx
-        return cls(type, value, other.source, idx, endidx, lang=other.lang, modified=True)
+        return cls(type, value, other.source, idx, endidx, other.vline, other.lang, modified=True)
 
 Token.none = Token.dummy(None)
 
 class ConstToken(Token):
     def __init__(m, type, parsed_value, other):
-        super().__init__(type, None, other.source, other.idx, other.endidx, lang=other.lang, modified=True)
+        super().__init__(type, None, other.source, other.idx, other.endidx, other.vline, other.lang, modified=True)
         m.parsed_value = parsed_value
         lazy_property.clear(m, "value")
 
@@ -352,6 +349,7 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
         if process_hints:
             if comment.startswith(k_lint_prefix):
                 lints = k_hint_split_re.split(comment[len(k_lint_prefix):])
+                lints = [lint for lint in lints if lint]
                 hint, hintdata = CommentHint.lint, lints
 
                 for lint in lints:
@@ -360,6 +358,7 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
 
             elif comment.startswith(k_preserve_prefix):
                 preserves = k_hint_split_re.split(comment[len(k_preserve_prefix):])
+                preserves = [preserve for preserve in preserves if preserve]
                 hint, hintdata = CommentHint.preserve, preserves
 
             elif comment.startswith(k_keep_prefix):

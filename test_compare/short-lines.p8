@@ -15,9 +15,11 @@ end
 ?"bla",1,2,3,4
 n=print"bla"
 n,l=print"bla2"
-if(function()?"hello 1"
+if(function()
+?"hello 1"
 return true
 end)
-()do?"hello 2"
+()do
+?"hello 2"
 end
 if(print"hello 1")?"hello 2"

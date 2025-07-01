@@ -366,15 +366,29 @@ class PicotronFile:
     """A picotron file or directory in its filesystem - files contain metadata & payload"""
 
     def __init__(m, data, line=0):
+        """create a picotron file from raw data"""
         m.data = data
         m.line = line
     
+    @classmethod
+    def create(m, payload, metadata=None):
+        """create a picotron file from a payload (pod object or bytes) and optionally metadata"""
+        file = PicotronFile(b"")
+        if e(metadata):
+            file.metadata = metadata
+        elif not isinstance(payload, bytes):
+            file.raw_metadata = k_pod
+        file.payload = payload
+        return file
+
     @property
     def is_raw(m):
+        """whether the file's data is stored raw (as bytes) or as a pod"""
         return e(m.data) and (not m.data.startswith(k_meta_pod_prefix) or m.data.startswith(k_meta_pod_raw_prefix))
 
     @property
     def raw_metadata(m):
+        """the file's metadata as raw bytes"""
         if m.data is None or not m.data.startswith(k_meta_pod_prefix):
             return None
         end_i = m.data.find(k_meta_suffix)
@@ -392,6 +406,7 @@ class PicotronFile:
 
     @property
     def metadata(m):
+        """the file's metadata as a pod dict"""
         metadata = m.raw_metadata
         if metadata != None:
             metadata = parse_meta_pod(decode_luastr(metadata))
@@ -407,6 +422,7 @@ class PicotronFile:
 
     @property
     def raw_payload(m):
+        """the file data (not including metadata) as raw bytes"""
         if m.data is None:
             return None
         if not m.data.startswith(k_meta_pod_prefix):
@@ -427,6 +443,7 @@ class PicotronFile:
 
     @property
     def payload(m):
+        """the file data (not including metadata) as a pod object (or as bytes, if raw)"""
         if m.is_raw:
             return m.raw_payload
         else:

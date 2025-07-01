@@ -292,9 +292,12 @@ ssog26=1
 ?nil
 local ssog31; ssog31=ssog31,ssog31; ssog31,ssog31=ssog31; ?nil
 -- misc3
-local a0 = foo() ;({}).x=foo() ;({}).x=foo() ;({}).x=foo()
-?foo() 
-;({}).x = 4
+local a0 = foo()
+;({}).x=foo()
+--[[const]];({}).x=foo()
+;({}).x=foo()
+?foo()
+--[[const]];({}).x = 4
 -- if
 print(true) 
 ?false
@@ -325,12 +328,13 @@ if foo then print(true) elseif bar then print(1) else print(0)end
 if foo then print(true) elseif bar then print(1) else print(false) end
 ?""
 -- if misc
-?"" 
+?""
 do local a=3end ?a
 ?a
 if foo then --[[non-const]] local a=3 end ?a
-?a 
+?a
 do local function a() end end ?a
 ?a
 do do::a::end goto a end ::a::
-do goto b end ::b:: do return end ?3
+do goto b end ::b::
+do return end ?3
