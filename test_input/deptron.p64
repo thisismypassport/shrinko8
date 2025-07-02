@@ -5,7 +5,8 @@ version 2
 --[[const]] A = 1
 include"b.lua"
 include"c.lua"
-print(A+B+C)
+--[[const]] D = A+B+C
+print(D)
 :: b.lua
 --[[const]] B = 2
 print(B)
@@ -15,10 +16,15 @@ include"b.lua"
 print(B+C)
 :: main.lua
 include"a.lua"
+include"last.lua"
 include"circle.lua"
 print(A+B+C)
 :: circle.lua
-include"main.lua"
+--TODO: should gracefully ignore cycles...
+--include"main.lua"
+:: last.lua
+--[[const]] E = A+B+C
+print(A+B+C+E)
 :: unrelated.lua
 print"hi"
 v = {

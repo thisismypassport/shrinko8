@@ -213,7 +213,7 @@ class Cart64Source(Source):
         return iter(m.subsources)
     
     @staticmethod
-    def topologic_sort(graph): # should gracefully ignore cycles
+    def topologic_sort(graph): # should sort by dep order and (TODO) gracefully ignore cycles
         backcount = CounterDictionary()
         for node, deps in graph.items():
             for dep in deps:
@@ -233,6 +233,8 @@ class Cart64Source(Source):
         for node, count in backcount.items():
             if count != 0:
                 result.append(node)
+        
+        result.reverse()
         return result
 
     def sort_root(m, root):
