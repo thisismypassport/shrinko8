@@ -1012,6 +1012,7 @@ Cart manipulation features:
 * `--insert` - insert a file or directory into the cart. E.g. `--insert data.bin`
     * You can specify where to place the file or directory inside the cart, e.g: `--insert data.bin misc/data_in_cart.bin`
     * You can also specify a filter for which files to take from the directory, e.g: `--insert data_dir misc/datadir_in_cart "*.lua,*.bin"`
+    * Note that the filter is specified relative to the cart root, e.g: `--insert data_dir data "data/file*.bin"`
 * `--extract` - extract a file or directory from the cart. E.g. `--extract main.lua` or `--extract sfx/1.sfx MyDocuments/1.sfx`
 * `--merge` - merge another cart into the cart. E.g. `--merge other.p64` or `--merge other.p64 "sfx/*,gfx/*"`
 

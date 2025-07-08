@@ -99,7 +99,7 @@ def mem_music_addr(music, ch):
     
 def mem_sfx_addr(sound, note):
     """Return the address of the given note of the given sfx"""
-    return 0x3200 + sound * 0x44 + note * 0x2
+    return k_mem_sfx_addr + sound * 0x44 + note * 0x2
     
 def mem_sfx_info_addr(sound, i):
     """Return the address of the i-th info byte of the given sfx"""

@@ -181,8 +181,8 @@ def create_main(lang):
             pgroup.add_argument("--base64-pods", action="store_true", help="base64 all pod files")
             pgroup.add_argument("--list", action="store_true", help="list all files inside the cart")
             pgroup.add_argument("--filter", type=SplitBySeps, action="extend", help=f"specify a {sections_desc} to keep in the output")
-            pgroup.add_argument("--insert", nargs='+', action="append", metavar=(f"INPUT [FSPATH] [FILES_FILTER]", ""),
-                                help=f"insert the specified INPUT file or directory at FSPATH")
+            pgroup.add_argument("--insert", nargs='+', action="append", metavar=(f"INPUT [FSPATH [FILTER]]", ""),
+                                help=f"insert the specified file or directory INPUT into FSPATH. (FILTER can be a {sections_desc} to insert - relative to cart root)")
             pgroup.add_argument("--extract", nargs='+', action="append", metavar=(f"FSPATH [OUTPUT]", ""),
                                 help=f"extract the specified file or directory from FSPATH to OUTPUT ")
         else:

@@ -647,7 +647,7 @@ def preproc_cart64(cart, delete_meta=None, delete_label=None, uncompress_pods=Fa
                 else:
                     file.set_payload(file.payload, compress=False, use_pxu=True, use_base64=base64_pods)
 
-def merge_cart64(dest, src, sections):
+def merge_cart64(dest, src, sections=None):
     glob = Cart64Glob(sections) if e(sections) else None
     for path, file in sorted(src.files.items()): # sort to get dirs first
         if not glob or glob.matches(path):
