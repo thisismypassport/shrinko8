@@ -4,6 +4,7 @@ from pico_parse import NodeType, is_function_stmt, is_short_block_stmt
 
 def unminify_code(root, unminify_opts):    
     indent_delta = unminify_opts.get("indent", 2)
+    indent_delta = indent_delta if indent_delta == "\t" else " " * indent_delta
 
     output = []
     prev_token = Token.none
@@ -24,11 +25,11 @@ def unminify_code(root, unminify_opts):
             if "\n" in comment_value:
                 if prev_tight:
                     output.append("\n")
-                    output.append(" " * indent)
+                    output.append(indent_delta * indent)
                 output.append(comment_value)
                 if not comment_value.endswith("\n"):
                     output.append("\n")
-                output.append(" " * indent)
+                output.append(indent_delta * indent)
             else:
                 if prev_tight and prev_token.value not in k_tight_prefix_tokens:
                     output.append(" ")
@@ -67,7 +68,7 @@ def unminify_code(root, unminify_opts):
 
         if node.type == NodeType.block:
             if node.parent:
-                indent += indent_delta
+                indent += 1
                 # shorthand -> longhand
                 if is_short_block_stmt(node.parent) and node.parent.type != NodeType.else_:
                     output.append(" then" if node.parent.type == NodeType.if_ else " do")
@@ -84,7 +85,7 @@ def unminify_code(root, unminify_opts):
                     output.append("\n")
 
             curr_stmt = node
-            output.append(" " * indent)
+            output.append(indent_delta * indent)
             prev_tight = False
 
     def end_visit_node(node):
@@ -92,10 +93,10 @@ def unminify_code(root, unminify_opts):
 
         if node.type == NodeType.block:
             if node.parent:
-                indent -= indent_delta
+                indent -= 1
 
             curr_stmt = stmt_stack.pop()
-            output.append(" " * indent)
+            output.append(indent_delta * indent)
             prev_tight = False
             
             # shorthand -> longhand
