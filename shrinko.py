@@ -157,7 +157,8 @@ def create_main(lang):
 
         pgroup = parser.add_argument_group("unminify options")
         pgroup.add_argument("--unminify", action="store_true", help="enable unminification of the cart")
-        pgroup.add_argument("--unminify-indent", type=int, help="indentation size when unminifying", default=2)
+        pgroup.add_argument("--unminify-indent", type=lambda s: "\t" if s == "tabs" else int(s),
+                            help="indentation size when unminifying", default=2)
 
         pgroup = parser.add_argument_group("misc. options")
         pgroup.add_argument("-s", "--script", action="append", help="manipulate the cart via a custom python script - see README for api details")
