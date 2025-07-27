@@ -17,6 +17,9 @@ k_version = 'v1.2.4'
 def SplitBySeps(val):
     return k_hint_split_re.split(val)
 
+def Indent(val):
+    return "\t" if val == "tabs" else " " * int(val)
+
 def EnumFromStr(enum_type):
     def cvt(name):
         return enum_type(name.replace("-", "_").replace(" ", "_"))
@@ -157,8 +160,7 @@ def create_main(lang):
 
         pgroup = parser.add_argument_group("unminify options")
         pgroup.add_argument("--unminify", action="store_true", help="enable unminification of the cart")
-        pgroup.add_argument("--unminify-indent", type=lambda s: "\t" if s == "tabs" else int(s),
-                            help="indentation size when unminifying", default=2)
+        pgroup.add_argument("--unminify-indent", type=Indent, help="indentation when unminifying - either 'tabs' or a number of spaces (default: 2)", default="2")
 
         pgroup = parser.add_argument_group("misc. options")
         pgroup.add_argument("-s", "--script", action="append", help="manipulate the cart via a custom python script - see README for api details")

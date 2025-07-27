@@ -707,7 +707,7 @@ Of course, renaming cannot be undone, so the resulting code may still not be rea
 
 Options:
 
-* `--unminify-indent` : Specify the size of the indentation to use (default: 2)
+* `--unminify-indent` : Specify the size of the indentation to use (default: 2). Can also pass `tabs` to indent with tabs instead.
 
 # Custom Python Script
 
