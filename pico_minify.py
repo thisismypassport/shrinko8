@@ -375,34 +375,41 @@ def minify_code(ctxt, root, minify_opts):
             while node.type == NodeType.group:
                 inner, outer = node.child, node.parent
                 inner_prec, outer_prec = get_precedence(inner), get_precedence(outer)
-                needed = True
-                if e(inner_prec) and e(outer_prec) and (inner_prec > outer_prec or (inner_prec == outer_prec and
-                        (outer_prec == k_unary_ops_prec or is_right_assoc(outer) == (outer.right == node)))):
-                    needed = False
-                elif e(outer_prec) and inner.type in (NodeType.var, NodeType.index, NodeType.member, NodeType.call, NodeType.varargs):
-                    needed = False
-                elif e(outer_prec) and inner.type == NodeType.const and (focus.tokens or can_replace_with_unary(node) or
-                        not (inner.token.type == TokenType.number and value_is_negative(ctxt, inner.token.parsed_value))):
-                    needed = False
-                elif outer.type in (NodeType.group, NodeType.table_member, NodeType.table_index, NodeType.op_assign):
-                    needed = False
-                elif outer.type == NodeType.call and (node in outer.args[:-1] or 
-                        (outer.args and node == outer.args[-1] and not is_vararg_expr(inner))):
-                    needed = False
-                elif outer.type in (NodeType.assign, NodeType.local) and (node in outer.sources[:-1] or 
-                        (outer.sources and node == outer.sources[-1] and (not is_vararg_expr(inner) or len(outer.targets) <= len(outer.sources)))):
-                    needed = False
-                elif outer.type in (NodeType.return_, NodeType.table) and (node in outer.items[:-1] or
-                        (outer.items and node == outer.items[-1] and not is_vararg_expr(inner))):
-                    needed = False
-                elif outer.type in (NodeType.if_, NodeType.elseif, NodeType.while_, NodeType.until) and not outer.short:
-                    needed = False
+                remove = False
+
+                if e(outer_prec):
+                    if e(inner_prec):
+                        remove = inner_prec > outer_prec or (inner_prec == outer_prec and 
+                            (outer_prec == k_unary_ops_prec or is_right_assoc(outer) == (outer.right == node)))
+                    elif inner.type in (NodeType.group, NodeType.var, NodeType.index, NodeType.member, NodeType.call, NodeType.varargs):
+                        remove = True
+                    elif inner.type == NodeType.const:
+                        remove = (focus.tokens or can_replace_with_unary(node) or
+                            not (inner.token.type == TokenType.number and value_is_negative(ctxt, inner.token.parsed_value)))
+
+                elif ((outer.type in (NodeType.index, NodeType.member) and node == outer.child) or 
+                        (outer.type == NodeType.call and node == outer.func)):
+                    remove = inner.type in (NodeType.group, NodeType.var, NodeType.index, NodeType.member, NodeType.call)
                 
-                if needed:
-                    break
-                else:
+                elif outer.type in (NodeType.group, NodeType.table_member, NodeType.table_index, NodeType.op_assign):
+                    remove = True
+                elif outer.type == NodeType.index:
+                    remove = node == outer.key
+                elif outer.type == NodeType.call:
+                    remove = node in outer.args[:-1] or (outer.args and node == outer.args[-1] and not is_vararg_expr(inner))
+                elif outer.type in (NodeType.assign, NodeType.local, NodeType.for_in):
+                    remove = (node in outer.sources[:-1] or (outer.sources and node == outer.sources[-1] and 
+                        (not is_vararg_expr(inner) or (3 if outer.type == NodeType.for_in else len(outer.targets)) <= len(outer.sources))))
+                elif outer.type in (NodeType.return_, NodeType.table):
+                    remove = (node in outer.items[:-1] or (outer.items and node == outer.items[-1] and not is_vararg_expr(inner)))
+                elif outer.type in (NodeType.if_, NodeType.elseif, NodeType.while_, NodeType.until, NodeType.for_) and not outer.short:
+                    remove = True
+                
+                if remove:
                     node.replace_with(node.child.move())
                     # node may now be another group, so loop
+                else:
+                    break
         
     def fixup_nodes_post(node):
         if minify_tokens:

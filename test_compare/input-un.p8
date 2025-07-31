@@ -4,11 +4,11 @@ __lua__
 
 print = printh
 ?"hello ᶜ7there♥ら"
-🐱, h, u, s, x, k, e, e = 11, 12, 13, 14, 15, 16, 17, 17
+🐱, r, s, x, k, y, e, e = 11, 12, 13, 14, 15, 16, 17, 17
 t(stat(band()))
 -- this one comment, i do want!
 t()
-c = 0
+d = 0
 l = 0
 l = 0
 print "this is included"
@@ -33,14 +33,14 @@ function e:subfunc()
 end
 
 ?e:subfunc()
-local e, l = "c", {c = 123}
+local e, l = "i", {i = 123}
 ?l[e]
-local e, l = split "e,l,i,123", {e = 123, l = 234, i = 345}
+local e, l = split "l,c,r,123", {l = 123, c = 234, r = 345}
 ?l[e[2]]
 local e = "o"
 o = 123
 ?_ENV[e]
-local e = "e:l#~~i,", "!t$h+123-u\nif\ns"
+local e = "l:c#~~r,", "!t$u+123-h\nif\ns"
 do
   local _ENV = {assert = assert}
   assert(true)
@@ -78,8 +78,8 @@ for _ENV in all {{o = 1, f = 5}, {o = 2, f = 6}} do
   e = deli {2}
 end
 assert(e == 2)
-local e = {key1 = 1, key2 = 2, r = 3}
-e.key1 = e.r
+local e = {key1 = 1, key2 = 2, a = 3}
+e.key1 = e.a
 while 1 == 0 do
 end
 while 1 == 0 do
@@ -105,23 +105,23 @@ if not e then
   e = -1
 end
 
-function i(...)
+function c(...)
   return 1.2 .. 4 .. ... .. 0
 end
 
-?i(3)
+?c(3)
 ?1 or 1 or 2 and 3 == 4 >= 4 | 5 ~ 6 << 1 >>< 1 .. 2 .. 3 - -1 ^ 4 ^ 1 / 1 & 7
 ?((~(((((((tonum(((3 or 4) and 5) ~= 2) | 1) ~ 2) & 3) >> 1) .. 1) - (1 + 3)) * 3)) ^ 2) ^ 1
 local e = ({})[1], (function()
 end)()
-local l, n, o, e, f = sin(1, 2), cos((cos())), (cos((cos()))), {d = ord, a = pal}
-local e = ord "123", pal {1, 2}, e:d("ord"), e:a({1, 2}), sin(1)
-local i = {ord "1", [2] = 3, o = 4, (ord "1")}
-e += 1
-l, n = sin(1, 2), cos((cos()))
-o, f = (cos((cos())))
+local n, o, f, e, c = sin(1, 2), cos((cos())), (cos((cos()))), {e = ord, d = pal}
+local l = ord "123", pal {1, 2}, e:e("ord"), e:d({1, 2}), sin(1)
+local r = {ord "1", [2] = 3, o = 4, (ord "1")}
+l += 1
+n, o = sin(1, 2), cos((cos()))
+f, c = (cos((cos())))
 
-function r()
+function a()
   return 1, 2, ord "1", (ord "1")
 end
 
@@ -136,7 +136,26 @@ until 1 == 1
 for e in (all {}) do
 end
 print("test" .. @16 .. "str")
-?e + (({})[1] and ({}).x or ... or r()) + 3 + -3
+?l + (({})[1] and ({}).x or ... or a()) + 3 + -3
+setmetatable(e, {__add = function()
+  return e
+end, __sub = function()
+  return sin
+end})
+
+function i()
+  return i
+end
+
+local l = e[3], (e + e)[e + e], ({e})[1][2]
+local l = _ENV.e, (e + e).d
+local l = sin(3), (e - e)(4), i()()
+local l = {e + e, [e - e] = e + e, e = e + e}
+for e in inext, {1, 2, 3} do
+end
+for e = 1, sin(5) + 3, 2 do
+end
+local e = e + e + (e and _ENV)
 if true then
   ?"sh1"
 end
@@ -157,14 +176,14 @@ if true then
 end
 j = "renaming bug"
 
-function d()
-  local e, l, n, o, f, i, c, r, d, a, t, h, u, s, x, k, y, v, p, b, w, g, _, m, E, N, D
+function u()
+  local e, l, n, o, f, c, r, d, i, a, t, u, h, s, x, k, y, v, p, b, w, g, _, m, E, N, D
   return j
 end
 
-?d()
-c = 0
-c = 1
+?u()
+d = 0
+d = 1
 
 function new_name(new_name, e)
   return new_name.new_member, e.new_member
@@ -175,10 +194,10 @@ function new_name(new_name2, e, l)
   return new_name2.new_member
 end
 
-function a(l, e, f, n, o, i)
-  return l + e + f + n + o + i
+function h(l, e, f, n, o, c)
+  return l + e + f + n + o + c
 end
 
-?a(1, 2, 4, 8, 16, 32)
-y = ?"END!"
+?h(1, 2, 4, 8, 16, 32)
+v = ?"END!"
 

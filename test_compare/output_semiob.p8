@@ -3,7 +3,7 @@ version 42
 __lua__
 print=printh 
 ?"hello ᶜ7there♥ら"
-🐱,h,u,s,x,k,e,e=11,12,13,14,15,16,17,17
+🐱,r,s,x,k,y,e,e=11,12,13,14,15,16,17,17
 
 t(stat(band()))
 
@@ -12,7 +12,7 @@ t()
 
 
 
-c=0 l=0
+d=0 l=0
 l=0
 
 print"this is included"
@@ -106,39 +106,48 @@ local l = [[]], [[hi]], [['hi']], [["'hi'"]], [["""""'''''hi'''''"""""]], [[♥�
 ]]]=]]===]]==]
 local l = -256, -256*4, 65280^4, -65280, ~65280
 if (not e) e = -1
-function i(...)
+function c(...)
   return 1.2 .. 4 .. ... .. 0
 end
-?i(3)
+?c(3)
 
 ?1 or 1 or 2 and 3 == 4 >= 4 | 5 ~ 6 << 1 >>< 1 .. 2 .. 3 - -1^4^1 / 1 & 7
 ?((~(((((((tonum(((3 or 4) and 5) ~= 2) | 1) ~ 2) & 3) >> 1) .. 1) - (1 + 3)) * 3)) ^ 2) ^ 1
 local e = ({})[1], (function()end)()
-local l, n,o,e,f = sin(1,2), cos((cos())),(cos((cos()))),{ord=ord,pal=pal}
-local e = ord"123", pal{1,2}, e:ord("ord"), e:pal({1,2}), sin(1)
-local i = {ord"1",[2]=3,x=4,(ord"1")}
-e += 1
-l, n = sin(1,2), cos((cos()))
-o, f = (cos((cos())))
-function r() return 1, 2, ord"1", (ord"1") end
+local n, o,f,e,c = sin(1,2), cos((cos())),(cos((cos()))),{ord=ord,pal=pal}
+local l = ord"123", pal{1,2}, e:ord("ord"), e:pal({1,2}), sin(1)
+local r = {ord"1",[2]=3,x=4,(ord"1")}
+l += 1
+n, o = sin(1,2), cos((cos()))
+f, c = (cos((cos())))
+function a() return 1, 2, ord"1", (ord"1") end
 if 1 == 2 do elseif 1 == 2 do else end
 while 1 == 2 do end
 repeat until 1 == 1
 for e in (all{}) do end
 print("test"..@16 .."str")
-?e+(({})[1] and ({}).🐱 or ... or r())+3+-3
+?l+(({})[1] and ({}).🐱 or ... or a())+3+-3
+setmetatable(e, {__add= function() return e end, __sub= function() return sin end})
+function i() return i end
+local l = e[3], (e + e)[e + e], ({e})[1][2]
+local l = _ENV.ord, (e + e).pal
+local l = sin(3), (e - e)(4), i()()
+local l = {e+e, [e-e]=e+e, ord=e+e}
+for e in inext,{1,2,3} do end
+for e = 1,sin(5)+3,2 do end
+local e = e + e + (e and _ENV)
 
 if(true) ?"sh1"
 if (true) ?"sh2"
 if(true) if false do else print"sh3" end
 if (true) if false do else print"sh4" end 
 j="renaming bug"
-function d()
-  local e,l,n,o,f,i,c,r,d,a,t,h,u,s,x,k,y,v,p,b,w,g,_,m,E,N,D
+function u()
+  local e,l,n,o,f,c,r,d,i,a,t,u,h,s,x,k,y,v,p,b,w,g,_,m,E,N,D
   return j
 end
-?d()
-c=0c=1
+?u()
+d=0d=1
 
 function new_name(new_name, e)
   return new_name.new_member, e.new_member
@@ -147,9 +156,9 @@ function new_name( new_name2, e, l)
   local e, l
   return new_name2. new_member
 end
-function a( l, e, f, n, o, i)
-  return l+e+f+n+o+i
+function h( l, e, f, n, o, c)
+  return l+e+f+n+o+c
 end
-?a(1,2,4,8,16,32)
+?h(1,2,4,8,16,32)
 
-y=?"END!"
+v=?"END!"

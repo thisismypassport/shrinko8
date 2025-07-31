@@ -106,6 +106,15 @@ repeat until 1==1
 for a in(all{})do end
 print("test"..@16 .."str")
 ?calls3+(({})[1]and({}).🐱 or...or xxx())+3+-3
+setmetatable(obj,{__add=function()return obj end,__sub=function()return sin end})
+function sret()return sret end
+local tp_index=obj[3],(obj+obj)[obj+obj],({obj})[1][2]
+local tp_member=_ENV.ord,(obj+obj).pal
+local tp_call=sin(3),(obj-obj)(4),sret()()
+local tp_table={obj+obj,[obj-obj]=obj+obj,ord=obj+obj}
+for a in inext,{1,2,3}do end
+for x=1,sin(5)+3,2do end
+local obv=obj+obj+(obj and _ENV)
 if(true)?"sh1"
 if(true)?"sh2"
 if(true)if false do else print"sh3"end
