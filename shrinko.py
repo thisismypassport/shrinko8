@@ -159,7 +159,7 @@ def create_main(lang):
                             help="do not tokenize the cart just to print the token count" if is_pico8 else argparse.SUPPRESS)
 
         pgroup = parser.add_argument_group("unminify options")
-        pgroup.add_argument("--unminify", action="store_true", help="enable unminification of the cart")
+        pgroup.add_argument("-U", "--unminify", action="store_true", help="enable unminification of the cart")
         pgroup.add_argument("--unminify-indent", type=Indent, help="indentation when unminifying - either 'tabs' or a number of spaces (default: 2)", default="2")
 
         pgroup = parser.add_argument_group("misc. options")
