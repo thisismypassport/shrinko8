@@ -341,13 +341,13 @@
             "compressed": 8774
         },
         "safe_minify": {
-            "chars": 15890,
-            "compressed": 6165,
+            "chars": 15957,
+            "compressed": 6167,
             "tokens": 4723
         },
         "unsafe_minify": {
-            "chars": 15730,
-            "compressed": 6144,
+            "chars": 15797,
+            "compressed": 6145,
             "tokens": 4723
         }
     },
