@@ -6,9 +6,10 @@ from io import BytesIO, StringIO
 from warnings import warn
 from reprlib import recursive_repr
 
+_my_excepthooks = []
 def _my_excepthook(type, value, tb):
     obj = traceback.TracebackException(type, value, tb)
-    for hook in _my_excepthook.hooks:
+    for hook in _my_excepthooks:
         hook(obj)
         
     for line in obj.format():
@@ -16,10 +17,9 @@ def _my_excepthook(type, value, tb):
         
 def add_traceback_hook(hook):
     """adds a hook to be called before printing a traceback, so that the hook can edit it freely"""
-    _my_excepthook.hooks.append(hook)
-
-_my_excepthook.hooks = []
-sys.excepthook = _my_excepthook
+    if not _my_excepthooks:
+        sys.excepthook = _my_excepthook
+    _my_excepthooks.append(hook)
 
 def eprint(*args, **kwargs):
     """like print, but prints to stderr"""
@@ -41,9 +41,10 @@ def context_manager(method_name = "close"):
         return cls
     return decorator
 
-def exec_def(name, code):
+def exec_def(name, code, namespace=None):
     """execute 'code' and extract a definition named 'name' from it"""
-    namespace = {}
+    if namespace is None:
+        namespace = {}
     exec(code, namespace)
     return namespace[name]
 
@@ -137,21 +138,20 @@ def _metaclass_collect_fields(cls_dict, values):
     return tuple(fields), tuple(defaults)
 
 class EnumMetaclass(type):
-    def __new__(meta, cls_name, cls_bases, cls_dict, values=None):
+    def __new__(meta, cls_name, cls_bases, cls_dict, _values=None):
         if not cls_bases or Enum not in cls_bases:
             return super().__new__(meta, cls_name, cls_bases, cls_dict)
         
         # collect
         enum_bases = tuple(base for base in cls_bases if base is not Enum and base.__class__ == EnumMetaclass)
         
+        first_auto = None if enum_bases else 0
         def next_auto(prev):
-            if enum_bases:
-                raise Exception("Enum with bases must use explicit values") # TODO
             if not isinstance(prev, (int, float)):
                 raise Exception(f"Cannot follow {prev} with ...")
             return prev + 1
 
-        name_value_map = dict(_metaclass_collect_values(cls_dict, values, 0, next_auto))
+        name_value_map = dict(_metaclass_collect_values(cls_dict, _values, first_auto, next_auto))
                 
         full_name_value_map = name_value_map.copy() if enum_bases else name_value_map
         for base in enum_bases:
@@ -227,26 +227,25 @@ class Enum(metaclass=EnumMetaclass):
     All non-private attributes of the class other than functions and descriptors become enum members.
     Atributes with a value of ... receive values automatically.
     Inherited classes behave like regular classes unless they have Enum as a direct baseclass.
-    Advanced: ExcludeAttr/IncludeAttr, values keyword parameter
+    Advanced: ExcludeAttr/IncludeAttr, _values keyword parameter
     Atributes with a name ending with _ can be referred to without the _.
     """
 
 class BitmaskMetaclass(type):
-    def __new__(meta, cls_name, cls_bases, cls_dict, values=None):
+    def __new__(meta, cls_name, cls_bases, cls_dict, _values=None):
         if not cls_bases or Bitmask not in cls_bases:
             return super().__new__(meta, cls_name, cls_bases, cls_dict)
         
         # collect
         bitmask_bases = tuple(base for base in cls_bases if base is not Bitmask and base.__class__ == BitmaskMetaclass)
         
+        first_auto = None if bitmask_bases else 0
         def next_auto(prev):
-            if bitmask_bases:
-                raise Exception("Bitmasks with bases must use explicit values") # TODO
             if not isinstance(prev, int) or (prev != 0 and not is_pow2(prev)):
                 raise Exception(f"Cannot follow {prev} with ...")
             return prev << 1 if prev != 0 else 1
 
-        name_mask_map = dict(_metaclass_collect_values(cls_dict, values, 0, next_auto))
+        name_mask_map = dict(_metaclass_collect_values(cls_dict, _values, first_auto, next_auto))
         
         full_name_mask_map = name_mask_map.copy() if bitmask_bases else name_mask_map
         for base in bitmask_bases:
@@ -431,34 +430,47 @@ class Bitmask(metaclass=BitmaskMetaclass):
     A bitmask is like a struct, but with its fields mapped into a single bitmask integer.
     Bitmasks can also be manipulated via: & | ^
     Inherited classes behave like regular classes unless they have Bitmask as a direct baseclass.
-    Advanced: ExcludeAttr/IncludeAttr, values keyword parameter
+    Advanced: ExcludeAttr/IncludeAttr, _values keyword parameter
     Atributes with a name ending with _ can be referred to without the _.
     """
     
+def _metaclass_collect_from_bases(fields, defaults, bases, is_new=False):
+    if not bases:
+        return fields, defaults
+    
+    all_defaults = defaults
+    if len(defaults) == len(fields):
+        for base in reversed(bases):
+            newfunc = base.__new__ if is_new else base.__init__
+            new_defaults = getattr(newfunc, "__defaults__", ())
+            all_defaults = new_defaults + all_defaults
+            if len(new_defaults) != len(base._fields):
+                break
+    
+    all_fields = sum((base._fields for base in bases), ()) + fields
+    return all_fields, all_defaults
+
 class TupleMetaclass(type):
-    def __new__(meta, cls_name, cls_bases, cls_dict, values=None):
+    def __new__(meta, cls_name, cls_bases, cls_dict, _values=None, **consts):
         if not cls_bases or cls_bases == (tuple,) or Tuple not in cls_bases:
             return super().__new__(meta, cls_name, cls_bases, cls_dict)
         
         # collect
         tuple_bases = tuple(base for base in cls_bases if base is not Tuple and base.__class__ == TupleMetaclass)
+        if len(tuple_bases) > 1:
+            raise Exception("Tuples cannot have multiple Tuple baseclasses")
         
-        fields, defaults = _metaclass_collect_fields(cls_dict, values)
-                
-        if tuple_bases:
-            if defaults:
-                raise Exception("Cannot use defaults with bases")
-            all_fields = sum((base._fields for base in tuple_bases), ()) + fields
-        else:
-            all_fields = fields
+        fields, defaults = _metaclass_collect_fields(cls_dict, _values)
+
+        all_fields, all_defaults = _metaclass_collect_from_bases(fields, defaults, tuple_bases, is_new=True)
 
         # dict
-        all_fields_str = ', '.join(all_fields)
-        all_fields_tupstr = all_fields_str + ("," if len(all_fields) == 1 else "")
-        new_def = f"def __new__(__cls, {all_fields_str}):\n"
-        new_def += f"    return tuple.__new__(__cls, ({all_fields_tupstr}))\n"
-        __new__ = exec_def("__new__", new_def)
-        __new__.__defaults__ = defaults
+        field_params_str = ', '.join(f for f in all_fields if f not in consts)
+        field_values_str = ', '.join(all_fields) + ("," if len(all_fields) == 1 else "")
+        new_def = f"def __new__(__cls, {field_params_str}):\n"
+        new_def += f"    return tuple.__new__(__cls, ({field_values_str}))\n"
+        __new__ = exec_def("__new__", new_def, consts)
+        __new__.__defaults__ = all_defaults
 
         def __reduce_ex__(m, proto):
             return (m.__new__, (m.__class__, *m))
@@ -506,35 +518,32 @@ class Tuple(tuple, metaclass=TupleMetaclass):
     Atributes with a value of ... are required, otherwise - optional with the given default value.
     The tuple behaves similarly to collections.namedtuple
     Inherited classes behave like regular classes unless they have Tuple as a direct baseclass.
-    Advanced: ExcludeAttr/IncludeAttr, values keyword parameter
+    Advanced: ExcludeAttr/IncludeAttr, _values keyword parameter, const base fields keyword parameters
     Atributes with a name ending with _ can be referred to without the _.
     """
         
 class StructMetaclass(type):
-    def __new__(meta, cls_name, cls_bases, cls_dict, values=None):
+    def __new__(meta, cls_name, cls_bases, cls_dict, _values=None, **consts):
         if not cls_bases or Struct not in cls_bases:
             return super().__new__(meta, cls_name, cls_bases, cls_dict)
         
         # collect
         struct_bases = tuple(base for base in cls_bases if base is not Struct and base.__class__ == StructMetaclass)
+        if len(struct_bases) > 1:
+            raise Exception("Structs cannot have multiple Struct baseclasses")
         
-        fields, defaults = _metaclass_collect_fields(cls_dict, values)
+        fields, defaults = _metaclass_collect_fields(cls_dict, _values)
         
-        if struct_bases:
-            if defaults:
-                raise Exception("Cannot use defaults with bases")
-            all_fields = sum((base._fields for base in struct_bases), ()) + fields
-        else:
-            all_fields = fields
+        all_fields, all_defaults = _metaclass_collect_from_bases(fields, defaults, struct_bases)
         
-        # dict                    
-        init_def = f"def __init__(__m, {', '.join(all_fields)}):\n"
+        # dict
+        init_def = f"def __init__(__m, {', '.join(f for f in all_fields if f not in consts)}):\n"
         for field in all_fields:
             init_def += f"    __m.{field} = {field}\n"
         if not all_fields:
             init_def += "    pass"
-        __init__ = exec_def("__init__", init_def)
-        __init__.__defaults__ = defaults
+        __init__ = exec_def("__init__", init_def, consts)
+        __init__.__defaults__ = all_defaults
         
         @recursive_repr()
         def __repr__(m):
@@ -572,7 +581,7 @@ class Struct(metaclass=StructMetaclass):
     Atributes with a value of ... are required, otherwise - optional with the given default value.
     A struct is like a mutable named tuple, except equality goes by identity.
     Inherited classes behave like regular classes unless they have Struct as a direct baseclass.
-    Advanced: ExcludeAttr/IncludeAttr, values keyword parameter
+    Advanced: ExcludeAttr/IncludeAttr, _values keyword parameter, const base fields keyword parameters
     Atributes with a name ending with _ can be referred to without the _.
     """
 
