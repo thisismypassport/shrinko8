@@ -329,6 +329,7 @@ k_version_tuples = {
     40: (0,2,5,5),
     41: (0,2,5,6),
     42: (0,2,6,1),
+    43: (0,2,7,0),
 }
 
 def get_default_pico8_version():
