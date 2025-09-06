@@ -12,6 +12,7 @@ keywords = {
 k_preserve_prefix = "preserve:"
 k_lint_prefix = "lint:"
 k_keep_prefix = "keep:"
+k_deflang_prefix = "deflanguage:"
 
 k_lint_func_prefix = "func::"
 k_lint_count_stop = "count::stop"
@@ -316,14 +317,19 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
         add_token(None, idx + off) # error token
         errors.append(Error(msg, tokens[-1]))
 
-    def add_sublang(token, sublang_name):
+    def add_sublang(token, sublang_data):
         if ctxt and ctxt.sublang_getter and token.type == TokenType.string:
+            sublang_name, sublang_args = list_unpack(sublang_data.split(" ", 1), 2, "")
+            sublang_name, sublang_args = ctxt.map_langdef(sublang_name, sublang_args)
+
             sublang_cls = ctxt.sublang_getter(sublang_name)
             if sublang_cls:
                 add_lang_error = lambda msg: add_error(f"{sublang_name}: {msg}")
                 token.sublang_name = sublang_name
-                token.sublang = sublang_cls(token.parsed_value, on_error=add_lang_error)
-                return
+                token.sublang = sublang_cls(token.parsed_value, args=sublang_args.strip(),
+                                            ctxt=ctxt, on_error=add_lang_error)
+            else:
+                eprint("warning - ignoring unrecognized language '%s'" % sublang_name)
 
     def add_next_mods(token, mods):
         if mods.comments != None:
@@ -363,6 +369,11 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
 
             elif comment.startswith(k_keep_prefix):
                 hint = CommentHint.keep
+            
+            elif comment.startswith(k_deflang_prefix):
+                sublang, sublang_def = list_unpack(comment[len(k_deflang_prefix):].split("=", 1), 2, "")
+                dest_sublang, dest_args = list_unpack(sublang_def.strip().split(" ", 1), 2, "")
+                ctxt.add_custom_langdef(sublang.strip(), dest_sublang, dest_args)
 
             elif isblock:
                 if comment in ("global", "nameof"): # nameof is deprecated
@@ -383,7 +394,7 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
                     get_next_mods().is_const = True
                 elif comment == "non-const":
                     get_next_mods().is_const = False
-                elif comment.startswith(k_language_prefix) and not any(ch.isspace() for ch in comment):
+                elif comment.startswith(k_language_prefix):
                     get_next_mods().sublang = comment[len(k_language_prefix):]
                 elif comment.startswith(k_rename_prefix) and not any(ch.isspace() for ch in comment):
                     get_next_mods().rename = comment[len(k_rename_prefix):]
@@ -701,6 +712,51 @@ def ext_unicode_to_lang_str(value, lang):
         count += 1
     return lang_chr(((-0x80 >> count) & 0xff) + value, lang) + suffix
 
+def parse_char_escape(str, pos, lang):
+    "parse an escape sequence (pos is the position of the '\\', which isn't checked)"
+
+    esc = str_get(str, pos + 1)
+    esc_ch = k_char_escapes.get(esc)
+    if esc_ch:
+        return esc_ch, pos + 2
+
+    elif esc == 'z':
+        end = pos + 2
+        while str_get(str, end) in k_wspace:
+            end += 1
+        return "", end
+
+    elif esc == 'x':
+        end = pos + 4
+        hex_esc = str[pos + 2 : end]
+        value = maybe_int(hex_esc, base=16)
+        if value is None:
+            throw(f"Invalid hex escape: '{hex_esc}' in: '{str}'")
+        return lang_chr(value, lang), end
+
+    elif '0' <= esc <= '9':
+        end = pos + 2
+        while end < pos + 4 and '0' <= str_get(str, end, '') <= '9':
+            end += 1
+        dec_esc = str[pos + 1 : end]
+        value = maybe_int(dec_esc)
+        if value is None or value >= 256:
+            throw(f"Invalid dec escape: '{dec_esc}' in: '{str}'")
+        return lang_chr(value, lang), end
+
+    elif lang == Language.picotron and esc == 'u':
+        check(str_get(str, pos + 2) == "{", f"Invalid unicode escape in: '{str}'")
+        end = str.find("}", pos) + 1
+        check(end > 0, f"Unterminated unicode escape in: '{str}'")
+        uni_esc = str[pos + 3 : end - 1]
+        value = maybe_int(uni_esc, base=16)
+        if value is None or value >= 0x80000000:
+            throw(f"Invalid uni escape: '{uni_esc}' in: '{str}'")
+        return ext_unicode_to_lang_str(value, lang), end
+
+    else:
+        throw(f"Invalid escape: '{esc}' in: '{str}'")    
+
 def parse_string_literal(str, lang=Language.pico8):
     """parse a pico8 string from a pico8 string literal"""
     if str.startswith("["):
@@ -723,47 +779,8 @@ def parse_string_literal(str, lang=Language.pico8):
             if end > start:
                 litparts.append(str[start:end])
 
-            esc = str_get(str, end + 1)
-            esc_ch = k_char_escapes.get(esc)
-            if esc_ch:
-                start = end + 2
-                litparts.append(esc_ch)
-
-            elif esc == 'z':
-                start = end + 2
-                while str_get(str, start) in k_wspace:
-                    start += 1
-
-            elif esc == 'x':
-                start = end + 4
-                hex_esc = str[end + 2 : start]
-                value = maybe_int(hex_esc, base=16)
-                if value is None:
-                    throw(f"Invalid hex escape: '{hex_esc}' in: '{str}'")
-                litparts.append(lang_chr(value, lang))
-
-            elif '0' <= esc <= '9':
-                start = end + 2
-                while start < end + 4 and '0' <= str_get(str, start, '') <= '9':
-                    start += 1
-                dec_esc = str[end + 1 : start]
-                value = maybe_int(dec_esc)
-                if value is None or value >= 256:
-                    throw(f"Invalid dec escape: '{dec_esc}' in: '{str}'")
-                litparts.append(lang_chr(value, lang))
-
-            elif lang == Language.picotron and esc == 'u':
-                check(str_get(str, end + 2) == "{", f"Invalid unicode escape in: '{str}'")
-                start = str.find("}", end) + 1
-                check(start > 0, f"Unterminated unicode escape in: '{str}'")
-                uni_esc = str[end + 3 : start - 1]
-                value = maybe_int(uni_esc, base=16)
-                if value is None or value >= 0x80000000:
-                    throw(f"Invalid uni escape: '{uni_esc}' in: '{str}'")
-                litparts.append(ext_unicode_to_lang_str(value, lang))
-
-            else:
-                throw(f"Invalid escape: '{esc}' in: '{str}'")
+            esc, start = parse_char_escape(str, end, lang)
+            litparts.append(esc)
                 
         return "".join(litparts)
 

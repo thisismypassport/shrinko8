@@ -6,4 +6,4 @@ e <- pack
 rawset e e f
 rawset e i d]]?e
 ?e.e
-n""function i()end i"d=1,f=2,0.5=13,val,f=22,if=bad"
+n""function i()end i"d=1,f=2,0.5=13,val,f=22,if=bad"n""n""

@@ -178,7 +178,7 @@ glob = 123
 ?_ENV[my_key] -- 123
 ```
 
-Advanced: if you have string literals in some special format that you're parsing into a table (like "key=val,key2=val2"), you can use [this custom python script](#example---simple-sub-language-for-table-parsing) - or a variant thereof - to allow only the keys within the string to be renamed.
+If you have string literals with more complex structure - for example `"key=str,key2=str2"` - where different parts of the string must be renamed differently - you can use [the split sub-language](#advanced---the-split-sub-language) to easily define the format of the string.
 
 ### Preserving identifiers across the entire cart
 
@@ -243,6 +243,51 @@ This can be also be useful when assigning regular tables to _ENV:
 for --[[member-keys]]_ENV in all({{x=1,y=5}, {x=2,y=6}}) do
   x += y + y*x
 end
+```
+
+### Advanced - The 'split' sub-language
+
+Say you have a function which takes a string like `"key1=str1,key2=str2"` and splits it into a table `{key1="str1",key2="str2"}`. You want strings passed to this function to be renamed appropriately. (rename key1 and key2 as members, but preserve str1 and str2 as strings)
+
+You can do that by specifying that the strings use the `split` sub-language - which comes builtin to shrinko8:
+```lua
+mysplit(--[[language::split (member=string)s,]]"key1=str1,key2=str2")
+
+-- or, to avoid repeating yourself:
+
+--deflanguage: mysplit = split (member=string)s,
+mysplit(--[[language::mysplit]]"key1=str1,key2=str2")
+```
+
+Here, `(member=string)s,` tells the split sub-language precisely how the string will be split. Some more examples will help explain the syntax:
+```lua
+-- here, the string consists of a table member (key), a global, and a string (preserved) - all separated by ';'
+mysplit2(--[[language::split member;global;string]]"member;global;string")
+-- e.g. may result in "m;g;string"
+
+-- here, notice the plural on 'globals'.
+-- this means the string consists of a table member at the start, a string at the end, and the rest - globals.
+mysplit3(--[[language::split member;globals;string]]"member;global1;global2;global3;string")
+-- e.g. may result in "m;a;b;c;string"
+
+-- here, instead of the middle parts being just globals, they're split further via the '=' characters.
+-- the plural "s" acts on the parentheses just as it did on the 'global' before.
+mysplit4(--[[language::split member;(global=string)s;string]]"member;global1=str1;global2=str2;global3=str3;string")
+-- e.g. may result in "m;a=str1;b=str2;c=str3;string"
+
+-- here, the trailing ',' is needed to specify the outer separator.
+-- the string consists of any number of 'global=string' splits, separated by ','
+mysplit5(--[[language::split (global=string)s,]]"glob1=str1,glob2=str2,glob3=str3")
+-- e.g. may result in "a=str1,b=str2,c=str3"
+-- it could also have been written as '(global=string)s,(global=string)'
+
+-- here, notice the plural on both 'members' and 'strings'
+-- this means the string consists of a global at the start, and then alternating table members and strings
+mysplit6(--[[language::split global,members,strings]]"global,key1,str1,key2,str2,key3,str3")
+-- e.g. may result in "g,a,str1,b,str2,c,str3"
+
+-- any separator can be used. '(' and ')' need escaping via '\(' and '\)'.
+-- english characters can be used as separators by escaping via '\w', e.g. '\wq'
 ```
 
 ### Advanced - Controlling renaming of specific identifier occurrences
@@ -796,9 +841,9 @@ eval(--[[language::evally]][[
 ]])
 ```
 
-In the python script, provide a class that handles the language via sublanguage_main:
+In the python script, provide a class that handles the language via sublanguage_main.
 
-(This is a complete example of what sublanguages can do, you can find a simpler example [below](#Example---simple-sub-language-for-table-parsing)
+Here is a complete example of what sub-languages can do:
 ```python
 from pico_process import SubLanguageBase, is_identifier
 from collections import Counter
@@ -808,7 +853,9 @@ class MySubLanguage(SubLanguageBase):
 
     # called to parse the sub-language from a string
     # (strings consist of raw pico-8 chars ('\0' to '\xff') - not real unicode)
-    def __init__(self, str, on_error, **_):
+    def __init__(self, str, args, on_error, **_):
+        # we may have received args that can be used to customize the language (not used here)
+        self.args = args
         # our trivial language consists of space-separated tokens in newline-separated statements
         self.stmts = [stmt.split() for stmt in str.splitlines()]
         # we can report parsing errors:
@@ -906,57 +953,26 @@ def sublanguage_main(lang, **_):
         return MySubLanguage
 ```
 
-### Example - simple sub-language for table parsing
-
-Often it's useful in pico-8 to define a simple sub-language to parse something like this:
-
-`"key1=val1,key2=val2,val3,val4"`
-
-To:
-
-`{key1="val1",key2="val2","val3","val4"}`
-
-Here, to minify properly, the keys (key1/key2) should be renamed as members, while the values should be left alone.
-
-The custom python script:
-```python
-from pico_process import SubLanguageBase
-from collections import Counter
-
-class SplitKeysSubLang(SubLanguageBase):
-    # parses the string
-    def __init__(self, str, **_):
-        self.data = [item.split("=") for item in str.split(",")]
-
-    # counts usage of keys
-    # (returned keys are ignored if they're not identifiers)
-    def get_member_usages(self, **_):
-        return Counter(item[0] for item in self.data if len(item) > 1)
-
-    # renames the keys
-    def rename(self, members, **_):
-        for item in self.data:
-            if len(item) > 1:
-                item[0] = members.get(item[0], item[0])
-
-    # formats back to string
-    def minify(self, **_):
-        return ",".join("=".join(item) for item in self.data)
-
-def sublanguage_main(lang, **_):
-    if lang == "splitkeys":
-        return SplitKeysSubLang
-```
-
-In the code:
+You can pass arguments to a sub-language as follows:
 ```lua
--- (implementation of splitkeys omitted)
-local table = splitkeys(--[[language::splitkeys]]"key1=val1,key2=val2,val3,val4")
-?table.key1 -- "val1"
-?table[1] -- "val3"
+eval(--[[language::evally myarg1 --etc]]"(omitted)")
 ```
+Here, the `args` parameter in the constructor will be `myarg1 --etc` and can be parsed via shlex+argparse or any other way
 
-To run, use `--script <path>` as described [before](#custom-python-script).
+Furthermore, you can define sub-languages in the p8 itself, based on existing sub-languages:
+```lua
+--deflanguage: evally1 = evally myarg1 --etc
+eval(--[[language::evally1 --etc2]]"(omitted)")
+```
+Here, the `args` parameter in the constructor will be `myarg1 --etc --etc2`
+
+### Contributing a sub-language
+
+Shrinko8 comes with some built-in sub-languages (currently just [split](#advanced---the-split-sub-language)).
+
+If you have a useful sub-language (to go with an implementation in pico8 hosted elsewhere), you can open a merge request to add it to the built-in sub-languages:
+- Create a `scripts/your_sub_language.py` containing your sublanguage_main and sub-language class.
+- The sublanguage_main will be called for `--[[language::your_sub_language]]
 
 ## Advanced - access to the Syntax Tree
 

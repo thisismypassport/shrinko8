@@ -202,9 +202,25 @@ class ContextBase:
         m.srcmap = [] if srcmap else None
         m.consts = consts
         m.sublang_getter = sublang_getter
+        m.custom_langdefs = None
         m.hint_comments = hint_comments
         m.version = version
         m.lang = lang
+    
+    def add_custom_langdef(m, source, target, args):
+        if m.custom_langdefs is None:
+            m.custom_langdefs = {}
+        m.custom_langdefs[source] = (target, args)
+    
+    def map_langdef(m, name, args):
+        while m.custom_langdefs and name in m.custom_langdefs:
+            name, pre_args = m.custom_langdefs[name]
+            if pre_args:
+                if args:
+                    args = pre_args + " " + args
+                else:
+                    args = pre_args
+        return name, args
 
 class PicoContext(ContextBase):
     """Specialization of ContextBase to pico8"""

@@ -4,6 +4,7 @@
 block_cipher = None
 hidden_imports = ['pico_utils']
 excludes = ['packaging']
+TODO::scripts/*
 
 ana = Analysis(
     ['shrinko8.py'],

@@ -4,10 +4,13 @@ from collections import Counter
 class MySubLanguage(SubLanguageBase):
     # called to parse the sub-language from a string
     # (strings consist of raw pico-8 chars ('\0' to '\xff') - not real unicode)
-    def __init__(self, str, on_error, **_):
+    def __init__(self, str, args, on_error, **_):
+        # we may have received args that can be used to customize the language (not used here)
+        self.args = args
         # our trivial language consists of space-separated tokens in newline-separated statements
         self.stmts = [stmt.split() for stmt in str.splitlines()]
         # we can report parsing errors:
+        self.args = args
         #on_error("Example")
 
     # these are utility functions for our own use:
@@ -129,6 +132,11 @@ class SplitKeysSubLang(SubLanguageBase):
     def minify(self, **_):
         return ",".join("=".join(item) for item in self.data)
 
+class ArgsSubLang(SubLanguageBase):
+    def __init__(self, str, args, on_error, **_):
+        if args != "arg1 arg2":
+            on_error("wrong arg!")
+
 # this is called to get a sub-languge class by name
 def sublanguage_main(lang, **_):
     if lang == "evally":
@@ -137,3 +145,5 @@ def sublanguage_main(lang, **_):
         return SplitKeysSubLang
     elif lang == "empty":
         return SubLanguageBase
+    elif lang == "args":
+        return ArgsSubLang

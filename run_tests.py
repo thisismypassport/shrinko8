@@ -239,6 +239,7 @@ def run():
              "--script", path_join("test_input", "sublang.py"), stdout_output="sublang.txt", norm_stdout=norm_paths, exit_code=2)
     run_test("sublang", "sublang.p8", "sublang.p8", "--minify",
              "--script", path_join("test_input", "sublang.py"))
+    run_test("deflang", "deflang.p8", "deflang.p8", "--minify")
     run_test("unkform1", "unkform1", "unkform1", update_version=False)
     run_test("unkform2", "unkform2.png", "unkform2", "--format", "png", "--input-format", "auto",
              update_version=False, output_reader=try_read_file_png)

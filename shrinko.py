@@ -12,7 +12,7 @@ from picotron_cart import write_cart64_compressed_size, write_cart64_version
 from picotron_export import read_cart64_export, read_sysrom_file
 import argparse
 
-k_version = 'v1.2.5c'
+k_version = 'v1.2.6'
 
 def SplitBySeps(val):
     return k_hint_split_re.split(val)
@@ -39,6 +39,16 @@ def lang_not_supported():
     throw("operation not supported for this language")
 def lang_do_nothing(*_, **__):
     pass
+
+def find_in_builtin_script(name, func_name):
+    import importlib
+    try:
+        module = importlib.import_module("scripts." + str_before_first(name, "."))
+    except ModuleNotFoundError:
+        return None
+    func = getattr(module, func_name, None)
+    if func:
+        return func(name)
 
 def create_main(lang):
     is_pico8 = lang == Language.pico8
@@ -386,7 +396,8 @@ def create_main(lang):
         if is_picotron and not args.delete_meta and args.minify and not args.minify_safe_only:
             args.delete_meta = ["*"]
 
-        args.preproc_cb, args.postproc_cb, args.preproc_syntax_cb, args.sublang_cb = None, None, None, None
+        args.preproc_cb, args.postproc_cb, args.preproc_syntax_cb = None, None, None
+        args.sublang_cb = lambda name: find_in_builtin_script(name, "sublanguage_main")
         if args.script:
             for script in args.script:
                 preproc_main, postproc_main, preproc_syntax_main, sublang_main = import_from_script_by_path(script,
@@ -394,7 +405,7 @@ def create_main(lang):
                 args.preproc_cb = func_union(args.preproc_cb, preproc_main)
                 args.postproc_cb = func_union(postproc_main, args.postproc_cb) # (reverse order)
                 args.preproc_syntax_cb = func_union(args.preproc_syntax_cb, preproc_syntax_main)
-                args.sublang_cb = func_union(args.sublang_cb, sublang_main, return_early=e)
+                args.sublang_cb = func_union(sublang_main, args.sublang_cb, return_early=e) # (reverse order)
 
         base_count_handler = ParsableCountHandler if args.parsable_count else True
         if args.input_count:
