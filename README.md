@@ -261,18 +261,21 @@ mysplit(--[[language::mysplit]]"key1=str1,key2=str2")
 
 Here, `(member=string)s,` tells the split sub-language precisely how the string will be split. Some more examples will help explain the syntax:
 ```lua
--- here, the string consists of a table member (key), a global, and a string (preserved) - all separated by ';'
+-- here, the string consists of a table member (key), a global, and a string (preserved) - 
+--   all separated by ';'
 mysplit2(--[[language::split member;global;string]]"member;global;string")
 -- e.g. may result in "m;g;string"
 
 -- here, notice the plural on 'globals'.
--- this means the string consists of a table member at the start, a string at the end, and the rest - globals.
+-- this means the string consists of a table member at the start, a string at the end, 
+--   and any number of globals between them, all separated by ';'.
 mysplit3(--[[language::split member;globals;string]]"member;global1;global2;global3;string")
 -- e.g. may result in "m;a;b;c;string"
 
 -- here, instead of the middle parts being just globals, they're split further via the '=' characters.
 -- the plural "s" acts on the parentheses just as it did on the 'global' before.
-mysplit4(--[[language::split member;(global=string)s;string]]"member;global1=str1;global2=str2;global3=str3;string")
+mysplit4(--[[language::split member;(global=string)s;string]]
+         "member;global1=str1;global2=str2;global3=str3;string")
 -- e.g. may result in "m;a=str1;b=str2;c=str3;string"
 
 -- here, the trailing ',' is needed to specify the outer separator.
@@ -282,7 +285,8 @@ mysplit5(--[[language::split (global=string)s,]]"glob1=str1,glob2=str2,glob3=str
 -- it could also have been written as '(global=string)s,(global=string)'
 
 -- here, notice the plural on both 'members' and 'strings'
--- this means the string consists of a global at the start, and then alternating table members and strings
+-- this means the string consists of a global at the start,
+--   and then alternating table members and strings
 mysplit6(--[[language::split global,members,strings]]"global,key1,str1,key2,str2,key3,str3")
 -- e.g. may result in "g,a,str1,b,str2,c,str3"
 
@@ -957,22 +961,24 @@ You can pass arguments to a sub-language as follows:
 ```lua
 eval(--[[language::evally myarg1 --etc]]"(omitted)")
 ```
-Here, the `args` parameter in the constructor will be `myarg1 --etc` and can be parsed via shlex+argparse or any other way
+Here, the `args` parameter in the constructor will be `myarg1 --etc` and can be parsed via shlex + argparse or in any other way
 
-Furthermore, you can define sub-languages in the p8 itself, based on existing sub-languages:
+Furthermore, you can define sub-languages in the p8 file itself, based on existing sub-languages:
 ```lua
 --deflanguage: evally1 = evally myarg1 --etc
 eval(--[[language::evally1 --etc2]]"(omitted)")
 ```
 Here, the `args` parameter in the constructor will be `myarg1 --etc --etc2`
 
+You can see more sub-language examples in Shrinko8's `scripts` folder.
+
 ### Contributing a sub-language
 
 Shrinko8 comes with some built-in sub-languages (currently just [split](#advanced---the-split-sub-language)).
 
-If you have a useful sub-language (to go with an implementation in pico8 hosted elsewhere), you can open a merge request to add it to the built-in sub-languages:
+If you have a useful sub-language (to go with an implementation in pico8 hosted elsewhere), you can open a merge-request to add it to the built-in sub-languages:
 - Create a `scripts/your_sub_language.py` containing your sublanguage_main and sub-language class.
-- The sublanguage_main will be called for `--[[language::your_sub_language]]
+- The sublanguage_main will be called for `--[[language::your_sub_language]]`
 
 ## Advanced - access to the Syntax Tree
 
