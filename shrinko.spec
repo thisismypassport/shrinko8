@@ -1,10 +1,13 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-
 block_cipher = None
-hidden_imports = ['pico_utils']
+hidden_imports = ['pico_utils', 'scripts']
 excludes = ['packaging']
-TODO::scripts/*
+
+import os
+for script in os.listdir("scripts"):
+    if script.endswith(".py") and script != "__init__.py":
+        hidden_imports.append("scripts." + os.path.splitext(script)[0])
 
 ana = Analysis(
     ['shrinko8.py'],

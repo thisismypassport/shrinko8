@@ -263,20 +263,20 @@ Here, `(member=string)s,` tells the split sub-language precisely how the string 
 ```lua
 -- here, the string consists of a table member (key), a global, and a string (preserved) - 
 --   all separated by ';'
-mysplit2(--[[language::split member;global;string]]"member;global;string")
--- e.g. may result in "m;g;string"
+mysplit2(--[[language::split member;global;string]]"member1;global1;string1")
+-- e.g. may result in "m;g;string1"
 
 -- here, notice the plural on 'globals'.
 -- this means the string consists of a table member at the start, a string at the end, 
 --   and any number of globals between them, all separated by ';'.
-mysplit3(--[[language::split member;globals;string]]"member;global1;global2;global3;string")
--- e.g. may result in "m;a;b;c;string"
+mysplit3(--[[language::split member;globals;string]]"member1;global1;global2;global3;string1")
+-- e.g. may result in "m;a;b;c;string1"
 
 -- here, instead of the middle parts being just globals, they're split further via the '=' characters.
 -- the plural "s" acts on the parentheses just as it did on the 'global' before.
 mysplit4(--[[language::split member;(global=string)s;string]]
-         "member;global1=str1;global2=str2;global3=str3;string")
--- e.g. may result in "m;a=str1;b=str2;c=str3;string"
+         "member1;global1=str1;global2=str2;global3=str3;endstr")
+-- e.g. may result in "m;a=str1;b=str2;c=str3;endstr"
 
 -- here, the trailing ',' is needed to specify the outer separator.
 -- the string consists of any number of 'global=string' splits, separated by ','
@@ -287,7 +287,7 @@ mysplit5(--[[language::split (global=string)s,]]"glob1=str1,glob2=str2,glob3=str
 -- here, notice the plural on both 'members' and 'strings'
 -- this means the string consists of a global at the start,
 --   and then alternating table members and strings
-mysplit6(--[[language::split global,members,strings]]"global,key1,str1,key2,str2,key3,str3")
+mysplit6(--[[language::split global,members,strings]]"global,member1,str1,member2,str2,member3,str3")
 -- e.g. may result in "g,a,str1,b,str2,c,str3"
 
 -- any separator can be used. '(' and ')' need escaping via '\(' and '\)'.
