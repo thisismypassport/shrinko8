@@ -294,6 +294,8 @@ mysplit6(--[[language::split global,members,strings]]"global,member1,str1,member
 -- english characters can be used as separators by escaping via '\w', e.g. '\wq'
 ```
 
+This will give you the power to appropriately rename strings in simple sub-languages consisting of a bunch of splits. For more complex sub-languages that do real parsing, you may need [to write your own sub-language (advanced)](#advanced---custom-sub-language).
+
 ### Advanced - Controlling renaming of specific identifier occurrences
 
 The `--[[global]]`, `--[[member]]` and `--[[preserve]]` hints can also be used on a **specific** occurrence of an identifier to change the way it's renamed.

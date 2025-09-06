@@ -296,7 +296,7 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
         if need_lint:
             errors = lint_code(ctxt, root, lint)
 
-        if preproc: # can do linting and - theoretically - early transformations
+        if preproc: # can do linting and early transformations
             def add_error(msg, node):
                 errors.append(Error(msg, node))
             preproc(root, add_error)

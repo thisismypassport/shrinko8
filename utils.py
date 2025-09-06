@@ -187,6 +187,9 @@ class EnumMetaclass(type):
         def __int__(m):
             return m.value
     
+        def __bool__(m):
+            return m.value != 0
+    
         def __hash__(m):
             return hash(m.value)
     
@@ -197,6 +200,7 @@ class EnumMetaclass(type):
         enum_dict["__str__"] = __str__
         enum_dict["__repr__"] = __repr__
         enum_dict["__int__"] = __int__
+        enum_dict["__bool__"] = __bool__
         enum_dict["__hash__"] = __hash__
         enum_dict["__slots__"] = ("value",)
         enum_dict["_values"] = full_name_value_map
@@ -388,7 +392,6 @@ class BitmaskMetaclass(type):
         bitmask_dict["__str__"] = __str__
         bitmask_dict["__repr__"] = __repr__
         bitmask_dict["__int__"] = __int__
-        bitmask_dict["__nonzero__"] = __bool__
         bitmask_dict["__bool__"] = __bool__
         bitmask_dict["__and__"] = __and__
         bitmask_dict["__or__"] = __or__
@@ -821,7 +824,7 @@ s32.min, s32.max = -0x80000000, 0x7fffffff
 s64.min, s64.max = -0x8000000000000000, 0x7fffffffffffffff
 
 u8.struct_le = u8.struct_be = struct.Struct("=B")
-s8.struct_le = s8.struct_le = struct.Struct("=b")
+s8.struct_le = s8.struct_be = struct.Struct("=b")
 u16.struct_le, u16.struct_be = struct.Struct("<H"), struct.Struct(">H")
 s16.struct_le, s16.struct_be = struct.Struct("<h"), struct.Struct(">h")
 u32.struct_le, u32.struct_be = struct.Struct("<I"), struct.Struct(">I")
@@ -1750,11 +1753,8 @@ class Point(Tuple):
     def __neg__(m):
         return Point(-m.x, -m.y)
 
-    def __nonzero__(m):
-        return m.x or m.y
-    
     def __bool__(m):
-        return bool(m.__nonzero__())
+        return m.x or m.y
 
     def __ge__(m, other):
         assert isinstance(other, Point)
@@ -1834,11 +1834,8 @@ class Rect(Tuple):
     def center(m):
         return m.pos + m.size / 2
 
-    def __nonzero__(m):
-        return m.w > 0 and m.h > 0
-    
     def __bool__(m):
-        return bool(m.__nonzero__())
+        return m.w > 0 and m.h > 0
 
     def __contains__(m, p):
         if isinstance(p, Point):
