@@ -175,11 +175,29 @@ k_lz4_prefix = b"lz4\0"
 k_pxu_prefix = b"pxu\0"
 k_b64_prefix = b"b64:"
 
+class PxuType(Enum):
+    # the ones currently supporting compression
+    u8 = 3
+    i16 = 12
+
+def get_pxu_type_info(type, rw):
+    if type == PxuType.u8:
+        return rw.u8, 2
+    elif type == PxuType.i16:
+        return rw.u16, 4
+    else:
+        throw("unsupported pxu type")
+
+class PxuCompression(Enum):
+    none = 1
+    mtf = 2
+    rle = 8
+
 class PxuFlags(Bitmask):
-    unk_type = 0x3
+    type: PxuType = 0xf
     has_height = 0x40
     long_size = 0x800
-    compress = 0x2000
+    compression: PxuCompression = 0xf000
 
 def read_pxu(data, idx):
     """Reads the picotron userdata compression format 'pxu' into a UserData."""
@@ -187,48 +205,64 @@ def read_pxu(data, idx):
     with BinaryReader(BytesIO(data)) as r:
         r.setpos(idx)
         check(r.bytes(4) == k_pxu_prefix, "wrong pxu header")
-        flags = PxuFlags(r.u16())
-        if not flags.compress or flags.unk_type != 3:
+        try:
+            flags = PxuFlags(r.u16())
+            type, compression = flags.type, flags.compression
+        except ValueError:
             throw(f"unsupported pxu flags: {flags}")
 
         width = r.u32() if flags.long_size else r.u8()
         height = (r.u32() if flags.long_size else r.u8()) if flags.has_height else 1
         size = width * height
 
-        bits = r.u8()
-        check(bits == 4, "unsupported pxu bits") # TODO - allow more? (entirely untested)
-        mask = (1 << bits) - 1
-        ext_count = 1 << (8 - bits)
+        read_type, type_nybbles = get_pxu_type_info(type, r)
 
-        data = bytearray()
-        mapping = [i for i in range(mask)]
-        mtf = [i for i in range(mask)]
+        if compression == PxuCompression.none:
+            data = [read_type() for _ in range(size)]
 
-        while len(data) < size:
-            b = r.u8()
-            
-            index = b & mask
-            if index == mask:
-                value = r.u8()
-                mapping[mtf[-1]] = value
-            
+        elif compression in (PxuCompression.mtf, PxuCompression.rle):
+            bits = r.u8()
+            if compression == PxuCompression.mtf:
+                warn_assert(bits == 4, "unsupported pxu bits")
             else:
-                update_mtf(mtf, mtf.index(index), index)
-                value = mapping[index]
-            
-            count = 1 + (b >> bits)
-            if count == ext_count:
-                while True:
-                    c = r.u8()
-                    count += c
-                    if c != 0xff:
-                        break
-            
-            for i in range(count):
-                data.append(value)
+                warn_assert(bits == 0, "unsupported pxu bits(?)")
 
-        hexdata = "".join(f"{b:02x}" for b in data)
-        return UserData("u8", width, height if flags.has_height else 0, hexdata), r.pos()
+            mask = (1 << bits) - 1
+            ext_count = 1 << (8 - bits)
+
+            data = []
+            mapping = [i for i in range(mask)]
+            mtf = [i for i in range(mask)]
+
+            while len(data) < size:
+                b = r.u8()
+                
+                index = b & mask
+                if index == mask:
+                    value = read_type()
+                    if bits:
+                        mapping[mtf[-1]] = value
+                
+                else:
+                    update_mtf(mtf, mtf.index(index), index)
+                    value = mapping[index]
+                
+                count = 1 + (b >> bits)
+                if count == ext_count:
+                    while True:
+                        c = r.u8()
+                        count += c
+                        if c != 0xff:
+                            break
+                
+                for i in range(count):
+                    data.append(value)
+        
+        else:
+            throw(f"unsupported pxu compression: {compression}")
+
+        hexdata = "".join(f"{b:x}".zfill(type_nybbles) for b in data)
+        return UserData(str(type), width, height if flags.has_height else 0, hexdata), r.pos()
 
 def read_pod(value):
     """Reads a picotron pod from possibly compressed bytes"""
@@ -263,11 +297,22 @@ def read_pod(value):
 
 def write_pxu(ud):
     """Writes userdata via the picotron userdata compression format 'pxu'"""
-    if ud.type != "u8":
+    try:
+        type = PxuType(ud.type)
+    except ValueError:
         return None
     
     with BinaryWriter() as w:
-        flags = PxuFlags.unk_type | PxuFlags.compress
+        if type == PxuType.u8:
+            compression = PxuCompression.mtf
+            bits = 4 # other values are not yet observed/tested
+        elif type == PxuType.i16:
+            compression = PxuCompression.rle
+            bits = 0 # other values are not yet observed/tested
+        else:
+            return None
+
+        flags = PxuFlags(type=type, compression=compression)
         if ud.height:
             flags |= PxuFlags.has_height
         if ud.width >= 0x100 or ud.height >= 0x100:
@@ -279,14 +324,15 @@ def write_pxu(ud):
         if flags.has_height:
             (w.u32 if flags.long_size else w.u8)(ud.height)
         
-        data = bytearray()
+        write_type, type_nybbles = get_pxu_type_info(type, w)
+
+        data = []
         try:
-            for i in range(0, len(ud.data), 2):
-                data.append(int(ud.data[i:i+2], 16))
+            for i in range(0, len(ud.data), type_nybbles):
+                data.append(int(ud.data[i:i+type_nybbles], 16))
         except ValueError:
             throw("invalid userdata encountered")
 
-        bits = 4 # could try other values, but picotron itself never does?
         w.u8(bits)
         mask = (1 << bits) - 1
         ext_count = 1 << (8 - bits)
@@ -306,14 +352,15 @@ def write_pxu(ud):
             index = list_find(mapping, value)
             if index < 0:
                 index = mask
-                mapping[mtf[-1]] = value
+                if bits:
+                    mapping[mtf[-1]] = value
 
             else:
                 update_mtf(mtf, mtf.index(index), index)
             
             w.u8(index | ((min(count, ext_count) - 1) << bits))
             if index == mask:
-                w.u8(value)
+                write_type(value)
             
             if count >= ext_count:
                 count -= ext_count

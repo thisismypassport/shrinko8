@@ -13,7 +13,7 @@ def _my_excepthook(type, value, tb):
         hook(obj)
         
     for line in obj.format():
-        print(line, file=sys.stderr, end="")    
+        eprint(line, end="")    
         
 def add_traceback_hook(hook):
     """adds a hook to be called before printing a traceback, so that the hook can edit it freely"""
@@ -234,6 +234,7 @@ class Enum(metaclass=EnumMetaclass):
     Advanced: ExcludeAttr/IncludeAttr, _values keyword parameter
     Atributes with a name ending with _ can be referred to without the _.
     """
+    __slots__ = ()
 
 class BitmaskMetaclass(type):
     def __new__(meta, cls_name, cls_bases, cls_dict, _values=None):
@@ -436,6 +437,7 @@ class Bitmask(metaclass=BitmaskMetaclass):
     Advanced: ExcludeAttr/IncludeAttr, _values keyword parameter
     Atributes with a name ending with _ can be referred to without the _.
     """
+    __slots__ = ()
     
 def _metaclass_collect_from_bases(fields, defaults, bases, is_new=False):
     if not bases:
@@ -524,6 +526,7 @@ class Tuple(tuple, metaclass=TupleMetaclass):
     Advanced: ExcludeAttr/IncludeAttr, _values keyword parameter, const base fields keyword parameters
     Atributes with a name ending with _ can be referred to without the _.
     """
+    __slots__ = ()
         
 class StructMetaclass(type):
     def __new__(meta, cls_name, cls_bases, cls_dict, _values=None, **consts):
@@ -587,6 +590,7 @@ class Struct(metaclass=StructMetaclass):
     Advanced: ExcludeAttr/IncludeAttr, _values keyword parameter, const base fields keyword parameters
     Atributes with a name ending with _ can be referred to without the _.
     """
+    __slots__ = ()
 
 def SymbolClass(name):
     """Create a class with the given name that returns cached symbols when invoked"""
@@ -2606,7 +2610,7 @@ def closure(__func, *args, **kwargs):
 def debug(*msg):
     """Print a message only if debugging is enabled"""
     if debug.enabled:
-        print(*msg)
+        eprint(*msg)
     
 debug.enabled = False
     
@@ -2641,7 +2645,7 @@ def desc(value):
 
 def trace(*args):
     """Print with traceback"""
-    print(*args)
+    eprint(*args)
     traceback.print_stack()
     
 def byte(x):
@@ -2654,7 +2658,7 @@ def measure_execution_time(func):
         start = time.time()
         result = func(*args, **kwargs)
         end = time.time()
-        print(f"{func} took {end - start:f} seconds")
+        eprint(f"{func} took {end - start:f} seconds")
         return result
     return decorator
     
