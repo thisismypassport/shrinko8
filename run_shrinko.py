@@ -12,7 +12,7 @@ from picotron_cart import write_cart64_compressed_size, write_cart64_version
 from picotron_export import read_cart64_export, read_sysrom_file
 import argparse
 
-k_version = 'v1.2.6'
+k_version = 'v1.2.6b'
 
 def SplitBySeps(val):
     return k_hint_split_re.split(val)
