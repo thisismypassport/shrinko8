@@ -45,7 +45,7 @@ class SiteTestServer(TCPServer):
 if __name__ == '__main__':
     with SiteTestServer() as server:
         if opts.execute:
-            proc = subprocess.Popen(opts.execute)
+            proc = subprocess.Popen(opts.execute, shell=True)
         while g_exitcode is None:
             server.handle_request()
         if opts.execute:
