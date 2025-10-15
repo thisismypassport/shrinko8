@@ -33,6 +33,7 @@ jobs:
       - name: Zip
         run: |
           zip -r site/shrinko.zip `cat files.lst`
+          zip -r site/shrinko_test.zip `cat test_files.lst`
       
       - name: Create shrinkotron html
         uses: cuchi/jinja2-action@v1.3.0
@@ -47,6 +48,16 @@ jobs:
           template: site/index.html
           output_file: site/index.html
           variables: TARGET=pico8
+
+      - name: Install headless browser
+        run: npx playwright install --with-deps
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        
+      - name: Run site tests
+        run: |
+          python3 run_site_tests.py -p 9999 -t 90 -x "npx playwright open http://localhost:9999/?test=post"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
