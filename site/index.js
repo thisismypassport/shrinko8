@@ -853,6 +853,7 @@ async function runTests(mode, argsStr) {
                 body: msg,
             })
             window.close();
+            window.testsFinished = true;
         } else {
             alert(msg);
             if (save) {
