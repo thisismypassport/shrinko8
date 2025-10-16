@@ -287,6 +287,8 @@ def run():
     run_test("TRON_constmin", "consttron.p64", "consttronmin.p64", "--minify", "--avoid-base64", target=Target.picotron)
     run_test("TRON_load", "loadtron.p64", "loadtron.p64", "--minify-safe-only", target=Target.picotron)
     run_test("TRON_meta", "metatron.p64", "metatron.p64", "--uncompress-pods", target=Target.picotron)
+    if run_test("TRON_user", "usertron.p64", "usertron_c.p64", target=Target.picotron):
+        run_test("TRON_user_u", "usertron_c.p64", "usertron.p64", "--uncompress-pods", from_output=True, target=Target.picotron)
     run_test("TRON_dep", "deptron.p64", "deptron.p64", "--minify-consts-only", target=Target.picotron)
 
 def main(raw_args=None):
