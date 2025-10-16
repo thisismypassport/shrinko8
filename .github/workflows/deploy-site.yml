@@ -52,7 +52,7 @@ jobs:
       - name: Run site tests
         uses: docker://mcr.microsoft.com/playwright/python:v1.50.0-noble
         with:
-          args: python3 run_site_tests.py -t 180 -d site -T
+          args: python3 -m pip install playwright && python3 run_site_tests.py -t 180 -d site -T
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
