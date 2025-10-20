@@ -78,6 +78,8 @@ class SysRomIndex(Enum):
     win_exe = 5; win_sdl = 6
     mac_exe = 7; mac_sdl = 8
 
+k_MB = 1024 * 1024
+
 class SysRomExport64(SysRom, Cart64Export):
     def get_cart(m, **opts):
         entry = m.get(SysRomIndex.cart, strict=False)
@@ -86,7 +88,7 @@ class SysRomExport64(SysRom, Cart64Export):
         return read_cart64_from_rom(entry, **opts)
 
     def set_cart(m, cart, **opts):
-        data = write_cart64_to_rom(cart, **opts)
+        data = write_cart64_to_rom(cart, limit=32*k_MB, **opts)
         m.set(SysRomIndex.cart, data)
         
     def entry_name(m, i):
@@ -116,7 +118,7 @@ class HtmlExport64(Cart64Export):
         return read_cart64_from_rom(bytes.fromhex(match.group(1)), **opts)
 
     def set_cart(m, cart, **opts):
-        rom = write_cart64_to_rom(cart, **opts)
+        rom = write_cart64_to_rom(cart, limit=8*k_MB, **opts)
         m.text = str_replace_between(m.text, *m.find_cart().span(1), rom.hex())
 
     @staticmethod

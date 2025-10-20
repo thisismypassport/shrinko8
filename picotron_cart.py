@@ -155,7 +155,7 @@ def read_cart64_from_rom(buffer, path=None, size_handler=None, debug_handler=Non
     return cart
 
 def write_cart64_to_rom(cart, size_handler=None, debug_handler=None, padding=0,
-                        fail_on_error=True, fast_compress=False, **opts):
+                        limit=None, fast_compress=False, **opts):
     io = BytesIO()
 
     with BinaryWriter(io) as w:
@@ -176,8 +176,8 @@ def write_cart64_to_rom(cart, size_handler=None, debug_handler=None, padding=0,
     size = k_rom_header_size + len(compressed)
     if size_handler:
         print_rom_compressed_size(size, handler=size_handler)
-    if fail_on_error:
-        check(size <= k_cart64_size, "cart takes too much compressed space!")
+    if limit:
+        check(size <= limit, "cart takes too much compressed space!")
     
     io = BytesIO()
     with BinaryWriter(io) as w:
@@ -314,7 +314,7 @@ def draw_title_on_image(image, title, subtitle, offset, width, suboffset):
             title = subtitle
 
 def write_cart64_to_image(cart, template_image=None, template_only=False, **opts):
-    output = write_cart64_to_rom(cart, padding=4, **opts) # some padding to easily tell when we're done without failing
+    output = write_cart64_to_rom(cart, limit=k_cart64_size, padding=4, **opts) # some padding to easily tell when we're done without failing
     end_pos = len(output) - 2
 
     if not template_image:
@@ -660,7 +660,7 @@ def merge_cart64(dest, src, sections=None):
                 parent = str_before_last(parent[:-1], "/") + "/"
 
 def write_cart64_compressed_size(cart, handler=True, **opts):
-    write_cart64_to_rom(cart, size_handler=handler, fail_on_error=False, **opts)
+    write_cart64_to_rom(cart, size_handler=handler, **opts)
 
 def write_cart64_version(cart):
     print("version: %d" % cart.version_id) # that's it?
