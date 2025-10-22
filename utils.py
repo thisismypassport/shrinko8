@@ -853,6 +853,8 @@ class BinaryBase(object):
     def truncate(m):
         m.f.truncate()
 
+    def remaining(m):
+        return m.len() - m.f.tell()
     def eof(m):
         return m.f.tell() == m.len()
 

@@ -140,8 +140,14 @@ class Palette: # (pil's ImagePalette doesn't seem fit for purpose)
     def __init__(m, raw):
         m.raw = raw
     
+    def __len__(m):
+        return len(m.raw) // 4
+
     def __getitem__(m, i):
         return m.raw[4 * i : 4 * (i + 1)]
     
     def __setitem__(m, i, v):
         m.raw[4 * i : 4 * (i + 1)] = v
+
+    def to_surface(m):
+        return Surface.from_data(len(m), 1, PixelFormat.rgba8, bytes(m.raw))

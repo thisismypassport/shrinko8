@@ -216,7 +216,7 @@ def create_main(lang):
                                 help="additional input file to place in export (and optionally, the format of the file & the name to use for it in the export)")
         else:
             pgroup.add_argument("--picotron-dat", dest="pico_dat", help="path to the picotron.dat file in the picotron directory. needed to create exports")
-            pgroup.add_argument("--dump-misc", dest="dump", help="dump the cart, sysrom, etc. inside a sysrom.dat to the specified folder. -f can be used to specify the output format")
+            pgroup.add_argument("--dump", help="dump the cart/system/etc. inside a sysrom.dat to the specified folder. -f can set the output format of carts (e.g '-f dir')")
             pgroup.set_defaults(cart=None, output_cart=None, extra_input=())
 
         pgroup = parser.add_argument_group("other interesting options (semi-undocumented)")

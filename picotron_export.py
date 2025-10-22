@@ -62,7 +62,7 @@ class SysRom:
             return w.f.getvalue()
 
     def dump_contents(m, dest, fmt, **_):
-        cart_ext = f".{fmt}" if fmt.is_ext else ".unk"
+        cart_ext = f".{fmt}" if fmt.is_ext else ""
         for i, entry in enumerate(m.entries):
             is_cart = entry.startswith(k_rom_header_sig)
             path = path_join(dest, m.entry_name(i) + (cart_ext if is_cart else ""))
@@ -73,12 +73,11 @@ class SysRom:
                 file_write(path, entry)
 
 class SysRomIndex(Enum):
+    info = 0
     system = 1; cart = 2
     html_info = 3; linux_exe = 4
     win_exe = 5; win_sdl = 6
     mac_exe = 7; mac_sdl = 8
-
-k_MB = 1024 * 1024
 
 class SysRomExport64(SysRom, Cart64Export):
     def get_cart(m, **opts):
@@ -88,7 +87,7 @@ class SysRomExport64(SysRom, Cart64Export):
         return read_cart64_from_rom(entry, **opts)
 
     def set_cart(m, cart, **opts):
-        data = write_cart64_to_rom(cart, limit=32*k_MB, **opts)
+        data = write_cart64_to_rom(cart, **opts)
         m.set(SysRomIndex.cart, data)
         
     def entry_name(m, i):
@@ -98,8 +97,9 @@ class SysRomExport64(SysRom, Cart64Export):
             return f"unk{i}"
     
     @staticmethod
-    def create(picotron_dat, **_):
+    def create(picotron_dat, cart=None, **_):
         m = SysRomExport64()
+        m.set(SysRomIndex.info, cart.export_home.encode() if cart else b"")
         m.set(SysRomIndex.system, picotron_dat.get(SysRomIndex.cart))
         return m
 
@@ -118,7 +118,7 @@ class HtmlExport64(Cart64Export):
         return read_cart64_from_rom(bytes.fromhex(match.group(1)), **opts)
 
     def set_cart(m, cart, **opts):
-        rom = write_cart64_to_rom(cart, limit=8*k_MB, **opts)
+        rom = write_cart64_to_rom(cart, **opts)
         m.text = str_replace_between(m.text, *m.find_cart().span(1), rom.hex())
 
     @staticmethod
@@ -130,10 +130,10 @@ class HtmlExport64(Cart64Export):
         if not match:
             throw("can't find pcart comment in html template")
         
-        # what's export_home_str?
-        html = str_insert(html, match.end(), '\np64cart_str="";\nexport_home_str = "";\n' + js)
+        export_home = cart.export_home if cart else ""
+        html = str_insert(html, match.end(), f'\np64cart_str="";\nexport_home_str = "{export_home}";\n{js}')
 
-        title = list_get(cart.title, 0) if cart and cart.title else None
+        title = list_get(cart.title, 0) if cart else None
         html = html.replace("##page_title##", title or "Picotron Cartridge")
 
         label = cart.load_label() if cart else None
@@ -267,7 +267,7 @@ def create_cart64_export(format, pico_dat, **opts):
     elif format == Cart64Format.bin:
         return FullExport64.create(pico_dat, **opts)
     else:
-        throw(f"invalid cart format")
+        throw(f"invalid export format: {format}")
 
 def write_to_cart64_export(path, cart, format, pico_dat=None, export_name=None, **opts):
     if not export_name:

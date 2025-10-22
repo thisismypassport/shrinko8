@@ -429,7 +429,8 @@ class PodFile:
                 with file_create(path_join(dest, f"{i}.png")) as f:
                     e.content.save(f)
             elif isinstance(e.content, Palette):
-                pass # used for the images already
+                with file_create(path_join(dest, f"{i}.pal.png")) as f:
+                    e.content.to_surface().save(f)
             else:
                 fail("wrong data in pod contents")
     
@@ -613,7 +614,6 @@ class PodExport(CartExport, PodFile):
         m.rename_content(i, name)
         
     def dump_file(m, dest, fmt, misc, i, name, cdata):
-        #return super().dump_file(dest, fmt, misc, i, name, cdata) # (uncomment out to dump pico8.dat with '-F pod')
         if name:
             m.dump_cart(dest, fmt, name, cdata)
         elif misc:
@@ -659,6 +659,14 @@ class PodExport(CartExport, PodFile):
 
             m.append_content("", bytes(new_pod.data))
         return m
+
+class PicoDat(PodFile):
+    def throw(m, *_, **__):
+        throw("pico dat file can only be used with --dump")
+
+    list_carts = throw
+    read_cart = throw
+    write_cart = throw
 
 class FullExportBase:
     def __init__(m):
@@ -926,6 +934,8 @@ def read_cart_export(path, format):
         return JsExport(file_read_text(path))
     if format == CartFormat.pod:
         return PodExport(file_read(path))
+    if format == CartFormat.dat:
+        return PicoDat(file_read(path))
     else:
         throw(f"invalid export format: {format}")
 
@@ -949,7 +959,7 @@ def create_cart_export(format, pico8_dat, **opts):
     elif format == CartFormat.bin:
         return FullExport.create(pico8_dat, **opts)
     else:
-        throw(f"invalid format for listing: {format}")
+        throw(f"invalid export format: {format}")
 
 def read_from_cart_export(path, format, cart_name=None, extra_carts=None, **opts):
     """Read a cart or carts from a cart export"""

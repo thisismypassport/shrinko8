@@ -50,20 +50,24 @@ class Cart64:
         m.path = path
         m.name = name if name else path_basename(path) if path else ""
         m.files = {}
-        m.raw_title = m.raw_label = m.raw_icon = None
+        m.raw_title = m.raw_label = m.raw_icon = m.raw_home = None
+
+    @property
+    def metadata(m):
+        info = m.files.get(k_info_file)
+        return info.metadata if info else None
 
     @property
     def title(m):
-        if m.raw_title:
+        if e(m.raw_title):
             return m.raw_title
 
-        top_info = m.files.get(k_info_file)
-        top_meta = top_info.metadata if top_info else None
-        if not top_meta:
-            return None
-        title = str(top_meta.get("title", ""))
-        version = str(top_meta.get("version", ""))
-        author = str(top_meta.get("author", ""))
+        meta = m.metadata
+        if not meta:
+            return ()
+        title = str(meta.get("title", ""))
+        version = str(meta.get("version", ""))
+        author = str(meta.get("author", ""))
         return (title, " ".join((version, ("by " + author if author else ""))))
 
     def set_raw_title(m, title_lines):
@@ -98,11 +102,8 @@ class Cart64:
         if m.raw_icon:
             return m.raw_icon
 
-        top_info = m.files.get(k_info_file)
-        top_meta = top_info.metadata if top_info else None
-        if not top_meta:
-            return None
-        icon = top_meta.get("icon")
+        meta = m.metadata
+        icon = meta.get("icon") if meta else None
         return icon if isinstance(icon, UserData) else None
 
     def load_icon(m):
@@ -117,6 +118,17 @@ class Cart64:
 
     def set_raw_icon(m, icon):
         m.raw_icon = icon
+
+    @property
+    def export_home(m):
+        if e(m.raw_home):
+            return m.raw_home
+        meta = m.metadata
+        home = meta.get("export_home") if meta else None
+        return home if isinstance(home, str) else ""
+
+    def set_raw_export_home(m, value):
+        m.raw_home = value
 
     def set_version(m, version):
         m.version_id = version
@@ -133,7 +145,7 @@ def read_cart64_from_rom(buffer, path=None, size_handler=None, debug_handler=Non
     
     with BinaryReader(BytesIO(buffer)) as r:
         check(r.bytes(3) == k_rom_header_sig, "wrong rom header")
-        cart.version_id = r.u8()
+        cart.set_version(r.u8())
         size = r.u32()
         if size_handler:
             print_rom_compressed_size(k_rom_header_size + size, prefix="input", handler=size_handler)
@@ -405,6 +417,9 @@ def read_cart64_from_source(data, path=None, raw=False, **_):
             if fspath == k_p64_end_file:
                 fspath = None
 
+        elif fspath is None and line.startswith(b"version "):
+            cart.set_version(int(line.split()[1]))
+
         else:
             lines.append(line)
 
@@ -615,6 +630,7 @@ def preproc_cart64(cart, delete_meta=None, delete_label=None, uncompress_pods=Fa
     if delete_meta:
         cart.set_raw_title(cart.title)
         cart.set_raw_icon(cart.icon)
+        cart.set_raw_export_home(cart.export_home)
         
         to_delete = []
         

@@ -6,14 +6,14 @@ import hashlib, base64
 
 class CartFormat(Enum):
     """An enum representing the supported cart formats"""
-    auto = p8 = png = lua = rom = tiny_rom = clip = url = code = js = pod = bin = label = spritesheet = ...
+    auto = p8 = png = lua = rom = tiny_rom = clip = url = code = js = pod = bin = dat = label = spritesheet = ...
 
     @property
     def is_input(m):
         return m != m.bin
     @property
     def is_output(m):
-        return m != m.auto
+        return m not in (m.auto, m.dat)
     @property
     def is_ext(m):
         return m not in (m.auto, m.tiny_rom, m.code, m.label, m.spritesheet)
@@ -22,7 +22,7 @@ class CartFormat(Enum):
         return m in (m.p8, m.lua, m.code)
     @property
     def is_export(m):
-        return m in (m.js, m.pod, m.bin)
+        return m in (m.js, m.pod, m.bin, m.dat)
     @property
     def is_exposed(m):
         return m != m.code

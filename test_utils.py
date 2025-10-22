@@ -27,6 +27,9 @@ def init_tests(opts): # use: opts.exe and opts.profile
             Target.pico8: "shrinko8.py",
             Target.picotron: "shrinkotron.py",
         }
+    
+    import warnings
+    warnings.simplefilter("error")
 
 def start_test():
     global g_num_ran

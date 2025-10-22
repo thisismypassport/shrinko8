@@ -274,8 +274,14 @@ def read_pod(value):
         with BinaryReader(BytesIO(value)) as r:
             r.addpos(4)
             size = r.u32()
-            _unc_size = r.u32()
-            value = lz4_uncompress(r.bytes(size))
+            unc_size = r.u32()
+            missing = size - r.remaining()
+            if missing > 0: # (incomplete) hack for some existing broken files
+                warn("truncated lz4 file!")
+                value = lz4_uncompress(r.bytes(r.remaining()) + b"}" * missing)
+            else:
+                value = lz4_uncompress(r.bytes(size))
+            warn_assert(len(value) == unc_size, "wrong lz4 uncompressed size")
 
     pxu_i = 0
     userdatas = None
@@ -297,6 +303,9 @@ def read_pod(value):
 
 def write_pxu(ud):
     """Writes userdata via the picotron userdata compression format 'pxu'"""
+    if ud.data.startswith("hex:"):
+        return None
+
     try:
         type = PxuType(ud.type)
     except ValueError:
@@ -402,7 +411,9 @@ def write_pod(pod, compress=True, use_pxu=True, use_base64=False):
             w.u32(len(compressed))
             w.u32(len(value))
             w.bytes(compressed)
-            value = w.f.getvalue()
+            compressed_value = w.f.getvalue()
+            if len(compressed_value) < len(value):
+                value = compressed_value
     
     if use_base64:
         value = k_b64_prefix + pico_base64_encode(value)
@@ -416,6 +427,8 @@ class PicotronFile:
         """create a picotron file from raw data"""
         m.data = data
         m.line = line
+        m._metadata_cache = None
+        m._payload_cache = None
     
     @classmethod
     def create(m, payload, metadata=None):
@@ -445,6 +458,7 @@ class PicotronFile:
 
     @raw_metadata.setter
     def raw_metadata(m, value):
+        m._metadata_cache = None
         assert not m.is_dir
         if value is None:
             m.data = m.raw_payload
@@ -454,6 +468,8 @@ class PicotronFile:
     @property
     def metadata(m):
         """the file's metadata as a pod dict"""
+        if e(m._metadata_cache):
+            return m._metadata_cache
         metadata = m.raw_metadata
         if metadata != None:
             metadata = parse_meta_pod(decode_luastr(metadata))
@@ -466,6 +482,7 @@ class PicotronFile:
         else:
             assert isinstance(value, dict)
             m.raw_metadata = encode_luastr(format_meta_pod(value))
+            m._metadata_cache = value
 
     @property
     def raw_payload(m):
@@ -481,6 +498,7 @@ class PicotronFile:
 
     @raw_payload.setter
     def raw_payload(m, value):
+        m._payload_cache = None
         assert not m.is_dir
         metadata = m.raw_metadata
         if e(metadata):
@@ -491,7 +509,9 @@ class PicotronFile:
     @property
     def payload(m):
         """the file data (not including metadata) as a pod object (or as bytes, if raw)"""
-        if m.is_raw:
+        if e(m._payload_cache):
+            return m._payload_cache
+        elif m.is_raw:
             return m.raw_payload
         else:
             return read_pod(m.raw_payload)
@@ -505,6 +525,7 @@ class PicotronFile:
             m.raw_payload = value
         else:
             m.raw_payload = write_pod(value, compress=compress, use_pxu=use_pxu, use_base64=use_base64)
+            m._payload_cache = value
 
     is_dir = False
 
