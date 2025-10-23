@@ -5,8 +5,8 @@ from pico_cart import k_png_header, k_qoi_header
 from pico_export import lz4_uncompress, lz4_compress
 from pico_defs import decode_luastr, encode_luastr
 from pico_compress import print_size, compress_code, uncompress_code, encode_p8str, decode_p8str
-from picotron_defs import get_default_picotron_version, Cart64Glob, k_palette_64
-from picotron_fs import PicotronFile, PicotronDir, k_pod, UserData
+from picotron_defs import get_default_picotron_runtime, get_picotron_version_id, Cart64Glob, k_palette_64
+from picotron_fs import PicotronFile, PicotronDir, k_pod, k_pod_prefix_strs, UserData
 
 class Cart64Format(Enum):
     """An enum representing the supported cart formats"""
@@ -46,16 +46,23 @@ k_label_files = (k_label_qoi_file, k_label_png_file)
 class Cart64:
     """A picotron cart - a collection of all its files"""
     def __init__(m, path="", name=""):
-        m.version_id = get_default_picotron_version()
+        m.version_id = get_picotron_version_id(get_default_picotron_runtime())
         m.path = path
         m.name = name if name else path_basename(path) if path else ""
         m.files = {}
-        m.raw_title = m.raw_label = m.raw_icon = m.raw_home = None
+        m.raw_title = m.raw_label = m.raw_icon = m.raw_home = m.raw_runtime_version = None
 
     @property
     def metadata(m):
         info = m.files.get(k_info_file)
         return info.metadata if info else None
+
+    def set_metadata(m, key, value):
+        info = m.files.get(k_info_file)
+        if info and e(meta := info.metadata):
+            meta[key] = value
+            info.metadata = meta
+            return True
 
     @property
     def title(m):
@@ -130,8 +137,24 @@ class Cart64:
     def set_raw_export_home(m, value):
         m.raw_home = value
 
-    def set_version(m, version):
-        m.version_id = version
+    def get_runtime_version(m, default=sys.maxsize):
+        if e(m.raw_runtime_version):
+            return m.raw_runtime_version
+        meta = m.metadata
+        runtime = meta.get("runtime") if meta else None
+        return runtime if isinstance(runtime, (int, float)) else default
+
+    @lazy_property
+    def runtime_version(m):
+        return m.get_runtime_version()
+
+    def set_raw_runtime_version(m, runtime):
+        m.raw_runtime_version = runtime
+
+    def set_version(m, runtime):
+        m.set_raw_runtime_version(runtime)
+        m.version_id = get_picotron_version_id(runtime)
+        m.set_metadata("runtime", runtime)
     
 k_cart64_size = 0x40000 # + 0x2000 ?
 k_rom_header_sig = b"p64"
@@ -145,7 +168,7 @@ def read_cart64_from_rom(buffer, path=None, size_handler=None, debug_handler=Non
     
     with BinaryReader(BytesIO(buffer)) as r:
         check(r.bytes(3) == k_rom_header_sig, "wrong rom header")
-        cart.set_version(r.u8())
+        cart.version_id = r.u8()
         size = r.u32()
         if size_handler:
             print_rom_compressed_size(k_rom_header_size + size, prefix="input", handler=size_handler)
@@ -418,7 +441,7 @@ def read_cart64_from_source(data, path=None, raw=False, **_):
                 fspath = None
 
         elif fspath is None and line.startswith(b"version "):
-            cart.set_version(int(line.split()[1]))
+            cart.version_id = int(line.split()[1])
 
         else:
             lines.append(line)
@@ -625,27 +648,45 @@ def filter_cart64(cart, sections):
     for path in to_delete:
         del cart.files[path]
 
-def preproc_cart64(cart, delete_meta=None, delete_label=None, uncompress_pods=False, base64_pods=False,
-                   keep_pod_compression=False, need_pod_compression=False):
+def preproc_meta(cart, delete_meta, keep_meta_keys):
+    to_delete = []
+    glob = Cart64Glob(delete_meta)
+    key_glob = Cart64Glob(keep_meta_keys)
+
+    for path, file in cart.files.items():
+        if glob.matches(path) and not file.is_dir:
+            meta = file.metadata
+            new_meta = None
+            if e(meta):
+                new_meta = {}
+                for key, value in meta.items():
+                    if key_glob.matches(key):
+                        new_meta[key] = value
+                
+                if new_meta:
+                    for req_key in k_pod_prefix_strs: # at least the format
+                        if req_key in meta:
+                            new_meta[req_key] = meta[req_key]
+                else:
+                    if file.is_raw:
+                        new_meta = None
+            
+            if not new_meta and str_after_last(path, "/") == ".info.pod": # contains meta only
+                to_delete.append(path)
+            else:
+                file.metadata = new_meta
+    
+    for path in to_delete:
+        del cart.files[path]
+
+def preproc_cart64(cart, delete_meta=None, keep_meta_keys=None, delete_label=None,
+                   uncompress_pods=False, base64_pods=False, keep_pod_compression=False, need_pod_compression=False):
     if delete_meta:
         cart.set_raw_title(cart.title)
         cart.set_raw_icon(cart.icon)
         cart.set_raw_export_home(cart.export_home)
-        
-        to_delete = []
-        
-        glob = Cart64Glob(delete_meta)
-        for path, file in cart.files.items():
-            if glob.matches(path) and not file.is_dir:
-                if str_after_last(path, "/") == ".info.pod": # contains no useful data
-                    to_delete.append(path)
-                elif file.is_raw:
-                    file.metadata = None
-                else:
-                    file.metadata = {}
-        
-        for path in to_delete:
-            del cart.files[path]
+        cart.set_raw_runtime_version(cart.get_runtime_version())
+        preproc_meta(cart, delete_meta, keep_meta_keys)
     
     if delete_label:
         label_file, label = cart.label
@@ -654,14 +695,15 @@ def preproc_cart64(cart, delete_meta=None, delete_label=None, uncompress_pods=Fa
         cart.set_raw_label(label_file, label)
     
     if not keep_pod_compression:
+        runtime = cart.runtime_version
         for path, file in cart.files.items():
             if not file.is_raw and not file.is_dir:
                 if uncompress_pods:
-                    file.set_payload(file.payload, compress=False, use_pxu=False, use_base64=base64_pods)
+                    file.set_payload(file.payload, compress=False, use_pxu=False, use_base64=base64_pods, runtime=runtime)
                 elif need_pod_compression:
-                    file.set_payload(file.payload, compress=True, use_pxu=True, use_base64=base64_pods)
+                    file.set_payload(file.payload, compress=True, use_pxu=True, use_base64=base64_pods, runtime=runtime)
                 else:
-                    file.set_payload(file.payload, compress=False, use_pxu=True, use_base64=base64_pods)
+                    file.set_payload(file.payload, compress=False, use_pxu=True, use_base64=base64_pods, runtime=runtime)
 
 def merge_cart64(dest, src, sections=None):
     glob = Cart64Glob(sections) if e(sections) else None
@@ -679,6 +721,7 @@ def write_cart64_compressed_size(cart, handler=True, **opts):
     write_cart64_to_rom(cart, size_handler=handler, **opts)
 
 def write_cart64_version(cart):
-    print("version: %d" % cart.version_id) # that's it?
+    print("version: %d" % cart.version_id)
+    print("runtime version: %d" % cart.get_runtime_version(-1))
 
 from picotron_export import read_cart64_export, write_to_cart64_export

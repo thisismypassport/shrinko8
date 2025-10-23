@@ -6,13 +6,13 @@ from pico_export import read_cart_export, read_pod_file, ListOp
 from pico_tokenize import k_hint_split_re
 from pico_constfold import parse_constant
 from pico_defs import Language, get_default_pico8_version
-from picotron_defs import PicotronContext, Cart64Source, get_default_picotron_version
+from picotron_defs import PicotronContext, Cart64Source, get_default_picotron_runtime
 from picotron_cart import Cart64Format, read_cart64, write_cart64, merge_cart64, filter_cart64, preproc_cart64
 from picotron_cart import write_cart64_compressed_size, write_cart64_version
 from picotron_export import read_cart64_export, read_sysrom_file
 import argparse
 
-k_version = 'v1.2.6b'
+k_version = 'v1.2.6c'
 
 def SplitBySeps(val):
     return k_hint_split_re.split(val)
@@ -89,23 +89,24 @@ def create_main(lang):
         write_code_size_func = lang_do_nothing
         write_compressed_size_func = write_cart64_compressed_size
         write_cart_version_func = write_cart64_version
-        get_default_version_func = get_default_picotron_version
+        get_default_version_func = get_default_picotron_runtime
         
         pico_name = "picotron"
         label_section = "label.png"
+        default_keep_meta_keys = ("runtime",)
     
     else:
         fail("unknown language")
 
     def create_parser():
-        src_ext = CartFormatCls.default_src
-
         if is_pico8:
             sections_str = "sections"
             sections_desc = "comma separated list of sections out of {%s}" % ",".join(("lua", "gfx", "map", "gff", "sfx", "music", "label", "meta:*"))
+            version_desc = f"Same as 'version' field of {CartFormatCls.default_src} files"
         else:
             sections_str = "files"
             sections_desc = "comma separated list of files (can use wildcards and ! for exclude)"
+            version_desc = "Same as 'runtime' field of the root .info.pod"
         sections_meta = sections_str.upper()
 
         parser = argparse.ArgumentParser()
@@ -183,15 +184,6 @@ def create_main(lang):
 
         if is_picotron:
             pgroup = parser.add_argument_group("picotron filesystem options")
-            pgroup.add_argument("--code-files", dest="code_sections", type=SplitBySeps, action="extend",
-                                help=f"specify a {sections_desc} that contain lua code to process (default: *.lua)")
-            pgroup.add_argument("--delete-meta", type=SplitBySeps, action="extend",
-                                help=f"specify a {sections_desc} to delete metadata of (default: * if minifying unsafely, else none)")
-            pgroup.add_argument("--delete-label", action="store_true", default=None, help="always delete the label")
-            pgroup.add_argument("--keep-label", action="store_false", dest="delete_label", help="always keep the label")
-            pgroup.add_argument("--keep-pod-compression", action="store_true", help="keep compression of all pod files as-is")
-            pgroup.add_argument("-u", "--uncompress-pods", action="store_true", help="uncompress all pod files to plain text")
-            pgroup.add_argument("--base64-pods", action="store_true", help="base64 all pod files")
             pgroup.add_argument("--list", action="store_true", help="list all files inside the cart")
             pgroup.add_argument("--filter", type=SplitBySeps, action="extend", help=f"specify a {sections_desc} to keep in the output")
             pgroup.add_argument("--insert", nargs='+', action="append", metavar=(f"INPUT [FSPATH [FILTER]]", ""),
@@ -199,8 +191,7 @@ def create_main(lang):
             pgroup.add_argument("--extract", nargs='+', action="append", metavar=(f"FSPATH [OUTPUT]", ""),
                                 help=f"extract the specified file or directory from FSPATH to OUTPUT ")
         else:
-            pgroup.set_defaults(code_sections=None, delete_meta=None, keep_label=None, uncompress_pods=None, keep_pod_compression=None, base64_pods=None,
-                                filter=None, insert=None, extract=None)
+            pgroup.set_defaults(filter=None, insert=None, extract=None)
         
         pgroup.add_argument("--merge", nargs='+', action="append", metavar=(f"INPUT {sections_meta} [FORMAT]", ""),
                             help=f"merge {sections_str} from the specified INPUT file, where {sections_meta} is a {sections_desc}")
@@ -215,15 +206,33 @@ def create_main(lang):
             pgroup.add_argument("--extra-input", nargs='+', action="append", metavar=("INPUT [FORMAT [NAME]]", ""),
                                 help="additional input file to place in export (and optionally, the format of the file & the name to use for it in the export)")
         else:
-            pgroup.add_argument("--picotron-dat", dest="pico_dat", help="path to the picotron.dat file in the picotron directory. needed to create exports")
             pgroup.add_argument("--dump", help="dump the cart/system/etc. inside a sysrom.dat to the specified folder. -f can set the output format of carts (e.g '-f dir')")
+            pgroup.add_argument("--picotron-dat", dest="pico_dat", help="path to the picotron.dat file in the picotron directory. needed to create exports")
             pgroup.set_defaults(cart=None, output_cart=None, extra_input=())
+
+        if is_picotron:
+            pgroup = parser.add_argument_group("picotron filesystem advanced options")
+            pgroup.add_argument("--code-files", dest="code_sections", type=SplitBySeps, action="extend",
+                                help=f"specify a {sections_desc} that contain lua code to process (default: *.lua)")
+            pgroup.add_argument("--delete-meta", type=SplitBySeps, action="extend",
+                                help=f"specify a {sections_desc} to delete metadata of (default: * if minifying unsafely, else none)")
+            pgroup.add_argument("--keep-meta-keys", type=SplitBySeps, action="extend",
+                                help=f"specify a comma separated list of metadata keys (can use wildcards and ! for exclude) "
+                                f"to always keep (default & recommended: {",".join(default_keep_meta_keys)})")
+            pgroup.add_argument("--delete-label", action="store_true", default=None, help="always delete the label")
+            pgroup.add_argument("--keep-label", action="store_false", dest="delete_label", help="always keep the label")
+            pgroup.add_argument("--keep-pod-compression", action="store_true", help="keep compression of all pod files as-is")
+            pgroup.add_argument("-u", "--uncompress-pods", action="store_true", help="uncompress all pod files to plain text")
+            pgroup.add_argument("--base64-pods", action="store_true", help="base64 all pod files")
+        else:
+            pgroup.set_defaults(code_sections=None, delete_meta=None, keep_meta_keys=None, keep_label=None,
+                                uncompress_pods=None, keep_pod_compression=None, base64_pods=None)
 
         pgroup = parser.add_argument_group("other interesting options (semi-undocumented)")
         pgroup.add_argument("--template-image", help=f"template image to use for png carts, instead of the default {lang} template")
         pgroup.add_argument("--template-only", action="store_true", help="when creating the png cart, ignore the label & title, using just the template")
         pgroup.add_argument("--version", action="store_true", help="print version of cart. (if no cart is provided - print shrinko8 version and exit)")
-        pgroup.add_argument("--output-version", type=int, help=f"the version to convert the cart to. (Same as 'version' field of {src_ext} files)")
+        pgroup.add_argument("--output-version", type=int, help=f"the version to convert the cart to. ({version_desc})")
         pgroup.add_argument("--update-version", action="store_true", help="convert the cart to the highest supported version")
         pgroup.add_argument("--bbs", action="store_true", help="interpret input as a bbs cart id, e.g. '#...' and download it from the bbs")
         pgroup.add_argument("--url", action="store_true", help="interpret input as a URL, and download it from the internet")
@@ -395,6 +404,8 @@ def create_main(lang):
 
         if is_picotron and not args.delete_meta and args.minify and not args.minify_safe_only:
             args.delete_meta = ["*"]
+        if is_picotron and not args.keep_meta_keys:
+            args.keep_meta_keys = default_keep_meta_keys
 
         args.preproc_cb, args.postproc_cb, args.preproc_syntax_cb = None, None, None
         args.sublang_cb = lambda name: find_in_builtin_script(name, "sublanguage_main")
@@ -536,7 +547,7 @@ def create_main(lang):
                 filter_cart_func(cart, args.filter)
 
             if is_picotron:
-                preproc_cart_func(cart, delete_meta=args.delete_meta,
+                preproc_cart_func(cart, delete_meta=args.delete_meta, keep_meta_keys=args.keep_meta_keys,
                                   delete_label=default(args.delete_label, args.format == CartFormatCls.png),
                                   keep_pod_compression=args.keep_pod_compression,
                                   uncompress_pods=args.uncompress_pods, base64_pods=args.base64_pods,

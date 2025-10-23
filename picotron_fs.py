@@ -301,7 +301,7 @@ def read_pod(value):
 
     return parse_pod(decode_luastr(value), handle_userdata)
 
-def write_pxu(ud):
+def write_pxu(ud, runtime=sys.maxsize):
     """Writes userdata via the picotron userdata compression format 'pxu'"""
     if ud.data.startswith("hex:"):
         return None
@@ -315,7 +315,7 @@ def write_pxu(ud):
         if type == PxuType.u8:
             compression = PxuCompression.mtf
             bits = 4 # other values are not yet observed/tested
-        elif type == PxuType.i16:
+        elif type == PxuType.i16 and runtime >= 21:
             compression = PxuCompression.rle
             bits = 0 # other values are not yet observed/tested
         else:
@@ -380,14 +380,14 @@ def write_pxu(ud):
 
         return w.f.getvalue()
 
-def write_pod(pod, compress=True, use_pxu=True, use_base64=False):
+def write_pod(pod, compress=True, use_pxu=True, use_base64=False, runtime=sys.maxsize):
     """Writes a picotron pod into optionally compressed bytes"""
     
     pxu_datas = None
     def handle_userdata(ud, str_data):
         nonlocal pxu_datas
         if use_pxu:
-            pxu_data = write_pxu(ud)
+            pxu_data = write_pxu(ud, runtime=runtime)
             if pxu_data and len(pxu_data) < len(str_data):
                 pxu_datas = pxu_datas or deque()
                 pxu_datas.append(pxu_data)
@@ -520,11 +520,11 @@ class PicotronFile:
     def payload(m, value):
         m.set_payload(value)
 
-    def set_payload(m, value, compress=True, use_pxu=True, use_base64=False):
+    def set_payload(m, value, compress=True, use_pxu=True, use_base64=False, runtime=sys.maxsize):
         if m.is_raw:
             m.raw_payload = value
         else:
-            m.raw_payload = write_pod(value, compress=compress, use_pxu=use_pxu, use_base64=use_base64)
+            m.raw_payload = write_pod(value, compress=compress, use_pxu=use_pxu, use_base64=use_base64, runtime=runtime)
             m._payload_cache = value
 
     is_dir = False

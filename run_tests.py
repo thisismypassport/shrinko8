@@ -280,8 +280,8 @@ def run():
 
     # picotron tests (TODO: more tests, more testing support!)
     run_test("TRON_test", "testtron.p64", "testtron.p64", "--minify", "--no-minify-consts", "--avoid-base64", target=Target.picotron)
-    if run_test("TRON_p2png", "testcvttron.p64", "testcvttron.png", target=Target.picotron):
-        run_test("TRON_png2p", "testcvttron.png", "testcvttron.p64", from_output=True, target=Target.picotron)
+    if run_test("TRON_p2png", "testcvttron.p64", "testcvttron.png", target=Target.picotron, update_version=False):
+        run_test("TRON_png2p", "testcvttron.png", "testcvttron.p64", from_output=True, target=Target.picotron, update_version=False)
     run_test("TRON_const", "consttron.p64", "consttron.p64", "--minify", "--avoid-base64",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename", "--no-minify-tokens", target=Target.picotron)
     run_test("TRON_constmin", "consttron.p64", "consttronmin.p64", "--minify", "--avoid-base64", target=Target.picotron)

@@ -24,9 +24,12 @@ k_palette_64 = [
     Color(0xFF, 0x85, 0x57, 0xff),
 ]
 
-def get_default_picotron_version():
-    version_id = 2 # TODO - update as newer versions get more common
-    return maybe_int(os.getenv("PICOTRON_VERSION_ID"), version_id)
+def get_default_picotron_runtime():
+    runtime = 21 # TODO - update as newer versions get more common
+    return maybe_int(os.getenv("PICOTRON_RUNTIME_VERSION_ID"), runtime)
+
+def get_picotron_version_id(runtime):
+    return 2 # always for now?
 
 builtin_globals = {
     "USERDATA", "_G", "_VERSION", "abs", "add",  "all", "apply_delta",
