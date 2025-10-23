@@ -218,7 +218,7 @@ def create_main(lang):
                                 help=f"specify a {sections_desc} to delete metadata of (default: * if minifying unsafely, else none)")
             pgroup.add_argument("--keep-meta-keys", type=SplitBySeps, action="extend",
                                 help=f"specify a comma separated list of metadata keys (can use wildcards and ! for exclude) "
-                                f"to always keep (default & recommended: {",".join(default_keep_meta_keys)})")
+                                f"to always keep (default & recommended: {','.join(default_keep_meta_keys)})")
             pgroup.add_argument("--delete-label", action="store_true", default=None, help="always delete the label")
             pgroup.add_argument("--keep-label", action="store_false", dest="delete_label", help="always keep the label")
             pgroup.add_argument("--keep-pod-compression", action="store_true", help="keep compression of all pod files as-is")
