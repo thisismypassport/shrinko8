@@ -9,7 +9,12 @@ for script in os.listdir("scripts"):
     if script.endswith(".py") and script != "__init__.py":
         hidden_imports.append("scripts." + os.path.splitext(script)[0])
 
-ana = Analysis(
+import pkgutil, PIL
+for _, name, _ in pkgutil.walk_packages(PIL.__path__):
+    if name.endswith("ImagePlugin") and name not in ("PngImagePlugin", "QoiImagePlugin"):
+        excludes.append(f"{PIL.__name__}.{name}")
+
+ana_p8 = Analysis(
     ['shrinko8.py'],
     pathex=[],
     binaries=[],
@@ -35,14 +40,17 @@ ana_tron = Analysis(
     noarchive=True,
 )
 
-pyz = PYZ(ana.pure, ana.zipped_data, cipher=block_cipher)
+for ana in (ana_p8, ana_tron):
+    ana.binaries = [bin for bin in ana.binaries if not bin[0].lower().startswith('api-ms-win-')]
+
+pyz = PYZ(ana_p8.pure, ana_p8.zipped_data, cipher=block_cipher)
 
 pyz_tron = PYZ(ana_tron.pure, ana_tron.zipped_data, cipher=block_cipher)
 
-exe = EXE(
+exe_p8 = EXE(
     pyz,
-    ana.dependencies,
-    ana.scripts,
+    ana_p8.dependencies,
+    ana_p8.scripts,
     [],
     exclude_binaries=True,
     name='shrinko8',
@@ -51,6 +59,7 @@ exe = EXE(
     strip=False,
     upx=False,
     console=True,
+    icon="pyinstaller.ico",
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
@@ -70,6 +79,7 @@ exe_tron = EXE(
     strip=False,
     upx=False,
     console=True,
+    icon="pyinstaller.ico",
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
@@ -78,10 +88,10 @@ exe_tron = EXE(
 )
 
 coll = COLLECT(
-    exe,
-    ana.binaries,
-    ana.zipfiles,
-    ana.datas,
+    exe_p8,
+    ana_p8.binaries,
+    ana_p8.zipfiles,
+    ana_p8.datas,
     exe_tron,
     ana_tron.binaries,
     ana_tron.zipfiles,

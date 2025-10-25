@@ -2,9 +2,9 @@
 
 A set of Pico-8 & Picotron cart tools, with a focus on shrinking code size.
 
-## [You can run the latest version online here.](https://thisismypassport.github.io/shrinko8)
+### [You can run the latest version directly in your browser here.](https://thisismypassport.github.io/shrinko8)
 
-[You can download a recent Windows Executable here.](https://github.com/thisismypassport/shrinko8/releases)
+[You can download the latest Windows Executable here.](https://github.com/thisismypassport/shrinko8/releases/tag/latest)
 
 Otherwise, requires [Python](https://www.python.org/) 3.8 or above to run.
 

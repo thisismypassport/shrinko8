@@ -1,0 +1,132 @@
+name: Do all deploy/release actions
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy-site:
+        type: boolean
+        description: Deploy site to github pages
+        default: true
+      create-release:
+        type: boolean
+        description: Create latest release
+        default: true
+
+jobs:
+  deploy-site:
+    name: Deploy site to github pages
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    concurrency:
+      group: "pages"
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+      
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        
+      - name: Zip
+        run: |
+          zip -r site/shrinko.zip `cat files.lst`
+          zip -r site/shrinko_test.zip `cat test_files.lst`
+      
+      - name: Create shrinkotron html
+        uses: cuchi/jinja2-action@v1.3.0
+        with:
+          template: site/index.html
+          output_file: site/index-picotron.html
+          variables: TARGET=picotron
+        
+      - name: Create shrinko8 html
+        uses: cuchi/jinja2-action@v1.3.0
+        with:
+          template: site/index.html
+          output_file: site/index.html
+          variables: TARGET=pico8
+
+      - name: Run site tests
+        uses: docker://mcr.microsoft.com/playwright/python:v1.50.0-noble
+        with:
+          args: /bin/bash -lc "pip install playwright && playwright install --with-deps && python3 run_site_tests.py -t 180 -d site -T"
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'site/'
+          
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  create-release:
+    name: Create latest release
+
+    permissions:
+      contents: write
+
+    concurrency:
+      group: "release"
+
+    runs-on: windows-latest
+
+    steps:
+      - name: Disable autocrlf
+        run: git config --global core.autocrlf false
+        
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Create Executable
+        uses: sayyid5416/pyinstaller@v1
+        with:
+          python_ver: "3.14"
+          pyinstaller_ver: "==6.16.0"
+          requirements: requirements.lst
+          spec: "pyinstaller.spec"
+
+      - name: Get Executable Version
+        run: |
+          $version = dist/shrinko/shrinko8.exe --version
+          "Version=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+      
+      - name: Test Executable
+        run: |
+          python run_tests.py -x
+
+      - name: Install 7-Zip
+        run: choco install 7zip -y
+
+      - name: Zip Executable
+        run: |
+          cd dist
+          7z a shrinko.zip shrinko -mx=9
+
+      - name: Release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: dist/shrinko.zip
+          body: |
+            Windows executable, for those who don't want to install python but still want to use the command line instead of the webapp.
+            Supports all the command line options - just use shrinko8.exe (or shrinkotron.exe) instead of "python shrinko8.py" (or "python shrinkotron.py")
+
+            This pre-release contains the latest changes and is the recommended release to use.
+
+            (Created via pyinstaller)
+          tag: "latest"
+          name: "Latest (${{ env.Version }})"
+          prerelease: true
+          allowUpdates: true
+          artifactErrorsFailBuild: true
+          makeLatest: false
