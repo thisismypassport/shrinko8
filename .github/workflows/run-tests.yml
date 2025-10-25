@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  test-earliest:
     name: Test on earliest supported Python
     runs-on: ubuntu-latest
 
@@ -31,7 +31,7 @@ jobs:
       run: |
         python run_tests.py
         
-  test:
+  test-latest:
     name: Test on latest known Python
     runs-on: ubuntu-latest
 
