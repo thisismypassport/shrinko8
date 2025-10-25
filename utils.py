@@ -6,6 +6,17 @@ from io import BytesIO, StringIO
 from warnings import warn
 from reprlib import recursive_repr
 
+try:
+    import annotationlib
+    def get_meta_annotations(dict):
+        func = annotationlib.get_annotate_from_class_namespace(dict)
+        if not func:
+            return None
+        return annotationlib.call_annotate_function(func, annotationlib.Format.VALUE)
+except:
+    def get_meta_annotations(obj):
+        return obj.get("__annotations__", None)
+
 _my_excepthooks = []
 def _my_excepthook(type, value, tb):
     obj = traceback.TracebackException(type, value, tb)
@@ -400,7 +411,7 @@ class BitmaskMetaclass(type):
         bitmask_dict["__slots__"] = ("value",)
         bitmask_dict["_fields"] = full_name_mask_map
     
-        annots = cls_dict.get("__annotations__", None)
+        annots = get_meta_annotations(cls_dict)
 
         for name, mask in name_mask_map.items():
             if annots and name in annots:

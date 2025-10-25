@@ -1,9 +1,9 @@
 name: Deploy site to github pages
 
 on:
-  push:
-    branches: ["main"]
-
+  # being updated in a separate branch
+  #push:
+  #  branches: ["main"]
   workflow_dispatch:
 
 permissions:
