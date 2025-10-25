@@ -54,7 +54,7 @@ def try_read_dir_contents(dir):
             results.append((name, try_read_file_norm(child)))
     return results
 
-def run_test(name, input, output, *args, private=False, check_output=True, from_output=False,
+def run_test(name, input, output, *args, private=False, check_output=True, from_output=False, alt_compare=None,
              stdout_output=None, norm_stdout=nop, exit_code=0, extra_outputs=None, output_reader=try_read_file_norm,
              pico8_output_val=None, pico8_output=None, pico8_run=None, copy_in_to_out=False, update_version=True,
              target=Target.pico8):
@@ -78,6 +78,7 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
     if output:
         outpath = path_join(prefix + "test_output", output)
         cmppath = path_join(prefix + "test_compare", output)
+        alt_cmppath = path_join(prefix + "test_compare", alt_compare) if alt_compare else None
 
     if copy_in_to_out:
         file_write(outpath, file_read(path_join(path_dirname(inpath), output)))
@@ -97,7 +98,8 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
     stdouts = [run_stdout]
 
     if run_success and output and check_output:
-        if output_reader(outpath) != output_reader(cmppath):
+        outdata = output_reader(outpath)
+        if outdata != output_reader(cmppath) and (not alt_cmppath or outdata != output_reader(alt_cmppath)):
             stdouts.append(f"ERROR: Output difference: {outpath}, {cmppath}")
             success = False
 
@@ -281,7 +283,10 @@ def run():
     # picotron tests (TODO: more tests, more testing support!)
     run_test("TRON_test", "testtron.p64", "testtron.p64", "--minify", "--no-minify-consts", "--avoid-base64", target=Target.picotron)
     if run_test("TRON_p2png", "testcvttron.p64", "testcvttron.png", target=Target.picotron, update_version=False):
-        run_test("TRON_png2p", "testcvttron.png", "testcvttron.p64", from_output=True, target=Target.picotron, update_version=False)
+        run_test("TRON_png2p", "testcvttron.png", "testcvttron.p64",
+                 alt_compare="testcvttron_alt.p64", from_output=True, target=Target.picotron, update_version=False)
+        run_test("TRON_png2dir", "testcvttron.png", "testcvttron/", "--minify", "--clean-output-dir",
+                 alt_compare="testcvttron_alt/", from_output=True, target=Target.picotron, output_reader=try_read_dir_contents, update_version=False)
     run_test("TRON_const", "consttron.p64", "consttron.p64", "--minify", "--avoid-base64",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename", "--no-minify-tokens", target=Target.picotron)
     run_test("TRON_constmin", "consttron.p64", "consttronmin.p64", "--minify", "--avoid-base64", target=Target.picotron)
