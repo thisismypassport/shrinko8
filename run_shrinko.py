@@ -268,6 +268,7 @@ def create_main(lang):
         pgroup.add_argument("--builtin", type=SplitBySeps, action="extend", help=f"treat identifier(s) as a {pico_name} builtin (for minify, lint, etc.)")
         pgroup.add_argument("--not-builtin", type=SplitBySeps, action="extend", help=f"do not treat identifier(s) as a {pico_name} builtin (for minify, lint, etc.)")
         pgroup.add_argument("--export-name", help="name to use for the export (by default, taken from output name)")
+        pgroup.add_argument("--clean-output-dir", action="store_true", help="when the output is a directory, delete any existing files from the directory first")
         if is_pico8:
             pgroup.add_argument("--global-builtins-only", action="store_true", help="assume all builtins are global, corresponds to pico8's -global_api option")
             pgroup.add_argument("--local-builtin", type=SplitBySeps, action="extend", help="treat identifier(s) as a local builtin (probably no use outside of testing)")
@@ -458,7 +459,7 @@ def create_main(lang):
                     for entry in export.list_carts():
                         print(entry)
                 else:
-                    dir_ensure_exists(args.dump)
+                    dir_create(args.dump, delete_existing=args.clean_output_dir)
                     export.dump_contents(args.dump, default(args.format, CartFormatCls.default_src), misc=args.dump_misc_too)
                 return None, None
 
@@ -669,6 +670,7 @@ def create_main(lang):
 
             try:
                 write_cart_func(output, cart, format, extra_carts=extra_carts, fspath=fspath,
+                                delete_existing=args.clean_output_dir,
                                 size_handler=args.count, debug_handler=args.trace_compression,
                                 unicode_caps=args.unicode_caps, old_compress=args.old_compression,
                                 force_compress=args.count or args.force_compression,

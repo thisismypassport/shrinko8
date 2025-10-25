@@ -174,8 +174,8 @@ class FullExport64(Cart64Export, FullExportBase):
                 exec = "." not in path_basename(name) # ???
                 m.zip_write(zip, dir, name, default(file.data, b""), exec=exec, is_dir=file.is_dir)
 
-    def save(m, path):
-        dir_ensure_exists(path)
+    def save(m, path, delete_existing=False):
+        dir_create(path, delete_existing=delete_existing)
         basename = m.export_name
 
         icon = m.cart.load_icon()
@@ -247,14 +247,14 @@ def read_cart64_export(path, format):
     else:
         throw(f"invalid export format: {format}")
 
-def write_cart64_export(path, export):
+def write_cart64_export(path, export, delete_existing=False):
     """Write a CartExport to the given path"""
     if isinstance(export, SysRomExport64):
         file_write(path, export.to_bytes())
     elif isinstance(export, HtmlExport64):
         file_write_text(path, export.text)
     elif isinstance(export, FullExport64):
-        export.save(path)
+        export.save(path, delete_existing=delete_existing)
     else:
         fail("invalid cart export")
 
@@ -269,11 +269,11 @@ def create_cart64_export(format, pico_dat, **opts):
     else:
         throw(f"invalid export format: {format}")
 
-def write_to_cart64_export(path, cart, format, pico_dat=None, export_name=None, **opts):
+def write_to_cart64_export(path, cart, format, pico_dat=None, export_name=None, delete_existing=False, **opts):
     if not export_name:
         export_name = path_basename_no_extension(path)
     
     assert isinstance(pico_dat, SysRom)
     export = create_cart64_export(format, pico_dat, cart=cart, export_name=export_name)
     export.set_cart(cart, **opts)
-    write_cart64_export(path, export,)
+    write_cart64_export(path, export, delete_existing)

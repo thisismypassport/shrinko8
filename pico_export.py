@@ -838,8 +838,8 @@ class FullExport(CartExport, FullExportBase):
                 is_dir = not e.content # ???
                 m.zip_write(zip, dir, e.name[2:], e.content, exec=exec, is_dir=is_dir)
 
-    def save(m, path):
-        dir_ensure_exists(path)
+    def save(m, path, delete_existing=False):
+        dir_create(path, delete_existing=delete_existing)
         basename = m.export_name
 
         label_bmpdata = None
@@ -939,14 +939,14 @@ def read_cart_export(path, format):
     else:
         throw(f"invalid export format: {format}")
 
-def write_cart_export(path, export):
+def write_cart_export(path, export, delete_existing=False):
     """Write a CartExport to the given path"""
     if isinstance(export, JsExport):
         file_write_text(path, export.text)
     elif isinstance(export, PodExport):
         file_write(path, export.data)
     elif isinstance(export, FullExport):
-        export.save(path)
+        export.save(path, delete_existing)
     else:
         fail("invalid cart export")
 
@@ -978,7 +978,7 @@ def read_from_cart_export(path, format, cart_name=None, extra_carts=None, **opts
         return export.read_cart(cart_name, **opts)
 
 def write_to_cart_export(path, cart, format, extra_carts=None, cart_name=None, target_name=None, cart_op=None, 
-                         target_export=None, export_name=None, pico_dat=None, **opts):
+                         target_export=None, export_name=None, pico_dat=None, delete_existing=False, **opts):
     """Create or edit a CartExport in the given path, depending on cart_op/cart_args arguments"""
     if not export_name:
         export_name = path_basename_no_extension(path)
@@ -995,4 +995,4 @@ def write_to_cart_export(path, cart, format, extra_carts=None, cart_name=None, t
         for extra_cart in extra_carts:
             export.write_cart(extra_cart, **opts)
     
-    write_cart_export(path, export)
+    write_cart_export(path, export, delete_existing)

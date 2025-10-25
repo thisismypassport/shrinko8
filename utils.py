@@ -1,4 +1,4 @@
-import os, sys, io, bisect, random, copy, collections, itertools, struct, array, re, traceback, hashlib, math, string, weakref, operator, heapq, time, json, tempfile
+import os, sys, io, bisect, random, copy, collections, itertools, struct, array, re, traceback, hashlib, math, string, weakref, operator, heapq, time, json, tempfile, shutil
 from datetime import datetime, timedelta, timezone
 from functools import reduce, total_ordering, lru_cache, cmp_to_key
 from copy import copy, deepcopy
@@ -13,7 +13,7 @@ try:
         if not func:
             return None
         return annotationlib.call_annotate_function(func, annotationlib.Format.VALUE)
-except:
+except ImportError:
     def get_meta_annotations(obj):
         return obj.get("__annotations__", None)
 
@@ -2447,7 +2447,11 @@ def dir_ensure_exists(path):
     except FileExistsError:
         pass
     
-dir_create_if_needed = dir_ensure_exists # old name
+def dir_create(path, delete_existing=False):
+    """Create a directory, optionally deleting any existing files in it first"""
+    if delete_existing and path_exists(path):
+        shutil.rmtree(path)
+    dir_ensure_exists(path)
 
 def dir_names(path):
     """Return the names of the contents of the directory"""

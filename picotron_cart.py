@@ -297,7 +297,7 @@ def read_cart64_from_image(data, **opts):
 
         try:
             cart.files[k_label_qoi_file] = PicotronFile(label.save(format="qoi"))
-        except:
+        except KeyError:
             cart.files[k_label_png_file] = PicotronFile(label.save())
     
     return cart
@@ -547,7 +547,7 @@ def read_cart64_from_fs(path, is_dir=None, target_cart=None, fspath=None, sectio
 
     return target_cart
 
-def write_cart64_to_fs(cart, path, is_dir=None, fspath=None, **opts):
+def write_cart64_to_fs(cart, path, is_dir=None, fspath=None, delete_existing=False, **opts):
     if fspath is None:
         fspath = ""
     
@@ -558,7 +558,8 @@ def write_cart64_to_fs(cart, path, is_dir=None, fspath=None, **opts):
     if is_dir:
         if fspath and not fspath.endswith("/"):
             fspath += "/"
-        dir_ensure_exists(path)        
+        dir_create(path, delete_existing=delete_existing)
+
         for child_fspath, file in cart.files.items():
             if child_fspath.startswith(fspath):
                 child = child_fspath[len(fspath):]
