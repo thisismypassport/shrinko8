@@ -103,7 +103,7 @@ def float_hex(value, hexdigits, keep_float=False): # like value.hex(), except do
         result = "0x0"
     return float_sign(value) + result
 
-def format_luanum(value, sign=None, base=None):
+def format_luanum(value, sign=None, base=None, allow_not=True):
     """format a luanum to a picotron string"""
     if isinstance(value, int):
         if sign:
@@ -140,9 +140,10 @@ def format_luanum(value, sign=None, base=None):
             if len(negvalue) < len(minvalue):
                 minvalue = negvalue
                 
-            notvalue = format_luanum(value, sign='~', base=base)
-            if len(notvalue) < len(minvalue):
-                minvalue = notvalue
+            if allow_not:
+                notvalue = format_luanum(value, sign='~', base=base)
+                if len(notvalue) < len(minvalue):
+                    minvalue = notvalue
 
     else: # float
         parens = False

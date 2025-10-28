@@ -119,7 +119,7 @@ def format_pod(value, ud_handler=None):
     elif value is True:
         return "true"
     elif isinstance(value, (int, float)):
-        return format_luanum(value, base=10, sign="-" if value<0 else "")
+        return format_luanum(value, base=10, allow_not=False)
     elif isinstance(value, str):
         return format_string_literal(value, long=False, quote='"')
 

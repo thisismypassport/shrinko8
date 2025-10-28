@@ -197,21 +197,20 @@ def ext_order_key(pair):
         return (-10, "", "", dirname)
     
     ext = path_extension(filename)
-    if ext == ".lua":
-        if filename == "main.lua":
-            order = -1
-        else:
-            order = 0
-    elif ext == ".pod":
+    if filename == "main.lua":
         order = 1
-    elif ext == ".gfx":
+    elif ext == ".lua":
+        order = 0
+    elif ext == ".pod":
         order = 2
-    elif ext == ".sfx":
+    elif ext == ".gfx":
         order = 3
-    elif ext == ".map":
+    elif ext == ".sfx":
         order = 4
-    else:
+    elif ext == ".map":
         order = 5
+    else:
+        order = 6
     return (order, ext, filename, dirname)
 
 def write_cart64_to_rom(cart, size_handler=None, debug_handler=None, padding=0,
