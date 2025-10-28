@@ -189,12 +189,37 @@ def read_cart64_from_rom(buffer, path=None, size_handler=None, debug_handler=Non
 
     return cart
 
+def ext_order_key(pair):
+    # try to order things to maximize compression
+    dirname, filename = str_split_last(pair[0], "/")
+    if filename == "":
+        # put all directories first and in proper order, in case it matters
+        return (-10, "", "", dirname)
+    
+    ext = path_extension(filename)
+    if ext == ".lua":
+        if filename == "main.lua":
+            order = -1
+        else:
+            order = 0
+    elif ext == ".pod":
+        order = 1
+    elif ext == ".gfx":
+        order = 2
+    elif ext == ".sfx":
+        order = 3
+    elif ext == ".map":
+        order = 4
+    else:
+        order = 5
+    return (order, ext, filename, dirname)
+
 def write_cart64_to_rom(cart, size_handler=None, debug_handler=None, padding=0,
                         limit=None, fast_compress=False, **opts):
     io = BytesIO()
 
     with BinaryWriter(io) as w:
-        for fspath, file in (cart.files.items()): # TODO - sorting by extension gives some benefits but is it safe given directories?
+        for fspath, file in sorted(cart.files.items(), key=ext_order_key):
             w.zbytes(encode_luastr(fspath))
             check(not fspath.endswith("/") == e(file.data), "wrong picotron file/directory path")
             if e(file.data):
