@@ -238,7 +238,7 @@ def read_cart64_from_tiny_rom(buffer, **opts):
 
 def write_cart64_to_tiny_rom(cart, size_handler=None, debug_handler=None, **opts):
     main = cart.files.get(k_p64_main_path)
-    check(main, "{k_p64_main_path} not found in cart")
+    check(main, f"{k_p64_main_path} not found in cart")
     data = main.raw_payload
 
     tiny_cart = Cart64()

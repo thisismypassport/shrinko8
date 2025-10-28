@@ -15,6 +15,7 @@ on:
 jobs:
   deploy-site:
     name: Deploy site to github pages
+    if: ${{ inputs.deploy-site }}
 
     permissions:
       contents: read
@@ -72,6 +73,7 @@ jobs:
 
   create-release:
     name: Create latest release
+    if: ${{ inputs.create-release }}
 
     permissions:
       contents: write

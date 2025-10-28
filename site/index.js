@@ -245,17 +245,17 @@ async function loadInputFiles(inputs) {
         }
     }
 
-    let subfile = undefined;
-    if (isFormatExport(getLowExt(mainPath)) && isPico8) {
-        let subfiles = await api.listInputFile(allFiles, mainPath);
-        if (subfiles.length == 1) {
-            subfile = subfiles[0];
-        } else {
-            [subfile] = await beginInputSelect(subfiles, "export");
-        }
-    }
-    
     try {
+        let subfile = undefined;
+        if (isFormatExport(getLowExt(mainPath)) && isPico8) {
+            let subfiles = await api.listInputFile(allFiles, mainPath);
+            if (subfiles.length == 1) {
+                subfile = subfiles[0];
+            } else {
+                [subfile] = await beginInputSelect(subfiles, "export");
+            }
+        }
+        
         let code = await api.loadInputFiles(allFiles, mainPath, subfile, extraPaths);
         inputMgr.setValue(code); // calls onInputChange
 

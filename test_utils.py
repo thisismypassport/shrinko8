@@ -148,9 +148,9 @@ def run_pico8(p8_exe, cart_path, expected_printh=None, timeout=5.0, allow_timeou
     else:
         return success, stdout
 
-def run_interactive_pico8(p8_exe, cart_path):
+def run_interactive_pico8(p8_exe, p8_home, cart_path):
     try:
-        args = [p8_exe, "-run", cart_path, "-home", "private_pico8_home", "-volume", "0", "-windowed", "1", "-width", "128", "-height", "128"]
+        args = [p8_exe, "-run", cart_path, "-home", p8_home, "-volume", "0", "-windowed", "1", "-width", "128", "-height", "128"]
         return True, subprocess.check_output(args, encoding="utf8", errors='replace', stderr=subprocess.STDOUT)
     except subprocess.SubprocessError as e:
         return False, f"Exception: {e}"

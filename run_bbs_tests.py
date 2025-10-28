@@ -34,6 +34,7 @@ parser.add_argument("-p", "--pico8", action="append", help="specify a pico8 exe 
 parser.add_argument("-P", "--no-pico8", action="store_true", help="disable running pico8 even if exe is supplied (for convenience)")
 parser.add_argument("-t", "--pico8-time", type=float, help="how long to run pico8 carts for")
 parser.add_argument("-T", "--pico8-interact", action="store_true", help="show real pico8 windows and randomly interact with them (windows-only!)")
+parser.add_argument("-H", "--pico8-home", default="private_pico8_home", help="home directory for pico8 when running under --pico8-interact")
 parser.add_argument("-j", "--parallel-jobs", type=int, help="how many processes to run in parallel")
 parser.add_argument("--profile", action="store_true", help="enable profiling")
 parser.add_argument("--private", action="store_true", help="store results in a private folder")
@@ -139,14 +140,15 @@ def run_for_cart(args):
     (cart, cart_input, cart_output, cart_compare, cart_unfocused, focus) = args
     
     short_prefix = "c" if focus == "chars" else "b" if focus == "compressed" else "t" if focus == "tokens" else ""
+    suffix = "p64" if g_opts.target == Target.picotron else "p8"
 
     basepath = path_join("test_bbs", cart)
-    download_path = basepath + ".dl.png"
-    uncompress_path = basepath + ".dp.p8"
-    compress_path = basepath + ".c.png"
-    safe_minify_path = basepath + f".{short_prefix}sm.png" 
-    unsafe_minify_path = basepath + f".{short_prefix}um.png"
-    unminify_path = basepath + ".un.p8"
+    download_path = basepath + f".dl.{suffix}.png"
+    uncompress_path = basepath + f".dp.{suffix}"
+    compress_path = basepath + f".c.{suffix}.png"
+    safe_minify_path = basepath + f".{short_prefix}sm.{suffix}.png" 
+    unsafe_minify_path = basepath + f".{short_prefix}um.{suffix}.png"
+    unminify_path = basepath + f".un.{suffix}"
 
     if g_opts.input_redownload or not path_exists(download_path):
         file_write(download_path, file_read(URLPath(get_bbs_cart_url("#" + cart, g_opts.target))))
@@ -276,7 +278,7 @@ def run(focus):
                 for pico8 in g_opts.pico8:
                     def run(pico8=pico8, path=cart_pico8_path):
                         if g_opts.pico8_interact:
-                            return run_interactive_pico8(pico8, path)
+                            return run_interactive_pico8(pico8, g_opts.pico8_home, path)
                         else:
                             return run_pico8(pico8, path, allow_timeout=True, timeout=g_opts.pico8_time)
 
