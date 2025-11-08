@@ -318,6 +318,8 @@ def rename_tokens(ctxt, root, rename_opts):
                 if is_identifier(name, ctxt.lang):
                     if name in preserved_members:
                         member_excludes.add(name)
+                    elif members_as_globals:
+                        global_uses[name] += count
                     else:
                         member_uses[name] += count
 
@@ -415,9 +417,10 @@ def rename_tokens(ctxt, root, rename_opts):
             break
 
         avoid_locals = avoid_globals = avoid_members = ()
-        for ch in "bxBX": # these chars cause extra space if placed after 0
-            if ident.startswith(ch):
-                avoid_locals, avoid_globals, avoid_members = locals_after_zero, globals_after_zero, members_after_zero
+        if ctxt.lang == Language.pico8:
+            for ch in "bxBX": # these chars cause extra space if placed after 0
+                if ident.startswith(ch):
+                    avoid_locals, avoid_globals, avoid_members = locals_after_zero, globals_after_zero, members_after_zero
 
         if ident != "_ENV":
             excluded = []
@@ -490,6 +493,7 @@ def rename_tokens(ctxt, root, rename_opts):
                 node.children[0].modify(node.name)
                 
         elif node.type == NodeType.sublang:
-            node.sublang.rename(globals=global_renames, members=member_renames, locals=local_renames)
+            effective_member_renames = global_renames if members_as_globals else member_renames
+            node.sublang.rename(globals=global_renames, members=effective_member_renames, locals=local_renames)
             
     root.traverse_nodes(update_idents, extra=True)

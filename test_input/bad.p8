@@ -100,3 +100,4 @@ local tab_b
 
 -->8
 local tab_still_f
+--lint: check_for_issues_with_hint_as_last_line

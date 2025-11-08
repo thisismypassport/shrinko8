@@ -194,7 +194,7 @@ def ext_order_key(pair):
     dirname, filename = str_split_last(pair[0], "/")
     if filename == "":
         # put all directories first and in proper order, in case it matters
-        return (-10, "", "", dirname)
+        return (-10, "", dirname, filename) # (intentionally reversed from below)
     
     ext = path_extension(filename)
     if filename == "main.lua":

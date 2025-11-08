@@ -572,14 +572,12 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
 def count_tokens(tokens):
     count = 0
     for i, token in enumerate(tokens):
-        assert token.value != None
-
         if token.children:
             for comment in token.children:
                 if comment.hint == CommentHint.lint and k_lint_count_stop in comment.hintdata:
                     return count
 
-        if token.value in (",", ".", ":", ";", "::", ")", "]", "}", "end", "local"):
+        if token.value in (",", ".", ":", ";", "::", ")", "]", "}", "end", "local", None):
             continue
 
         if (token.value in ("-", "~") and i+1 < len(tokens) and tokens[i+1].type == TokenType.number and
