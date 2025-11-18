@@ -277,6 +277,7 @@ def run():
     run_test("short-lines", "short.p8", "short-lines.p8", "-m", "--no-minify-consts", "--no-minify-lines", "--focus-chars", pico8_output_val="K\nK")
     run_test("short-spaces", "short.p8", "short-spaces.p8", "-m", "--no-minify-consts", "--no-minify-spaces", "--focus-chars", pico8_output_val="K\nK")
     run_test("short2", "short2.p8", "short2.p8", "-m", "--no-minify-consts", "--focus-compressed", "--no-minify-spaces")
+    run_test("comment", "comment.lua", "comment.lua", "-m")
 
     run_test("version-latest", "versioned.p8", "versioned-latest.p8", "-m", "-oc", pico8_output="versioned.p8.printh")
     run_test("version-orig", "versioned.p8", "versioned-orig.p8", "-m", "-oc", update_version=False, pico8_output="versioned.p8.printh")

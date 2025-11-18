@@ -318,6 +318,10 @@ def output_node(root, ctxt, minify_wspace=True, minify_lines=True, exclude_comme
 
     def output_with_orig_wspace(token):
         nonlocal prev_token, prev_vline, need_linebreak
+
+        # TODO - change this to go over comment objects and ensure they all get added?
+        # (and move the below check further down to avoid excluding final comments...)
+        # can test via comment.lua + --minify-consts-only
         
         if token.value is None:
             return

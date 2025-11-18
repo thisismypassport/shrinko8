@@ -207,7 +207,7 @@ class Node(TokenNodeBase):
     def remove_token(m, i, expected=None):
         if expected != None:
             m.children[i].check(expected)
-        del m.children[i]
+        m.remove_child(i)
 
     def insert_existing(m, i, existing, near_next=False):
         src = m._create_for_insert(i, None, None, near_next)
@@ -223,14 +223,29 @@ class Node(TokenNodeBase):
         m.insert_existing(len(m.children), existing, near_next)
 
     def remove_child(m, i):
+        child = m.children[i]
+        lost_comments = child.collect_comments(irrelevant=True)
         del m.children[i]
 
+        # avoid losing irrelevant comments
+        if lost_comments:
+            token, after = m.find_or_create_token(child_i=i)
+            token.add_comments(lost_comments, first=after)
+
     def replace_with(m, target): # target must not reference m, but may reference m.copy() or m.move()
+        old_comments = m.collect_comments(irrelevant=True)
         old_parent = m.parent
         m.__dict__ = target.__dict__
         m.parent = old_parent
         for child in m.children:
             child.parent = m
+        
+        # avoid losing irrelevant comments
+        if old_comments:
+            new_comments = set(m.collect_comments())
+            lost_comments = [cmnt for cmnt in old_comments if cmnt not in new_comments]
+            token, after = m.find_or_create_token()
+            token.add_comments(lost_comments, first=after)
     
     def erase(m):
         m.replace_with(Node(None, []))
@@ -952,7 +967,7 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
         if peek().type != None:
             add_error("Expected end of input")
         if idx < len(tokens):
-            root.children.append(take()) # extra comments/etc
+            root.append_existing(take()) # extra comments/etc
         assert scope.parent is None
         #verify_parse(root) # DEBUG
         return root

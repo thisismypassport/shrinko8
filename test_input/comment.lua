@@ -1,0 +1,2 @@
+--keep: hello
+--[[const]] --[[keep:world]] a --[[keep:and]] = --[[keep:you]] 3

@@ -92,6 +92,24 @@ class TokenNodeBase:
     def first_token(m): return m._find_token(1)
     def last_token(m): return m._find_token(-1)
 
+    def find_or_create_token(m, child_i=0):
+        for_child = child_i < len(m.children)
+        if for_child:
+            m = m.children[child_i]
+        token = m.first_token() if for_child else m.next_token()
+        is_after = True
+        if token is Token.none:
+            token = m.next_token() if for_child else m.last_token()
+            is_after = for_child
+            if token is Token.none:
+                token = m.prev_token()
+                is_after = False
+                if token is Token.none:
+                    token = Token.dummy(m.source)
+                    # we should only reach here when m is an empty node of some kind
+                    m.append_existing(token)
+        return token, is_after
+
     def traverse_nodes(m, pre=None, post=None, tokens=None, extra=False):
         skip = pre(m) if pre else None
         if not skip:
@@ -106,17 +124,30 @@ class TokenNodeBase:
         if post: post(m)
 
     def traverse_tokens(m, visit):
-        for child in m.children:
-            if isinstance(child, Node):
-                child.traverse_tokens(visit)
-            else:
-                visit(child)
+        if isinstance(m, Token):
+            visit(m)
+        else:
+            for child in m.children:
+                if isinstance(child, Node):
+                    child.traverse_tokens(visit)
+                else:
+                    visit(child)
     
     def traverse_parents(m, visit):
         parent = m.parent
         while parent:
             visit(parent)
             parent = parent.parent
+
+    def collect_comments(m, irrelevant=False):
+        comments = []
+        def visit(token):
+            nonlocal comments
+            comments += token.children
+        m.traverse_tokens(visit)
+        if irrelevant:
+            comments = [c for c in comments if c.hint != CommentHint.auto]
+        return comments
 
     def add_extra_child(m, child):
         if not hasattr(m, "extra_children"):
@@ -176,6 +207,14 @@ class Token(TokenNodeBase):
             m.check(expected)
         m.type, m.value, m.modified = None, None, True
 
+    def add_comments(m, comments, first=False):
+        if m.children == ():
+            m.children = []
+        if first:
+            m.children[0:0] = comments
+        else:
+            m.children += comments
+
     @lazy_property
     def parsed_value(m):
         if m.type == TokenType.number:
@@ -223,7 +262,7 @@ class ConstToken(Token):
         lazy_property.clear(m, "value")
 
 class CommentHint(Enum):
-    none = preserve = lint = keep = ...
+    none = auto = preserve = lint = keep = ...
 
 class Comment(TokenNodeBase):
     """A pico8 comment, optionally holding some kind of hint"""
@@ -374,8 +413,10 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
                 sublang, sublang_def = list_unpack(comment[len(k_deflang_prefix):].split("=", 1), 2, "")
                 dest_sublang, dest_args = list_unpack(sublang_def.strip().split(" ", 1), 2, "")
                 ctxt.add_custom_langdef(sublang.strip(), dest_sublang, dest_args)
+                hint = CommentHint.auto
 
             elif isblock:
+                hint = CommentHint.auto
                 if comment in ("global", "nameof"): # nameof is deprecated
                     get_next_mods().var_kind = VarKind.global_
                 elif comment in ("member", "memberof"): # memberof is deprecated
@@ -398,8 +439,10 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
                     get_next_mods().sublang = comment[len(k_language_prefix):]
                 elif comment.startswith(k_rename_prefix) and not any(ch.isspace() for ch in comment):
                     get_next_mods().rename = comment[len(k_rename_prefix):]
+                else:
+                    hint = CommentHint.none
         
-        if all_comments or hint != CommentHint.none:
+        if all_comments or (hint != CommentHint.none and hint != CommentHint.auto):
             get_next_mods().add_comment(Comment(hint, hintdata, source, orig_idx, idx))
 
     def tokenize_line_comment():
