@@ -5,7 +5,6 @@ from pico_cart import k_png_header, k_qoi_header
 from pico_export import lz4_uncompress, lz4_compress
 from pico_defs import decode_luastr, encode_luastr
 from pico_compress import print_size, compress_code, uncompress_code, encode_p8str, decode_p8str
-from pico_compress import k_new_compressed_code_header
 from picotron_defs import get_default_picotron_runtime, get_picotron_version_id, Cart64Glob, k_palette_64
 from picotron_fs import PicotronFile, PicotronDir, k_pod, k_pod_prefix_strs, UserData
 
@@ -189,13 +188,14 @@ def read_cart64_from_rom(buffer, path=None, allow_tiny=False, size_handler=None,
                         cart.files[fspath] = PicotronFile(data)
             return cart
         
-        elif allow_tiny and r.rewind().bytes(4) == k_new_compressed_code_header:
+        elif allow_tiny:
             r.rewind()
             r.big_end = True
             tiny_cart = Cart64()
-            tiny_cart.files[k_p64_main_path] = PicotronFile(encode_p8str(uncompress_code(r, **opts)))
+            tiny_code = encode_p8str(uncompress_code(r, max_code_size=sys.maxsize, **opts))
+            tiny_cart.files[k_p64_main_path] = PicotronFile(tiny_code)
             return tiny_cart
-        
+
         else:
             throw("wrong rom header")
 
@@ -274,9 +274,10 @@ def write_cart64_to_tiny_rom(cart, size_handler=None, debug_handler=None, **opts
         compress_code(w, decode_p8str(data), force_compress=True)
         compressed_pxa = io.getvalue()
 
-    if len(compressed_pxa) < len(compressed_lz4):
+    result = data
+    if len(compressed_pxa) < len(result):
         result = compressed_pxa
-    else:
+    if len(compressed_lz4) < len(result):
         result = compressed_lz4
 
     if size_handler:

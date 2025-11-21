@@ -43,7 +43,7 @@ def update_mtf(mtf, idx, ch):
         mtf[ii] = mtf[ii - 1]
     mtf[0] = ch
 
-def uncompress_code(r, size_handler=None, debug_handler=None, **_):
+def uncompress_code(r, max_code_size=k_code_size, size_handler=None, debug_handler=None, **_):
     start_pos = r.pos()
     header = r.bytes(4, allow_eof=True)
 
@@ -138,12 +138,12 @@ def uncompress_code(r, size_handler=None, debug_handler=None, **_):
         assert len(code) in (unc_size, unc_size - 1) # extra null at the end dropped?
 
     else:
-        r.addpos(-len(header))
-        code = [chr(c) for c in r.zbytes(k_code_size, allow_eof=True)]
+        r.subpos(len(header))
+        code = [chr(c) for c in r.zbytes(max_code_size, allow_eof=True)]
 
     return "".join(code)
 
-def get_compressed_size(r):
+def get_compressed_size(r, max_code_size=k_code_size):
     start_pos = r.pos()
     header = r.bytes(4, allow_eof=True)
 
@@ -166,8 +166,8 @@ def get_compressed_size(r):
         return r.pos() - start_pos
 
     else:
-        r.addpos(-len(header))
-        return len(r.zbytes(k_code_size, allow_eof=True))
+        r.subpos(len(header))
+        return len(r.zbytes(max_code_size, allow_eof=True))
 
 class Lz77Entry(Tuple):
     """A copy of 'count' bytes starting from an 'offset' to the left of the current position."""

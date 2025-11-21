@@ -1006,11 +1006,16 @@ class BinaryReader(BinaryBase):
             result = m.bytes(size * count, allow_eof)
             if allow_eof and count > 1 and len(result) % count:
                 raise struct.error("end of file inside char")
-            # TODO: any better way? (can't search/split if count > 1)
-            for i in range(0, size, count):
-                if result[i:i+count] == zero:
-                    result = result[:i]
+            offset = 0
+            while True:
+                zero_i = result.find(zero, offset)
+                if zero_i < 0:
                     break
+                elif zero_i % count == 0:
+                    result = result[:zero_i]
+                    break
+                else:
+                    offset = zero_i + 1
         return result
         
     def zstr(m, size=None, enc=None):
