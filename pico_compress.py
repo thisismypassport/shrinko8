@@ -191,9 +191,9 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
        min_c/max_c - min/max allowed counts in Lz77Entry-ies
        max_o - max allowed offsets (distances) in Lz77Entry-ies
        measure - measures the cost of a particular item. (any cost unit can be used)
-                 also returns a context, an opaque value to passed when measuring subsequent items
+                 also returns a context, an opaque value passed when measuring subsequent items
        min_cost - the absolute minimum cost that the given number of bytes can correspond to
-                  anywhere in any code. (used for perf. optimization)
+                  anywhere for any code. (used for perf. optimization)
        get_cheaper_c - given a count, return a smaller count that results in less cost
                        (but may be a better choice if the next match catches up without increasing cost)
        max_o_steps - (turn this to get_shorter_o?) - offset values that may be shorter but
@@ -268,9 +268,6 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
         
         return SubMatchDict(matches_dict, best_j)
 
-    def mklz77(i, j, count):
-        return Lz77Entry(i - j, count)
-
     i = 0 # current position in the code
     prev_i = 0 # previous position in the code
     advances = deque() if measure else None # potentially worthwhile ways to go from the current or past positions
@@ -307,7 +304,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
             advances.append(next_adv)
 
     def add_lz77_advance(j, c):
-        item = mklz77(i, j, c)
+        item = Lz77Entry(i - j, c)
         cost, ctxt = measure(curr_ctxt, item)
         add_advance(curr_cost + cost, ctxt, c, item)
     
@@ -384,7 +381,7 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
                         yield i, code[i]
                         i += 1
                     else:
-                        yield i, mklz77(i, best_j, best_c)
+                        yield i, Lz77Entry(i - best_j, best_c)
                         i += best_c
                 else:
                     yield i, code[i]
@@ -426,6 +423,7 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
         w.u16(0) # revised below
                 
         if is_new:
+            # the new compression scheme, measured cost is in bits
             bw = BinaryBitWriter(w.f)
             if debug_handler: debug_handler.init(bw, str)
             mtf = [chr(i) for i in range(0x100)]
@@ -568,6 +566,7 @@ def compress_code(w, code, size_handler=None, debug_handler=None, force_compress
             bw.flush()
 
         else:
+            # the old compression scheme, measured cost is in bytes
             if debug_handler: debug_handler.init(w, str)
 
             def measure(ctxt, item):

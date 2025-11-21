@@ -517,7 +517,7 @@ def lz4_compress(uncdata, fast=False, debug=None):
                 if debug: debug.update(item)
                     
         def measure(ctxt_litcount, item):
-            ctxt_litcount = ctxt_litcount or len(literals)
+            ctxt_litcount = default(ctxt_litcount, len(literals))
 
             if isinstance(item, Lz77Entry):
                 count_bits = (item.count - min_c + 0xf0) // 0xff
@@ -533,13 +533,14 @@ def lz4_compress(uncdata, fast=False, debug=None):
             return cost, ctxt_litcount
 
         def get_cheaper_c(c):
-            return round_down (c - min_c + 0xf0, 0xff) - 1 - 0xf0 + min_c
+            return round_down(c - min_c + 0xf0, 0xff) - 1 - 0xf0 + min_c
 
         def min_cost(dist):
             # assume dist can be covered by an Lz77Entry without any overhead
-            # plus subtract possible overhead *savings* of an Lz77Entry (TODO: retest this later)
+            # plus subtract possible overhead *savings* of an Lz77Entry
             return max(((dist - min_c + 0xf0) // 0xff) - 1, 0)
 
+        # lz4 disallows lz77 entries near the end of the stream...
         end_of_lz77_reach = len(uncdata) - 5
         end_of_lz77s = len(uncdata) - 12
 
