@@ -5,6 +5,7 @@ from pico_cart import k_png_header, k_qoi_header
 from pico_export import lz4_uncompress, lz4_compress
 from pico_defs import decode_luastr, encode_luastr
 from pico_compress import print_size, compress_code, uncompress_code, encode_p8str, decode_p8str
+from pico_compress import k_new_compressed_code_header
 from picotron_defs import get_default_picotron_runtime, get_picotron_version_id, Cart64Glob, k_palette_64
 from picotron_fs import PicotronFile, PicotronDir, k_pod, k_pod_prefix_strs, UserData
 
@@ -163,31 +164,40 @@ k_rom_header_size = 8
 def print_rom_compressed_size(size, **kwargs):
     print_size("compressed", size, k_cart64_size, **kwargs)
 
-def read_cart64_from_rom(buffer, path=None, size_handler=None, debug_handler=None, **opts):
+def read_cart64_from_rom(buffer, path=None, allow_tiny=False, size_handler=None, debug_handler=None, **opts):
     cart = Cart64(path=path)
     
     with BinaryReader(BytesIO(buffer)) as r:
-        check(r.bytes(3) == k_rom_header_sig, "wrong rom header")
-        cart.version_id = r.u8()
-        size = r.u32()
-        if size_handler:
-            print_rom_compressed_size(k_rom_header_size + size, prefix="input", handler=size_handler)
-        uncbuffer = lz4_uncompress(r.bytes(size), debug=debug_handler)
+        if r.bytes(3) == k_rom_header_sig:
+            cart.version_id = r.u8()
+            size = r.u32()
+            if size_handler:
+                print_rom_compressed_size(k_rom_header_size + size, prefix="input", handler=size_handler)
+            uncbuffer = lz4_uncompress(r.bytes(size), debug=debug_handler)
+            
+            with BinaryReader(BytesIO(uncbuffer)) as r:
+                while not r.eof():
+                    fspath = decode_luastr(r.zbytes())
+                    if fspath.endswith("/"):
+                        cart.files[fspath] = PicotronDir()
+                    else:
+                        size = r.u8()
+                        if size == 0xff:
+                            size = r.u32()
+                        data = r.bytes(size)
 
-    with BinaryReader(BytesIO(uncbuffer)) as r:
-        while not r.eof():
-            fspath = decode_luastr(r.zbytes())
-            if fspath.endswith("/"):
-                cart.files[fspath] = PicotronDir()
-            else:
-                size = r.u8()
-                if size == 0xff:
-                    size = r.u32()
-                data = r.bytes(size)
-
-                cart.files[fspath] = PicotronFile(data)
-
-    return cart
+                        cart.files[fspath] = PicotronFile(data)
+            return cart
+        
+        elif allow_tiny and r.rewind().bytes(4) == k_new_compressed_code_header:
+            r.rewind()
+            r.big_end = True
+            tiny_cart = Cart64()
+            tiny_cart.files[k_p64_main_path] = PicotronFile(encode_p8str(uncompress_code(r, **opts)))
+            return tiny_cart
+        
+        else:
+            throw("wrong rom header")
 
 def ext_order_key(pair):
     # try to order things to maximize compression
@@ -250,16 +260,6 @@ def write_cart64_to_rom(cart, size_handler=None, debug_handler=None, padding=0,
 
         return io.getvalue()
 
-def read_cart64_from_tiny_rom(buffer, **opts):
-    with BinaryReader(BytesIO(buffer), big_end = True) as r:
-        if r.bytes(3) == k_rom_header_sig:
-            return read_cart64_from_rom(buffer, **opts)
-        else:
-            r.rewind()
-            tiny_cart = Cart64()
-            tiny_cart.files[k_p64_main_path] = PicotronFile(encode_p8str(uncompress_code(r, **opts)))
-            return tiny_cart
-
 def write_cart64_to_tiny_rom(cart, size_handler=None, debug_handler=None, **opts):
     main = cart.files.get(k_p64_main_path)
     check(main, f"{k_p64_main_path} not found in cart")
@@ -274,10 +274,9 @@ def write_cart64_to_tiny_rom(cart, size_handler=None, debug_handler=None, **opts
         compress_code(w, decode_p8str(data), force_compress=True)
         compressed_pxa = io.getvalue()
 
-    result = data
-    if len(compressed_pxa) < len(result):
+    if len(compressed_pxa) < len(compressed_lz4):
         result = compressed_pxa
-    if len(compressed_lz4) < len(result):
+    else:
         result = compressed_lz4
 
     if size_handler:
@@ -627,10 +626,8 @@ def read_cart64(path, format=None, **opts):
         return read_cart64_from_source(file_read(path), path=path, **opts)
     elif format == Cart64Format.png:
         return read_cart64_from_image(file_read(path), path=path, **opts)
-    elif format == Cart64Format.rom:
-        return read_cart64_from_rom(file_read(path), path=path, **opts)
-    elif format == Cart64Format.tiny_rom:
-        return read_cart64_from_tiny_rom(file_read(path), path=path, **opts)
+    elif format in (Cart64Format.rom, Cart64Format.tiny_rom):
+        return read_cart64_from_rom(file_read(path), path=path, allow_tiny=True, **opts)
     elif format == Cart64Format.lua:
         return read_cart64_from_source(file_read(path), raw=True, path=path, **opts)
     elif format == Cart64Format.pod:

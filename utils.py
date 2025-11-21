@@ -887,8 +887,10 @@ class BinaryBase(object):
 
     def rewind(m):
         m.setpos(0)
+        return m
     def unwind(m):
         m.f.seek(0, 2)
+        return m
 
     def flush(m):
         m.f.flush()

@@ -289,6 +289,8 @@ def run():
                  alt_compare="testcvttron_alt.p64", from_output=True, target=Target.picotron, update_version=False)
         run_test("TRON_png2dir", "testcvttron.png", "testcvttron/", "--minify", "--clean-output-dir",
                  alt_compare="testcvttron_alt/", from_output=True, target=Target.picotron, output_reader=try_read_dir_contents, update_version=False)
+    if run_test("TRON_tiny", "testcvttron.p64", "testcvttron.tiny.rom", "-f", "tiny-rom", target=Target.picotron):
+        run_test("TRON_untiny", "testcvttron.tiny.rom", "testcvttron.tiny.p64", from_output=True, target=Target.picotron)
     run_test("TRON_const", "consttron.p64", "consttron.p64", "--minify", "--avoid-base64",
              "--no-minify-spaces", "--no-minify-lines", "--no-minify-comments", "--no-minify-rename", "--no-minify-tokens", target=Target.picotron)
     run_test("TRON_constmin", "consttron.p64", "consttronmin.p64", "--minify", "--avoid-base64", target=Target.picotron)
