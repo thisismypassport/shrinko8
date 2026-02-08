@@ -905,6 +905,50 @@ class BinaryBase(object):
     def position(m, value):
         m.setpos(value)
 
+def _read_zbytes(read_bytes, size, count, allow_eof):
+    zero = b"\0" * count
+    if size is None:
+        # TODO: optimize if seeking supported?
+        result = b""
+        while True:
+            char = read_bytes(count, allow_eof)
+            if len(char) < count:
+                if char:
+                    raise struct.error("end of file inside char")
+                break
+            elif char == zero:
+                break
+            else:
+                result += char
+    else:
+        result = read_bytes(size * count, allow_eof)
+        if count > 1 and len(result) % count:
+            raise struct.error("end of file inside char")
+        offset = 0
+        while True:
+            zero_i = result.find(zero, offset)
+            if zero_i < 0:
+                break
+            elif zero_i % count == 0:
+                result = result[:zero_i]
+                break
+            else:
+                offset = zero_i + 1
+    return result
+
+def _write_zbytes(write_bytes, v, size, count):
+    assert not (count > 1 and len(v) % count)
+    zero = b"\0" * count
+    if size is None:
+        write_bytes(v)
+        write_bytes(zero)
+    else:
+        if len(v) > size * count:
+            raise struct.error("input too large for zbytes with fixed size")
+        write_bytes(v)
+        for i in range(size - len(v) // count):
+            write_bytes(zero)
+
 class BinaryReader(BinaryBase):
     """Wraps a stream, allowing to easily read binary data from it"""
 
@@ -988,35 +1032,7 @@ class BinaryReader(BinaryBase):
         return m.f64be() if m.big_end else m.f64le()
 
     def zbytes(m, size=None, count=1, allow_eof=False):
-        zero = b"\0" * count
-        if size is None:
-            # TODO: optimize if seeking supported?
-            result = b""
-            while True:
-                char = m.bytes(count, allow_eof)
-                if allow_eof and len(char) < count:
-                    if char:
-                        raise struct.error("end of file inside char")
-                    break
-                elif char == zero:
-                    break
-                else:
-                    result += char
-        else:
-            result = m.bytes(size * count, allow_eof)
-            if allow_eof and count > 1 and len(result) % count:
-                raise struct.error("end of file inside char")
-            offset = 0
-            while True:
-                zero_i = result.find(zero, offset)
-                if zero_i < 0:
-                    break
-                elif zero_i % count == 0:
-                    result = result[:zero_i]
-                    break
-                else:
-                    offset = zero_i + 1
-        return result
+        return _read_zbytes(m.bytes, size, count, allow_eof)
         
     def zstr(m, size=None, enc=None):
         return m.zbytes(size).decode(enc or m.enc)
@@ -1220,17 +1236,7 @@ class BinaryWriter(BinaryBase):
         m.bytes(v.encode(enc or m.wenc))
             
     def zbytes(m, v, size=None, count=1):
-        assert not (count > 1 and len(v) % count)
-        zero = b"\0" * count
-        if size is None:
-            m.bytes(v)
-            m.bytes(zero)
-        else:
-            if len(v) > size * count:
-                raise struct.error("input too large for zbytes with fixed size")
-            m.bytes(v)
-            for i in range(size - len(v) // count):
-                m.bytes(zero)
+        _write_zbytes(m.bytes, v, size, count)
         
     def zstr(m, v, size=None, enc=None):
         m.zbytes(v.encode(enc or m.enc), size)
@@ -1417,26 +1423,14 @@ class BinaryBuffer:
             raise struct.error("end of buffer")
         return data
         
-    def r_zbytes(m, addr, size=None, count = 1):
-        zero = b"\0" * count
-        
-        if size is None:
-            result = b""
-            while True:
-                char = m.r_bytes(addr, count)
-                if char == zero:
-                    break
-                else:
-                    result += char
-                    addr += count
-        else:
-            result = m.r_bytes(addr, size * count)
-            # TODO: any better way? (can't search/split if count > 1)
-            for i in range(0, size, count):
-                if result[i:i+count] == zero:
-                    result = result[:i]
-                    break
-        return result
+    def r_zbytes(m, addr, size=None, count = 1, allow_eof=False):
+        def bytes(count, allow_eof):
+            nonlocal addr
+            value = m.r_bytes(addr, count, allow_eof)
+            addr += len(value)
+            return value
+
+        return _read_zbytes(bytes, size, count, allow_eof)
         
     def r_zstr(m, addr, size=None, enc="utf-8"):
         return m.r_zbytes(addr, size).decode(enc)
@@ -1447,21 +1441,12 @@ class BinaryBuffer:
         m.buf[addr:addr+len(val)] = val
     
     def w_zbytes(m, addr, val, size=None, count=1):
-        zero = b"\0" * count
-        assert not (count > 1 and len(val) % count)
-
-        if size is None:
+        def bytes(val):
+            nonlocal addr
             m.w_bytes(addr, val)
-            m.w_bytes(addr + len(val), zero)
-        else:
-            if len(val) > size * count:
-                raise struct.error("input too large for zbytes with fixed size")
-            m.w_bytes(addr, val)
-            end_addr = addr + size * count
             addr += len(val)
-            while addr < end_addr:
-                m.w_bytes(addr, zero)
-                addr += count
+
+        _write_zbytes(bytes, val, size, count)
         
     def w_zstr(m, addr, val, size=None, enc="utf-8"):
         m.w_zbytes(addr, val.encode(enc), size)
@@ -1633,7 +1618,7 @@ def list_rfind_where(list, func):
     """Find the index of the last element in a list that matches predicate 'func'"""
     for i_rev, item in enumerate(reversed(list)):
         if func(item):
-            return len(list) - 1 - i_rev # ...
+            return len(list) - 1 - i_rev
     return -1
 
 def list_get(list, i, defval = None):
@@ -1708,7 +1693,7 @@ def func_union(func1, func2, return_early=None, return_combine=None):
             ret2 = func2(*args, **kwargs)
             if return_combine:
                 return return_combine(ret1, ret2)
-            # else, None
+            return None
         return union
 
 def getattrs(obj, private = True, magic = False):

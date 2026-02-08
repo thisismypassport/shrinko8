@@ -71,6 +71,7 @@ def create_main(lang):
         write_cart_version_func = write_cart_version
         get_default_version_func = get_default_pico8_version
 
+        shrinko_name = "shrinko8"
         pico_name = "pico8"
         label_section = "label"
 
@@ -91,6 +92,7 @@ def create_main(lang):
         write_cart_version_func = write_cart64_version
         get_default_version_func = get_default_picotron_runtime
         
+        shrinko_name = "shrinkotron"
         pico_name = "picotron"
         label_section = "label.png"
         default_keep_meta_keys = ("runtime",)
@@ -231,7 +233,7 @@ def create_main(lang):
         pgroup = parser.add_argument_group("other interesting options (semi-undocumented)")
         pgroup.add_argument("--template-image", help=f"template image to use for png carts, instead of the default {lang} template")
         pgroup.add_argument("--template-only", action="store_true", help="when creating the png cart, ignore the label & title, using just the template")
-        pgroup.add_argument("--version", action="store_true", help="print version of cart. (if no cart is provided - print shrinko8 version and exit)")
+        pgroup.add_argument("--version", action="store_true", help=f"print version of cart. (if no cart is provided - print {shrinko_name} version and exit)")
         pgroup.add_argument("--output-version", type=int, help=f"the version to convert the cart to. ({version_desc})")
         pgroup.add_argument("--update-version", action="store_true", help="convert the cart to the highest supported version")
         pgroup.add_argument("--bbs", action="store_true", help="interpret input as a bbs cart id, e.g. '#...' and download it from the bbs")
@@ -255,16 +257,17 @@ def create_main(lang):
         pgroup = parser.add_argument_group("compression options (semi-undocumented)")
         if is_pico8:
             pgroup.add_argument("--keep-compression", action="store_true", help="keep existing compression, instead of re-compressing")
-            pgroup.add_argument("--force-compression", action="store_true", help="force code compression even if code fits (when creating png carts)")
+            pgroup.add_argument("--force-compression", action="store_true", help="force code compression even if code fits")
             pgroup.add_argument("--old-compression", action="store_true", help="compress with the old pre-v0.2.0 compression scheme")
         else:
             pgroup.set_defaults(keep_compression=False, force_compression=False, old_compression=False)
-        pgroup.add_argument("--fast-compression", action="store_true", help="force fast but poor compression (when creating png carts)")
+        pgroup.add_argument("--optimize-png-compression", action="store_true", help="when generating a png, also optimize the size of the png itself (no effect on cart size)")
+        pgroup.add_argument("--fast-compression", action="store_true", help="force fast but very poor compression")
         pgroup.add_argument("--trace-compression", help="trace the compressed symbols and their cost into this file")
         pgroup.add_argument("--trace-input-compression", help="trace the input's compressed symbols and their cost into this file")
 
         pgroup = parser.add_argument_group("other uninteresting options (semi-undocumented)")
-        pgroup.add_argument("--ignore-hints", action="store_true", help="ignore shrinko8 hint comments")
+        pgroup.add_argument("--ignore-hints", action="store_true", help=f"ignore {shrinko_name} hint comments")
         pgroup.add_argument("--builtin", type=SplitBySeps, action="extend", help=f"treat identifier(s) as a {pico_name} builtin (for minify, lint, etc.)")
         pgroup.add_argument("--not-builtin", type=SplitBySeps, action="extend", help=f"do not treat identifier(s) as a {pico_name} builtin (for minify, lint, etc.)")
         pgroup.add_argument("--export-name", help="name to use for the export (by default, taken from output name)")
@@ -676,6 +679,7 @@ def create_main(lang):
                                 force_compress=args.count or args.force_compression,
                                 fast_compress=args.fast_compression, keep_compression=args.keep_compression,
                                 template_image=args.template_image, template_only=args.template_only,
+                                optimize_image=args.optimize_png_compression,
                                 sections=args.output_sections, avoid_base64=args.avoid_base64,
                                 cart_op=output_cart_op, cart_name=output_cart_name, target_name=output_cart_target,
                                 target_export=target_export, export_name=args.export_name, pico_dat=pico_dat)

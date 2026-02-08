@@ -227,7 +227,8 @@ def run():
 
     run_test("default", "default.p8", "default.rom")
     run_test("default2", "default2.p8", "default2.rom")
-    run_test("genend", "genend.p8.png", "genend.p8", update_version=False)
+    if run_test("genend", "genend.p8.png", "genend.p8", update_version=False):
+        run_test("genend-back", "genend.p8", "genend.p8.png", "--force-compression", from_output=True, update_version=False)
     run_test("lint", "bad.p8", None, "--lint", stdout_output="bad.txt", norm_stdout=norm_paths, exit_code=2)
     run_test("linttab", "bad.p8", None, "--lint", "--error-format", "tabbed",
              stdout_output="bad-tab.txt", norm_stdout=norm_paths, exit_code=2)
