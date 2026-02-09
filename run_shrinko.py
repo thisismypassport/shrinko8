@@ -12,7 +12,14 @@ from picotron_cart import write_cart64_compressed_size, write_cart64_version
 from picotron_export import read_cart64_export, read_sysrom_file
 import argparse
 
-k_version = 'v1.2.6g'
+k_version_raw = '1.2.6.6' # should have 4 parts
+
+def get_version():
+    """convert our raw version to pico-style version"""
+    version, lastdigit = k_version_raw.rsplit(".", 1)
+    lastdigit = int(lastdigit)
+    lastchar = string.ascii_lowercase[lastdigit] if lastdigit else ""
+    return version + lastchar
 
 def SplitBySeps(val):
     return k_hint_split_re.split(val)
@@ -294,7 +301,7 @@ def create_main(lang):
 
     def main_inner(args):
         if args.version and not args.input:
-            print(k_version)
+            print("v" + get_version())
             return
 
         if args.additional_inputs and not args.output:

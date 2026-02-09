@@ -30,6 +30,7 @@ parser.add_argument("-u", "--compare-unfocused", action="store_true", help="comp
 parser.add_argument("--no-update", action="store_true", help="do not update carts to latest version")
 parser.add_argument("-v", "--verbose", action="store_true", help="print changes in individual carts")
 parser.add_argument("-x", "--exe", action="store_true", help="use a packaged exe instead of the python script")
+parser.add_argument("-I", "--install", action="store_true", help="use a pip install instead of the python script")
 parser.add_argument("-p", "--pico8", action="append", help="specify a pico8 exe to test the results with")
 parser.add_argument("-P", "--no-pico8", action="store_true", help="disable running pico8 even if exe is supplied (for convenience)")
 parser.add_argument("-t", "--pico8-time", type=float, help="how long to run pico8 carts for")
