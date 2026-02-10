@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shrinko"
+dynamic = ["version"]
+description = "Shrink (minify) Pico-8 (& Picotron) carts, as well as other tools (e.g. linting, format conversion, exports)"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = ["pillow"]
+authors = [{name = "thisismypassport"}]
+keywords = ["pico8", "picotron", "minify", "lint", "shrink"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+]
+
+[project.urls]
+Repository = "https://github.com/thisismypassport/shrinko8"
+
+[project.scripts]
+shrinko8 = "shrinko.shrinko8:main"
+shrinkotron = "shrinko.shrinkotron:main"
+
+[tool.setuptools]
+packages = ["shrinko", "shrinko.scripts"]
+package-dir = {"shrinko" = ""}
+package-data = {"shrinko" = ["*.png", "*.plist"]}
+
+[tool.setuptools.dynamic]
+version = {attr = "run_shrinko.k_version_raw"}

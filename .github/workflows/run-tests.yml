@@ -5,6 +5,7 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -31,6 +32,14 @@ jobs:
       run: |
         python run_tests.py
         
+    - name: Save failure data
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-earliest-failure-output
+        path: test_output
+        retention-days: 2
+        
   test-latest:
     name: Test on latest known Python
     runs-on: ubuntu-latest
@@ -52,3 +61,10 @@ jobs:
       run: |
         python run_tests.py
         
+    - name: Save failure data
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-latest-failure-output
+        path: test_output
+        retention-days: 2

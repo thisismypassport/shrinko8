@@ -8,3 +8,4 @@ private_*
 orig
 dist
 build
+*.egg-info/

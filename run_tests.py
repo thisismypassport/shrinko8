@@ -13,6 +13,7 @@ parser.add_argument("--test-from", help="specify a specific test to start runnin
 parser.add_argument("--no-private", action="store_true", help="do not run private tests, if they exist")
 parser.add_argument("-v", "--verbose", action="store_true", help="print test successes")
 parser.add_argument("-x", "--exe", action="store_true", help="test a packaged exe instead of the python script")
+parser.add_argument("-I", "--install", action="store_true", help="test a pip install instead of the python script")
 parser.add_argument("-p", "--pico8", action="append", help="specify a pico8 exe to test the results with")
 parser.add_argument("-P", "--no-pico8", action="store_true", help="disable running pico8 even if exe is supplied (for convenience)")
 parser.add_argument("--profile", action="store_true", help="enable profiling")
@@ -227,7 +228,8 @@ def run():
 
     run_test("default", "default.p8", "default.rom")
     run_test("default2", "default2.p8", "default2.rom")
-    run_test("genend", "genend.p8.png", "genend.p8", update_version=False)
+    if run_test("genend", "genend.p8.png", "genend.p8", update_version=False):
+        run_test("genend-back", "genend.p8", "genend.p8.png", "--force-compression", from_output=True, update_version=False)
     run_test("lint", "bad.p8", None, "--lint", stdout_output="bad.txt", norm_stdout=norm_paths, exit_code=2)
     run_test("linttab", "bad.p8", None, "--lint", "--error-format", "tabbed",
              stdout_output="bad-tab.txt", norm_stdout=norm_paths, exit_code=2)

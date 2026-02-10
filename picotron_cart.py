@@ -372,7 +372,7 @@ def draw_title_on_image(image, title, subtitle, offset, width, suboffset):
             offset += suboffset
             title = subtitle
 
-def write_cart64_to_image(cart, template_image=None, template_only=False, **opts):
+def write_cart64_to_image(cart, template_image=None, template_only=False, optimize_image=False, **opts):
     output = write_cart64_to_rom(cart, limit=k_cart64_size, padding=4, **opts) # some padding to easily tell when we're done without failing
     end_pos = len(output) - 2
 
@@ -405,7 +405,10 @@ def write_cart64_to_image(cart, template_image=None, template_only=False, **opts
                     a = (a & ~3) | ((word >> 9) & 3)
                     pixels[x, y] = (r, g, b, a)
 
-        return image.save()
+        if optimize_image:
+            return image.save(optimize=True)
+        else:
+            return image.save()
 
 def read_cart64_label(data, path=None, **_):
     cart = Cart64(path=path)

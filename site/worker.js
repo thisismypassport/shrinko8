@@ -278,9 +278,9 @@ let api = {
         if (argsStr) {
             args.push(...shlex(argsStr))
         }
-        if (fs.analyzePath("private_pico_8").exists) {
+        if (fs.analyzePath("private_pico8").exists) {
             // it'll pick up the pico8.dat based on this fictive path
-            args.push("-p", "private_pico_8/pico8.exe", "-P");
+            args.push("-p", "private_pico8/pico8.exe", "-P");
         }
 
         let [exitcode, output] = run_main(self.shrinko_run_tests, args);

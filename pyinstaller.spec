@@ -2,7 +2,7 @@
 
 block_cipher = None
 hidden_imports = ['pico_utils', 'scripts']
-excludes = ['packaging']
+excludes = ['packaging', 'setuptools', 'pkgutil', 'numpy']
 
 import os
 for script in os.listdir("scripts"):

@@ -3,7 +3,7 @@ from unittest.mock import patch
 import subprocess, pstats, cProfile
 from pico_defs import Language as Target
 
-def init_tests(opts): # use: opts.exe and opts.profile
+def init_tests(opts): # use: opts.exe, opts.install and opts.profile
     global g_num_ran, g_num_failed
     g_num_ran = g_num_failed = 0
 
@@ -13,16 +13,26 @@ def init_tests(opts): # use: opts.exe and opts.profile
         g_profile = cProfile.Profile()
         g_profile_stats_files = []
     
-    global g_use_exe
-    g_use_exe = opts.exe
-    if g_use_exe:
-        global g_exe_paths
+    global g_use_exe, g_use_install
+    global g_exe_paths, g_install_scripts, g_code_files
+    g_use_exe, g_use_install = opts.exe, opts.install
+    if g_use_exe and g_use_install:
+        root_path = path_dirname(sys.executable)
+        g_exe_paths = {
+            Target.pico8: root_path +"/scripts/shrinko8",
+            Target.picotron: root_path + "/scripts/shrinkotron",
+        }
+    elif g_use_exe:
         g_exe_paths = {
             Target.pico8: "dist/shrinko/shrinko8.exe",
             Target.picotron: "dist/shrinko/shrinkotron.exe",
         }
+    elif g_use_install:
+        g_install_scripts = {
+            Target.pico8: "shrinko.shrinko8",
+            Target.picotron: "shrinko.shrinkotron",
+        }
     else:
-        global g_code_files
         g_code_files = {
             Target.pico8: "shrinko8.py",
             Target.picotron: "shrinkotron.py",
@@ -90,9 +100,12 @@ def run_code(target, *args, exit_code=0):
         g_profile.enable()
 
     try:
-        if g_use_exe:
+        if g_use_exe or g_use_install:
             try:
-                stdout = subprocess.check_output([g_exe_paths[target], *args], encoding="utf8")
+                if g_use_exe:
+                    stdout = subprocess.check_output([g_exe_paths[target], *args], encoding="utf8")
+                else:
+                    stdout = subprocess.check_output([sys.executable, "-m", g_install_scripts[target], *args], encoding="utf8")
             except subprocess.CalledProcessError as e:
                 actual_code = e.returncode
                 stdout = e.stdout

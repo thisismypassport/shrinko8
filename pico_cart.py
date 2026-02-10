@@ -247,7 +247,7 @@ def create_screenshot_surface(screenshot, transparent=False):
             screenshot_pixels[x, y] = color
     return screenshot_surf
 
-def write_cart_to_image(cart, template_image=None, template_only=False, **opts):
+def write_cart_to_image(cart, template_image=None, template_only=False, optimize_image=False, **opts):
     output = write_cart_to_rom(cart, with_trailer=True, **opts)
 
     if not template_image:
@@ -277,7 +277,10 @@ def write_cart_to_image(cart, template_image=None, template_only=False, **opts):
                 a = (a & ~3) | ((byte >> 6) & 3)
                 pixels[x, y] = (r, g, b, a)
 
-        return image.save()
+        if optimize_image:
+            return image.save(optimize=True)
+        else:
+            return image.save()
 
 def read_cart_label(data, path=None, **_):
     image = load_image_of_size(BytesIO(data), k_label_size)
