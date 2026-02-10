@@ -11,6 +11,10 @@ on:
         type: boolean
         description: Create latest release
         default: true
+      publish-package:
+        type: boolean
+        description: Publish package to pypi
+        default: true
 
 jobs:
   deploy-site:
@@ -132,3 +136,43 @@ jobs:
           allowUpdates: true
           artifactErrorsFailBuild: true
           makeLatest: false
+
+  publish-package:
+    name: Publish package to pypi
+    if: ${{ inputs.publish-package }}
+
+    permissions:
+      id-token: write
+
+    concurrency:
+      group: "package"
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/shrinko
+
+    runs-on: ubuntu-latest    
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.14"
+      
+      - name: Install pypa build
+        run: python -m pip install build --user
+      
+      - name: Build wheel
+        run: python -m build
+      
+      - name: Install wheel locally for testing
+        run: python -m pip install dist/shrinko-*.whl
+      
+      - name: Test wheel install
+        run: python run_tests.py -Ix
+      
+      - name: Publish to pypi
+        uses: pypa/gh-action-pypi-publish@release/v1
