@@ -17,10 +17,10 @@ def init_tests(opts): # use: opts.exe, opts.install and opts.profile
     global g_exe_paths, g_install_scripts, g_code_files
     g_use_exe, g_use_install = opts.exe, opts.install
     if g_use_exe and g_use_install:
-        root_path = path_dirname(sys.executable)
+        # (requires it in PATH)
         g_exe_paths = {
-            Target.pico8: root_path +"/scripts/shrinko8",
-            Target.picotron: root_path + "/scripts/shrinkotron",
+            Target.pico8: "shrinko8",
+            Target.picotron: "shrinkotron",
         }
     elif g_use_exe:
         g_exe_paths = {
