@@ -235,7 +235,7 @@ class Node(TokenNodeBase):
     def replace_with(m, target): # target must not reference m, but may reference m.copy() or m.move()
         old_comments = m.collect_comments(irrelevant=True)
         old_parent = m.parent
-        m.__dict__ = target.__dict__
+        m.__dict__ = target.__dict__.copy() # the copy is needed due to a python bug/regression
         m.parent = old_parent
         for child in m.children:
             child.parent = m
