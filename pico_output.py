@@ -297,19 +297,31 @@ def output_node(root, ctxt, minify_wspace=True, minify_lines=True, exclude_comme
         if token.children:
             for comment in token.children:
                 if comment.hint == CommentHint.keep:
-                    output.append(comment.value.replace(k_keep_prefix, "", 1))
+                    if need_linebreak or (not minify_lines and comment.vline != prev_vline):
+                        output.append("\n")
+                        need_linebreak = False
+                    
+                    val = comment.value.replace(k_keep_prefix, "", 1)
+                    if val.endswith("\n"):
+                        val = val[:-1]
+                        if val.endswith("\r"):
+                            val = val[:-1]
+                        need_linebreak = True
+
+                    output.append(val)
+                    prev_vline = comment.vline
 
         if token.value is None:
             return
 
         # (modified tokens may require whitespace not previously required - e.g. 0b/0x)
-        if (prev_token.endidx < token.idx or prev_token.modified or token.modified) and prev_token.value:
+        if need_linebreak or ((prev_token.endidx < token.idx or prev_token.modified or token.modified) and prev_token.value):
             # TODO: can we systemtically add whitespace to imrpove compression? (failed so far)
 
             if need_linebreak or (not minify_lines and token.vline != prev_vline):
                 output.append("\n")
                 need_linebreak = False
-            elif need_whitespace_between(ctxt, prev_token, token):
+            elif prev_token.value and need_whitespace_between(ctxt, prev_token, token):
                 output.append(" ")
 
         output.append(token.value)

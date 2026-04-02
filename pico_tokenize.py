@@ -267,9 +267,9 @@ class CommentHint(Enum):
 class Comment(TokenNodeBase):
     """A pico8 comment, optionally holding some kind of hint"""
 
-    def __init__(m, hint, hintdata=None, source=None, idx=None, endidx=None):
+    def __init__(m, hint, hintdata=None, source=None, idx=None, endidx=None, vline=None):
         super().__init__()
-        m.hint, m.hintdata, m.source, m.idx, m.endidx = hint, hintdata, source, idx, endidx
+        m.hint, m.hintdata, m.source, m.idx, m.endidx, m.vline = hint, hintdata, source, idx, endidx, vline
 
     @property
     def value(m):
@@ -388,7 +388,7 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
         if mods.sublang != None:
             add_sublang(token, mods.sublang)
 
-    def process_comment(orig_idx, comment, isblock):
+    def process_comment(orig_idx, comment, isblock, vline):
         hint, hintdata = CommentHint.none, None
 
         if process_hints:
@@ -443,15 +443,16 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
                     hint = CommentHint.none
         
         if all_comments or (hint != CommentHint.none and hint != CommentHint.auto):
-            get_next_mods().add_comment(Comment(hint, hintdata, source, orig_idx, idx))
+            get_next_mods().add_comment(Comment(hint, hintdata, source, orig_idx, idx, vline))
 
     def tokenize_line_comment():
         nonlocal vline
         orig_idx = idx
+        comment_vline = vline
         while take() not in ('\n', ''): pass
         vline += 1
 
-        process_comment(orig_idx - 2, text[orig_idx:idx], isblock=False)
+        process_comment(orig_idx - 2, text[orig_idx:idx], isblock=False, vline=comment_vline)
 
     def tokenize_long_brackets(off):
         nonlocal idx
@@ -475,10 +476,12 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
         return False, orig_idx, None, None
 
     def tokenize_long_comment():
-        nonlocal idx
+        nonlocal idx, vline
         ok, orig_idx, start, end = tokenize_long_brackets(0)
         if ok:
-            process_comment(orig_idx - 2, text[start:end], isblock=True)
+            comment_vline = vline
+            vline += text.count("\n", start, end)
+            process_comment(orig_idx - 2, text[start:end], isblock=True, vline=comment_vline)
         else:
             idx = orig_idx
         return ok
