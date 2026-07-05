@@ -8,14 +8,14 @@ let isPico8 = targetLang === "pico8";
 let isPicotron = targetLang === "picotron";
 let srcExt = isPico8 ? "p8" : isPicotron ? "p64" : null;
 
-let inputFile = "input." + srcExt;
-let inputSrcDir = "input.dir";
-let extraInputFileTmpl = "extrainput#." + srcExt;
-let outputFile = "output.unk";
-let outputDir = "output.dir";
-let previewFile = "preview." + srcExt;
-let scriptFile = "script.py";
-let picoDat = targetLang + ".dat";
+let inputFile = "__input." + srcExt;
+let inputSrcDir = "__input.dir";
+let extraInputFileTmpl = "__extrainput#." + srcExt;
+let outputFile = "__output.unk";
+let outputDir = "__output.dir";
+let previewFile = "__preview." + srcExt;
+let scriptFile = "__script.py";
+let picoDat = "__" + targetLang + ".dat";
 
 let outputCapture = undefined;
 let initProgress = 0;
@@ -205,6 +205,10 @@ let api = {
         await initPromise; // includes fs init
         fs.writeFile(picoDat, new Uint8Array(data));
         hasPicoDat = true;
+    },
+    uploadExtraFile: async (path, data) => {
+        await initPromise; // includes fs init
+        fs.writeFile(path, new Uint8Array(data));
     },
     
     getProgress: () => initProgress,

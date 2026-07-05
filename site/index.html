@@ -383,9 +383,16 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
           <span style="color: gray; margin-bottom: 10px">
             See <a href="https://github.com/thisismypassport/shrinko8#shrinko8" target="_blank">here</a> for the readme.
           </span>
-          <textarea id="extra-args" style="flex: 3; margin-bottom: 10px" spellcheck="false"
+          <textarea id="extra-args" style="flex: 3; margin-bottom: 5px" spellcheck="false"
               placeholder="You can add custom {{webappname}} command line arguments here (see readme)"></textarea>
-          <div id="script-code" class="ace-textarea" style="flex: 7"
+          <span>
+            <label style="margin-left: 12px">Add additional files (for use in command line arguments):
+              <input type="file" hidden onclick="preLoadExtraFile()" onchange="loadExtraFile(this.files[0])"/>
+              <button type="button" style="margin-bottom: 10px" onclick="this.parentElement.click()">Browse...</button>
+            </label>
+            <span id="advanced-upload-ok" style="color: darkgreen; display: none"></span>
+          </span>
+          <div id="script-code" class="ace-textarea" style="flex: 6"
               placeholder="You can paste a custom python script here that customizes how {{webappname}} operates.
 For example, you can paste the example sublanguage from the readme"></div>
         </div>

@@ -427,6 +427,19 @@ async function loadPicoDat(file) {
     doShrinkoAction();
 }
 
+function preLoadExtraFile() {
+    $("#advanced-upload-ok").hide()
+}
+
+async function loadExtraFile(file) {
+    let path = file.name // drop in root for simplicity
+    let data = await readFile(file)
+    await api.uploadExtraFile(path, data)
+    $("#advanced-upload-ok").show()
+    $("#advanced-upload-ok").text(`Successfully added ${path}`)
+    outputCache = {}
+}
+
 let scriptMgr = new InputChangeMgr("#script-code", "updateScriptFile");
 
 // Called when the script value changes
