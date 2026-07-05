@@ -127,15 +127,12 @@ jobs:
             Windows executable, for those who don't want to install python but still want to use the command line instead of the webapp.
             Supports all the command line options - just use shrinko8.exe (or shrinkotron.exe) instead of "python shrinko8.py" (or "python shrinkotron.py")
 
-            This pre-release contains the latest changes and is the recommended release to use.
-
             (Created via pyinstaller)
           tag: "latest"
           name: "Latest (${{ env.Version }})"
-          prerelease: true
           allowUpdates: true
           artifactErrorsFailBuild: true
-          makeLatest: false
+          makeLatest: true
 
   publish-package:
     name: Publish package to pypi
