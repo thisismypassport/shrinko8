@@ -39,8 +39,9 @@ class Cart:
 
     def __init__(m, code="", rom=None, label=None, path="", name=""):
         m.version_id = get_default_pico8_version()
-        m.version_tuple = get_version_tuple(m.version_id)
+        m.version_tuple = get_pico8_version_tuple(m.version_id)
         m.platform = get_default_platform()
+        m.default_version = m.default_platform = True
         m.rom = rom.copy() if rom else mem_create_rom()
         m.path = path
         m.name = name if name else path_basename(path) if path else ""
@@ -84,7 +85,8 @@ class Cart:
 
     def set_version(m, id):
         m.version_id = id
-        m.version_tuple = get_version_tuple(id)
+        m.version_tuple = get_pico8_version_tuple(id)
+        m.default_version = False
 
 def read_code_from_rom(r, keep_compression=False, **opts):
     code_rom = None
@@ -113,6 +115,7 @@ def read_cart_from_rom(buffer, path=None, allow_tiny=False, **opts):
                 version = r.u8(), r.u8(), r.u8()
                 cart.platform = chr(r.u8())
                 cart.version_tuple = (*version, r.u8())
+                cart.default_version = cart.default_platform = False
                 hash = r.bytes(20)
 
                 if hash != bytes(20) and hash != hashlib.sha1(buffer[:k_cart_size]).digest():
@@ -770,7 +773,14 @@ def merge_cart(dest, src, sections):
             throw(f"unknown cart section: '{section}'")
 
 def write_cart_version(cart):
-    print("version: %d, v%d.%d.%d:%d, %c" % (cart.version_id, *cart.version_tuple, cart.platform))
+    if cart.default_version:
+        print("no version info")
+    else:
+        print("version:", format_pico8_version(cart.version_tuple))
+        print("raw version: %d (%d.%d.%d.%d)" % (cart.version_id, *cart.version_tuple))
+
+    if not cart.default_platform:
+        print("platform:", format_platform(cart.platform))
 
 from pico_export import read_from_cart_export, write_to_cart_export
 from pico_preprocess import preprocess_code

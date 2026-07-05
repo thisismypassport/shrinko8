@@ -5,14 +5,14 @@ from pico_cart import CartFormat, read_cart, write_cart, get_bbs_cart_url, merge
 from pico_export import read_cart_export, read_pod_file, ListOp
 from pico_tokenize import k_hint_split_re
 from pico_constfold import parse_constant
-from pico_defs import Language, get_default_pico8_version
-from picotron_defs import PicotronContext, Cart64Source, get_default_picotron_runtime
+from pico_defs import Language, get_latest_pico8_version, parse_pico8_version
+from picotron_defs import PicotronContext, Cart64Source, get_latest_picotron_runtime
 from picotron_cart import Cart64Format, read_cart64, write_cart64, merge_cart64, filter_cart64, preproc_cart64
 from picotron_cart import write_cart64_compressed_size, write_cart64_version
 from picotron_export import read_cart64_export, read_sysrom_file
 import argparse
 
-k_version_raw = '1.2.6.6' # should have 4 parts
+k_version_raw = '1.2.6.6' # should have 4 parts, used directly by build script
 
 def get_version():
     """convert our raw version to pico-style version"""
@@ -76,7 +76,8 @@ def create_main(lang):
         write_code_size_func = write_code_size
         write_compressed_size_func = write_compressed_size
         write_cart_version_func = write_cart_version
-        get_default_version_func = get_default_pico8_version
+        get_latest_version_func = get_latest_pico8_version
+        parse_version_func = parse_pico8_version
 
         shrinko_name = "shrinko8"
         pico_name = "pico8"
@@ -97,7 +98,8 @@ def create_main(lang):
         write_code_size_func = lang_do_nothing
         write_compressed_size_func = write_cart64_compressed_size
         write_cart_version_func = write_cart64_version
-        get_default_version_func = get_default_picotron_runtime
+        get_latest_version_func = get_latest_picotron_runtime
+        parse_version_func = int
         
         shrinko_name = "shrinkotron"
         pico_name = "picotron"
@@ -111,7 +113,7 @@ def create_main(lang):
         if is_pico8:
             sections_str = "sections"
             sections_desc = "comma separated list of sections out of {%s}" % ",".join(("lua", "gfx", "map", "gff", "sfx", "music", "label", "meta:*"))
-            version_desc = f"Same as 'version' field of {CartFormatCls.default_src} files"
+            version_desc = "either a string like 'v0.2.6b' or a raw number from the p8 'version' field like '42'"
         else:
             sections_str = "files"
             sections_desc = "comma separated list of files (can use wildcards and ! for exclude)"
@@ -182,12 +184,21 @@ def create_main(lang):
         pgroup.add_argument("-U", "--unminify", action="store_true", help="enable unminification of the cart")
         pgroup.add_argument("--unminify-indent", type=Indent, help="indentation when unminifying - either 'tabs' or a number of spaces (default: 2)", default="2")
 
-        pgroup = parser.add_argument_group("misc. options")
-        pgroup.add_argument("-s", "--script", action="append", help="manipulate the cart via a custom python script - see README for api details")
-        pgroup.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
+        pgroup = parser.add_argument_group("image options")
         pgroup.add_argument("--label", help=f"image to use as the label (default: taken from __label__ like {lang} does)")
         pgroup.add_argument("--title", action="append", 
                             help=f"text to use as the title (default: taken from first two comments like {lang} does). Use twice for a second line")
+        pgroup.add_argument("--template-image", help=f"template image to use for png carts, instead of the default {lang} template")
+        pgroup.add_argument("--template-only", action="store_true", help="when creating the png cart, ignore the label & title, using just the template")
+
+        pgroup = parser.add_argument_group("version options")
+        pgroup.add_argument("--version", action="store_true", help=f"print version of cart. (if no cart is provided - print {shrinko_name} version and exit)")
+        pgroup.add_argument("--output-version", type=parse_version_func, help=f"the version to convert the cart to. ({version_desc})")
+        pgroup.add_argument("--update-version", action="store_true", help=f"convert the cart to the latest supported version")
+
+        pgroup = parser.add_argument_group("misc. options")
+        pgroup.add_argument("-s", "--script", action="append", help="manipulate the cart via a custom python script - see README for api details")
+        pgroup.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
         pgroup.add_argument("--extra-output", nargs='+', action="append", metavar=("OUTPUT [FORMAT]", ""),
                             help="additional output file to produce (and optionally, the format to use)")
 
@@ -238,11 +249,6 @@ def create_main(lang):
                                 uncompress_pods=None, keep_pod_compression=None, base64_pods=None)
 
         pgroup = parser.add_argument_group("other interesting options (semi-undocumented)")
-        pgroup.add_argument("--template-image", help=f"template image to use for png carts, instead of the default {lang} template")
-        pgroup.add_argument("--template-only", action="store_true", help="when creating the png cart, ignore the label & title, using just the template")
-        pgroup.add_argument("--version", action="store_true", help=f"print version of cart. (if no cart is provided - print {shrinko_name} version and exit)")
-        pgroup.add_argument("--output-version", type=int, help=f"the version to convert the cart to. ({version_desc})")
-        pgroup.add_argument("--update-version", action="store_true", help="convert the cart to the highest supported version")
         pgroup.add_argument("--bbs", action="store_true", help="interpret input as a bbs cart id, e.g. '#...' and download it from the bbs")
         pgroup.add_argument("--url", action="store_true", help="interpret input as a URL, and download it from the internet")
         if is_pico8:
@@ -550,7 +556,7 @@ def create_main(lang):
 
         for cart in itertools.chain((main_cart,), extra_carts):
             if args.update_version:
-                cart.set_version(get_default_version_func())
+                cart.set_version(get_latest_version_func())
             elif e(args.output_version):
                 cart.set_version(args.output_version)
         

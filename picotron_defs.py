@@ -28,6 +28,12 @@ def get_default_picotron_runtime():
     runtime = 21 # TODO - update as newer versions get more common
     return maybe_int(os.getenv("PICOTRON_RUNTIME_VERSION_ID"), runtime)
 
+def get_latest_picotron_runtime():
+    if os.getenv("PICO8_VERSION_LATEST_IS_DEFAULT"): # for tests
+        return get_default_picotron_runtime ()
+    else:
+        return 27 # TODO - update as I get around to testing new versions (and maybe create a map between version string and runtime version?)
+
 def get_picotron_version_id(runtime):
     return 2 # always for now?
 

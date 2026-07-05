@@ -696,6 +696,8 @@ Normally, shrinko8 will take the label and title (if any) from the input cart, s
 
 However, it is also possible to override the label from a custom 128x128 screenshot via `--label <path>` and the title via `--title "some title"`
 
+In addition, since pico8 supports reading carts regardless of if they look like pico8 carts, you can specify a custom template image (overriding [template.png](https://github.com/thisismypassport/shrinko8/blob/main/template.png)) via `--template-image <path>` (and optionally `--template-only` to avoid adding the label and title on top of it). However, this feature should be used in moderation.
+
 ## Merging multiple carts into one
 
 You can tell Shrinko8 to merge specific sections from other carts into the input cart using `--merge path sections [format]`.
@@ -747,6 +749,16 @@ You can create a multi-cart export by supplying additional input carts:
 If you need to explicitly specify the type of each additional input cart, you can instead use `--extra-input`
 
 Also, if both the input and output are exports, all carts from the input get placed in the output, unless `--cart` is explicitly specified.
+
+## Pico8 versions
+
+By default, Shrinko8 tries to preserve the pico8 version the cart was created with, as well as - when minifying - avoid using features not supported by said pico8 version.
+
+However, some cart formats (roms, js and pod exports) don't store this version, in which case pico8 will create a cart targetting a recent pico8 version, which will require that version of pico8 or newer to load.
+
+You can use `--output-version <version>` (where version can be a string like 'v0.2.6b' or a raw number like 42) to explicitly specify which version to use for the generated cart - or just `--update-version` to use the latest version shrinko8 supports.
+
+You can also use `--version` to print the input cart's pico8 version.
 
 # Unminification
 
@@ -1041,7 +1053,7 @@ Cart manipulation features:
 * `--merge` - merge another cart into the cart. E.g. `--merge other.p64` or `--merge other.p64 "sfx/*,gfx/*"`
 
 Cart formats:
-* p8 - Picotron cart source
+* p64 - Picotron cart source
 * dir - Picotron cart exported into a directory
 * png - Picotron cart exported into a png
 * rom - Picotron cart exported into a rom

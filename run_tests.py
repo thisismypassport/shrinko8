@@ -21,6 +21,7 @@ parser.add_argument("--profile", action="store_true", help="enable profiling")
 # for test consistency:
 os.environ["PICO8_EXPORT_REPRO_TIME"] = '1577934245'
 os.environ["PICO8_PLATFORM_CHAR"] = 'w'
+os.environ["PICO8_VERSION_LATEST_IS_DEFAULT"] = 't'
 
 def norm_paths(output):
     return output.replace("\\", "/")

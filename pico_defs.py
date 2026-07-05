@@ -315,6 +315,7 @@ def float_is_negzero(value):
 # pico-8 versions
 
 k_version_tuples = {
+    28: (0,2,0,0),
     29: (0,2,1,0),
     30: (0,2,2,0),
     31: (0,2,2,1),
@@ -336,25 +337,75 @@ def get_default_pico8_version():
     version_id = 42 # TODO - update as newer versions get more common
     return maybe_int(os.getenv("PICO8_VERSION_ID"), version_id)
 
+def get_latest_pico8_version():
+    if os.getenv("PICO8_VERSION_LATEST_IS_DEFAULT"): # for tests
+        return get_default_pico8_version()
+    else:
+        return max(k_version_tuples)
+
 def get_default_platform():
-    # there's also 'E' for either Emscripten or Education
+    # (there's also 'E' - see format_platform)
     platform = 'w' if os.name == 'nt' else 'x' if sys.platform == 'darwin' else 'l'
     return os.getenv("PICO8_PLATFORM_CHAR", platform)
 
-def get_version_tuple(id):
+def format_platform(platform):
+    if platform == 'w':
+        return '[w]indows'
+    elif platform == 'x':
+        return 'macos[x]'
+    elif platform == 'l':
+        return '[l]inux'
+    elif platform == 'E':
+        return '[E]mscripten' # or [E]ducation?
+    else:
+        return 'platform=[%s]' % platform
+
+def get_pico8_version_tuple(id):
     """Maps a pico8 version id to a tuple representing the actual version (e.g. (0,2,4,1) is v0.2.4b)"""
     version = k_version_tuples.get(id)
     if version is None:
-        if id >= 29:
+        if id >= 28:
             eprint(f"warning - unknown version id {id}, outputting wrong version number (should be benign)")
             version = k_version_tuples.get(get_default_pico8_version(), (0,0,0,0)) # better than nothing?
         elif id >= 19:
-            version = (0,2,0,0)
+            version = (0,2,0,0) # early 0.2.0 betas?
         elif id >= 8:
             version = (0,1,5+id,0) # 13 .. 23
         else:
             version = (0,0,0,0)
     return version
+
+def format_pico8_version(tuple):
+    if tuple[1] >= 2:
+        letter = string.ascii_lowercase[tuple[3]] if 26 > tuple[3] > 0 else ""
+        return "v%d.%d.%d%s" % (tuple[0], tuple[1], tuple[2], letter)
+    else:
+        return "pre-v0.2.0" # the tuple doesn't correspond to the real version here (TBD - find out the old versions per version id)
+
+def parse_pico8_version(str):
+    match = re.fullmatch(r"v(\d+).(\d+).(\d+)([a-z]?)", str)
+    if match:
+        tuple = match.groups()
+        letter_idx = string.ascii_lowercase.index(tuple[3]) if tuple[3] else 0
+        tuple = (int(tuple[0]), int(tuple[1]), int(tuple[2]), letter_idx)
+        
+        if tuple[1] < 2:
+            throw("pre-v0.2.0 versions are not supported - you must specify the raw numeric version if you know it") # (same TBD as above)
+        max_key = -1
+        for key, value in k_version_tuples.items():
+            if tuple >= value:
+                max_key = max(max_key, key)
+        if k_version_tuples[max_key] != tuple:
+            if max_key == get_latest_pico8_version ():
+                throw(f"the version {str} is too new and not known yet - you must specify the raw number version if you know it")
+            else:
+                eprint(f"the version {str} has been changed to {format_pico8_version(k_version_tuples[max_key])} - the closest known version with its own version id")
+        return max_key
+    else:
+        key = maybe_int(str)
+        if key is None:
+            throw(f"the version {str} is not in valid format (should be e.g. v0.2.6b)")
+        return key
 
 def get_res_path():
     return path_dirname(path_resolve(__file__))

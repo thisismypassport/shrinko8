@@ -747,7 +747,7 @@ def write_cart64_compressed_size(cart, handler=True, **opts):
     write_cart64_to_rom(cart, size_handler=handler, **opts)
 
 def write_cart64_version(cart):
-    print("version: %d" % cart.version_id)
+    print("file version: %d" % cart.version_id)
     print("runtime version: %d" % cart.get_runtime_version(-1))
 
 from picotron_export import read_cart64_export, write_to_cart64_export
