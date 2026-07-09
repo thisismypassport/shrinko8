@@ -729,6 +729,18 @@ function updateLintResults() {
     applyErrors(code, stdouterr, "#lint-output");
 }
 
+function runHelp() {
+    api.getHelp().then(help => {
+        let helpwin = window.open('', '_blank');
+        let pre = helpwin.document.createElement("pre");
+        pre.innerText = help;
+        helpwin.document.body.appendChild(pre);
+    }).catch(e => {
+        alert("--help failed");
+    });
+    return true;
+}
+
 // do the shrinko action for the current tab. returns awaitable
 function doShrinkoAction() {
     if (isLoading) {

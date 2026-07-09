@@ -380,8 +380,10 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
         </div>
 
         <div id="tab-advanced" class="flex-column margin" style="flex: 1">
-          <span style="color: gray; margin-bottom: 10px">
-            See <a href="https://github.com/thisismypassport/shrinko8#shrinko8" target="_blank">here</a> for the readme.
+          <span style="margin-bottom: 10px">
+            <strong>Command-line Arguments:</strong>
+            (See <a href="https://github.com/thisismypassport/shrinko8#shrinko8" target="_blank">Readme</a> and
+            <a href="#" onclick="runHelp()">--help</a> for details)
           </span>
           <textarea id="extra-args" style="flex: 3; margin-bottom: 5px" spellcheck="false"
               placeholder="You can add custom {{webappname}} command line arguments here (see readme)"></textarea>
@@ -391,6 +393,9 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
               <button type="button" style="margin-bottom: 10px" onclick="this.parentElement.click()">Browse...</button>
             </label>
             <span id="advanced-upload-ok" style="color: darkgreen; display: none"></span>
+          </span>
+          <span style="padding-top: 10px; margin-bottom: 5px; border-top: 1px solid black;">
+            <strong>Python Script:</strong>
           </span>
           <div id="script-code" class="ace-textarea" style="flex: 6"
               placeholder="You can paste a custom python script here that customizes how {{webappname}} operates.

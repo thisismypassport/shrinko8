@@ -35,7 +35,11 @@ function run_main(main, args, fail) {
         }
     } catch (e) {
         console.error(e);
-        if (!e.message || (e instanceof pyodide.ffi.PythonError && e.type == "SystemExit")) {
+        let isExit = e instanceof pyodide.ffi.PythonError && e.type == "SystemExit";
+        if (!e.message || isExit) {
+            if (isExit && fail === false) {
+                return [-1, outputCapture];
+            }
             e.message = outputCapture; // rest doesn't matter
         } else {
             e.message += "\n" + outputCapture;
@@ -215,6 +219,11 @@ let api = {
     getVersion: async () => {
         await initPromise;
         return shrinko(["--version"], true);
+    },
+    getHelp: async () => {
+        await initPromise;
+        let _, stdout = shrinko(["--help"], false);
+        return stdout;
     },
 
     runShrinko: async (args, argStr, useScript, encoding, usePreview, doZip, extraNames) => {
