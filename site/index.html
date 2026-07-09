@@ -17,7 +17,6 @@
     <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
     <link href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.11.1/src-min/ace.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/comlink@4.4.1/dist/umd/comlink.min.js"></script>
     <style>
       .ace_placeholder {
         transform: scale(1);
@@ -404,7 +403,11 @@ For example, you can paste the example sublanguage from the readme"></div>
       </div>
     </form>
 
-    <script src="utils.js"></script>
-    <script src="index.js"></script>
+    <script src="utils.js" type="module"></script>
+    <script src="index.js" type="module"></script>
+    <script type="module">
+      import * as cbs from './index.js';
+      Object.assign(window, cbs);
+    </script>
   </body>
 </html>

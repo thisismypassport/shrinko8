@@ -1,7 +1,6 @@
-'use strict';
-importScripts("https://cdn.jsdelivr.net/npm/comlink@4.4.1/dist/umd/comlink.min.js");
-importScripts("https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js")
-importScripts("utils.js")
+import * as Comlink from "https://cdn.jsdelivr.net/npm/comlink@4.4.2/dist/esm/comlink.min.js";
+import {loadPyodide} from "https://cdn.jsdelivr.net/pyodide/v314.0.2/full/pyodide.mjs";
+import {getLowExt, getParentDir, joinPath, isFormatText} from "./utils.js";
 
 let targetLang = new URLSearchParams(location.search).get("target");
 let isPico8 = targetLang === "pico8";
@@ -65,7 +64,6 @@ async function initShrinko() {
     try {
         initProgress = 30;
         self.pyodide = await loadPyodide({
-            fullStdLib: false,
             stdout: msg => onOutput(msg, console.info),
             stderr: msg => onOutput(msg, console.warn),
         });

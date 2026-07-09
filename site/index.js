@@ -1,4 +1,5 @@
-'use strict';
+import * as Comlink from "https://cdn.jsdelivr.net/npm/comlink@4.4.2/dist/esm/comlink.min.js";
+import {getLowExt, getWithoutAllExts, getBaseName, joinPath, isFormatText, isFormatImg, isFormatExport, isFormatNeedZip, isFormatUrl} from "./utils.js";
 
 let targetLang = $("html").data("target");
 let isPico8 = targetLang === "pico8";
@@ -275,7 +276,7 @@ async function loadInputFiles(inputs) {
 }
 
 // called when file input selection changed
-function loadSelectedFiles(input) {
+export function loadSelectedFiles(input) {
     let entries = input.webkitEntries;
     if (entries && entries.length > 0) {
         loadInputFiles(entries);
@@ -304,7 +305,7 @@ function getDragTarget(elem) {
     return jqelem;
 }
 
-function onDragEnter(elem, event) {
+export function onDragEnter(elem, event) {
     if (isFileDrag(event)) {
         event.preventDefault();
         event.dataTransfer.dropEffect = "copy";
@@ -312,13 +313,13 @@ function onDragEnter(elem, event) {
     }
 }
 
-function onDragLeave(elem, event) {
+export function onDragLeave(elem, event) {
     if (isFileDrag(event)) {
         getDragTarget(elem).removeClass("dragover");
     }
 }
 
-function onDrop(elem, event, type) {
+export function onDrop(elem, event, type) {
     if (isFileDrag(event)) {
         event.preventDefault();
         onDragLeave(elem, event);
@@ -329,7 +330,7 @@ function onDrop(elem, event, type) {
 }
 
 // called to close the input error overlay
-function onInputErrorClose() {
+export function onInputErrorClose() {
     $('#input-error-overlay').hide();
 }
 
@@ -407,17 +408,17 @@ async function beginInputSelect(paths, reason, initialSel) {
 }
 
 // called to finish selecting a file
-function onInputSelect() {
+export function onInputSelect() {
     inputSelectResolve();
 }
 
-function onInputSelectClose() {
+export function onInputSelectClose() {
     $('#input-select-overlay').hide();
 }
 
 let hasPicoDat = false;
 
-async function loadPicoDat(file) {
+export async function loadPicoDat(file) {
     let data = await readFile(file);
     await api.updatePicoDat(data);
     
@@ -427,11 +428,11 @@ async function loadPicoDat(file) {
     doShrinkoAction();
 }
 
-function preLoadExtraFile() {
+export function preLoadExtraFile() {
     $("#advanced-upload-ok").hide()
 }
 
-async function loadExtraFile(file) {
+export async function loadExtraFile(file) {
     let path = file.name // drop in root for simplicity
     let data = await readFile(file)
     await api.uploadExtraFile(path, data)
@@ -465,7 +466,7 @@ function setImageUrl(selector, data) {
 }
 
 // copy the edu url to clipboard
-function copyUrlToClipboard() {
+export function copyUrlToClipboard() {
     navigator.clipboard.writeText($("#minify-url").attr("href"));
     $("#minify-url-copied").show();
 }
@@ -482,7 +483,7 @@ function getFormatExt(format) {
 }
 
 // download the output file
-async function saveOutputFile() {
+export async function saveOutputFile() {
     let format = $("#minify-format").val();
     let output = outputCache[format].output;
 
@@ -729,7 +730,7 @@ function updateLintResults() {
     applyErrors(code, stdouterr, "#lint-output");
 }
 
-function runHelp() {
+export function runHelp() {
     api.getHelp().then(help => {
         let helpwin = window.open('', '_blank');
         let pre = helpwin.document.createElement("pre");
@@ -839,7 +840,7 @@ function onTabChange() {
 }
 
 // called when the target (language) changes
-function onTargetChange() {
+export function onTargetChange() {
     let newTarget = $("#target").val()
     if (newTarget != targetLang) {
         if (newTarget == "pico8") {
@@ -897,7 +898,7 @@ async function runTests(mode, argsStr) {
 }
 
 $(() => {
-    self.api = Comlink.wrap(new Worker("worker.js?target=" + targetLang));
+    self.api = Comlink.wrap(new Worker("worker.js?target=" + targetLang, {"type": "module"}));
 
     showLoading();
     showVersion();
