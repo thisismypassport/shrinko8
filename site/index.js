@@ -731,10 +731,16 @@ function updateLintResults() {
 }
 
 export function runHelp() {
-    api.getHelp().then(help => {
+    let fullElem = $("#measure-full");
+    let charElem = $("#measure-char");
+    let columns = Math.floor(fullElem.width() / charElem.width());
+
+    api.getHelp(columns).then(help => {
         let helpwin = window.open('', '_blank');
         let pre = helpwin.document.createElement("pre");
-        pre.innerText = help;
+        pre.style.whiteSpace = "pre-wrap";
+        pre.innerHTML = help;
+        helpwin.document.body.style.margin = fullElem.css("margin");
         helpwin.document.body.appendChild(pre);
     }).catch(e => {
         alert("--help failed");

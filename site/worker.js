@@ -1,5 +1,7 @@
 import * as Comlink from "https://cdn.jsdelivr.net/npm/comlink@4.4.2/dist/esm/comlink.min.js";
 import {loadPyodide} from "https://cdn.jsdelivr.net/pyodide/v314.0.2/full/pyodide.mjs";
+import * as AnsiToHtml from 'https://cdn.jsdelivr.net/npm/ansi-to-html@0.7.2/+esm';
+import * as AnsiToText from 'https://cdn.jsdelivr.net/npm/strip-ansi@7.2.0/+esm';
 import {getLowExt, getParentDir, joinPath, isFormatText} from "./utils.js";
 
 let targetLang = new URLSearchParams(location.search).get("target");
@@ -17,6 +19,8 @@ let scriptFile = "__script.py";
 let picoDat = "__" + targetLang + ".dat";
 
 let outputCapture = undefined;
+let outputColumns = undefined;
+let outputHtml = false;
 let initProgress = 0;
 let hasPicoDat = false;
 
@@ -53,21 +57,58 @@ function shrinko(args, fail) {
     return run_main(self.shrinko_main, args, fail)
 }
 
-function onOutput(msg, loggerFunc) {
-    loggerFunc(msg);
-    if (outputCapture != undefined) {
-        outputCapture += msg + "\n";
+class TtyOutput {
+    constructor(logger) {
+        this.logger = logger;
+        this.decoder = new TextDecoder();
+        this.htmlConverter = new AnsiToHtml.default({stream: true, escapeXML: true});
+        this.textConverter = AnsiToText.default;
+        this.rawBuffer = "";
+        this.isatty = true;
+    }
+
+    getTerminalSize() {
+        return { columns: outputColumns ?? 80, rows: 25 };
+    }
+
+    write(buffer) {
+        try {
+            this.rawBuffer += this.decoder.decode(buffer, {stream: true});
+
+            let ln;
+            while ((ln = this.rawBuffer.indexOf('\n')) >= 0) {
+                let line = this.rawBuffer.slice(0, ln + 1);
+                this.rawBuffer = this.rawBuffer.slice(ln + 1);
+
+                let cleanLine = this.textConverter(line);
+                this.logger(cleanLine);
+
+                if (outputCapture != undefined) {
+                    if (outputHtml) {
+                        outputCapture += this.htmlConverter.toHtml(line);
+                    } else {
+                        outputCapture += cleanLine;
+                    }
+                }
+            }
+
+            return buffer.length;
+        } catch (e) {
+            console.error("error in tty output:");
+            console.error(e);
+            return 0;
+        } 
     }
 }
 
 async function initShrinko() {
     try {
         initProgress = 30;
-        self.pyodide = await loadPyodide({
-            stdout: msg => onOutput(msg, console.info),
-            stderr: msg => onOutput(msg, console.warn),
-        });
+        self.pyodide = await loadPyodide();
         initProgress = 60;
+
+        pyodide.setStdout(new TtyOutput(console.info));
+        pyodide.setStderr(new TtyOutput(console.warn));
 
         self.fs = pyodide.FS
         fs.writeFile(inputFile, "");
@@ -218,10 +259,17 @@ let api = {
         await initPromise;
         return shrinko(["--version"], true);
     },
-    getHelp: async () => {
+    getHelp: async (columns) => {
         await initPromise;
-        let _, stdout = shrinko(["--help"], false);
-        return stdout;
+        try {
+            outputHtml = true;
+            outputColumns = columns;
+            let [_, stdout] = shrinko(["--help"], false);
+            return stdout;
+        } finally {
+            outputColumns = undefined;
+            outputHtml = false;
+        }
     },
 
     runShrinko: async (args, argStr, useScript, encoding, usePreview, doZip, extraNames) => {

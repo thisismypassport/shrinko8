@@ -385,7 +385,7 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
             <a href="#" onclick="runHelp()">--help</a> for details)
           </span>
           <textarea id="extra-args" style="flex: 3; margin-bottom: 5px" spellcheck="false"
-              placeholder="You can add custom {{webappname}} command line arguments here (see readme)"></textarea>
+              placeholder="You can add custom {{webappname}} command line arguments here"></textarea>
           <span>
             <label style="margin-left: 12px">Add additional files (for use in command line arguments):
               <input type="file" hidden onclick="preLoadExtraFile()" onchange="loadExtraFile(this.files[0])"/>
@@ -402,6 +402,9 @@ For example, you can paste the example sublanguage from the readme"></div>
         </div>
       </div>
     </form>
+    <div id="measure-full" class="full" style="visibility: hidden; margin: 8px">
+      <pre id="measure-char" style="position: absolute">M</pre>
+    </div>
 
     <script src="utils.js" type="module"></script>
     <script src="index.js" type="module"></script>
