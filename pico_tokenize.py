@@ -252,8 +252,7 @@ class ConstToken(Token):
                   # (but not used for output under minify-tokens)
         if isinstance(m.parsed_value, (int, float)):
             allow_unary = can_replace_with_unary(m.parent) if m.parent else True
-            format_num = format_fixnum if m.lang == Language.pico8 else format_luanum
-            return format_num(m.parsed_value, sign=None if allow_unary else "")
+            return format_num(m.lang, m.parsed_value, sign=None if allow_unary else "")
         else:
             return format_string_literal(m.parsed_value, long=False)
 
@@ -826,5 +825,5 @@ def parse_string_literal(str, lang=Language.pico8):
         return "".join(litparts)
 
 from pico_parse import Node, VarKind, can_replace_with_unary
-from pico_output import format_fixnum, format_luanum, format_string_literal
+from pico_output import format_num, format_string_literal
 from pico_process import Error

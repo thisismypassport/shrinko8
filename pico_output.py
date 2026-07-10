@@ -1,5 +1,5 @@
 from utils import *
-from pico_defs import k_fixnum_mask, k_luaint_mask, float_is_negative
+from pico_defs import k_fixnum_mask, k_luaint_mask, float_is_negative, Language
 from pico_tokenize import tokenize, parse_fixnum
 from pico_tokenize import Token, k_char_escapes, CommentHint, k_keep_prefix
 from pico_parse import k_nested
@@ -206,12 +206,24 @@ def format_luanum(value, sign=None, base=None, allow_not=True):
 
     return minvalue
 
+def format_num(lang, value, sign=None, base=None):
+    if lang == Language.pico8:
+        return format_fixnum(value, sign, base)
+    elif lang == Language.picotron:
+        return format_luanum(value, sign, base)
+    else:
+        fail()
+
 k_char_escapes_rev = {v: k for k, v in k_char_escapes.items() if k != '\n'}
 k_char_escapes_rev.update({"\0": "0", "\x0e": "14", "\x0f": "15"})
 
 k_char_escapes_rev_min = {k: v for k, v in k_char_escapes_rev.items() if k in "\0\n\r\"'\\"}
 
-def format_string_literal(value, use_ctrl_chars=True, use_complex_long=True, long=None, quote=None):
+k_char_escapes_rev_lua = {k: str(ord(k)) if 1 <= ord(k) <= 6 else v for k, v in k_char_escapes_rev.items()}
+k_char_escapes_rev_lua.update({chr(k): str(k) for k in range(0x10, 0x20)})
+k_char_escapes_rev_lua.update({chr(k): str(k) for k in range(0x80, 0x100)})
+
+def format_string_literal(value, long=None, quote=None, use_ctrl_chars=True, use_complex_long=True, plain_lua=True):
     """format a pico8 string to a pico8 string literal"""
 
     if long != False:
@@ -236,7 +248,8 @@ def format_string_literal(value, use_ctrl_chars=True, use_complex_long=True, lon
 
         exclude_esc = "'" if quote == '"' else '"'
             
-        char_escapes_rev = k_char_escapes_rev_min if use_ctrl_chars else k_char_escapes_rev
+        char_escapes_rev = (k_char_escapes_rev_min if use_ctrl_chars else
+                            k_char_escapes_rev_lua if plain_lua else k_char_escapes_rev)
 
         litparts = []
         for i, ch in enumerate(value):

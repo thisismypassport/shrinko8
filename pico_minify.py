@@ -4,7 +4,7 @@ from pico_tokenize import Token, TokenType, StopTraverse, k_skip_children
 from pico_parse import Node, NodeType, VarKind
 from pico_parse import k_unary_ops_prec, get_precedence, is_right_assoc, can_replace_with_unary
 from pico_parse import is_vararg_expr, is_short_block_stmt, is_root_global_or_builtin_local
-from pico_output import format_luanum, format_fixnum, format_string_literal
+from pico_output import format_num, format_string_literal
 
 class Focus(Bitmask):
     chars = compressed = tokens = ...
@@ -487,8 +487,7 @@ def minify_code(ctxt, root, minify_opts):
 
             if token.type == TokenType.number:
                 allow_unary = can_replace_with_unary(token.parent)
-                format_num = format_luanum if ctxt.lang == Language.picotron else format_fixnum
-                token.modify(format_num(token.parsed_value, sign=None if allow_unary else ''))
+                token.modify(format_num(ctxt.lang, token.parsed_value, sign=None if allow_unary else ''))
         
         if token.type == TokenType.number:
             if token.value.startswith("-") or token.value.startswith("~"): # either due to format_fixnum above, or due to ConstToken.value

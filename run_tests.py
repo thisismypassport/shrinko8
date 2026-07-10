@@ -178,6 +178,7 @@ def run():
              pico8_output="output.p8.printh")
     run_test("nominify", "input.p8", "output-nomin.p8", check_output=False, pico8_output="output.p8.printh")
     run_test("reformat", "input.p8", "input-reformat.p8", "--unminify", "--unminify-indent", "4")
+    run_test("tolua", "tolua.p8", "tolua.lua", "--unminify", "--unminify-plain-lua", pico8_output="tolua.p8.printh")
 
     run_test("nopreserve", "nopreserve.p8", "nopreserve.p8", "--minify",
              "--no-preserve", "circfill,rectfill", pico8_output_val="yep")

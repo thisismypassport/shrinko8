@@ -771,6 +771,9 @@ Of course, renaming cannot be undone, so the resulting code may still not be rea
 Options:
 
 * `--unminify-indent` : Specify the size of the indentation to use (default: 2). Can also pass `tabs` to indent with tabs instead.
+* `--unminify-plain-lua` : If specified, the output will not contain pico8-specific syntax.
+  * In order to run the result on a non-pico8 lua vm, you would still need to define any used builtins and ensure the code doesn't rely on pico8 runtime quirks like fixed-point numbers.
+  * The result is currently best-effort and a few things (such as `l().k += r` or redefining _ENV or certain builtins) will not be translated correctly.
 
 # Custom Python Script
 

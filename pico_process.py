@@ -314,7 +314,7 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
             
             if need_unminify:
                 for subsrc in source:
-                    subsrc.text = unminify_code(get_sub_root(root, subsrc), unminify)
+                    subsrc.text = unminify_code(ctxt, get_sub_root(root, subsrc), unminify)
 
             if count:
                 assert not source.is_super
