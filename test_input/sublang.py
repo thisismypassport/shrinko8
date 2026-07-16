@@ -10,7 +10,6 @@ class MySubLanguage(SubLanguageBase):
         # our trivial language consists of space-separated tokens in newline-separated statements
         self.stmts = [stmt.split() for stmt in str.splitlines()]
         # we can report parsing errors:
-        self.args = args
         #on_error("Example")
 
     # these are utility functions for our own use:

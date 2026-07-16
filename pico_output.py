@@ -282,9 +282,13 @@ def get_orig_wspace(pre, post, ctxt, allow_linebreaks, need_linebreak=False):
 
     return text
     
-def output_node(root, ctxt, minify_wspace=True, minify_lines=True, exclude_comments=True):
+def output_node(root, ctxt, minify_wspace=None, minify_lines=None, exclude_comments=None, minify=True):
     """convert a root back to a string, inserting as little whitespace as possible (under minify_wspace),
        or using original whitespace (optionally except comments)"""
+    minify_wspace = default(minify_wspace, minify)
+    minify_lines = default(minify_lines, minify)
+    exclude_comments = default(exclude_comments, minify)
+    
     output = []
     prev_token = Token.none
     prev_vline = 0

@@ -425,15 +425,19 @@ def create_main(lang):
             args.keep_meta_keys = default_keep_meta_keys
 
         args.preproc_cb, args.postproc_cb, args.preproc_syntax_cb = None, None, None
+        args.include_cb = lambda name: find_in_builtin_script(name, "include_main")
         args.sublang_cb = lambda name: find_in_builtin_script(name, "sublanguage_main")
+        args.compiler_cb = lambda name: find_in_builtin_script(name, "compiler_main")
         if args.script:
             for script in args.script:
-                preproc_main, postproc_main, preproc_syntax_main, sublang_main = import_from_script_by_path(script,
-                    "preprocess_main", "postprocess_main", "preprocess_syntax_main", "sublanguage_main")
+                preproc_main, postproc_main, preproc_syntax_main, include_main, sublang_main, compiler_main = import_from_script_by_path(script,
+                    "preprocess_main", "postprocess_main", "preprocess_syntax_main", "include_main", "sublanguage_main", "compiler_main")
                 args.preproc_cb = func_union(args.preproc_cb, preproc_main)
                 args.postproc_cb = func_union(postproc_main, args.postproc_cb) # (reverse order)
                 args.preproc_syntax_cb = func_union(args.preproc_syntax_cb, preproc_syntax_main)
+                args.include_cb = func_union(include_main, args.include_cb, return_early=e) # (reverse order)
                 args.sublang_cb = func_union(sublang_main, args.sublang_cb, return_early=e) # (reverse order)
+                args.compiler_cb = func_union(compiler_main, args.compiler_cb, return_early=e) # (reverse order)
 
         base_count_handler = ParsableCountHandler if args.parsable_count else True
         if args.input_count:
@@ -579,7 +583,8 @@ def create_main(lang):
             ctxt = ContextCls(extra_builtins=args.builtin, not_builtins=args.not_builtin, 
                               use_local_builtins=not args.global_builtins_only,
                               extra_local_builtins=args.local_builtin,
-                              srcmap=args.rename_map, sublang_getter=args.sublang_cb, version=cart.version_id,
+                              srcmap=args.rename_map, version=cart.version_id, include_getter=args.include_cb,
+                              sublang_getter=args.sublang_cb, compiler_getter=args.compiler_cb,
                               hint_comments=not args.ignore_hints, consts=args.const)
             if args.preproc_cb:
                 args.preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args)
@@ -614,7 +619,7 @@ def create_main(lang):
                 file_write_maybe_text(args.rename_map, "\n".join(ctxt.srcmap))
                 
             if args.postproc_cb:
-                args.postproc_cb(cart=cart, args=args)
+                args.postproc_cb(cart=cart, args=args, ctxt=ctxt)
             
             if args.count:
                 write_code_size_func(cart, handler=args.count)

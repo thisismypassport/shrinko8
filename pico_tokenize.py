@@ -13,12 +13,19 @@ k_preserve_prefix = "preserve:"
 k_lint_prefix = "lint:"
 k_keep_prefix = "keep:"
 k_deflang_prefix = "deflanguage:"
+k_dynamic_include_prefix = "dynamic-include:"
+k_switch_compiler_prefix = "switch-compiler:"
 
 k_lint_func_prefix = "func::"
 k_lint_count_stop = "count::stop"
 
 k_language_prefix = "language::"
 k_rename_prefix = "rename::"
+k_placeholder_prefix = "placeholder::"
+
+def split_hint_args(data):
+    name, args = list_unpack(data.strip().split(" ", 1), 2, "")
+    return name.strip(), args.strip()
 
 class StopTraverse(BaseException):
     pass
@@ -179,6 +186,7 @@ class TokenNodeBase:
 
 class TokenType(Enum):
     number = string = ident = keyword = punct = ...
+    compiler = placeholder = ... # special
 
 class Token(TokenNodeBase):
     """A pico8 token, at 'source'.text['idx':'endidx'] (which is equal to its 'value'). Its 'type' is a TokenType.
@@ -288,7 +296,7 @@ k_hint_split_re = re.compile(r"[\s,]+")
 
 class NextTokenMods:
     def __init__(m):
-        m.var_kind = m.keys_kind = m.is_const = m.func_kind = m.merge_prev = m.sublang = m.rename = None
+        m.var_kind = m.keys_kind = m.is_const = m.func_kind = m.merge_prev = m.sublang = m.rename = m.placeholder = None
         m.comments = None
         
     def add_comment(m, cmt):
@@ -302,8 +310,8 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
     vline = 0
     tokens = []
     errors = []
+    real_tokens = None
     next_mods = None
-    process_hints = ctxt and ctxt.hint_comments
     if lang is None:
         lang = ctxt.lang if ctxt else Language.pico8
     
@@ -351,24 +359,69 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
         if next_mods != None:
             add_next_mods(token, next_mods)
             next_mods = None
+        return token
 
     def add_error(msg, off=-1):
         add_token(None, idx + off) # error token
         errors.append(Error(msg, tokens[-1]))
 
+    def add_dyn_include(include_data):
+        if ctxt and ctxt.include_getter:
+            include_name, include_args = split_hint_args(include_data)
+            include_func = ctxt.include_getter(include_name)
+            if include_func:
+                included_str = include_func(args=include_args, ctxt=ctxt)
+                if included_str != None:
+                    included_tokens, included_errors = tokenize(Source(include_name, included_str), ctxt, all_comments)
+                    tokens.extend(included_tokens)
+                    errors.extend(included_errors)
+                    return
+            eprint("warning - ignoring unrecognized dynamic include '%s'" % include_name)
+
     def add_sublang(token, sublang_data):
         if ctxt and ctxt.sublang_getter and token.type == TokenType.string:
-            sublang_name, sublang_args = list_unpack(sublang_data.split(" ", 1), 2, "")
+            sublang_name, sublang_args = split_hint_args(sublang_data)
             sublang_name, sublang_args = ctxt.map_langdef(sublang_name, sublang_args)
 
             sublang_cls = ctxt.sublang_getter(sublang_name)
             if sublang_cls:
                 add_lang_error = lambda msg: add_error(f"{sublang_name}: {msg}")
                 token.sublang_name = sublang_name
-                token.sublang = sublang_cls(token.parsed_value, args=sublang_args.strip(),
+                token.sublang = sublang_cls(token.parsed_value, args=sublang_args,
                                             ctxt=ctxt, on_error=add_lang_error)
             else:
                 eprint("warning - ignoring unrecognized language '%s'" % sublang_name)
+
+    def switch_compiler(compiler_data):
+        nonlocal real_tokens, tokens
+        if real_tokens != None:
+            real_tokens, tokens = None, real_tokens
+
+        if compiler_data != None:
+            if ctxt and ctxt.compiler_getter:
+                compiler_name, compiler_args = split_hint_args(compiler_data)
+                if compiler_name != "none":
+                    compiler_cls = ctxt.compiler_getter(compiler_name)
+                    if compiler_cls:
+                        curr_compiler = compiler_cls(args=compiler_args, ctxt=ctxt, src=source)
+                        for dyn_include in curr_compiler.get_dynamic_includes():
+                            add_dyn_include(dyn_include)
+                        
+                        compiler_token = add_token(TokenType.compiler, idx)
+                        compiler_token.compiler_name = compiler_name
+                        compiler_token.compiler = curr_compiler
+                        compiler_token.compiler_tokens = []
+                        real_tokens, tokens = tokens, compiler_token.compiler_tokens
+
+                    else:
+                        eprint("warning - ignoring unrecognized compiler '%s'" % compiler_name)
+
+    def add_placeholder(token, placeholder):
+        if token.type in (TokenType.string, TokenType.number):
+            token.type = TokenType.placeholder
+            token.placeholder_name, token.placeholder_args = split_hint_args(placeholder)
+        else:
+            eprint("warning - ignoring placeholder '%s' because it isn't a string or number" % placeholder)
 
     def add_next_mods(token, mods):
         if mods.comments != None:
@@ -385,13 +438,15 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
             token.merge_prev = mods.merge_prev
         if mods.rename != None:
             token.rename = mods.rename
+        if mods.placeholder != None:
+            add_placeholder(token, mods.placeholder)
         if mods.sublang != None:
             add_sublang(token, mods.sublang)
 
     def process_comment(orig_idx, comment, isblock):
         hint, hintdata = CommentHint.none, None
 
-        if process_hints:
+        if ctxt and ctxt.hint_comments:
             if comment.startswith(k_lint_prefix):
                 lints = k_hint_split_re.split(comment[len(k_lint_prefix):])
                 lints = [lint for lint in lints if lint]
@@ -408,12 +463,18 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
 
             elif comment.startswith(k_keep_prefix):
                 hint = CommentHint.keep
+                
+            elif comment.startswith(k_dynamic_include_prefix):
+                add_dyn_include(comment[len(k_dynamic_include_prefix):])
             
             elif comment.startswith(k_deflang_prefix):
                 sublang, sublang_def = list_unpack(comment[len(k_deflang_prefix):].split("=", 1), 2, "")
-                dest_sublang, dest_args = list_unpack(sublang_def.strip().split(" ", 1), 2, "")
+                dest_sublang, dest_args = split_hint_args(sublang_def)
                 ctxt.add_custom_langdef(sublang.strip(), dest_sublang, dest_args)
                 hint = CommentHint.auto
+                
+            elif comment.startswith(k_switch_compiler_prefix):
+                switch_compiler(comment[len(k_switch_compiler_prefix):])
 
             elif isblock:
                 hint = CommentHint.auto
@@ -439,6 +500,8 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
                     get_next_mods().sublang = comment[len(k_language_prefix):]
                 elif comment.startswith(k_rename_prefix) and not any(ch.isspace() for ch in comment):
                     get_next_mods().rename = comment[len(k_rename_prefix):]
+                elif comment.startswith(k_placeholder_prefix):
+                    get_next_mods().placeholder = comment[len(k_placeholder_prefix):]
                 else:
                     hint = CommentHint.none
         
@@ -610,7 +673,11 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
     
     if next_mods or all_comments:
         add_token(None, idx) # end token, for ending whitespace/comments/etc
+    if real_tokens != None:
+        switch_compiler(None)
+
     return tokens, errors
+    
 
 def count_tokens(tokens):
     count = 0
@@ -827,4 +894,4 @@ def parse_string_literal(str, lang=Language.pico8):
 
 from pico_parse import Node, VarKind, can_replace_with_unary
 from pico_output import format_fixnum, format_luanum, format_string_literal
-from pico_process import Error
+from pico_process import Error, Source

@@ -1466,12 +1466,12 @@ class BinaryBuffer:
         m.w_fill(addr, 0, count)
 
 def e(value):
-    """Return if 'value' is not None (for my sanity)"""
+    """Return if 'value' is not None (for my sanity and others' insanity)"""
     return value is not None
 
 def default(value, defval):
     """Return 'defval' if 'value' is None"""
-    return value if e(value) else defval
+    return value if value != None else defval
 
 def nop(value):
     """The identity function"""

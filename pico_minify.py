@@ -434,7 +434,7 @@ def minify_code(ctxt, root, minify_opts):
                     minify_merge_assignments(prev, node, ctxt, safe_reorder)
 
     def fixup_tokens(token):
-
+        
         # minify sublangs
 
         sublang = getattr(token, "sublang", None)

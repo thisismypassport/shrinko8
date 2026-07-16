@@ -792,7 +792,7 @@ You can also pass arguments to your script by putting them after `--script-args`
 Example python script showing the API and various capabilities:
 ```python
 # this is called after your cart is read but before any processing is done on it:
-def preprocess_main(cart, args, **_):
+def preprocess_main(cart, args, ctxt, **_): # '**_' allows other (including future) arguments to be ignored
     print("hello from preprocess_main!")
 
     # 'cart' contains 'code' and 'rom' attributes that can be used to read or modify it
@@ -812,7 +812,7 @@ def preprocess_main(cart, args, **_):
     with open("binary.dat", "rb") as f:
         cart.code = cart.code.replace("$$DATA$$", bytes_to_string_contents(f.read()))
 
-    # args.script_args contains any arguments sent to this script
+    # args.script_args contains any arguments sent to the script
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("arg", help="first arg sent to script", nargs="?")
@@ -820,8 +820,13 @@ def preprocess_main(cart, args, **_):
     opts = parser.parse_args(args.script_args)
     print("Received args:", opts.arg, opts.my_script_opt)
 
+    # ctxt contains some information like `lang`, `version` and `builtins`
+    # you can also store extra information on it to pass between different stages,
+    # but use a unique name that starts with underscore to avoid conflicts:
+    ctxt._my_script_data = [opts, other_cart]
+
 # this is called before your cart is written, after it was fully processed
-def postprocess_main(cart, **_):
+def postprocess_main(cart, ctxt, **_):
     print("hello from postprocess_main!")
 
     # dump the code of the cart to be written
@@ -841,6 +846,9 @@ def postprocess_main(cart, **_):
     from pico_defs import to_p8str
     new_cart = Cart(code=to_p8str("-- rom-only cart 🐱"), rom=cart.rom)
     write_cart("new_cart2.rom", new_cart, CartFormat.rom)
+
+    # can use the data stored in the preprocess stage:
+    opts, other_cart = ctxt._my_script_data
 ```
 
 ## Advanced - custom sub-language

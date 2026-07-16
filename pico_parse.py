@@ -134,7 +134,7 @@ class NodeType(Enum):
     table = table_index = table_member = varargs = assign = op_assign = ...
     local = function = if_ = elseif = else_ = while_ = repeat = until = ...
     for_ = for_in = return_ = break_ = goto = label = block = do = ...
-    sublang = super_root = ... # special
+    sublang = compiler = placeholder = super_root = ... # special
 
 class Node(TokenNodeBase):
     """A pico8 syntax tree node, spanning 'source'.text['idx':'endidx']. Its 'type' is a NodeType
@@ -305,10 +305,13 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
     
     if super_root and super_root.children:
         globals, members, has_env = super_root.globals, super_root.members, super_root.has_env
+        compiler_tokens, placeholders = super_root.compiler_tokens, super_root.placeholders
     else:
         globals = LazyDict(lambda key: Global(key))
         members = LazyDict(lambda key: Member(key))
         has_env = False
+        compiler_tokens = []
+        placeholders = []
     
     scope.add(Local("_ENV", scope))
 
@@ -616,6 +619,10 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
             return Node(NodeType.varargs, [token])
         elif token.type == TokenType.ident:
             return parse_var(token=token)
+        elif token.type == TokenType.placeholder:
+            phnode = Node(NodeType.placeholder, [token], token=token)
+            placeholders.append(phnode)
+            return phnode
         else:
             add_error("unknown expression", fail=True)
 
@@ -860,6 +867,26 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
         mark_reassign(first)
         return Node(NodeType.op_assign, [first, token, source], target=first, source=source, op=op)
 
+    def parse_compiler(token):
+        nonlocal scope, labelscope, tokens, idx
+
+        old_tokens, tokens = tokens, token.compiler_tokens
+        old_idx, idx = idx, 0
+
+        # the compiler cannot access locals/labels outside it
+        old_scope, scope = scope, Scope(None, depth, funcdepth)
+        old_labelscope, labelscope = labelscope, LabelScope(None, funcdepth)
+        scope.add(old_scope.find("_ENV")) # normally/ideally
+
+        token.compiler_root = parse_root(token.compiler_name)
+        token.compiler_node = Node(NodeType.compiler, [token.compiler_root], root=token.compiler_root)
+        compiler_tokens.append(token)
+
+        tokens, idx = old_tokens, old_idx
+        scope, labelscope = old_scope, old_labelscope
+
+        return token.compiler_node
+
     def parse_misc_stmt():
         nonlocal idx
         idx -= 1
@@ -909,6 +936,8 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
             return Node(NodeType.label, [token, label, end], label=label)
         elif value == "function":
             return parse_function(stmt=True)
+        elif token.type == TokenType.compiler:
+            return parse_compiler(token)
         else:
             return parse_misc_stmt()
 
@@ -955,7 +984,7 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
                 if not node.var:
                     add_error_at(f"Unknown label {node.name}", node.children[0])
 
-    def parse_root():
+    def parse_root(compiler_name=None):
         nonlocal funcdepth
         funcdepth += 1
 
@@ -965,7 +994,10 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
 
         late_resolve_labels()
         if peek().type != None:
-            add_error("Expected end of input")
+            if compiler_name:
+                add_error(f"Expected end of input for {compiler_name}")
+            else:
+                add_error("Expected end of input")
         if idx < len(tokens):
             root.append_existing(take()) # extra comments/etc
         assert scope.parent is None
@@ -999,6 +1031,7 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
 
     if root:
         root.globals, root.members, root.has_env = globals, members, has_env
+        root.compiler_tokens, root.placeholders = compiler_tokens, placeholders
     
     return root, errors
 
