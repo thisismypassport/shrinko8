@@ -417,11 +417,11 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
                         eprint("warning - ignoring unrecognized compiler '%s'" % compiler_name)
 
     def add_placeholder(token, placeholder):
-        if token.type in (TokenType.string, TokenType.number):
+        if token.type == TokenType.string:
             token.type = TokenType.placeholder
             token.placeholder_name, token.placeholder_args = split_hint_args(placeholder)
         else:
-            eprint("warning - ignoring placeholder '%s' because it isn't a string or number" % placeholder)
+            eprint("warning - ignoring placeholder '%s' because it isn't a string" % placeholder)
 
     def add_next_mods(token, mods):
         if mods.comments != None:

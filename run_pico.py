@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from utils import *
 from pico_defs import encode_p8str, decode_p8str, from_p8str, to_p8str, Memory
 from pico_cart import read_cart_autodetect
@@ -29,6 +30,15 @@ def picoscript_to_memory(mess):
 def picoscript_print(val, *ignored):
     print(g_lupaz8_runtime.globals().tostr(val))
 
+def picoscript_printh(val, filename=None, overwrite=False):
+    val = g_lupaz8_runtime.globals().tostr(val)
+    if not filename:
+        eprint(val)
+    elif overwrite:
+        file_write_text(filename, val + "\n")
+    else:
+        file_append_text(filename, val + "\n")
+
 g_lupaz8_runtime = None
 def get_runtime():
     global g_lupaz8_runtime
@@ -36,8 +46,8 @@ def get_runtime():
         g_lupaz8_runtime = _lupaz8_module().LuaRuntime(encoding="p8scii", source_encoding="p8scii")
 
         p8globs = g_lupaz8_runtime.globals()
-        p8globs.print = picoscript_print
-        p8globs.printh = picoscript_print
+        p8globs.print = picoscript_print # to stdout
+        p8globs.printh = picoscript_printh # to stderr or file
         
         shrinko = p8globs.shrinko = g_lupaz8_runtime.table()
         shrinko.from_p8str = picoscript_from_p8str
@@ -46,8 +56,8 @@ def get_runtime():
         
     return g_lupaz8_runtime
 
-def exec_pico_code(code, *args):
-    return get_runtime().execute(code, *args)
+def exec_pico_code(code):
+    return get_runtime().execute(code)
 
 def exec_pico_script_by_path(path):
     cart = read_cart_autodetect(path) # for includes/etc
@@ -56,3 +66,10 @@ def exec_pico_script_by_path(path):
     if not result:
         throw(f"ERROR: p8 script at {path} didn't return a module object")
     return result
+
+if __name__ == "__main__":
+    arg = list_get(sys.argv, 1)
+    if arg == "-c":
+        exec_pico_code(list_get(sys.argv, 2))
+    else:
+        exec_pico_script_by_path(arg)

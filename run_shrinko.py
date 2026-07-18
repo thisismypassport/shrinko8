@@ -47,7 +47,7 @@ def lang_not_supported():
 def lang_do_nothing(*_, **__):
     pass
 
-def find_in_builtin_script(name, func_name):
+def find_in_builtin_script(name, kwargs, func_name):
     import importlib
     try:
         module = importlib.import_module("scripts." + str_before_first(name, "."))
@@ -55,7 +55,7 @@ def find_in_builtin_script(name, func_name):
         return None
     func = getattr(module, func_name, None)
     if func:
-        return func(name)
+        return func(name, **kwargs)
 
 def create_main(lang):
     is_pico8 = lang == Language.pico8
@@ -429,9 +429,9 @@ def create_main(lang):
             args.keep_meta_keys = default_keep_meta_keys
 
         args.preproc_cb, args.postproc_cb, args.preproc_syntax_cb = None, None, None
-        args.include_cb = lambda name: find_in_builtin_script(name, "include_main")
-        args.sublang_cb = lambda name: find_in_builtin_script(name, "sublanguage_main")
-        args.compiler_cb = lambda name: find_in_builtin_script(name, "compiler_main")
+        args.include_cb = lambda name, **kwargs: find_in_builtin_script(name, kwargs, "include_main")
+        args.sublang_cb = lambda name, **kwargs: find_in_builtin_script(name, kwargs, "sublanguage_main")
+        args.compiler_cb = lambda name, **kwargs: find_in_builtin_script(name, kwargs, "compiler_main")
         if args.script or args.pico_script:
             script_objs = []
             if args.script:

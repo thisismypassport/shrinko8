@@ -309,7 +309,9 @@ def process_placeholder(ctxt, placeholder):
             if not ph_errors:
                 placeholder.replace_with(ph_root)
             return ph_errors
-    return [Error("placeholder '%s' is not recognized" % ph_name, placeholder.token)]
+    
+    eprint(f"placeholder '{ph_name}' is not recognized")
+    placeholder.token.type = TokenType.string
 
 def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, rename=False, unminify=False, 
                  stop_on_lint=True, count_is_optional=False, preproc=None):
@@ -406,5 +408,5 @@ from pico_output import output_code
 from pico_rename import rename_tokens
 
 # re-export some things for examples/etc.
-from pico_tokenize import is_identifier, is_ident_char
+from pico_tokenize import is_identifier, is_ident_char, TokenType
 from pico_parse import Local, Global, Scope
