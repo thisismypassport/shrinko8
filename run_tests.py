@@ -287,6 +287,14 @@ def run():
     run_test("version-latest", "versioned.p8", "versioned-latest.p8", "-m", "-oc", pico8_output="versioned.p8.printh")
     run_test("version-orig", "versioned.p8", "versioned-orig.p8", "-m", "-oc", update_version=False, pico8_output="versioned.p8.printh")
 
+    run_test("pico-script", "script.p8", "script.p8", "--pico-script", path_join("test_input", "my_script.p8"),
+             "--lint", "--no-lint-fail", "--update-version", "--script-args", "my-script-arg", "--my-script-opt", "123",
+             stdout_output="pico-script.txt", norm_stdout=norm_paths, update_version=False)
+    run_test("pico-sublang", "sublang.p8", "sublang.p8", "--minify",
+             "--pico-script", path_join("test_input", "sublang.lua"))
+    run_test("pico-compiler", "compiler.p8", "compiler.p8", "--minify",
+             "--pico-script", path_join("test_input", "compiler.lua"))
+
     # picotron tests (TODO: more tests, more testing support!)
     run_test("TRON_test", "testtron.p64", "testtron.p64", "--minify", "--no-minify-consts", "--avoid-base64", target=Target.picotron)
     if run_test("TRON_p2png", "testcvttron.p64", "testcvttron.png", target=Target.picotron, update_version=False):

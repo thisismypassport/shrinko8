@@ -220,6 +220,7 @@ class ContextBase:
         m.hint_comments = hint_comments
         m.version = version
         m.lang = lang
+        m.fields = {}
     
     def add_custom_langdef(m, source, target, args):
         if m.custom_langdefs is None:
@@ -235,6 +236,21 @@ class ContextBase:
                 else:
                     args = pre_args
         return name, args.strip()
+    
+    def get_field(m, name, cls=None):
+        """get a custom field, for convenience"""
+        if name in m.fields:
+            return m.fields[name]
+        elif cls is None:
+            raise Exception(f"field {name} doesn't exist on ctxt")
+        else:
+            field = cls()
+            m.fields[name] = field
+            return field
+    
+    def set_field(m, name, value):
+        """set a custom field, for convenience"""
+        m.fields[name] = value
 
 class PicoContext(ContextBase):
     """Specialization of ContextBase to pico8"""

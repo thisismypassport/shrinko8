@@ -1,8 +1,5 @@
 from pico_process import CompilerBase
 
-def ctxt_get_repl_code_map(ctxt): # we store the code on the ctxt, using a sufficiently unique name to avoid conflicts
-    return ctxt.__dict__.setdefault("_repl_code", {})
-
 class ReplCompiler(CompilerBase):
     # A sample compiler that actually just inserts the compiled code
     # as a string argument to a p8 function
@@ -35,7 +32,8 @@ class ReplCompiler(CompilerBase):
         from pico_output import output_node
         code = output_node(root, self.ctxt, minify="+minify" in self.args)
 
-        repl_code_map = ctxt_get_repl_code_map(self.ctxt)
+        # we'll store the code on the ctxt, for use by the placeholder
+        repl_code_dict = self.ctxt.get_field("repl_code", dict)
         if "+rom" in self.args:
             # a special mode in which the code will be encoded into rom
             # (would probably want to supply the address via self.args too)
@@ -43,11 +41,11 @@ class ReplCompiler(CompilerBase):
             enc_code = encode_p8str(code)
             enc_len = len(enc_code)
             self.src.cart.rom[:enc_len] = enc_code
-            repl_code_map[self.id] = f"chr(peek(0, {enc_len}))"
+            repl_code_dict[self.id] = f"chr(peek(0, {enc_len}))"
         else:
             # the regular mode in which the code is inserted in a string
             from pico_output import format_string_literal
-            repl_code_map[self.id] = format_string_literal(code)
+            repl_code_dict[self.id] = format_string_literal(code)
 
 # this is called by request of ReplCompiler.get_dynamic_include
 def get_repl_include(args, **_):
@@ -58,8 +56,8 @@ def get_repl_include(args, **_):
 def get_repl_code(args, ctxt, **_):
     # since this is a placeholder, the returned code must not access any variables that might've been renamed
     # (it can still access _ENVs and builtins)
-    repl_code_map = ctxt_get_repl_code_map(ctxt)
-    return repl_code_map.get(args) # in our case, args is the compiler's id we passed through the include and the placeholder
+    repl_code_dict = ctxt.get_field("repl_code", dict)
+    return repl_code_dict.get(args) # in our case, args is the compiler's id we passed through the include and the placeholder
 
 # this is called to get any includes & placeholders for the compiler
 def include_main(name, **_):

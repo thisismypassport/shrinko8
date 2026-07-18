@@ -282,7 +282,7 @@ def get_orig_wspace(pre, post, ctxt, allow_linebreaks, need_linebreak=False):
 
     return text
     
-def output_node(root, ctxt, minify_wspace=None, minify_lines=None, exclude_comments=None, minify=True):
+def output_node(root, ctxt, minify=True, minify_wspace=None, minify_lines=None, exclude_comments=None):
     """convert a root back to a string, inserting as little whitespace as possible (under minify_wspace),
        or using original whitespace (optionally except comments)"""
     minify_wspace = default(minify_wspace, minify)
@@ -381,6 +381,6 @@ def output_code(ctxt, root, minify_opts):
     minify_wspace = minify_opts.get("wspace", True)
     minify_comments = minify_opts.get("comments", True)
 
-    return output_node(root, ctxt, minify_wspace, minify_lines, minify_comments)
+    return output_node(root, ctxt, None, minify_wspace, minify_lines, minify_comments)
 
 from pico_process import Source

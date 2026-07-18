@@ -820,10 +820,12 @@ def preprocess_main(cart, args, ctxt, **_): # '**_' allows other (including futu
     opts = parser.parse_args(args.script_args)
     print("Received args:", opts.arg, opts.my_script_opt)
 
-    # ctxt contains some information like `lang`, `version` and `builtins`
-    # you can also store extra information on it to pass between different stages,
-    # but use a unique name that starts with underscore to avoid conflicts:
-    ctxt._my_script_data = [opts, other_cart]
+    # ctxt contains some read-only information like `lang`, `version` and `builtins`
+    # you can also use ctxt.get/set_field to store extra information on it to pass between different stages
+    # (use a unique field name to avoid conflicts)
+    ctxt.set_field("my_script_data", [opts, other_cart])
+    # there is also:
+    # my_dict = ctxt.get_field("my_dict_field", dict) # initialized to dict() instead of None
 
 # this is called before your cart is written, after it was fully processed
 def postprocess_main(cart, ctxt, **_):
@@ -848,7 +850,7 @@ def postprocess_main(cart, ctxt, **_):
     write_cart("new_cart2.rom", new_cart, CartFormat.rom)
 
     # can use the data stored in the preprocess stage:
-    opts, other_cart = ctxt._my_script_data
+    opts, other_cart = ctxt.get_field("my_script_data")
 ```
 
 ## Advanced - custom sub-language

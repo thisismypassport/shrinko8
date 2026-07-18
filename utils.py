@@ -67,11 +67,6 @@ def exec_script_by_path(path, name=None):
     script_spec.loader.exec_module(script_mod)
     return script_mod
 
-def import_from_script_by_path(path, *func_names):
-    """executes script at 'path', importing the requested funcs from it - if they exist"""
-    script_mod = exec_script_by_path(path)
-    return tuple(getattr(script_mod, name, None) for name in func_names)
-
 def typename(obj):
     """returns the name of the object's type"""
     return type(obj).__name__

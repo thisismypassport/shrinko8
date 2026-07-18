@@ -198,6 +198,10 @@ def create_main(lang):
 
         pgroup = parser.add_argument_group("misc. options")
         pgroup.add_argument("-s", "--script", action="append", help="manipulate the cart via a custom python script - see README for api details")
+        if is_pico8:
+            pgroup.add_argument("-S", "--pico-script", action="append", help="manipulate the cart via a custom {pico_name} script - see README for api details")
+        else:
+            pgroup.set_defaults(pico_script=None)
         pgroup.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
         pgroup.add_argument("--extra-output", nargs='+', action="append", metavar=("OUTPUT [FORMAT]", ""),
                             help="additional output file to produce (and optionally, the format to use)")
@@ -341,7 +345,7 @@ def create_main(lang):
             args.input_format = CartFormatCls.png
 
         if (not args.lint and not args.count and not args.output and not args.input_count and not args.version and
-            not args.list and not args.dump and not args.script and not args.extract):
+            not args.list and not args.dump and not args.script and not args.pico_script and not args.extract):
             throw("No operation (--lint/--count/--script) or output file specified")
         if args.format and not args.output and not args.dump:
             throw("Output should be specified under --format")
@@ -428,10 +432,20 @@ def create_main(lang):
         args.include_cb = lambda name: find_in_builtin_script(name, "include_main")
         args.sublang_cb = lambda name: find_in_builtin_script(name, "sublanguage_main")
         args.compiler_cb = lambda name: find_in_builtin_script(name, "compiler_main")
-        if args.script:
-            for script in args.script:
-                preproc_main, postproc_main, preproc_syntax_main, include_main, sublang_main, compiler_main = import_from_script_by_path(script,
-                    "preprocess_main", "postprocess_main", "preprocess_syntax_main", "include_main", "sublanguage_main", "compiler_main")
+        if args.script or args.pico_script:
+            script_objs = []
+            if args.script:
+                for script in args.script:
+                    script_objs.append(exec_script_by_path(script))
+            if args.pico_script:
+                from run_pico import exec_pico_script_by_path
+                for script in args.pico_script:
+                    script_objs.append(exec_pico_script_by_path(script))
+
+            for script_obj in script_objs:
+                preproc_main, postproc_main, preproc_syntax_main, include_main, sublang_main, compiler_main = tuple(
+                    getattr(script_obj, name, None) for name in 
+                          ("preprocess_main", "postprocess_main", "preprocess_syntax_main", "include_main", "sublanguage_main", "compiler_main"))
                 args.preproc_cb = func_union(args.preproc_cb, preproc_main)
                 args.postproc_cb = func_union(postproc_main, args.postproc_cb) # (reverse order)
                 args.preproc_syntax_cb = func_union(args.preproc_syntax_cb, preproc_syntax_main)
