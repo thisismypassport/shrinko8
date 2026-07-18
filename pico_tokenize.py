@@ -447,6 +447,11 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
         hint, hintdata = CommentHint.none, None
 
         if ctxt and ctxt.hint_comments:
+            proper = False
+            if comment.startswith("$"):
+                comment = comment[1:]
+                proper = True
+
             if comment.startswith(k_lint_prefix):
                 lints = k_hint_split_re.split(comment[len(k_lint_prefix):])
                 lints = [lint for lint in lints if lint]
@@ -464,8 +469,9 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
             elif comment.startswith(k_keep_prefix):
                 hint = CommentHint.keep
                 
-            elif comment.startswith(k_dynamic_include_prefix):
+            elif comment.startswith(k_dynamic_include_prefix) and proper:
                 add_dyn_include(comment[len(k_dynamic_include_prefix):])
+                hint = CommentHint.auto
             
             elif comment.startswith(k_deflang_prefix):
                 sublang, sublang_def = list_unpack(comment[len(k_deflang_prefix):].split("=", 1), 2, "")
@@ -473,8 +479,9 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
                 ctxt.add_custom_langdef(sublang.strip(), dest_sublang, dest_args)
                 hint = CommentHint.auto
                 
-            elif comment.startswith(k_switch_compiler_prefix):
+            elif comment.startswith(k_switch_compiler_prefix) and proper:
                 switch_compiler(comment[len(k_switch_compiler_prefix):])
+                hint = CommentHint.auto
 
             elif isblock:
                 hint = CommentHint.auto
@@ -500,14 +507,18 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
                     get_next_mods().sublang = comment[len(k_language_prefix):]
                 elif comment.startswith(k_rename_prefix) and not any(ch.isspace() for ch in comment):
                     get_next_mods().rename = comment[len(k_rename_prefix):]
-                elif comment.startswith(k_placeholder_prefix):
+                elif comment.startswith(k_placeholder_prefix) and proper:
                     get_next_mods().placeholder = comment[len(k_placeholder_prefix):]
                 else:
                     hint = CommentHint.none
         
+            if proper and hint == CommentHint.none:
+                eprint(f"unrecognized $-comment '{comment}'")
+            # at some point, warn about improper comments and so on?
+
         if all_comments or (hint != CommentHint.none and hint != CommentHint.auto):
             get_next_mods().add_comment(Comment(hint, hintdata, source, orig_idx, idx))
-
+        
     def tokenize_line_comment():
         nonlocal vline
         orig_idx = idx

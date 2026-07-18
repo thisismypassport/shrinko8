@@ -11,10 +11,10 @@ class ReplCompiler(CompilerBase):
         self.id = str(id(self)) # used to identify this compiler instance inside strings
 
     # should return any names of dynamic includes that should be inserted in the code
-    # immediately after the --switch-compiler: (resolved via include_main)
+    # immediately after the --$switch-compiler: (resolved via include_main)
     # for simple cases, that's just the code that runs the underlying interpreter (+ placeholder for the compiled code)
     # for complex cases, you can also include the interpreter itself - unless previously included elsewhere
-    #   via an explicit --dynamic-include: (can check via flag on ctxt)
+    #   via an explicit --$dynamic-include: (can check via flag on ctxt)
     # and you can have placeholders in the interpreter too - allowing to add more ops to the interpreter
     #   depending on what ops are used in the compiled code
     def get_dynamic_includes(self, **_):
@@ -50,9 +50,9 @@ class ReplCompiler(CompilerBase):
 # this is called by request of ReplCompiler.get_dynamic_include
 def get_repl_include(args, **_):
     # since this is an include, the returned code can freely access globals/etc
-    return f'execute_raw(--[[placeholder::repl.code {args}]]"", _ENV)'
+    return f'execute_raw(--[[$placeholder::repl.code {args}]]"", _ENV)'
 
-# this is called by request of above --[[placeholder::...]], after rename but before minify
+# this is called by request of above --[[$placeholder::...]], after rename but before minify
 def get_repl_code(args, ctxt, **_):
     # since this is a placeholder, the returned code must not access any variables that might've been renamed
     # (it can still access _ENVs and builtins)

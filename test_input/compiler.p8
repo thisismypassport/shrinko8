@@ -10,24 +10,24 @@ end
 
 print("hello from outside")
 
---switch-compiler: repl
+--$switch-compiler: repl
 
 print("hello from repl string")
 
---switch-compiler: repl +minify
+--$switch-compiler: repl +minify
 
 print("hello from repl minified string")
 
 for i=1,10 do print(i) end
 
---switch-compiler: repl +rom +minify
+--$switch-compiler: repl +rom +minify
 
 print("hello from repl rom")
 
 while (true) print("zzz")
 
---switch-compiler: none
+--$switch-compiler: none
 
 print("hello from outside again")
 
---dynamic-include: repl.dummy
+--$dynamic-include: repl.dummy

@@ -8,28 +8,25 @@ function ctxt_get_repl_code_table(ctxt)
     return ctxt.get_field("repl_code", function() return {} end)
 end
 
--- helper to see if a value exists in a table (or string)
-function isin(target, table)
-    for obj in all(table) do
-        if (target == obj) return true
-    end
-end
-
 -- A sample compiler that actually just inserts the compiled code
 -- as a string argument to a p8 function
 -- (E.g. could've been used for the repl at https://www.lexaloffle.com/bbs/?tid=36381)
 function ReplCompiler:__init(opts)
+    self.args = {}
+    for arg in all(split(opts.args, ' ')) do
+        self.args[arg] = true
+    end
+
     self.ctxt = opts.ctxt
-    self.args = split(opts.args, ' ')
     self.src = opts.src
     self.id = tostr(self, 1) -- used to identify this compiler instance inside strings
 end
 
 -- should return any names of dynamic includes that should be inserted in the code
--- immediately after the --switch-compiler: (resolved via include_main)
+-- immediately after the --$switch-compiler: (resolved via include_main)
 -- for simple cases, that's just the code that runs the underlying interpreter (+ placeholder for the compiled code)
 -- for complex cases, you can also include the interpreter itself - unless previously included elsewhere
---   via an explicit --dynamic-include: (can check via flag on ctxt)
+--   via an explicit --$dynamic-include: (can check via flag on ctxt)
 -- and you can have placeholders in the interpreter too - allowing to add more ops to the interpreter
 --   depending on what ops are used in the compiled code
 function ReplCompiler:get_dynamic_includes()
@@ -46,11 +43,11 @@ function ReplCompiler:compile(root)
     
     -- here, we convert it into optionally minified code
     local output_node = python.import("pico_output").output_node
-    local minify = isin("+minify", self.args)
+    local minify = self.args["+minify"]
     local code = output_node(root, self.ctxt, minify)
 
     local repl_code_map = ctxt_get_repl_code_table(self.ctxt)
-    if isin("+rom", self.args) then
+    if self.args["+rom"] then
         -- a special mode in which the code will be encoded into rom
         -- (would probably want to supply the address via self.args too)
         self.src.cart.rom.set_block(0, shrinko.to_memory(code))
@@ -65,10 +62,10 @@ end
 -- this is called by request of ReplCompiler.get_dynamic_include
 function get_repl_include(opts)
     -- since this is an include, the returned code can freely access globals/etc
-    return 'execute_raw(--[[placeholder::repl.code '..opts.args..']]"", _ENV)'
+    return 'execute_raw(--[[$placeholder::repl.code '..opts.args..']]"", _ENV)'
 end
 
--- this is called by request of above --[[placeholder::...]], after rename but before minify
+-- this is called by request of above --[[$placeholder::...]], after rename but before minify
 function get_repl_code(opts)
     -- since this is a placeholder, the returned code must not access any variables that might've been renamed
     -- (it can still access _ENVs and builtins)
