@@ -62,10 +62,10 @@ end
 -- this is called by request of ReplCompiler.get_dynamic_include
 function get_repl_include(opts)
     -- since this is an include, the returned code can freely access globals/etc
-    return 'execute_raw(--[[$placeholder::repl.code '..opts.args..']]"", _ENV)'
+    return 'execute_raw(--[[$placeholder-expr::repl.code '..opts.args..']]"", _ENV)'
 end
 
--- this is called by request of above --[[$placeholder::...]], after rename but before minify
+-- this is called by request of above --[[$placeholder-expr::...]], after rename but before minify
 function get_repl_code(opts)
     -- since this is a placeholder, the returned code must not access any variables that might've been renamed
     -- (it can still access _ENVs and builtins)

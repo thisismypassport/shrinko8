@@ -195,7 +195,7 @@ class ContextBase:
     def __init__(m, lang, builtins, local_builtins, builtins_with_callbacks, builtin_callbacks, builtin_members,
                  extra_builtins=None, not_builtins=None, use_local_builtins=True, extra_local_builtins=None, 
                  srcmap=False, include_getter=None, sublang_getter=None, compiler_getter=None,
-                 version=sys.maxsize, hint_comments=True, consts=None):
+                 version=sys.maxsize, hint_comments=True, consts=None, ignore_transforms=False):
         m.builtins = builtins.copy()
         m.local_builtins = local_builtins.copy() if use_local_builtins else set()
         m.builtins_with_callbacks = builtins_with_callbacks
@@ -213,6 +213,7 @@ class ContextBase:
 
         m.srcmap = [] if srcmap else None
         m.consts = consts
+        m.ignore_transforms = ignore_transforms
         m.include_getter = include_getter
         m.sublang_getter = sublang_getter
         m.compiler_getter = compiler_getter
@@ -296,8 +297,8 @@ def process_compiler(token):
     token.compiler_node.erase()
     # compiler outputs are processed via placeholders
 
-def process_placeholder(ctxt, placeholder):
-    ph_name, ph_args = placeholder.token.placeholder_name, placeholder.token.placeholder_args
+def process_placeholder(ctxt, token, errors):
+    ph_name, ph_args = token.placeholder_name, token.placeholder_args
     include_func = ctxt.include_getter(ph_name, placeholder=True)
     if include_func:
         ph_str = include_func(args=ph_args.strip(), ctxt=ctxt)
@@ -305,13 +306,13 @@ def process_placeholder(ctxt, placeholder):
             ph_source = Source(ph_name, ph_str)
             ph_tokens, ph_errors = tokenize(ph_source, ctxt)
             if not ph_errors:
-                ph_root, ph_errors = parse(ph_source, ph_tokens, ctxt, for_expr=True)
-            if not ph_errors:
-                placeholder.replace_with(ph_root)
-            return ph_errors
+                ph_root, ph_errors = parse(ph_source, ph_tokens, ctxt, for_expr=token.placeholder_expr)
+                if not ph_errors:
+                    token.parent.replace_with(ph_root)
+                    return
+            errors += ph_errors
     
     eprint(f"placeholder '{ph_name}' is not recognized")
-    placeholder.token.type = TokenType.string
 
 def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, rename=False, unminify=False, 
                  stop_on_lint=True, count_is_optional=False, preproc=None):
@@ -360,13 +361,7 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
                 if need_rename:
                     rename_tokens(ctxt, root, rename)
                 
-                for compiler_token in root.compiler_tokens:
-                    process_compiler(compiler_token)
-                
-                for placeholder_node in root.placeholders:
-                    errors = process_placeholder(ctxt, placeholder_node)
-                    if errors:
-                        return False, errors
+                transform_code(ctxt, root, minify, errors)
 
                 minify_code(ctxt, root, minify)
 
@@ -389,6 +384,16 @@ def simplify_code(ctxt, root, minify, errors):
         
     if fold:
         fold_consts(ctxt, minify, root, errors)
+
+def transform_code(ctxt, root, minify, errors):
+    transform = minify.get("transform", True)
+        
+    if transform:
+        for compiler_token in root.compiler_tokens:
+            process_compiler(compiler_token)
+        
+        for placeholder_token in root.placeholders:
+            process_placeholder(ctxt, placeholder_token, errors)
 
 def echo_code(code, ctxt, echo=True):
     code = from_langstr(code, ctxt.lang)

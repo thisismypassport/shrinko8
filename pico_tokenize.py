@@ -21,7 +21,8 @@ k_lint_count_stop = "count::stop"
 
 k_language_prefix = "language::"
 k_rename_prefix = "rename::"
-k_placeholder_prefix = "placeholder::"
+k_placeholder_expr_prefix = "placeholder-expr::"
+k_placeholder_stmt_prefix = "placeholder-stmt::"
 
 def split_hint_args(data):
     name, args = list_unpack(data.strip().split(" ", 1), 2, "")
@@ -186,7 +187,7 @@ class TokenNodeBase:
 
 class TokenType(Enum):
     number = string = ident = keyword = punct = ...
-    compiler = placeholder = ... # special
+    compiler = ... # special
 
 class Token(TokenNodeBase):
     """A pico8 token, at 'source'.text['idx':'endidx'] (which is equal to its 'value'). Its 'type' is a TokenType.
@@ -275,9 +276,9 @@ class CommentHint(Enum):
 class Comment(TokenNodeBase):
     """A pico8 comment, optionally holding some kind of hint"""
 
-    def __init__(m, hint, hintdata=None, source=None, idx=None, endidx=None):
+    def __init__(m, hint, hintdata=None, hintprefix="", source=None, idx=None, endidx=None, proper=False):
         super().__init__()
-        m.hint, m.hintdata, m.source, m.idx, m.endidx = hint, hintdata, source, idx, endidx
+        m.hint, m.hintdata, m.hintprefix, m.source, m.idx, m.endidx = hint, hintdata, hintprefix, source, idx, endidx
 
     @property
     def value(m):
@@ -366,7 +367,7 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
         errors.append(Error(msg, tokens[-1]))
 
     def add_dyn_include(include_data):
-        if ctxt and ctxt.include_getter:
+        if ctxt and ctxt.include_getter and not ctxt.ignore_transforms:
             include_name, include_args = split_hint_args(include_data)
             include_func = ctxt.include_getter(include_name)
             if include_func:
@@ -375,6 +376,8 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
                     included_tokens, included_errors = tokenize(Source(include_name, included_str), ctxt, all_comments)
                     tokens.extend(included_tokens)
                     errors.extend(included_errors)
+                    if tokens and tokens[-1].type is None:
+                        del tokens[-1] # TODO - we lose any comments/etc on it...
                     return
             eprint("warning - ignoring unrecognized dynamic include '%s'" % include_name)
 
@@ -398,7 +401,7 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
             real_tokens, tokens = None, real_tokens
 
         if compiler_data != None:
-            if ctxt and ctxt.compiler_getter:
+            if ctxt and ctxt.compiler_getter and not ctxt.ignore_transforms:
                 compiler_name, compiler_args = split_hint_args(compiler_data)
                 if compiler_name != "none":
                     compiler_cls = ctxt.compiler_getter(compiler_name)
@@ -407,7 +410,7 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
                         for dyn_include in curr_compiler.get_dynamic_includes():
                             add_dyn_include(dyn_include)
                         
-                        compiler_token = add_token(TokenType.compiler, idx)
+                        compiler_token = add_token(TokenType.compiler, idx, value="`compiler`")
                         compiler_token.compiler_name = compiler_name
                         compiler_token.compiler = curr_compiler
                         compiler_token.compiler_tokens = []
@@ -415,13 +418,6 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
 
                     else:
                         eprint("warning - ignoring unrecognized compiler '%s'" % compiler_name)
-
-    def add_placeholder(token, placeholder):
-        if token.type == TokenType.string:
-            token.type = TokenType.placeholder
-            token.placeholder_name, token.placeholder_args = split_hint_args(placeholder)
-        else:
-            eprint("warning - ignoring placeholder '%s' because it isn't a string" % placeholder)
 
     def add_next_mods(token, mods):
         if mods.comments != None:
@@ -439,17 +435,21 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
         if mods.rename != None:
             token.rename = mods.rename
         if mods.placeholder != None:
-            add_placeholder(token, mods.placeholder)
+            token.placeholder_name, token.placeholder_args = split_hint_args(mods.placeholder[0])
+            token.placeholder_expr = mods.placeholder[1]
+            if not (token.type == TokenType.string if token.placeholder_expr else token.value == 'do'):
+                eprint(f"invalid usage of $placeholder: {token.placeholder_name}")
         if mods.sublang != None:
             add_sublang(token, mods.sublang)
 
     def process_comment(orig_idx, comment, isblock):
-        hint, hintdata = CommentHint.none, None
+        hint, hintdata, hintprefix = CommentHint.none, None, ""
 
         if ctxt and ctxt.hint_comments:
             proper = False
             if comment.startswith("$"):
                 comment = comment[1:]
+                hintprefix = "$"
                 proper = True
 
             if comment.startswith(k_lint_prefix):
@@ -476,7 +476,8 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
             elif comment.startswith(k_deflang_prefix):
                 sublang, sublang_def = list_unpack(comment[len(k_deflang_prefix):].split("=", 1), 2, "")
                 dest_sublang, dest_args = split_hint_args(sublang_def)
-                ctxt.add_custom_langdef(sublang.strip(), dest_sublang, dest_args)
+                if ctxt and ctxt.add_custom_langdef:
+                    ctxt.add_custom_langdef(sublang.strip(), dest_sublang, dest_args)
                 hint = CommentHint.auto
                 
             elif comment.startswith(k_switch_compiler_prefix) and proper:
@@ -507,8 +508,10 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
                     get_next_mods().sublang = comment[len(k_language_prefix):]
                 elif comment.startswith(k_rename_prefix) and not any(ch.isspace() for ch in comment):
                     get_next_mods().rename = comment[len(k_rename_prefix):]
-                elif comment.startswith(k_placeholder_prefix) and proper:
-                    get_next_mods().placeholder = comment[len(k_placeholder_prefix):]
+                elif comment.startswith(k_placeholder_expr_prefix) and proper:
+                    get_next_mods().placeholder = (comment[len(k_placeholder_expr_prefix):], True)
+                elif comment.startswith(k_placeholder_stmt_prefix) and proper:
+                    get_next_mods().placeholder = (comment[len(k_placeholder_stmt_prefix):], False)
                 else:
                     hint = CommentHint.none
         
@@ -517,7 +520,7 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
             # at some point, warn about improper comments and so on?
 
         if all_comments or (hint != CommentHint.none and hint != CommentHint.auto):
-            get_next_mods().add_comment(Comment(hint, hintdata, source, orig_idx, idx))
+            get_next_mods().add_comment(Comment(hint, hintdata, hintprefix, source, orig_idx, idx))
         
     def tokenize_line_comment():
         nonlocal vline
@@ -686,7 +689,6 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
         add_token(None, idx) # end token, for ending whitespace/comments/etc
     if real_tokens != None:
         switch_compiler(None)
-
     return tokens, errors
     
 

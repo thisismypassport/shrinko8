@@ -50,9 +50,9 @@ class ReplCompiler(CompilerBase):
 # this is called by request of ReplCompiler.get_dynamic_include
 def get_repl_include(args, **_):
     # since this is an include, the returned code can freely access globals/etc
-    return f'execute_raw(--[[$placeholder::repl.code {args}]]"", _ENV)'
+    return f'execute_raw(--[[$placeholder-expr::repl.code {args}]]"", _ENV)'
 
-# this is called by request of above --[[$placeholder::...]], after rename but before minify
+# this is called by request of above --[[$placeholder-expr::...]], after rename but before minify
 def get_repl_code(args, ctxt, **_):
     # since this is a placeholder, the returned code must not access any variables that might've been renamed
     # (it can still access _ENVs and builtins)

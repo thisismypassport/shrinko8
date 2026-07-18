@@ -138,6 +138,7 @@ def create_main(lang):
         pgroup.add_argument("-m", "--minify", action="store_true", help="enable minification of the cart")
         pgroup.add_argument("-M", "--minify-safe-only", action="store_true", help="only do minification that's always safe to do")
         pgroup.add_argument("--minify-consts-only", action="store_true", help="only do constant folding - no other minification")
+        pgroup.add_argument("--minify-transform-only", action="store_true", help="only do transformations - no other minification")
         if is_pico8:
             pgroup.add_argument("-ot", "--focus-tokens", action="store_true", help="when minifying, focus on reducing the amount of tokens")
             pgroup.add_argument("-oc", "--focus-chars", action="store_true", help="when minifying, focus on reducing the amount of characters")
@@ -151,6 +152,7 @@ def create_main(lang):
         pgroup.add_argument("--no-minify-comments", action="store_true", help="disable comment removal in minification (requires --no-minify-spaces)")
         pgroup.add_argument("--no-minify-tokens", action="store_true", help="disable token removal/changes in minification")
         pgroup.add_argument("--no-minify-reorder", action="store_true", help="disable statement reordering in minification")
+        pgroup.add_argument("--no-minify-transform", action="store_true", help="disable transformations (--$switch-compiler & --$dynamic-include) in minification")
         pgroup.add_argument("-p", "--preserve", type=SplitBySeps, action="extend", help='preserve specific identifiers in minification, e.g. "global1, global2, *.member2, table3.*"')
         pgroup.add_argument("--no-preserve", type=SplitBySeps, action="extend", help='do not preserve specific built-in identifiers in minification, e.g. "circfill, rectfill"')
         pgroup.add_argument("--rename-members-as-globals", action="store_true", help='rename globals and members the same way (same as --preserve "*=*.*")')
@@ -169,7 +171,7 @@ def create_main(lang):
         pgroup.add_argument("--no-lint-duplicate-global", action="store_true", help="don't print lint warnings on duplicate variables between a local and a global")
         pgroup.add_argument("--no-lint-undefined", action="store_true", help="don't print lint warnings on undefined variables")
         pgroup.add_argument("--no-lint-fail", action="store_true", help="create output cart even if there were lint warnings")
-        pgroup.add_argument("--lint-global", type=SplitBySeps, action="extend", help="don't print lint warnings for these globals (same as '--lint:' comment)")
+        pgroup.add_argument("--lint-global", type=SplitBySeps, action="extend", help="don't print lint warnings for these globals (same as '--$lint:' comment)")
         pgroup.add_argument("--error-format", type=EnumFromStr(ErrorFormat), help="how to format lint warnings & compilation errors {%s}" % EnumList(ErrorFormat))
 
         pgroup = parser.add_argument_group("count options")
@@ -384,21 +386,22 @@ def create_main(lang):
         if args.focus_tokens:
             args.focus.append("tokens")
 
-        if args.minify or args.minify_safe_only or args.minify_consts_only:
-            minify_default = not args.minify_consts_only
+        minify_limited = args.minify_consts_only or args.minify_transform_only
+        if args.minify or args.minify_safe_only or minify_limited:
             args.minify = {
                 "safe-reorder": args.minify_safe_only or args.reorder_safe_only,
                 "safe-builtins": args.minify_safe_only or args.builtins_safe_only,
-                "lines": minify_default and not args.no_minify_lines,
-                "wspace": minify_default and not args.no_minify_spaces,
-                "comments": minify_default and not args.no_minify_comments,
-                "tokens": minify_default and not args.no_minify_tokens,
-                "reorder": minify_default and not args.no_minify_reorder,
-                "consts": not args.no_minify_consts,
+                "lines": not minify_limited and not args.no_minify_lines,
+                "wspace": not minify_limited and not args.no_minify_spaces,
+                "comments": not minify_limited and not args.no_minify_comments,
+                "tokens": not minify_limited and not args.no_minify_tokens,
+                "reorder": not minify_limited and not args.no_minify_reorder,
+                "consts": (not minify_limited or args.minify_consts_only) and not args.no_minify_consts,
+                "transform": (not minify_limited or args.minify_transform_only) and not args.no_minify_transform,
                 "focus": args.focus,
             }
 
-        args.rename = bool(args.minify) and not args.no_minify_rename
+        args.rename = bool(args.minify) and not args.no_minify_rename and not minify_limited
         if args.rename:
             if args.no_preserve:
                 args.preserve = (args.preserve or []) + [f"!{item}" for item in args.no_preserve]
@@ -599,7 +602,8 @@ def create_main(lang):
                               extra_local_builtins=args.local_builtin,
                               srcmap=args.rename_map, version=cart.version_id, include_getter=args.include_cb,
                               sublang_getter=args.sublang_cb, compiler_getter=args.compiler_cb,
-                              hint_comments=not args.ignore_hints, consts=args.const)
+                              hint_comments=not args.ignore_hints, consts=args.const,
+                              ignore_transforms=args.no_minify_transform)
             if args.preproc_cb:
                 args.preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args)
 

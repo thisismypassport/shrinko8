@@ -134,7 +134,7 @@ class NodeType(Enum):
     table = table_index = table_member = varargs = assign = op_assign = ...
     local = function = if_ = elseif = else_ = while_ = repeat = until = ...
     for_ = for_in = return_ = break_ = goto = label = block = do = ...
-    sublang = compiler = placeholder = super_root = ... # special
+    sublang = compiler = super_root = ... # special
 
 class Node(TokenNodeBase):
     """A pico8 syntax tree node, spanning 'source'.text['idx':'endidx']. Its 'type' is a NodeType
@@ -593,6 +593,9 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
             sublang_token = Token.synthetic(TokenType.string, "", token)
             node.add_extra_child(Node(NodeType.sublang, (sublang_token,), name=token.sublang_name, sublang=token.sublang))
 
+        if hasattr(token, "placeholder_name"):
+            placeholders.append(token)
+
         return node
 
     def parse_core_expr():
@@ -619,10 +622,6 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
             return Node(NodeType.varargs, [token])
         elif token.type == TokenType.ident:
             return parse_var(token=token)
-        elif token.type == TokenType.placeholder:
-            phnode = Node(NodeType.placeholder, [token], token=token)
-            placeholders.append(phnode)
-            return phnode
         else:
             add_error("unknown expression", fail=True)
 
@@ -674,6 +673,14 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
     
     def short_state(vline):
         return k_nested if peek().vline == vline else True
+
+    def parse_do(token):
+        body = parse_block()
+        end = require("end")
+        node = Node(NodeType.do, [token, body, end], body=body)
+        if hasattr(token, "placeholder_name"):
+            placeholders.append(token)
+        return node
 
     def parse_if(type=NodeType.if_):
         tokens = [peek(-1)]
@@ -906,9 +913,7 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
         if value == ";":
             return None
         elif value == "do":
-            body = parse_block()
-            end = require("end")
-            return Node(NodeType.do, [token, body, end], body=body)
+            return parse_do(token)
         elif value == "if":
             return parse_if()
         elif value == "while":
@@ -984,22 +989,28 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
                 if not node.var:
                     add_error_at(f"Unknown label {node.name}", node.children[0])
 
-    def parse_root(compiler_name=None):
+    def parse_root(compiler_name=None, for_expr=False):
         nonlocal funcdepth
         funcdepth += 1
 
-        root = parse_block()
+        if for_expr:
+            root = parse_expr()
+        else:
+            root = parse_block()
 
         funcdepth -= 1
 
         late_resolve_labels()
         if peek().type != None:
             if compiler_name:
-                add_error(f"Expected end of input for {compiler_name}")
+                add_error(f"Expected end of input for {compiler_name}", fail=True)
             else:
-                add_error("Expected end of input")
-        if idx < len(tokens):
-            root.append_existing(take()) # extra comments/etc
+                add_error("Expected end of input", fail=True)
+        while idx < len(tokens):
+            token = take() # extra comments/etc
+            if e(token.type):
+                raise Exception("token after end of input")
+            root.append_existing(token)
         assert scope.parent is None
         #verify_parse(root) # DEBUG
         return root
@@ -1016,10 +1027,7 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
         assert idx == len(tokens)
 
     try:
-        if for_expr:
-            root = parse_expr()
-        else:
-            root = parse_root()
+        root = parse_root(for_expr=for_expr)
     except ParseError:
         root = None
     

@@ -256,7 +256,7 @@ def format_string_literal(value, use_ctrl_chars=True, use_complex_long=True, lon
 
 def need_whitespace_between(ctxt, prev_token, token):
     combined = prev_token.value + token.value
-    ct, ce = tokenize(Source("<output>", combined), ctxt) # TODO: optimize?
+    ct, ce = tokenize(Source("<output>", combined), lang=ctxt.lang) # TODO: optimize?
     return ce or len(ct) != 2 or (ct[0].type, ct[0].value, ct[1].type, ct[1].value) != (prev_token.type, prev_token.value, token.type, token.value)
 
 def is_non_nested_short(node):
@@ -269,7 +269,7 @@ def get_orig_wspace(pre, post, ctxt, allow_linebreaks, need_linebreak=False):
     
     if not text.isspace():
         # verify this range contains only whitespace/comments (may contain more due to reorders/removes)
-        tokens, _ = tokenize(Source("<output>", text), ctxt)
+        tokens, _ = tokenize(Source("<output>", text), lang=ctxt.lang) # TODO: optimize?
         if tokens:
             if "\n" in text and allow_linebreaks:
                 need_linebreak = True
@@ -301,13 +301,13 @@ def output_node(root, ctxt, minify=True, minify_wspace=None, minify_lines=None, 
         if token.children:
             for comment in token.children:
                 if comment.hint == CommentHint.keep:
-                    output.append(comment.value.replace(k_keep_prefix, "", 1))
+                    output.append(comment.value.replace(comment.hintprefix + k_keep_prefix, "", 1))
 
         if token.value is None:
             return
 
         # (modified tokens may require whitespace not previously required - e.g. 0b/0x)
-        if (prev_token.endidx < token.idx or prev_token.modified or token.modified) and prev_token.value:
+        if (prev_token.endidx < token.idx or prev_token.source != token.source or prev_token.modified or token.modified) and prev_token.value:
             # TODO: can we systemtically add whitespace to imrpove compression? (failed so far)
 
             if need_linebreak or (not minify_lines and token.vline != prev_vline):
@@ -343,7 +343,7 @@ def output_node(root, ctxt, minify=True, minify_wspace=None, minify_lines=None, 
                 postspace = get_orig_wspace(token.children[-1], token, ctxt, allow_linebreaks)
                 for comment in token.children:
                     if comment.hint == CommentHint.keep:
-                        prespace += comment.value.replace(k_keep_prefix, "", 1)
+                        prespace += comment.value.replace(comment.hintprefix + k_keep_prefix, "", 1)
                 
                 output.append(prespace)
                 if "\n" in wspace and "\n" not in prespace and "\n" not in postspace:
