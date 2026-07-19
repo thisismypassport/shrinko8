@@ -73,6 +73,47 @@ function module.postprocess_main(opts)
     assert(argopts[0] == "my-script-arg" and argopts[2] == "123")
 end
 
--- preprocess_syntax_main is probably too much for p8
+-- this is called after your cart is parsed into a syntax tree, but before it is transformed for minification
+function module.preprocess_syntax_main(opts)
+    local args, root, on_error = opts.args, opts.root, opts.on_error
+    print("hello from postprocess_syntax_main!")
+
+    NodeType = python.import("pico_parse").NodeType
+    TokenType = python.import("pico_tokenize").TokenType
+
+    if args.lint then -- do some custom linting, if linting was requested in the command line
+        function pre_visit(node)
+            -- just as an example, add a lint error on any use of 'goto'
+            if node.type == NodeType["goto"] then
+                on_error("goto used", node)
+            end
+
+            -- you can use shrinko.to_fixnum/from_fixnum to work with number tokens
+            if node.type == NodeType.const then
+                if node.token.type == TokenType.number then
+                    local fixnum = shrinko.to_fixnum(node.token.parsed_value)
+                    print(tostr(fixnum, 1))
+                    assert(node.token.parsed_value == shrinko.from_fixnum(fixnum))
+                end
+            end
+            
+            -- the syntax tree format isn't really documented anywhere yet. you can:
+            -- - check examples of use in pico_lint.py
+            -- - print() nodes to see what they contain (ignores some attributes for better readability)
+            -- - search for the NodeType you're interested in, in pico_parse.py, to see what it contains
+            
+            -- print(node)
+        end
+
+        function post_visit(node)
+            -- empty, just here as an example
+        end
+
+        -- visit the entire syntax tree, calling pre_visit before each node, and post_visit after each node
+        -- extra=True allows you to visit things not apparent in the source itself, such as:
+        -- implicit parameters, implicit _ENV when accessing globals, etc.
+        root.traverse_nodes(python.args{pre=pre_visit, post=post_visit, extra=true})
+    end
+end
 
 return module

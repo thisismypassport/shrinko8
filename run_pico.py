@@ -27,10 +27,22 @@ def picoscript_to_p8str(mess):
 def picoscript_to_memory(mess):
     return Memory(encode_p8str(mess))
 
-def picoscript_print(val, *ignored):
+def picoscript_from_memory(bytearray):
+    return bytes(bytearray)
+
+def picoscript_to_fixnum(v):
+    return float(v) / 0x10000
+
+def picoscript_from_fixnum(v):
+    v = int(v * 0x10000)
+    if v < 0:
+        v += 0x100000000
+    return v
+
+def picoscript_print(val, *_):
     print(g_lupaz8_runtime.globals().tostr(val))
 
-def picoscript_printh(val, filename=None, overwrite=False):
+def picoscript_printh(val, filename=None, overwrite=False, *_):
     val = g_lupaz8_runtime.globals().tostr(val)
     if not filename:
         eprint(val)
@@ -43,16 +55,20 @@ g_lupaz8_runtime = None
 def get_runtime():
     global g_lupaz8_runtime
     if not g_lupaz8_runtime:
-        g_lupaz8_runtime = _lupaz8_module().LuaRuntime(encoding="p8scii", source_encoding="p8scii")
+        g_lupaz8_runtime = _lupaz8_module().LuaRuntime(encoding="p8scii", source_encoding="p8scii",
+                                                       overflow_handler=True)
 
         p8globs = g_lupaz8_runtime.globals()
         p8globs.print = picoscript_print # to stdout
         p8globs.printh = picoscript_printh # to stderr or file
         
         shrinko = p8globs.shrinko = g_lupaz8_runtime.table()
-        shrinko.from_p8str = picoscript_from_p8str
         shrinko.to_p8str = picoscript_to_p8str
+        shrinko.from_p8str = picoscript_from_p8str
         shrinko.to_memory = picoscript_to_memory
+        shrinko.from_memory = picoscript_from_memory
+        shrinko.to_fixnum = picoscript_to_fixnum
+        shrinko.from_fixnum = picoscript_from_fixnum
         
     return g_lupaz8_runtime
 

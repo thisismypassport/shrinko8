@@ -1,3 +1,9 @@
 hello from pico8 (sorta)
 hello from preprocess_main!
+hello from postprocess_syntax_main!
+0x0000.9abc
+0x1234.5678
+0xfedc.ba98
+Lint warnings:
+test_input/script.p8:6:8596: goto used
 hello from postprocess_main!

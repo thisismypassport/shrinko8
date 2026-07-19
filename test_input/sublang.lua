@@ -131,7 +131,17 @@ function MySubLanguage:get_member_usages()
     return python.dict(usages)
 end
 
--- local usages is too much for picoscript
+-- only needed if your language supports locals:
+-- <snip>
+function MySubLanguage:get_local_usages(opts)
+    -- fake test, just to see that the code is accepted
+    -- (may be nice to have real test for this?)
+    local fake_scope = pico_process.Scope()
+    local fake_local = pico_process.Local("test", fake_scope)
+    fake_scope.used_globals = python.as_attrgetter(self:get_global_usages()).keys()
+    fake_scope.used_locals = python.set({fake_local})
+    return python.dict({[fake_local]=1})
+end
 
 -- called to rename all uses of globals/members/locals
 function MySubLanguage:rename(opts)
