@@ -199,11 +199,7 @@ def create_main(lang):
         pgroup.add_argument("--update-version", action="store_true", help=f"convert the cart to the latest supported version")
 
         pgroup = parser.add_argument_group("misc. options")
-        pgroup.add_argument("-s", "--script", action="append", help="manipulate the cart via a custom python script - see README for api details")
-        if is_pico8:
-            pgroup.add_argument("-S", "--pico-script", action="append", help="manipulate the cart via a custom {pico_name} script - see README for api details")
-        else:
-            pgroup.set_defaults(pico_script=None)
+        pgroup.add_argument("-s", "--script", action="append", help=f"manipulate the cart via a custom script (python or {pico_name}) - see README for api details")
         pgroup.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
         pgroup.add_argument("--extra-output", nargs='+', action="append", metavar=("OUTPUT [FORMAT]", ""),
                             help="additional output file to produce (and optionally, the format to use)")
@@ -347,7 +343,7 @@ def create_main(lang):
             args.input_format = CartFormatCls.png
 
         if (not args.lint and not args.count and not args.output and not args.input_count and not args.version and
-            not args.list and not args.dump and not args.script and not args.pico_script and not args.extract):
+            not args.list and not args.dump and not args.script and not args.extract):
             throw("No operation (--lint/--count/--script) or output file specified")
         if args.format and not args.output and not args.dump:
             throw("Output should be specified under --format")
@@ -435,17 +431,17 @@ def create_main(lang):
         args.include_cb = lambda name, **kwargs: find_in_builtin_script(name, kwargs, "include_main")
         args.sublang_cb = lambda name, **kwargs: find_in_builtin_script(name, kwargs, "sublanguage_main")
         args.compiler_cb = lambda name, **kwargs: find_in_builtin_script(name, kwargs, "compiler_main")
-        if args.script or args.pico_script:
-            script_objs = []
-            if args.script:
-                for script in args.script:
-                    script_objs.append(exec_script_by_path(script))
-            if args.pico_script:
-                from run_pico import exec_pico_script_by_path
-                for script in args.pico_script:
-                    script_objs.append(exec_pico_script_by_path(script))
+        if args.script:
+            for script in args.script:
+                script_ext = os.path.splitext(script)[1].lower()
+                if script_ext == ".py":
+                    script_obj = exec_script_by_path(script)
+                elif script_ext in (".lua", ".p8"):
+                    from run_pico import exec_pico_script_by_path
+                    script_obj = exec_pico_script_by_path(script)
+                else:
+                    throw(f"unrecognized script extension {script_ext} (can be .py/.lua/.p8)")
 
-            for script_obj in script_objs:
                 preproc_main, postproc_main, preproc_syntax_main, include_main, sublang_main, compiler_main = tuple(
                     getattr(script_obj, name, None) for name in 
                           ("preprocess_main", "postprocess_main", "preprocess_syntax_main", "include_main", "sublanguage_main", "compiler_main"))
