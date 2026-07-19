@@ -49,10 +49,15 @@ def lang_do_nothing(*_, **__):
 
 def find_in_builtin_script(name, kwargs, func_name):
     import importlib
+    module_name = "scripts." + str_before_first(name, ".")
     try:
-        module = importlib.import_module("scripts." + str_before_first(name, "."))
+        module = importlib.import_module(module_name)
     except ModuleNotFoundError:
-        return None
+        from run_pico import import_pico_script
+        try:
+            module = import_pico_script(module_name)
+        except ModuleNotFoundError:
+            return None
     func = getattr(module, func_name, None)
     if func:
         return func(name, **kwargs)
@@ -433,7 +438,7 @@ def create_main(lang):
         args.compiler_cb = lambda name, **kwargs: find_in_builtin_script(name, kwargs, "compiler_main")
         if args.script:
             for script in args.script:
-                script_ext = os.path.splitext(script)[1].lower()
+                script_ext = path_extension(script).lower()
                 if script_ext == ".py":
                     script_obj = exec_script_by_path(script)
                 elif script_ext in (".lua", ".p8"):

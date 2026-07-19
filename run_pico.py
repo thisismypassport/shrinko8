@@ -83,6 +83,20 @@ def exec_pico_script_by_path(path):
         throw(f"ERROR: p8 script at {path} didn't return a module object")
     return result
 
+g_pico_imports = {}
+def import_pico_script(module_name):
+    module = g_pico_imports.get(module_name)
+    if module is None:
+        path_pfx = module_name.replace(".", "/")
+        for ext in [".lua", ".py"]:
+            path = path_pfx + ext
+            if path_exists(path):
+                module = exec_pico_script_by_path(path)
+                g_pico_imports[module_name] = module
+                return module
+        raise ModuleNotFoundError(module_name)
+    return module
+
 if __name__ == "__main__":
     arg = list_get(sys.argv, 1)
     if arg == "-c":
