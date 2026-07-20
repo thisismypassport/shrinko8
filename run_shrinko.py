@@ -167,6 +167,7 @@ def create_main(lang):
         pgroup.add_argument("--rename-map", help="log renaming of identifiers (from minify step) to this file")
         pgroup.add_argument("--const", nargs=2, action="append", metavar=("NAME", "VALUE"), help="define a constant that will be replaced with the VALUE across the entire file")
         pgroup.add_argument("--str-const", nargs=2, action="append", metavar=("NAME", "VALUE"), help="same as --const, but the value is interpreted as a string")
+        pgroup.add_argument("--default-compiler", help="same as a '--$switch-compiler: VALUE' hint at the beginning of the file")
 
         pgroup = parser.add_argument_group("lint options")
         pgroup.add_argument("-l", "--lint", action="store_true", help="enable checking the cart for common issues")
@@ -603,6 +604,7 @@ def create_main(lang):
                               extra_local_builtins=args.local_builtin,
                               srcmap=args.rename_map, version=cart.version_id, include_getter=args.include_cb,
                               sublang_getter=args.sublang_cb, compiler_getter=args.compiler_cb,
+                              default_compiler=args.default_compiler,
                               hint_comments=not args.ignore_hints, consts=args.const,
                               ignore_transforms=args.no_minify_transform)
             if args.preproc_cb:
@@ -647,6 +649,8 @@ def create_main(lang):
             
             if args.version:
                 write_cart_version_func(cart)
+            
+            ctxt.finish()
         
         return True, not had_warns
 

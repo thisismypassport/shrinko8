@@ -305,7 +305,7 @@ class NextTokenMods:
             m.comments = []
         m.comments.append(cmt)
 
-def tokenize(source, ctxt=None, all_comments=False, lang=None):
+def tokenize(source, ctxt=None, all_comments=False, lang=None, inner=False):
     text = source.text
     idx = 0
     vline = 0
@@ -373,11 +373,9 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
             if include_func:
                 included_str = include_func(args=include_args, ctxt=ctxt)
                 if included_str != None:
-                    included_tokens, included_errors = tokenize(Source(include_name, included_str), ctxt, all_comments)
+                    included_tokens, included_errors = tokenize(Source(include_name, included_str), ctxt, all_comments, inner=True)
                     tokens.extend(included_tokens)
                     errors.extend(included_errors)
-                    if tokens and tokens[-1].type is None:
-                        del tokens[-1] # TODO - we lose any comments/etc on it...
                     return
             eprint("warning - ignoring unrecognized dynamic include '%s'" % include_name)
 
@@ -639,6 +637,9 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
             add_token(TokenType.string, orig_idx)
         else:
             add_error("Invalid long brackets")
+    
+    if ctxt and ctxt.default_compiler and not inner:
+        switch_compiler(ctxt.default_compiler)
 
     while idx < len(text):
         ch = take()
@@ -685,8 +686,9 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
         else:
             add_error("invalid character")
     
-    if next_mods or all_comments:
-        add_token(None, idx) # end token, for ending whitespace/comments/etc
+    if (next_mods or all_comments) and not inner:
+        add_token(None, idx) # end token, for ending whitespace/comments/etc (TBD: lost if inner...)
+
     if real_tokens != None:
         switch_compiler(None)
     return tokens, errors

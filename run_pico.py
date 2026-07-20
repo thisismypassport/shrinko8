@@ -40,10 +40,10 @@ def picoscript_from_fixnum(v):
     return v
 
 def picoscript_print(val, *_):
-    print(g_lupaz8_runtime.globals().tostr(val))
+    print(g_globals.tostr(val))
 
 def picoscript_printh(val, filename=None, overwrite=False, *_):
-    val = g_lupaz8_runtime.globals().tostr(val)
+    val = g_globals.tostr(val)
     if not filename:
         eprint(val)
     elif overwrite:
@@ -51,26 +51,36 @@ def picoscript_printh(val, filename=None, overwrite=False, *_):
     else:
         file_append_text(filename, val + "\n")
 
-g_lupaz8_runtime = None
-def get_runtime():
-    global g_lupaz8_runtime
-    if not g_lupaz8_runtime:
-        g_lupaz8_runtime = _lupaz8_module().LuaRuntime(encoding="p8scii", source_encoding="p8scii",
-                                                       overflow_handler=True)
+def picoscript_stop(msg=None, *_):
+    throw(g_globals.tostr(msg) if msg else "stop() called")
 
-        p8globs = g_lupaz8_runtime.globals()
-        p8globs.print = picoscript_print # to stdout
-        p8globs.printh = picoscript_printh # to stderr or file
+g_runtime = None
+g_globals = None
+def get_runtime():
+    global g_runtime, g_globals
+    if not g_runtime:
+        g_runtime = _lupaz8_module().LuaRuntime(encoding="p8scii", source_encoding="p8scii",
+                                                overflow_handler=True)
+        g_globals = g_runtime.globals()
+
+        g_globals.print = picoscript_print # to stdout
+        g_globals.printh = picoscript_printh # to stderr or file
+        g_globals.stop = picoscript_stop
         
-        shrinko = p8globs.shrinko = g_lupaz8_runtime.table()
+        shrinko = g_globals.shrinko = g_runtime.table()
         shrinko.to_p8str = picoscript_to_p8str
         shrinko.from_p8str = picoscript_from_p8str
         shrinko.to_memory = picoscript_to_memory
         shrinko.from_memory = picoscript_from_memory
         shrinko.to_fixnum = picoscript_to_fixnum
         shrinko.from_fixnum = picoscript_from_fixnum
+
+        # (would've added to lupaz8 except already released)
+        python = g_globals.python
+        python.attrs = python.as_attrgetter
+        python.items = python.as_itemgetter
         
-    return g_lupaz8_runtime
+    return g_runtime
 
 def exec_pico_code(code):
     return get_runtime().execute(code)

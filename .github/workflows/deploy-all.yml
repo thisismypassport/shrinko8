@@ -38,6 +38,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          submodules: true
         
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -93,6 +95,8 @@ jobs:
         
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          submodules: true
 
       - name: Create Executable
         uses: sayyid5416/pyinstaller@v1
@@ -153,6 +157,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          submodules: true
         
       - name: Set up Python
         uses: actions/setup-python@v3

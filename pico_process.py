@@ -194,7 +194,7 @@ class ContextBase:
     """Defines information for how code is to be processed, e.g. the supported builtins, the supported version, the language, etc."""
     def __init__(m, lang, builtins, local_builtins, builtins_with_callbacks, builtin_callbacks, builtin_members,
                  extra_builtins=None, not_builtins=None, use_local_builtins=True, extra_local_builtins=None, 
-                 srcmap=False, include_getter=None, sublang_getter=None, compiler_getter=None,
+                 srcmap=False, include_getter=None, sublang_getter=None, compiler_getter=None, default_compiler=None,
                  version=sys.maxsize, hint_comments=True, consts=None, ignore_transforms=False):
         m.builtins = builtins.copy()
         m.local_builtins = local_builtins.copy() if use_local_builtins else set()
@@ -217,11 +217,15 @@ class ContextBase:
         m.include_getter = include_getter
         m.sublang_getter = sublang_getter
         m.compiler_getter = compiler_getter
+        m.default_compiler = default_compiler
         m.custom_langdefs = None
         m.hint_comments = hint_comments
         m.version = version
         m.lang = lang
         m.fields = {}
+        m.at_finish = []
+        
+    local_renames = global_renames = member_renames = label_renames = None
     
     def add_custom_langdef(m, source, target, args):
         if m.custom_langdefs is None:
@@ -252,6 +256,11 @@ class ContextBase:
     def set_field(m, name, value):
         """set a custom field, for convenience"""
         m.fields[name] = value
+    
+    def finish(m):
+        at_finish, m.at_finish = m.at_finish, None
+        for cb in at_finish:
+            cb(ctxt=m)
 
 class PicoContext(ContextBase):
     """Specialization of ContextBase to pico8"""
@@ -304,7 +313,7 @@ def process_placeholder(ctxt, token, errors):
         ph_str = include_func(args=ph_args.strip(), ctxt=ctxt)
         if ph_str != None:
             ph_source = Source(ph_name, ph_str)
-            ph_tokens, ph_errors = tokenize(ph_source, ctxt)
+            ph_tokens, ph_errors = tokenize(ph_source, ctxt, inner=True)
             if not ph_errors:
                 ph_root, ph_errors = parse(ph_source, ph_tokens, ctxt, for_expr=token.placeholder_expr)
                 if not ph_errors:

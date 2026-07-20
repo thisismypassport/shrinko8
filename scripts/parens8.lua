@@ -43,14 +43,26 @@ function split_args(args_str)
     return args
 end
 
-function tohex(v) return sub(tostr(v, 1), 1, 6) end
+function copy(tbl)
+    local copy = {}
+    for k,v in pairs(tbl) do copy[k] = v end
+    return copy
+end
+function tohex(v)
+    return sub(tostr(v, 1), 1, 6)
+end
 
 function get_parens8_data(ctxt)
     return ctxt.get_field("parens8_data", function()
-        return {num_compilers=0, results={}}
+        return {num_compilers=0, results={}} -- has_interpreter=False, needs_reset=False
     end)
 end
 
+function reset(opts)
+    -- called once done with cart (e.g. important in the webapp and in test runs)
+    opidx, opcodes, vm_ops = unpack(get_parens8_data(opts.ctxt).reset_data)
+    -- we don't copy here - they'll be copied in their initial state again next compilation
+end
 
 function Parens8Compiler:__init(opts)
     self.args = opts.args
@@ -71,9 +83,17 @@ function Parens8Compiler:get_dynamic_includes()
     return python.list(includes)
 end
 
-function Parens8Compiler:compile(root)
+function Parens8Compiler:compile(root, opts)
     local code = pico_output.output_node(root, self.ctxt, --[[minify=]]false)
+    local data = get_parens8_data(self.ctxt)
 
+    -- save initial data to allow resetting it later
+    if not data.needs_reset then
+        data.reset_data = {opidx, copy(opcodes), copy(vm_ops)}
+        python.attrs(self.ctxt.at_finish).append(reset)
+        data.needs_reset = true
+    end
+    
     local cl_args = split_args(self.args)
 
     -- extract our options
@@ -84,15 +104,22 @@ function Parens8Compiler:compile(root)
 
     -- modify non-string options
     if not cl_args.vm_cleanup then
-        cl_args.vm_cleanup = get_parens8_data(self.ctxt).num_compilers == 1 and "full" or "partial"
+        cl_args.vm_cleanup = data.num_compilers == 1 and "full" or "partial"
     end
     cl_args.vm_cleanup = cl_args.vm_cleanup == "full" and vm_cleanup_full or
         cl_args.vm_cleanup != "none" and vm_cleanup_partial -- else empty
+    
+    if self.ctxt.global_renames then -- need to rename cleanups in tandem...
+        cl_args.vm_cleanup = copy(cl_args.vm_cleanup)
+        for i, cleanup in pairs(cl_args.vm_cleanup) do
+            cl_args.vm_cleanup[i] = self.ctxt.global_renames[cleanup]
+        end
+    end
 
     local cl_code = compile_crescent(cl_args, code)
     local byte_code = shrinko.to_memory(serialize(cl_code))
 
-    local results = get_parens8_data(self.ctxt).results
+    local results = data.results
     results[self.id] = ""
 
     if rom_addr then
@@ -114,10 +141,11 @@ function Parens8Compiler:compile(root)
 end
 
 function get_parens8_interpreter(opts)
-    if get_parens8_data(opts.ctxt).has_interpreter then
+    local data = get_parens8_data(opts.ctxt)
+    if data.has_interpreter then
         printh("error - interpreter already written out, can't write it again") -- or could we?
     else
-        get_parens8_data(opts.ctxt).has_interpreter = true
+        data.has_interpreter = true
 
         local template = string.gsub(vm_template, '"`compiled_args`"', '--[[$placeholder-expr::parens8.interp_args]] ""')
         template = string.gsub(template, 'return `runtime_ops`', '--[[$placeholder-stmt::parens8.interp_ops]] do end')

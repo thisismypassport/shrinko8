@@ -138,7 +138,7 @@ function MySubLanguage:get_local_usages(opts)
     -- (may be nice to have real test for this?)
     local fake_scope = pico_process.Scope()
     local fake_local = pico_process.Local("test", fake_scope)
-    fake_scope.used_globals = python.as_attrgetter(self:get_global_usages()).keys()
+    fake_scope.used_globals = python.attrs(self:get_global_usages()).keys()
     fake_scope.used_locals = python.set({fake_local})
     return python.dict({[fake_local]=1})
 end
