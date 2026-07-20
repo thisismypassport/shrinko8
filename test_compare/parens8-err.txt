@@ -1,0 +1,7 @@
+Compilation errors:
+test_input/parens8-err.p8:4:13: Cannot goto label inner_label across a compiler switch
+test_input/parens8-err.p8:10:21: cannot use a local 'outer_local' across a compiler switch - try using a global instead
+test_input/parens8-err.p8:12:13: Cannot goto label outer_label across a compiler switch
+test_input/parens8-err.p8:13:13: Cannot goto label exit_label across a compiler switch
+test_input/parens8-err.p8:17:13: Cannot goto label inner_label across a compiler switch
+test_input/parens8-err.p8:18:21: cannot use a local 'inner_local' across a compiler switch - try using a global instead

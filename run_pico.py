@@ -88,7 +88,10 @@ def exec_pico_code(code):
 def exec_pico_script_by_path(path):
     cart = read_cart_autodetect(path) # for includes/etc
     
-    result = get_runtime().execute(cart.code, name=path, mode='t')
+    return get_runtime().execute(cart.code, name=path, mode='t')
+
+def exec_pico_module_script_by_path(path):
+    result = exec_pico_script_by_path(path)
     if not result:
         throw(f"ERROR: p8 script at {path} didn't return a module object")
     return result
@@ -101,7 +104,7 @@ def import_pico_script(module_name):
         for ext in [".lua", ".py"]:
             path = path_pfx + ext
             if path_exists(path):
-                module = exec_pico_script_by_path(path)
+                module = exec_pico_module_script_by_path(path)
                 g_pico_imports[module_name] = module
                 return module
         raise ModuleNotFoundError(module_name)
@@ -111,5 +114,7 @@ if __name__ == "__main__":
     arg = list_get(sys.argv, 1)
     if arg == "-c":
         exec_pico_code(list_get(sys.argv, 2))
-    else:
+    elif arg:
         exec_pico_script_by_path(arg)
+    else:
+        print("Usage: <path> OR -c <cmd>")
