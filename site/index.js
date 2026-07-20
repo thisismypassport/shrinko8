@@ -174,7 +174,7 @@ async function loadInputFiles(inputs) {
     function onerror(text) {
         $("#input-overlay").hide();
         $("#input-error-overlay").show();
-        applyErrors(-1, text, "#input-error-output");
+        applyErrors(errcode_generr, text, "#input-error-output");
     }
 
     let allFiles = new Map();
@@ -527,15 +527,17 @@ async function doShrinko(args, encoding, usePreview, doZip, extraNames) {
     }
 }
 
+const errcode_ok = 0, errcode_generr = 1, errcode_warn = 2, errcode_include = 4; // see ErrCodes on python side
+
 function applyErrors(code, stdouterr, selector) {
     let elem = $(selector);
-    elem.css("color", code == 0 ? "green" : code == 2 ? "darkgoldenrod" : "red");
+    elem.css("color", code == errcode_ok ? "green" : code == errcode_warn ? "darkgoldenrod" : "red");
 
     if (code == 0) {
         stdouterr += "Lint succesful - no issues found.";
     }
 
-    if (stdouterr.match(/^.*cannot open included cart/i)) { // pico8-specific
+    if (code == errcode_include) {
         stdouterr += "\nTo fix this, select (or drop) both the main p8 file and all its includes.";
         stdouterr += "\nIf your includes are inside subfolders, you can drag & drop the whole parent directory to the input area.";
     }
@@ -687,7 +689,7 @@ function updateMinifyResults(format) {
             $("#minify-preview").data("editor").setValue(preview, -1);
         }
         
-        applyErrors(2, stdouterr, "#minify-diag-output");
+        applyErrors(errcode_warn, stdouterr, "#minify-diag-output");
     }
 
     $("#minify-error-overlay").toggle(code != 0);

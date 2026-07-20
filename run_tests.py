@@ -294,7 +294,8 @@ def run():
     run_test("pico-sublang", "sublang.p8", "sublang.p8", "--minify", "--script", path_join("test_input", "sublang.lua"))
     run_test("pico-compiler", "compiler.p8", "compiler.p8", "--minify", "--script", path_join("test_input", "compiler.lua"))
     run_test("parens8-input", "input-parens.p8", "parens-input.p8", "--minify-transform-only", pico8_output="output.p8.printh")
-    ###run_test("parens8-repl", "repl.p8", "parens-repl.p8", "--minify-transform-only", "--default-compiler", "parens8 rom", pico8_output_val="finished")
+    #run_test("parens8-test", "test.p8", "parens-test.p8", "--minify-transform-only", "--default-compiler", "parens8 sparse_vararg", pico8_output_val="DONE")
+    #run_test("parens8-repl", "repl.p8", "parens-repl.p8", "--minify-transform-only", "--default-compiler", "parens8 rom", pico8_output_val="finished")
     run_test("parens8", "parens8.p8", "parens8.p8", "--minify", pico8_output="parens8.p8.printh")
     run_test("parens8-2", "parens8-2.p8", "parens8-2.p8", "--minify", pico8_output="parens8-2.p8.printh")
     # TODO -add in above test: attempted use of local/label ; ???

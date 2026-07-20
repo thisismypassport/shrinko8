@@ -6,6 +6,7 @@ from pico_export import read_cart_export, read_pod_file, ListOp
 from pico_tokenize import k_hint_split_re
 from pico_constfold import parse_constant
 from pico_defs import Language, get_latest_pico8_version, parse_pico8_version
+from pico_preprocess import IncludeNotFoundError
 from picotron_defs import PicotronContext, Cart64Source, get_latest_picotron_runtime
 from picotron_cart import Cart64Format, read_cart64, write_cart64, merge_cart64, filter_cart64, preproc_cart64
 from picotron_cart import write_cart64_compressed_size, write_cart64_version
@@ -58,9 +59,15 @@ def find_in_builtin_script(name, kwargs, func_name):
             module = import_pico_script(module_name)
         except ModuleNotFoundError:
             return None
+        except IncludeNotFoundError as e:
+            eprint(f"{e} - could you be missing a 'git submodule update --init'?")
+            return None
     func = getattr(module, func_name, None)
     if func:
         return func(name, **kwargs)
+
+class ErrCodes:
+    ok = 0; err = 1; warn = 2; fail = 3; include = 4
 
 def create_main(lang):
     is_pico8 = lang == Language.pico8
@@ -472,11 +479,11 @@ def create_main(lang):
         if args.input:
             cart, extra_carts = handle_input(args)
             if cart is None: # e.g. list/dump case
-                return 0
+                return ErrCodes.ok
             
             passed, ok = handle_processing(args, cart, extra_carts)
             if not passed:
-                return 2 if ok else 1
+                return ErrCodes.warn if ok else ErrCodes.err
             
         else: # output-only operations
             cart, extra_carts = None, ()
@@ -735,14 +742,17 @@ def create_main(lang):
 
             if not raw_args: # help is better than usage
                 parser.print_help(sys.stderr)
-                return 1
+                return ErrCodes.err
 
             args = parser.parse_intermixed_args(raw_args)
             return main_inner(args)
         except CheckError as err:
             sys.stdout.flush()
             eprint("ERROR: " + str(err))
-            return 1
+            if isinstance(err, IncludeNotFoundError):
+                return ErrCodes.include
+            else:
+                return ErrCodes.fail
     return main
 
 if __name__ == "__main__":
