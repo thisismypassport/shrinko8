@@ -394,16 +394,29 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
             <span id="advanced-upload-ok" style="color: darkgreen; display: none"></span>
           </span>
           <span style="padding-top: 10px; margin-bottom: 5px; border-top: 1px solid black;">
-            <strong>Python Script:</strong>
+            <select id="script-lang" onchange="onScriptLangChange()" aria-label="Script Language">
+              <option value="python" selected>Python</option>
+              {% if pico8 %}
+              <option value="pico">{{targetname}}</option>
+              {% endif %}
+            </select>
+            <strong>Script:</strong>
           </span>
-          <div id="script-code" class="ace-textarea" style="flex: 6"
-              placeholder="You can paste a custom python script here that customizes how {{webappname}} operates.
+          <div id="script-code" style="flex: 6" class="base">
+            <div id="script-code-python" class="ace-textarea full"
+                placeholder="You can paste a custom python script here that customizes how {{webappname}} operates.
 For example, you can paste the example sublanguage from the readme"></div>
+            <div id="script-code-pico" class="ace-textarea full"
+                placeholder="You can paste a custom {{targetname}} script here that customizes how {{webappname}} operates.
+For example, you can paste the example sublanguage from the readme"></div>
+          </div>
         </div>
       </div>
     </form>
-    <div id="measure-full" class="full" style="visibility: hidden; margin: 8px">
-      <pre id="measure-char" style="position: absolute">M</pre>
+    <div class="full" style="visibility: hidden">
+      <div id="measure-full" style="margin: 8px">
+        <pre id="measure-char" style="position: absolute">M</pre>
+      </div>
     </div>
 
     <script src="utils.js" type="module"></script>

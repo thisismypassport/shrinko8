@@ -15,7 +15,8 @@ let extraInputFileTmpl = "__extrainput#." + srcExt;
 let outputFile = "__output.unk";
 let outputDir = "__output.dir";
 let previewFile = "__preview." + srcExt;
-let scriptFile = "__script.py";
+let pythonScriptFile = "__script.py";
+let picoScriptFile = "__script.lua";
 let picoDat = "__" + targetLang + ".dat";
 
 let outputCapture = undefined;
@@ -23,6 +24,8 @@ let outputColumns = undefined;
 let outputHtml = false;
 let initProgress = 0;
 let hasPicoDat = false;
+let hasPythonScript = false;
+let hasPicoScript = false;
 
 function run_main(main, args, fail) {
     try {
@@ -103,9 +106,8 @@ class TtyOutput {
 
 async function initShrinko() {
     try {
-        initProgress = 30;
+        initProgress = 50;
         self.pyodide = await loadPyodide();
-        initProgress = 60;
 
         pyodide.setStdout(new TtyOutput(console.info));
         pyodide.setStderr(new TtyOutput(console.warn));
@@ -113,12 +115,19 @@ async function initShrinko() {
         self.fs = pyodide.FS
         fs.writeFile(inputFile, "");
 
+        initProgress = 60;
         await pyodide.loadPackage("pillow");
+        initProgress = 70;
+        await pyodide.loadPackage("micropip");
+        initProgress = 80;
+        const micropip = pyodide.pyimport("micropip");
+        await micropip.install('lupaz8');
         initProgress = 90;
 
         let response = await fetch("shrinko.zip");
         await pyodide.unpackArchive(await response.arrayBuffer(), "zip");
 
+        initProgress = 99;
         self.shrinko_main =
             isPico8 ? pyodide.pyimport("shrinko8").main :
             isPicotron ? pyodide.pyimport("shrinkotron").main :
@@ -240,9 +249,15 @@ let api = {
         await initPromise; // includes fs init
         fs.writeFile(inputFile, text);
     },
-    updateScriptFile: async (text) => {
+    updatePythonScriptFile: async (text) => {
         await initPromise; // includes fs init
-        fs.writeFile(scriptFile, text);
+        fs.writeFile(pythonScriptFile, text);
+        hasPythonScript = Boolean(text);
+    },
+    updatePicoScriptFile: async (text) => {
+        await initPromise; // includes fs init
+        fs.writeFile(picoScriptFile, text);
+        hasPicoScript = Boolean(text);
     },
     updatePicoDat: async (data) => {
         await initPromise; // includes fs init
@@ -272,7 +287,7 @@ let api = {
         }
     },
 
-    runShrinko: async (args, argStr, useScript, encoding, usePreview, doZip, extraNames) => {
+    runShrinko: async (args, argStr, encoding, usePreview, doZip, extraNames) => {
         await initPromise;
 
         let cmdline = [inputFile];
@@ -288,8 +303,11 @@ let api = {
         if (argStr) {
             cmdline.push(...shlex(argStr));
         }
-        if (useScript) {
-            cmdline.push("--script", scriptFile);
+        if (hasPythonScript) {
+            cmdline.push("--script", pythonScriptFile);
+        }
+        if (hasPicoScript) {
+            cmdline.push("--script", picoScriptFile);
         }
         if (usePreview) {
             cmdline.push("--extra-output", previewFile);
@@ -303,7 +321,8 @@ let api = {
                 cmdline.push("--extra-input", extraInputFile, srcExt, extraNames[i]);
             }
         }
-
+    
+        console.log(cmdline);
         let [code, stdout] = shrinko(cmdline);
 
         let output, preview;

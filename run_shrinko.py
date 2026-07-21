@@ -450,8 +450,11 @@ def create_main(lang):
                 if script_ext == ".py":
                     script_obj = exec_script_by_path(script)
                 elif script_ext in (".lua", ".p8"):
-                    from run_pico import exec_pico_module_script_by_path
-                    script_obj = exec_pico_module_script_by_path(script)
+                    from run_pico import exec_pico_script_by_path, lua_type
+                    script_obj = exec_pico_script_by_path(script)
+                    if lua_type(script_obj) != "table":
+                        eprint(f"WARNING: script '{script}' didn't return a table")
+                        continue
                 else:
                     throw(f"unrecognized script extension {script_ext} (can be .py/.lua/.p8)")
 

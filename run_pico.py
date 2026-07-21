@@ -82,6 +82,9 @@ def get_runtime():
         
     return g_runtime
 
+def lua_type(obj):
+    return _lupaz8_module().lua_type(obj)
+
 def exec_pico_code(code):
     return get_runtime().execute(code)
 
@@ -89,12 +92,6 @@ def exec_pico_script_by_path(path):
     cart = read_cart_autodetect(path) # for includes/etc
     
     return get_runtime().execute(cart.code, name=path, mode='t')
-
-def exec_pico_module_script_by_path(path):
-    result = exec_pico_script_by_path(path)
-    if not result:
-        throw(f"ERROR: p8 script at {path} didn't return a module object")
-    return result
 
 g_pico_imports = {}
 def import_pico_script(module_name):
@@ -104,7 +101,9 @@ def import_pico_script(module_name):
         for ext in [".lua", ".py"]:
             path = path_pfx + ext
             if path_exists(path):
-                module = exec_pico_module_script_by_path(path)
+                module = exec_pico_script_by_path(path)
+                if module is None:
+                    module = True
                 g_pico_imports[module_name] = module
                 return module
         raise ModuleNotFoundError(module_name)

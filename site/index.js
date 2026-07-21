@@ -17,10 +17,19 @@ let isLoading = true;
 function showLoading() {
     isLoading = true;
     $("#loading-overlay").show();
+    let targetProgress = 0;
+
+    function updateProgressUi() {
+        if (isLoading) {
+            let value = $("#loading-progress").val();
+            value = Math.min(value + 2, targetProgress);
+            $("#loading-progress").val(value);
+            setTimeout(updateProgressUi, 10);
+        }
+    }
 
     function updateProgress() {
         api.getProgress().then(progress => {
-            console.log(progress);
             if (progress < 0) {
                 $("#loading-failed").show();
             } else if (progress >= 100) {
@@ -28,12 +37,13 @@ function showLoading() {
                 isLoading = false;
                 doShrinkoAction(); // initial
             } else {
-                $("#loading-progress").val(progress);
-                setTimeout(updateProgress, 100);
+                targetProgress = progress;
+                setTimeout(updateProgress, 10);
             }
         });
     }
 
+    updateProgressUi();
     updateProgress();
 }
 
@@ -441,11 +451,16 @@ export async function loadExtraFile(file) {
     outputCache = {}
 }
 
-let scriptMgr = new InputChangeMgr("#script-code", "updateScriptFile");
+let pythonScriptMgr = new InputChangeMgr("#script-code-python", "updatePythonScriptFile");
+let picoScriptMgr = new InputChangeMgr("#script-code-pico", "updatePicoScriptFile");
 
 // Called when the script value changes
-function onScriptChange(delta) {
-    scriptMgr.onChange();
+function onPythonScriptChange(delta) {
+    pythonScriptMgr.onChange();
+    outputCache = {}
+}
+function onPicoScriptChange(delta) {
+    picoScriptMgr.onChange();
     outputCache = {}
 }
 
@@ -515,12 +530,11 @@ async function doShrinko(args, encoding, usePreview, doZip, extraNames) {
     let argStr = $("#extra-args").val();
 
     await inputMgr.flush();
-    await scriptMgr.flush();
-
-    let useScript = Boolean(scriptMgr.getValue());
+    await pythonScriptMgr.flush();
+    await picoScriptMgr.flush();
 
     try {
-        return await api.runShrinko(args, argStr, useScript, encoding, usePreview, doZip, extraNames);
+        return await api.runShrinko(args, argStr, encoding, usePreview, doZip, extraNames);
     } catch (e) {
         console.error(e);
         return [-1, e.message, undefined, undefined]
@@ -830,18 +844,38 @@ function onLintOptsChange(event) {
     }
 }
 
+// called when the script language changes
+export function onScriptLangChange() {
+    let lang = $("#script-lang").prop("value");
+    let isPython = lang == "python"
+    let isPico = lang == "pico";
+    $("#script-code-python").toggle(isPython);
+    $("#script-code-pico").toggle(isPico);
+    
+    if (isPython) {
+        initAceIfNeeded("#script-code-python", "python", onPythonScriptChange);
+    } else if (isPico) {
+        initAceIfNeeded("#script-code-pico", "lua", onPicoScriptChange);
+    }
+}
+
 // called when the tab changes
 function onTabChange() {
-    if (isLoading) {
-        let activeTab = $("#output-tabs").tabs("option", "active");
-        switch (activeTab) {
-            case 0: {
+    let activeTab = $("#output-tabs").tabs("option", "active");
+    switch (activeTab) {
+        case 0: {
+            if (isLoading) {
                 $("#loading-overlay").appendTo("#minify-overlay-parent");
-                break;
-            } case 1: {
-                $("#loading-overlay").appendTo("#lint-overlay-parent");
-                break;
             }
+            break;
+        } case 1: {
+            if (isLoading) {
+                $("#loading-overlay").appendTo("#lint-overlay-parent");
+            }
+            break;
+        } case 2: {
+            onScriptLangChange();
+            break;
         }
     }
     doShrinkoAction();
@@ -911,7 +945,6 @@ $(() => {
     showLoading();
     showVersion();
     initAceIfNeeded("#input-code", "lua", onInputChange);
-    initAceIfNeeded("#script-code", "python", onScriptChange);
     $("#output-tabs").tabs({activate: onTabChange});
 
     // (we call below functions with an undefined event, thus avoiding doShrinkoAction being called here)
