@@ -112,7 +112,7 @@ function Parens8Compiler:compile(root, opts)
     if self.ctxt.global_renames then -- need to rename cleanups in tandem...
         cl_args.vm_cleanup = copy(cl_args.vm_cleanup)
         for i, cleanup in pairs(cl_args.vm_cleanup) do
-            cl_args.vm_cleanup[i] = self.ctxt.global_renames[cleanup]
+            cl_args.vm_cleanup[i] = python.attrs(self.ctxt.global_renames).get(cleanup)
         end
     end
 
@@ -140,6 +140,12 @@ function Parens8Compiler:compile(root, opts)
     results[self.id] ..= pico_output.format_string_literal(shrinko.from_memory(byte_code))
 end
 
+function checked_gsub(tmpl, find, replace)
+    local result = string.gsub(tmpl, find, replace)
+    if (result == tmpl) stop("template changed - gsub no longer has effect")
+    return result
+end
+
 function get_parens8_interpreter(opts)
     local data = get_parens8_data(opts.ctxt)
     if data.has_interpreter then
@@ -147,10 +153,12 @@ function get_parens8_interpreter(opts)
     else
         data.has_interpreter = true
 
-        local template = string.gsub(vm_template, '"`compiled_args`"', '--[[$placeholder-expr::parens8.interp_args]] ""')
-        template = string.gsub(template, 'return `runtime_ops`', '--[[$placeholder-stmt::parens8.interp_ops]] do end')
-        -- 'preserve' locals used by vm ops. ideally we'd (or shrinko'd) rename the vm ops instead but it's not trivial at all...
-        template = string.gsub(template, 'ps8_runtime%(a, b, c%)', 'ps8_runtime(--[[$rename::a]]a, --[[$rename::b]]b, --[[$rename::c]]c)')
+        local template = checked_gsub(vm_template, '"`compiled_args`"', '--[[$placeholder-expr::parens8.interp_args]] ""')
+        template = checked_gsub(template, 'return `runtime_ops`', '--[[$placeholder-stmt::parens8.interp_ops]] do end')
+        -- 'preserve' locals used by vm ops. ideally we'd use ctxt.local_renames to rename them, but that's not trivial and not worth it
+        template = checked_gsub(template, 'ps8_runtime%(a, b, c%)', 'ps8_runtime(--[[$rename::a]]a, --[[$rename::b]]b, --[[$rename::c]]c)')
+        -- ignore the _ENV in the template for the purpose of safety checking, allowing to still rename globals
+        template = checked_gsub(template, '%f[%w_]_ENV%f[^%w_]', '--[[$force-safe]]_ENV')
         return fp_boilerplate .. deserializer .. template
     end
 end

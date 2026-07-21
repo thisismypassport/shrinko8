@@ -9,6 +9,7 @@ description = "Shrink (minify) Pico-8 (& Picotron) carts, as well as other tools
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = ["pillow"]
+license-files = ["LICENSE*"]
 authors = [{name = "thisismypassport"}]
 keywords = ["pico8", "picotron", "minify", "lint", "shrink"]
 classifiers = [

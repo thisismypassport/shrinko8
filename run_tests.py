@@ -297,8 +297,10 @@ def run():
     run_test("parens8-test", "test-parens.p8", "parens-test.p8", "--minify-transform-only", pico8_output_val="DONE")
     #run_test("parens8-repl", "repl.p8", "parens-repl.p8", "--minify-transform-only", "--default-compiler", "parens8 rom", pico8_output_val="finished")
     run_test("parens8", "parens8.p8", "parens8.p8", "--minify", pico8_output="parens8.p8.printh")
+    run_test("parens8-safe", "parens8.p8", "parens8-safe.p8", "--minify-safe-only", pico8_output="parens8.p8.printh")
     run_test("parens8-2", "parens8-2.p8", "parens8-2.p8", "--minify", pico8_output="parens8-2.p8.printh")
-    run_test("parens8-err", "parens8-err.p8", "parens8-err.p8", "--minify", stdout_output="parens8-err.txt", norm_stdout=norm_paths, exit_code=1)
+    run_test("parens8-err", "parens8-err.p8", None, "--count", "--minify", stdout_output="parens8-err.txt", norm_stdout=norm_paths, exit_code=1)
+    #TODO: run_test("parens8-selflint", "../scripts/parens8.lua", None, "--lint") # TODO: with some exceptions
 
     # picotron tests (TODO: more tests, more testing support!)
     run_test("TRON_test", "testtron.p64", "testtron.p64", "--minify", "--no-minify-consts", "--avoid-base64", target=Target.picotron)

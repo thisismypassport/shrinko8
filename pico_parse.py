@@ -407,7 +407,7 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
                     var.is_const = True
                     var.constval = ctxt.consts[name]
             
-            if name == "_ENV" and not implicit:
+            if name == "_ENV" and not implicit and not getattr(token, "force_safe", None):
                 nonlocal has_env
                 has_env = True
 

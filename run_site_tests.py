@@ -44,7 +44,7 @@ class SiteTestServer(TCPServer):
         super().__init__((opts.address, opts.port), SiteTestHandler)
 
 def run_playwright(address, port):
-    from playwright.sync_api import sync_playwright
+    from playwright.sync_api import sync_playwright # type: ignore
     from threading import Thread
     from urllib.parse import quote_plus as urlescape
     import shlex

@@ -69,7 +69,7 @@ end
 
 function run_ps8(fir)
 	ps8_inst, ps8_binder = {}, const
-	return ps8_asm(1, fir)(ps8_binder())()(_ENV)
+	return ps8_asm(1, fir)(ps8_binder())()(--[[$force-safe]]_ENV)
 end
 
 ps8_ops = {function(a)

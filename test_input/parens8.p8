@@ -1,17 +1,17 @@
 __lua__
-print = printh
+function globally_print(x) printh(x) end
 
 --$dynamic-include: parens8.interpreter
 
-print("outside")
+globally_print("outside")
 
 --$switch-compiler: parens8
-print("inside")
+globally_print("inside")
 --$switch-compiler: none
 
-print("outside again")
+globally_print("outside again")
 
 --$switch-compiler: parens8
 --$switch-compiler: none
 
-print("outside finally")
+globally_print("outside finally")
