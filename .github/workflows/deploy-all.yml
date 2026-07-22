@@ -44,6 +44,15 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
         
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.14"
+      
+      - name: Pre-package
+        run: |
+          python run_prepackage.py
+      
       - name: Zip
         run: |
           zip -r site/shrinko.zip `cat files.lst`

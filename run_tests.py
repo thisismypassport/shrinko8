@@ -56,7 +56,7 @@ def try_read_dir_contents(dir):
             results.append((name, try_read_file_norm(child)))
     return results
 
-def run_test(name, input, output, *args, private=False, check_output=True, from_output=False, alt_compare=None,
+def run_test(name, input, output, *args, private=False, check_output=True, from_output=False, from_source=False, alt_compare=None,
              stdout_output=None, norm_stdout=nop, exit_code=0, extra_outputs=None, output_reader=try_read_file_norm,
              pico8_output_val=None, pico8_output=None, pico8_run=None, copy_in_to_out=False, update_version=True,
              target=Target.pico8):
@@ -76,7 +76,10 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
 
     start_test()
     prefix = "private_" if private else ""
-    inpath = path_join(prefix + ("test_output" if from_output else "test_input"), input)
+    if from_source:
+        inpath = path_join(path_dirname(path_resolve(__file__)), input)
+    else:
+        inpath = path_join(prefix + ("test_output" if from_output else "test_input"), input)
     if output:
         outpath = path_join(prefix + "test_output", output)
         cmppath = path_join(prefix + "test_compare", output)
@@ -300,7 +303,7 @@ def run():
     run_test("parens8-safe", "parens8.p8", "parens8-safe.p8", "--minify-safe-only", pico8_output="parens8.p8.printh")
     run_test("parens8-2", "parens8-2.p8", "parens8-2.p8", "--minify", pico8_output="parens8-2.p8.printh")
     run_test("parens8-err", "parens8-err.p8", None, "--count", "--minify", stdout_output="parens8-err.txt", norm_stdout=norm_paths, exit_code=1)
-    run_test("parens8-selflint", "../scripts/parens8.lua", None, "--lint", "--no-lint-unused", "--no-lint-duplicate")
+    run_test("parens8-selflint", "scripts/parens8.lua", None, "--lint", "--no-lint-unused", "--no-lint-duplicate", from_source=True)
 
     # picotron tests (TODO: more tests, more testing support!)
     run_test("TRON_test", "testtron.p64", "testtron.p64", "--minify", "--no-minify-consts", "--avoid-base64", target=Target.picotron)

@@ -225,7 +225,9 @@ def create_main(lang):
                                 help=f"insert the specified file or directory INPUT into FSPATH. (FILTER can be a {sections_desc} to insert - relative to cart root)")
             pgroup.add_argument("--extract", nargs='+', action="append", metavar=(f"FSPATH [OUTPUT]", ""),
                                 help=f"extract the specified file or directory from FSPATH to OUTPUT ")
+            pgroup.set_defaults(list_includes=None)
         else:
+            pgroup.add_argument("--list-includes", action="store_true", help="list all includes inside the cart")
             pgroup.set_defaults(filter=None, insert=None, extract=None)
         
         pgroup.add_argument("--merge", nargs='+', action="append", metavar=(f"INPUT {sections_meta} [FORMAT]", ""),
@@ -356,8 +358,8 @@ def create_main(lang):
             args.input_format = CartFormatCls.png
 
         if (not args.lint and not args.count and not args.output and not args.input_count and not args.version and
-            not args.list and not args.dump and not args.script and not args.extract):
-            throw("No operation (--lint/--count/--script) or output file specified")
+            not args.list and not args.dump and not args.script and not args.extract and not args.list_includes):
+            throw("No operation (--lint/--count/--script/etc) or output file specified")
         if args.format and not args.output and not args.dump:
             throw("Output should be specified under --format")
         if args.minify and not args.output and not args.count:
@@ -496,6 +498,9 @@ def create_main(lang):
     class InputDef(Tuple):
         input = format = name = sections = fspath = None
 
+    def print_include(path):
+        print(path_relative(path))
+
     def handle_input(args):
         allow_extra_input = is_pico8 and args.format and args.format.is_export
 
@@ -515,6 +520,7 @@ def create_main(lang):
             main_cart = read_cart_func(args.input, args.input_format, size_handler=args.input_count, 
                                        debug_handler=args.trace_input_compression, cart_name=args.cart,
                                        keep_compression=args.keep_compression,
+                                       include_notifier=print_include if args.list_includes else None,
                                        extra_carts=extra_carts if allow_extra_input and not args.cart else None)
         except OSError as err:
             throw(f"cannot read cart: {err}")

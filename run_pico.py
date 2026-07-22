@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from utils import *
-from pico_defs import encode_p8str, decode_p8str, from_p8str, to_p8str, Memory
+from pico_defs import encode_p8str, decode_p8str, from_p8str, to_p8str, Memory, get_res_path
 from pico_cart import read_cart_autodetect
 from codecs import register as codec_register, CodecInfo
 
@@ -74,11 +74,6 @@ def get_runtime():
         shrinko.from_memory = picoscript_from_memory
         shrinko.to_fixnum = picoscript_to_fixnum
         shrinko.from_fixnum = picoscript_from_fixnum
-
-        # (would've added to lupaz8 except already released)
-        python = g_globals.python
-        python.attrs = python.as_attrgetter
-        python.items = python.as_itemgetter
         
     return g_runtime
 
@@ -97,7 +92,7 @@ g_pico_imports = {}
 def import_pico_script(module_name):
     module = g_pico_imports.get(module_name)
     if module is None:
-        path_pfx = module_name.replace(".", "/")
+        path_pfx = path_join(get_res_path(), module_name.replace(".", "/"))
         for ext in [".lua", ".py"]:
             path = path_pfx + ext
             if path_exists(path):
@@ -120,4 +115,3 @@ if __name__ == "__main__":
             print("Usage: <path> OR -c <cmd>")
     except CheckError as e:
         print(f"ERROR - {e}")
-        

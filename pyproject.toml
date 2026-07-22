@@ -1,14 +1,14 @@
 [build-system]
 requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+backend-path = ["."]
+build-backend = "run_prepackage"
 
 [project]
 name = "shrinko"
-dynamic = ["version"]
+dynamic = ["version", "dependencies"]
 description = "Shrink (minify) Pico-8 (& Picotron) carts, as well as other tools (e.g. linting, format conversion, exports)"
 readme = "README.md"
 requires-python = ">=3.8"
-dependencies = ["pillow"]
 license-files = ["LICENSE*"]
 authors = [{name = "thisismypassport"}]
 keywords = ["pico8", "picotron", "minify", "lint", "shrink"]
@@ -30,7 +30,11 @@ shrinkotron = "shrinko.shrinkotron:main"
 [tool.setuptools]
 packages = ["shrinko", "shrinko.scripts"]
 package-dir = {"shrinko" = ""}
-package-data = {"shrinko" = ["*.png", "*.plist"]}
+
+[tool.setuptools.package-data]
+"shrinko" = ["*.png", "*.plist"]
+"shrinko.scripts" = ["*.lua"]
 
 [tool.setuptools.dynamic]
 version = {attr = "run_shrinko.k_version_raw"}
+dependencies = {file = "requirements.lst"}

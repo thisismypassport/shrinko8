@@ -1,25 +1,43 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import sys, os
+sys.path.insert(0, os.path.abspath(SPECPATH))
+from utils import *
+import run_prepackage
+import glob, pkgutil, PIL
+
 block_cipher = None
-hidden_imports = ['pico_utils', 'scripts']
-excludes = ['packaging', 'setuptools', 'pkgutil', 'numpy']
+excludes = {'packaging', 'setuptools', 'pkgutil', 'numpy'}
+scripts = set()
+datas = set()
 
-import os
-for script in os.listdir("scripts"):
-    if script.endswith(".py") and script != "__init__.py":
-        hidden_imports.append("scripts." + os.path.splitext(script)[0])
+run_prepackage.run()
 
-import pkgutil, PIL
+for entry in file_read_text("files.lst").split():
+    for file in glob.glob(entry):
+        if file.endswith(".py"):
+            modsplit = path_split_comps(path_no_extension(file))
+            for i in range(len(modsplit) - 1):
+                scripts.add(".".join(modsplit[:-1]))
+            if modsplit[-1] != "__init__":
+                scripts.add(".".join(modsplit))
+        else:
+            datas.add((file, path_dirname(file) or "."))
+
 for _, name, _ in pkgutil.walk_packages(PIL.__path__):
     if name.endswith("ImagePlugin") and name not in ("PngImagePlugin", "QoiImagePlugin"):
-        excludes.append(f"{PIL.__name__}.{name}")
+        excludes.add(f"{PIL.__name__}.{name}")
+
+excludes = list(excludes)
+scripts = list(scripts)
+datas = list(datas)
 
 ana_p8 = Analysis(
     ['shrinko8.py'],
     pathex=[],
     binaries=[],
-    datas=[('template.png', '.'), ('font.png', '.'), ('template.plist', '.')],
-    hiddenimports=hidden_imports,
+    datas=datas,
+    hiddenimports=scripts,
     excludes=excludes,
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -31,8 +49,8 @@ ana_tron = Analysis(
     ['shrinkotron.py'],
     pathex=[],
     binaries=[],
-    datas=[('template64.png', '.'), ('font64.png', '.'), ('template.plist', '.')],
-    hiddenimports=hidden_imports,
+    datas=datas,
+    hiddenimports=scripts,
     excludes=excludes,
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -101,3 +119,9 @@ coll = COLLECT(
     upx_exclude=[],
     name='shrinko',
 )
+
+for license in dir_names("."):
+    if license.startswith("LICENSE"):
+        shutil.copy(license, path_join(DISTPATH, "shrinko"))
+
+run_prepackage.unrun()
