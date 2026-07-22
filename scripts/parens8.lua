@@ -20,6 +20,7 @@
                      if there is data left over, it will be compiled as a string
     vm_cleanup=<opt> - can be set to full or partial or none
 ]]
+--$lint: python, shrinko, string
 
 #include parens8_src/serializers/generic.lua
 #include parens8_src/compilers/vmgen.lua

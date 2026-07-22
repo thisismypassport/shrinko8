@@ -110,10 +110,14 @@ def import_pico_script(module_name):
     return module
 
 if __name__ == "__main__":
-    arg = list_get(sys.argv, 1)
-    if arg == "-c":
-        exec_pico_code(list_get(sys.argv, 2))
-    elif arg:
-        exec_pico_script_by_path(arg)
-    else:
-        print("Usage: <path> OR -c <cmd>")
+    try:
+        arg = list_get(sys.argv, 1)
+        if arg == "-c":
+            exec_pico_code(list_get(sys.argv, 2))
+        elif arg:
+            exec_pico_script_by_path(arg)
+        else:
+            print("Usage: <path> OR -c <cmd>")
+    except CheckError as e:
+        print(f"ERROR - {e}")
+        
