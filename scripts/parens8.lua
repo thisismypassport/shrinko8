@@ -20,7 +20,7 @@
                      if there is data left over, it will be compiled as a string
     vm_cleanup=<opt> - can be set to full or partial or none
 ]]
---$lint: python, shrinko, string
+--$lint: python, shrinko, string, rommemcpy
 
 #include parens8_src/serializers/generic.lua
 #include parens8_src/compilers/vmgen.lua
@@ -124,9 +124,8 @@ function Parens8Compiler:compile(root, opts)
     results[self.id] = ""
 
     if rom_addr then
-        local max_len = python.builtins.min(rom_endaddr - rom_addr, #byte_code)
-        local rom_data = byte_code.get_block(0, max_len)
-        self.src.cart.rom.set_block(rom_addr, rom_data)
+        local max_len = python.builtins.min(rom_endaddr - rom_addr, #byte_code) -- #byte_code may be a python int
+        rommemcpy(self.src.cart.rom, rom_addr, byte_code, 0, max_len)
         results[self.id] ..= format("chr(peek(`1`, `2`))", {rom_addr, max_len})
         byte_code = byte_code.get_block(max_len, #byte_code - max_len)
 

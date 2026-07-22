@@ -19,30 +19,42 @@ def p8_codec_search(name):
 codec_register(p8_codec_search)
 
 def picoscript_from_p8str(text, unicaps=False):
+    """A version of from_p8str that's usable from a pico8 script (bytes/p8scii string -> utf8 string)"""
     return from_p8str(text, unicaps).encode() # encode to prevent encoding as p8str again
 
 def picoscript_to_p8str(mess):
+    """A version of to_p8str that's usable from a pico8 script (utf8 string -> bytes/p8scii string)"""
     return to_p8str(encode_p8str(mess).decode()) # mess is utf8 encoded as p8str, so must unmess first
 
 def picoscript_to_memory(mess):
-    return Memory(encode_p8str(mess))
+    """Constructs a Memory (a type of bytearray) from a bytes/p8scii string"""
+    if isinstance(mess, str):
+        mess = encode_p8str(mess)
+    return Memory(mess)
 
 def picoscript_from_memory(bytearray):
+    """Gets a bytes/p8scii string from a Memory (or any bytearray)"""
     return bytes(bytearray)
 
+# general note - a python int is passed to lua only when it can't fit into a pico8 integer (16-bit signed)
+# there is currently no reliable way to do overflow-free arithmetic on ints because of that
+# (but you can always convert to fixnum to get signed 32bit arithmetic. or use python.builtins.eval)
+
 def picoscript_to_fixnum(v):
+    """Converts an integer (pico8 or python) to a 16.16 pico8 number"""
     return float(v) / 0x10000
 
 def picoscript_from_fixnum(v):
+    """Converts a 16.16 pico8 number into an integer (pico8 or python - whichever can hold it)"""
     v = int(v * 0x10000)
     if v < 0:
         v += 0x100000000
     return v
 
-def picoscript_print(val, *_):
+def picoscript_print(val=None, *_):
     print(g_globals.tostr(val))
 
-def picoscript_printh(val, filename=None, overwrite=False, *_):
+def picoscript_printh(val=None, filename=None, overwrite=False, *_):
     val = g_globals.tostr(val)
     if not filename:
         eprint(val)
@@ -54,22 +66,63 @@ def picoscript_printh(val, filename=None, overwrite=False, *_):
 def picoscript_stop(msg=None, *_):
     throw(g_globals.tostr(msg) if msg else "stop() called")
 
+def picoscript_rompeek(mem, off, count=None):
+    if count != None:
+        return tuple(picoscript_rompeek(mem, off + i) for i in range(count))
+    return mem.get8(int(off))
+def picoscript_rompeek2(mem, off, count=None):
+    if count != None:
+        return tuple(picoscript_rompeek2(mem, off + i * 2) for i in range(count))
+    return float(mem.get16(int(off)))
+def picoscript_rompeek4(mem, off, count=None):
+    if count != None:
+        return tuple(picoscript_rompeek4(mem, off + i * 4) for i in range(count))
+    return picoscript_to_fixnum(mem.get32(int(off)))
+
+def picoscript_rompoke(mem, off, *data):
+    for datum in data:
+        mem.set8(off, datum)
+        off += 1
+def picoscript_rompoke2(mem, off, *data):
+    for datum in data:
+        mem.set16(off, datum)
+        off += 2
+def picoscript_rompoke4(mem, off, *data):
+    for datum in data:
+        mem.set32(off, picoscript_from_fixnum(datum))
+        off += 4
+
+def picoscript_rommemcpy(dmem, dest, smem, src, len):
+    dmem.copy8(dest, src, len, smem)
+
+def picoscript_rommemset(mem, off, val, len):
+    mem.fill8(off, val, len)
+
 g_runtime = None
 g_globals = None
 def get_runtime():
     global g_runtime, g_globals
     if not g_runtime:
         g_runtime = _lupaz8_module().LuaRuntime(encoding="p8scii", source_encoding="p8scii",
-                                                overflow_handler=True)
+                                                overflow_handler=True, unpack_returned_tuples=True)
         g_globals = g_runtime.globals()
 
         g_globals.print = picoscript_print # to stdout
         g_globals.printh = picoscript_printh # to stderr or file
         g_globals.stop = picoscript_stop
+
+        g_globals.rompeek = picoscript_rompeek
+        g_globals.rompeek2 = picoscript_rompeek2
+        g_globals.rompeek4 = picoscript_rompeek4
+        g_globals.rompoke = picoscript_rompoke
+        g_globals.rompoke2 = picoscript_rompoke2
+        g_globals.rompoke4 = picoscript_rompoke4
+        g_globals.rommemcpy = picoscript_rommemcpy
+        g_globals.rommemset = picoscript_rommemset
         
         shrinko = g_globals.shrinko = g_runtime.table()
-        shrinko.to_p8str = picoscript_to_p8str
-        shrinko.from_p8str = picoscript_from_p8str
+        shrinko.from_utf8 = shrinko.to_p8str = picoscript_to_p8str
+        shrinko.to_utf8 = shrinko.from_p8str = picoscript_from_p8str
         shrinko.to_memory = picoscript_to_memory
         shrinko.from_memory = picoscript_from_memory
         shrinko.to_fixnum = picoscript_to_fixnum

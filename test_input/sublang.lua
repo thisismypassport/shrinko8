@@ -52,7 +52,7 @@ function MySubLanguage:get_defined_globals()
             add(globals, stmt[1])
         end
     end
-    return globals
+    return python.list(globals) -- must return a python list
 end
 
 -- called to get globals used (aka read from) within the sub-language's code
@@ -67,7 +67,7 @@ function MySubLanguage:get_used_globals()
             if (self:is_global(token)) add(globals, token)
         end
     end
-    return globals
+    return python.list(globals) -- must return a python list
 end
 
 -- called to lint the sub-language's code
@@ -91,17 +91,17 @@ end
 -- (aka, all characters other than whitespace and identifiers)
 -- this is optional and doesn't affect correctness, but can slightly improve compressed size
 function MySubLanguage:get_unminified_chars()
-    local chars = {}
+    local chars = python.list() -- could use a table, except a table can easily overflow here
     for stmt in all(self.stmts) do
         for token in all(stmt) do
             if not self:is_global(token) and not self:is_member(token) then
                 for ch in all(token) do
-                    add(chars, ch) -- if this overflows, could also use python.list directly...
+                    chars.append(ch)
                 end
             end
         end
     end
-    return python.list(chars)
+    return chars -- must return a python list (in our case - already a list)
 end
 
 -- called to get all uses of globals in the language's code
@@ -114,7 +114,7 @@ function MySubLanguage:get_global_usages()
             end
         end
     end
-    return python.dict(usages)
+    return python.dict(usages) -- must return a python dict
 end
     
 -- called to get all uses of members (table keys) in the language's code
@@ -128,7 +128,7 @@ function MySubLanguage:get_member_usages()
             end
         end
     end
-    return python.dict(usages)
+    return python.dict(usages) -- must return a python dict
 end
 
 -- only needed if your language supports locals:
@@ -140,7 +140,7 @@ function MySubLanguage:get_local_usages(opts)
     local fake_local = pico_process.Local("test", fake_scope)
     fake_scope.used_globals = python.attrs(self:get_global_usages()).keys()
     fake_scope.used_locals = python.set({fake_local})
-    return python.dict({[fake_local]=1})
+    return python.dict({[fake_local]=1}) -- must return a python dict
 end
 
 -- called to rename all uses of globals/members/locals

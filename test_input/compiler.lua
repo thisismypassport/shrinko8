@@ -50,7 +50,7 @@ function ReplCompiler:compile(root)
     if self.args["+rom"] then
         -- a special mode in which the code will be encoded into rom
         -- (would probably want to supply the address via self.args too)
-        self.src.cart.rom.set_block(0, shrinko.to_memory(code))
+        rommemcpy(self.src.cart.rom, 0, shrinko.to_memory(code), 0, #code)
         repl_code_map[self.id] = "chr(peek(0, "..#code.."))"
     else
         -- the regular mode in which the code is inserted in a string

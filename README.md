@@ -19,7 +19,7 @@ The major supported features are:
 * [Getting Cart Size](#getting-cart-size) - Count the amount of tokens, characters, and compressed bytes your cart uses.
 * [Format Conversion](#format-conversion) - Convert between p8 files, pngs, and more. Achieves better code compression than Pico-8 when creating pngs.
 * [Unminification](#unminification) - Add spaces and newlines to the code of a minified cart, to make it more readable.
-* [Custom Python Script](#custom-python-script) - Run a custom python script to preprocess or postprocess your cart.
+* [Run Custom Pico8 & Python Scripts](#custom-pico8-and-python-scripts) - Run a custom pico8 or python script to preprocess or postprocess your cart.
 * [Experimental Picotron support](#picotron-support) - All of the above, plus ability to manipulate Picotron carts.
 
 # Minification
@@ -772,14 +772,12 @@ Options:
 
 * `--unminify-indent` : Specify the size of the indentation to use (default: 2). Can also pass `tabs` to indent with tabs instead.
 
-# Custom Python Script
+# Custom Pico8 and Python Scripts
 
-For advanced usecases, you can create a python script that will be called to preprocess or postprocess the cart before/after the other steps.
-
-This can be used for:
-* Merging in code and data (from other carts, or data files, etc.)
-* Saving minor variations of the cart.
-* Likely much more.
+For advanced usecases, you can create a pico8 or python script that allow you to:
+* Preprocess or postprocess the cart before/after the other steps
+* Dynamically generate code via [dynamic includes](#creating-dynamic-includes)
+* And much more.
 
 To run, use `--script <path>`, here shown together with other tools:
 
@@ -788,6 +786,13 @@ To run, use `--script <path>`, here shown together with other tools:
 You can also pass arguments to your script by putting them after `--script-args`:
 
 `python shrinko8.py path-to-input.p8 path-to-output.png --count --lint --minify --script path-to-script.py --script-args my-script-arg --my-script-opt 123`
+
+The following information and example are specific to whether you want to write in pico8 or python - expand the appropriate section.
+
+<details>
+<summary><b>Documentation & example for Python scripts</b></summary>
+
+Python scripts need to have an extension of `.py`
 
 Example python script showing the API and various capabilities:
 ```python
@@ -808,6 +813,7 @@ def preprocess_main(cart, args, ctxt, **_): # '**_' allows other (including futu
 
     # encode binary data into a string in our cart
     # our cart's code should contain a string like so: "$$DATA$$"
+    # for more advanced cases, see dynamic includes further below
     from pico_utils import bytes_to_string_contents
     with open("binary.dat", "rb") as f:
         cart.code = cart.code.replace("$$DATA$$", bytes_to_string_contents(f.read()))
@@ -836,7 +842,7 @@ def postprocess_main(cart, ctxt, **_):
     with open("out.txt", "w", encoding="utf8") as f:
         f.write(from_p8str(cart.code)) # from_p8str converts the code to unicode
 
-    # write an extra cart based on the current cart, but with a zeroed spritesheet, in both p8 and png formats
+    # write an extra cart based on the current cart, but with a zeroed spritesheet, in any format (e.g. p8,png,rom)
     from pico_cart import write_cart, CartFormat
     new_cart = cart.copy()
     new_cart.rom[0x0000:0x2000] = bytearray(0x2000) # zero it out
@@ -852,6 +858,115 @@ def postprocess_main(cart, ctxt, **_):
     # can use the data stored in the preprocess stage:
     opts, other_cart = ctxt.get_field("my_script_data")
 ```
+
+</details>
+<br>
+<details>
+<summary><b>Documentation & example for Pico8 scripts</b></summary>
+
+Pico8 scripts need to have an extension of `.p8` or `.lua`. They can import other `.p8` or `.lua` scripts (and the scripts they import can import scripts themselves, unlike in native pico8)
+
+Usually, you'd have a pico8 script that's specific to shrinko's interface, which imports and uses a 'generic' pico8 script that's runnable in pico8 as well.
+
+Pico8 scripts run via lupaz8 - a fork of scoder's lupa using a fork of samhocevar's z8lua. In detail:
+* They're highly compatible with pico8 syntax and semantics (shorthands, 16.16 fixed-point numbers, etc.)
+* They support only a subset of pico8's global functions:
+  * All math, string, table, memory, and lua functions are supported. (e.g: `abs`, `split`, `deli`, `memcpy`, `select`)
+  * `print` and `printh` are also supported
+  * If anything is unsupported, you can add a stub implementation, or open an issue if you think it should be.
+* They can also use most standard lua libraries (`io.*`, `os.*`, `string.*`, `table.*`), to allow manipulating files/etc
+* They contain the `python` and `shrinko` globals to help interface with shrinko's interface
+* They use the `userdata` type for objects coming from python.
+
+Example python script showing the API and various capabilities:
+```lua
+local module = {} -- include functions that shrinko should call here
+
+-- this is called after your cart is read but before any processing is done on it:
+function module.preprocess_main(opts)
+    local cart, args, ctxt = opts.cart, opts.args, opts.ctxt
+    print("hello from preprocess_main!")
+
+    -- 'cart' contains 'code' and 'rom' attributes that can be used to read or modify it
+    -- 'cart.code' is a string containing all the cart's code (in p8scii encoding).
+    --             use shrinko.to_utf8 to convert it to a utf8 string (e.g. for use with io:write)
+    --             or shrinko.from_utf8 to convert a utf8 string back to p8scii.
+    -- 'cart.rom' is a python Memory object that is best to manipulate with the following APIs:
+    --            rompeek[2/4](rom,addr[,count]) - similar to peek[2/4]
+    --            rompoke[2/4](rom,addr,...) - similar to poke[2/4]
+    --            rommemcpy(rom,addr,srcrom,srcaddr,len) - similar to memcpy
+    --            rommemset(rom,addr,val,len) - similar to memset
+    --            shrinko.from_memory(rom) - get string from rom
+    --            shrinko.to_memory(str) - get rom from string
+    --            shrinko.to_memory(size) - create Memory object of given size
+    --            (to copy between rom and internal pico8 memory - convert to/from string)
+
+    -- copy the spritesheet from another cart
+    local read_cart = python.import("pico_cart").read_cart
+    local other_cart = read_cart("test_input/test.p8") -- can be used to read p8 or png carts
+    rommemcpy(cart.rom, 0x0000, other_cart.rom, 0x0000, 0x2000)
+
+    -- encode binary data into a string in our cart
+    -- our cart's code should contain a string like so: "$$DATA$$"
+    -- for more advanced cases, see dynamic includes further below
+    local bytes_to_string_contents = python.import("pico_utils").bytes_to_string_contents
+    local fh = io.open("test_input/binary.dat", "rb") -- lua io/os/etc are available for use
+    local contents = bytes_to_string_contents(fh:read("*a"))
+    cart.code = string.gsub(cart.code, "%$%$DATA%$%$", string.gsub(contents, "%%", "%%%%")) -- that's lua for you
+    fh:close()
+
+    -- args.script_args contains any arguments sent to this script
+    local argopts = python.table(args.script_args) -- should convert to lua table first
+    for arg in pairs(argopts) do
+        print("Received arg: "..arg)
+    end
+    
+    -- ctxt contains some read-only information like `lang`, `version` and `builtins`
+    -- you can also use ctxt.get/set_field to store extra information on it to pass between different stages
+    -- (use a unique field name to avoid conflicts)
+    ctxt:set_field("my_script_data", {argopts, other_cart})
+end
+
+-- this is called before your cart is written, after it was fully processed
+function module.postprocess_main(opts)
+    local cart, ctxt = opts.cart, opts.ctxt
+    print("hello from postprocess_main!")
+    
+    -- dump the code of the cart to be written
+    local fh = io.open("test_output/out.txt", "w")
+    fh:write(shrinko.to_utf8(cart.code)) -- to_utf8 converts the code to unicode
+    fh:close()
+
+    local fh = io.open("test_output/rawout.txt", "wb")
+    fh:write(cart.code) -- or you can write it as bytes, without encoding
+    fh:close()
+
+    -- write an extra cart based on the current cart, but with a zeroed spritesheet, in any format (e.g. p8,png,rom)
+    local pico_cart = python.import("pico_cart")
+    local new_cart = cart.copy()
+    rommemset(new_cart.rom, 0x0000, 0, 0x2000) -- zero it out
+    pico_cart.write_cart("test_output/new_cart.p8", new_cart, pico_cart.CartFormat.p8)
+    pico_cart.write_cart("test_output/new_cart.p8.png", new_cart, pico_cart.CartFormat.png)
+
+    -- write a new cart with the same rom but custom code, in rom format
+    local new_cart = pico_cart.Cart("-- rom-only cart 🐱", cart.rom)
+    pico_cart.write_cart("test_output/new_cart2.rom", new_cart, pico_cart.CartFormat.rom)
+
+    -- can use the data stored in the preprocess stage:
+    local data_table = ctxt:get_field("my_script_data")
+    local argsopts, other_cart = unpack(data_table)
+end
+
+return module -- must return it from the script
+```
+
+Python/pico8 integration - more details:
+* You can use `python_func(python.args{1, 2, opt1=3, opt2=4})` to pass keyword arguments to a python function
+* Usually, accessing attributes and items of python objects directly will work - but for dicts, use e.g. `python.attrs(dict).get(key)` to access attributes.
+* You can convert python lists & dicts into tables via `python.table(obj)`
+* You can convert tables into python lists via `python.list(tbl)` and into python dicts via `python.dict(tbl)`
+
+</details>
 
 ## Advanced - custom sub-language
 
@@ -869,7 +984,12 @@ eval(--[[$language::evally]][[
 ]])
 ```
 
-In the python script, provide a class that handles the language via sublanguage_main.
+In the script, provide a class that handles the language via sublanguage_main.
+
+The details are specific to the language you write the script in - expand the appropriate section:
+
+<details>
+<summary><b>Documentation & example for Python scripts</b></summary>
 
 Here is a complete example of what sub-languages can do:
 ```python
@@ -981,6 +1101,184 @@ def sublanguage_main(lang, **_):
         return MySubLanguage
 ```
 
+You can see another sub-language example in Shrinko8's `scripts/split.py`.
+
+</details>
+<br>
+<details>
+<summary><b>Documentation & example for Pico8 scripts</b></summary>
+
+```lua
+local pico_process = python.import("pico_process")
+local SubLanguageBase = pico_process.SubLanguageBase -- sub-language base-class
+local module = {}
+
+-- helper function like split, but ignores empties
+function split_nonempty(str, ch)
+    local res = split(str, ch, false)
+    while (del (res, "")); -- (or copy to new table)
+    return res
+end
+
+MySubLanguage = python.class(SubLanguageBase)
+
+-- called to parse the sub-language from a string
+-- (strings consist of raw pico-8 chars ('\0' to '\xff') - not real unicode)
+function MySubLanguage:__init(str, opts)
+    -- we may have received args that can be used to customize the language (not used here)
+    self.args = opts.args
+    -- our trivial language consists of space-separated tokens in newline-separated statements
+    local lines = split_nonempty(str, "\n")
+    self.stmts = {}
+    for line in all(lines) do
+        add(self.stmts, split_nonempty(line, " "))
+    end
+    -- we can report parsing errors:
+    -- opts.on_error("Example")
+end
+
+-- these are utility functions for our own use:
+
+function MySubLanguage:is_global(token)
+    -- is the token a global in our language? e.g. sin / rectfill / g_my_global
+    return pico_process.is_identifier(token)
+end
+
+function MySubLanguage:is_member(token)
+    -- is the token a member in our language? e.g. .my_member / .x
+    return token[1] == "." and self:is_global(sub(token, 2))
+end
+    
+function MySubLanguage:is_assignment(stmt)
+    return #stmt > 1 and stmt[2] == "<-" -- our lang's assignment token
+end
+
+-- for --lint:
+
+-- called to get globals defined (aka assigned to) within the sub-language's code
+function MySubLanguage:get_defined_globals()
+    local globals = {}
+    for stmt in all(self.stmts) do
+        if self:is_assignment(stmt) then
+            add(globals, stmt[1])
+        end
+    end
+    return python.list(globals) -- must return a python dict
+end
+
+-- called to get globals used (aka read from) within the sub-language's code
+function MySubLanguage:get_used_globals()
+    local globals = {}
+    for stmt in all(self.stmts) do
+        local start = 1
+        if (self:is_assignment(stmt)) start = 3 -- ignore assigned-to globals
+
+        for i=start,#stmt do
+            local token = stmt[i]
+            if (self:is_global(token)) add(globals, token)
+        end
+    end
+    return python.list(globals) -- must return a python dict
+end
+
+-- called to lint the sub-language's code
+function MySubLanguage:lint(opts)
+    local builtins = python.table(opts.builtins)
+    local globals = python.table(opts.globals)
+
+    for stmt in all(self.stmts) do
+        for token in all(stmt) do
+            if self:is_global(token) and not builtins[token] and not globals[token] then
+                opts.on_error("Identifier '" .. token .. "' not found")
+            end
+        end
+    end
+    -- could do custom lints too
+end
+
+-- for --minify:
+
+-- called to get all characters that won't get removed or renamed by the minifier
+-- (aka, all characters other than whitespace and identifiers)
+-- this is optional and doesn't affect correctness, but can slightly improve compressed size
+function MySubLanguage:get_unminified_chars()
+    local chars = python.list() -- could use a table, except a table can easily overflow here
+    for stmt in all(self.stmts) do
+        for token in all(stmt) do
+            if not self:is_global(token) and not self:is_member(token) then
+                for ch in all(token) do
+                    chars.append(ch)
+                end
+            end
+        end
+    end
+    return chars -- must return a python list (in our case - already a list)
+end
+
+-- called to get all uses of globals in the language's code
+function MySubLanguage:get_global_usages()
+    local usages = {}
+    for stmt in all(self.stmts) do
+        for token in all(stmt) do
+            if self:is_global(token) then
+                usages[token] = (usages[token] or 0) + 1
+            end
+        end
+    end
+    return python.dict(usages)
+end
+    
+-- called to get all uses of members (table keys) in the language's code
+function MySubLanguage:get_member_usages()
+    local usages = {}
+    for stmt in all(self.stmts) do
+        for token in all(stmt) do
+            if self:is_member(token) then
+                local member = sub(token, 2)
+                usages[member] = (usages[member] or 0) + 1
+            end
+        end
+    end
+    return python.dict(usages)
+end
+
+-- for very advanced languages only, see test_input/sublang.lua for details
+-- def get_local_usages(self, **_):
+
+-- called to rename all uses of globals/members/locals
+function MySubLanguage:rename(opts)
+    local globals = python.table(opts.globals)
+    local members = python.table(opts.members)
+
+    for stmt in all(self.stmts) do
+        for i, token in ipairs(stmt) do
+            if self:is_global(token) and globals[token] then
+                stmt[i] = globals[token]
+            elseif self:is_member(token) and members[sub(token, 2)] then
+                stmt[i] = members[sub(token, 2)]
+            end
+        end
+    end
+end
+
+-- called (after rename) to return a minified string
+function MySubLanguage:minify()
+    local lines = {}
+    for stmt in all(self.stmts) do
+        add(lines, table.concat(stmt, " ")) -- can just use table.concat
+    end
+    return table.concat(lines, "\n")
+end
+
+-- this is called to get a sub-languge class by name
+function module.sublanguage_main(lang)
+    if (lang == "evally") return MySubLanguage
+end
+
+return module
+```
+</details>
+<br>
 You can pass arguments to a sub-language as follows:
 ```lua
 eval(--[[$language::evally myarg1 --etc]]"(omitted)")
@@ -994,14 +1292,12 @@ eval(--[[$language::evally1 --etc2]]"(omitted)")
 ```
 Here, the `args` parameter in the constructor will be `myarg1 --etc --etc2`
 
-You can see more sub-language examples in Shrinko8's `scripts` folder.
-
 ### Contributing a sub-language
 
 Shrinko8 comes with some built-in sub-languages (currently just [split](#advanced---the-split-sub-language)).
 
 If you have a useful sub-language (to go with an implementation in pico8 hosted elsewhere), you can open a merge-request to add it to the built-in sub-languages:
-- Create a `scripts/your_sub_language.py` containing your sublanguage_main and sub-language class.
+- Create a `scripts/your_sub_language.py` (or `.lua`) containing your sublanguage_main and sub-language class.
 - The sublanguage_main will be called for `--[[$language::your_sub_language]]`
 
 ## Advanced - access to the Syntax Tree
@@ -1009,6 +1305,11 @@ If you have a useful sub-language (to go with an implementation in pico8 hosted 
 For **really** advanced usecases, you may want to have access to the Syntax Tree of your code (from a python script) in order to, e.g. do custom linting and analysis.
 
 Keep in mind that the syntax tree and associated APIs are not fully documented here, and aren't guaranteed not to change in the future.
+
+The rest of the information is specific to the script language - expand the appropriate section:
+
+<details>
+<summary><b>Documentation & example for Python scripts</b></summary>
 
 ```python
 # this is called after your cart is parsed into a syntax tree, but before it is transformed for minification
@@ -1036,6 +1337,60 @@ def preprocess_syntax_main(cart, root, on_error, args, **_):
         # implicit parameters, implicit _ENV when accessing globals, etc.
         root.traverse_nodes(pre=pre_visit, post=post_visit, extra=True)
 ```
+
+</details>
+<br>
+<details>
+<summary><b>Documentation & example for Pico8 scripts</b></summary>
+
+```lua
+local module = {}
+
+-- this is called after your cart is parsed into a syntax tree, but before it is transformed for minification
+function module.preprocess_syntax_main(opts)
+    local args, root, on_error = opts.args, opts.root, opts.on_error
+
+    NodeType = python.import("pico_parse").NodeType
+    TokenType = python.import("pico_tokenize").TokenType
+
+    if args.lint then -- do some custom linting, if linting was requested in the command line
+        function pre_visit(node)
+            -- just as an example, add a lint error on any use of 'goto'
+            if node.type == NodeType["goto"] then
+                on_error("goto used", node)
+            end
+
+            -- you can use shrinko.to_fixnum/from_fixnum to work with number tokens
+            if node.type == NodeType.const then
+                if node.token.type == TokenType.number then
+                    local fixnum = shrinko.to_fixnum(node.token.parsed_value)
+                    print(tostr(fixnum, 1))
+                end
+            end
+            
+            -- the syntax tree format isn't really documented anywhere yet. you can:
+            -- - check examples of use in pico_lint.py
+            -- - print() nodes to see what they contain (ignores some attributes for better readability)
+            -- - search for the NodeType you're interested in, in pico_parse.py, to see what it contains
+            
+            -- print(node)
+        end
+
+        function post_visit(node)
+            -- empty, just here as an example
+        end
+
+        -- visit the entire syntax tree, calling pre_visit before each node, and post_visit after each node
+        -- extra=True allows you to visit things not apparent in the source itself, such as:
+        -- implicit parameters, implicit _ENV when accessing globals, etc.
+        root.traverse_nodes(python.args{pre=pre_visit, post=post_visit, extra=true})
+    end
+end
+return module
+```
+
+</details>
+<br>
 
 To run, use `--script <path>` as described [before](#custom-python-script).
 
