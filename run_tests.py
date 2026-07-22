@@ -56,7 +56,7 @@ def try_read_dir_contents(dir):
             results.append((name, try_read_file_norm(child)))
     return results
 
-def run_test(name, input, output, *args, private=False, check_output=True, from_output=False, alt_compare=None,
+def run_test(name, input, output, *args, private=False, check_output=True, from_output=False, from_source=False, alt_compare=None,
              stdout_output=None, norm_stdout=nop, exit_code=0, extra_outputs=None, output_reader=try_read_file_norm,
              pico8_output_val=None, pico8_output=None, pico8_run=None, copy_in_to_out=False, update_version=True,
              target=Target.pico8):
@@ -76,7 +76,10 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
 
     start_test()
     prefix = "private_" if private else ""
-    inpath = path_join(prefix + ("test_output" if from_output else "test_input"), input)
+    if from_source:
+        inpath = path_join(path_dirname(path_resolve(__file__)), input)
+    else:
+        inpath = path_join(prefix + ("test_output" if from_output else "test_input"), input)
     if output:
         outpath = path_join(prefix + "test_output", output)
         cmppath = path_join(prefix + "test_compare", output)
@@ -246,6 +249,8 @@ def run():
              "--script", path_join("test_input", "sublang.py"))
     run_test("sublanggm", "sublanggm.lua", "sublanggm.lua", "--minify")
     run_test("deflang", "deflang.p8", "deflang.p8", "--minify")
+    run_test("compiler", "compiler.p8", "compiler.p8", "--minify",
+             "--script", path_join("test_input", "compiler.py"))
     run_test("unkform1", "unkform1", "unkform1", update_version=False)
     run_test("unkform2", "unkform2.png", "unkform2", "--format", "png", "--input-format", "auto",
              update_version=False, output_reader=try_read_file_png)
@@ -284,6 +289,21 @@ def run():
 
     run_test("version-latest", "versioned.p8", "versioned-latest.p8", "-m", "-oc", pico8_output="versioned.p8.printh")
     run_test("version-orig", "versioned.p8", "versioned-orig.p8", "-m", "-oc", update_version=False, pico8_output="versioned.p8.printh")
+
+    # these require lupaz8
+    run_test("pico-script", "script.p8", "script.p8", "--script", path_join("test_input", "my_script.p8"),
+             "--lint", "--no-lint-fail", "--update-version", "--script-args", "my-script-arg", "--my-script-opt", "123",
+             stdout_output="pico-script.txt", norm_stdout=norm_paths, update_version=False)
+    run_test("pico-sublang", "sublang.p8", "sublang.p8", "--minify", "--script", path_join("test_input", "sublang.lua"))
+    run_test("pico-compiler", "compiler.p8", "compiler.p8", "--minify", "--script", path_join("test_input", "compiler.lua"))
+    run_test("parens8-input", "input-parens.p8", "parens-input.p8", "--minify-transform-only", pico8_output="output.p8.printh")
+    run_test("parens8-test", "test-parens.p8", "parens-test.p8", "--minify-transform-only", pico8_output_val="DONE")
+    #run_test("parens8-repl", "repl.p8", "parens-repl.p8", "--minify-transform-only", "--default-compiler", "parens8 rom", pico8_output_val="finished")
+    run_test("parens8", "parens8.p8", "parens8.p8", "--minify", pico8_output="parens8.p8.printh")
+    run_test("parens8-safe", "parens8.p8", "parens8-safe.p8", "--minify-safe-only", pico8_output="parens8.p8.printh")
+    run_test("parens8-2", "parens8-2.p8", "parens8-2.p8", "--minify", pico8_output="parens8-2.p8.printh")
+    run_test("parens8-err", "parens8-err.p8", None, "--count", "--minify", stdout_output="parens8-err.txt", norm_stdout=norm_paths, exit_code=1)
+    run_test("parens8-selflint", "scripts/parens8.lua", None, "--lint", "--no-lint-unused", "--no-lint-duplicate", from_source=True)
 
     # picotron tests (TODO: more tests, more testing support!)
     run_test("TRON_test", "testtron.p64", "testtron.p64", "--minify", "--no-minify-consts", "--avoid-base64", target=Target.picotron)

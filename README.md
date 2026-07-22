@@ -89,7 +89,7 @@ You can control how safe the minification is (see [details about unsafe minifica
 
 Additional options:
 
-* `--preserve` :  Equivalent to specifying `--preserve:` in the cart itself. Described [here](#preserving-identifiers-across-the-entire-cart).
+* `--preserve` :  Equivalent to specifying `--$preserve:` in the cart itself. Described [here](#preserving-identifiers-across-the-entire-cart).
 * `--rename-map <file>` : Generate a file telling you how the identifiers were renamed. (This can be useful for debugging) 
 
 ## Operation details
@@ -157,23 +157,23 @@ In such cases, you have multiple ways to tell Shrinko8 precisely how your cart b
 
 ### Renaming specific strings
 
-You can add a `--[[member]]` comment before a string to have the minifier rename it as if it were an identifier.
+You can add a `--[[$member]]` comment before a string to have the minifier rename it as if it were an identifier.
 
 E.g:
 ```lua
-local my_key = --[[member]]"key" -- here, key is a string but is renamed as if it were an identifier
+local my_key = --[[$member]]"key" -- here, key is a string but is renamed as if it were an identifier
 local my_obj = {key=123} -- here, key is an identifier
 ?my_obj[my_key] -- success, this prints 123 even after minification
 ```
 
 You can also use this with multiple keys split by comma (or any other characters):
 ```lua
-local my_keys = split --[[member]]"key1,key2,key3" -- here, each of key1, key2 and key3 is renamed
+local my_keys = split --[[$member]]"key1,key2,key3" -- here, each of key1, key2 and key3 is renamed
 ```
 
-And you can similarly use `--[[global]]` for globals:
+And you can similarly use `--[[$global]]` for globals:
 ```lua
-local my_key = --[[global]]"glob"
+local my_key = --[[$global]]"glob"
 glob = 123
 ?_ENV[my_key] -- 123
 ```
@@ -182,10 +182,10 @@ If you have string literals with more complex structure - for example `"key=str,
 
 ### Preserving identifiers across the entire cart
 
-You can instruct the minifier to preserve certain identifiers across the entire cart by adding a `--preserve:` comment anywhere in the code:
+You can instruct the minifier to preserve certain identifiers across the entire cart by adding a `--$preserve:` comment anywhere in the code:
 
 ```lua
---preserve: my_global_1, my_global_2, update_*, *.my_member, my_env.*
+--$preserve: my_global_1, my_global_2, update_*, *.my_member, my_env.*
 ```
 
 * my_global_1 and my_global_2 will not be renamed when used as globals
@@ -200,7 +200,7 @@ If you prefer, you can instead pass this information in the command line, e,g:
 You can combine wildcards and negation (`!`) to preserve everything except some identifiers:
 
 ```lua
---preserve: *.*, !*.my_*
+--$preserve: *.*, !*.my_*
 ```
 
 * Only identifiers starting with `my_` will be renamed when used to index a table
@@ -210,27 +210,27 @@ You can combine wildcards and negation (`!`) to preserve everything except some 
 You can instruct the minifier to rename table keys the same way as globals (allowing you to freely mix _ENV and other tables), by adding the following comment in the code:
 
 ```lua
---preserve: *=*.*
+--$preserve: *=*.*
 ```
 
 If you prefer, you can instead pass `--preserve "*=*.*"` to the command line.
 
 ### Controlling renaming of all keys of a table
 
-You can use `--[[preserve-keys]]`, `--[[global-keys]]` and `--[[member-keys]]` to affect how *all* keys of a table are renamed.
+You can use `--[[$preserve-keys]]`, `--[[$global-keys]]` and `--[[$member-keys]]` to affect how *all* keys of a table are renamed.
 
 This can be applied on either table constructors (aka `{...}`) or on variables. When applying on variables, the hint affects all members accessed through that variable, as well as any table constructors directly assigned to it.
 ```lua
-local --[[preserve-keys]]my_table = {preserved1=1, preserved2=2}
+local --[[$preserve-keys]]my_table = {preserved1=1, preserved2=2}
 my_table.preserved1 += 1 -- all member accesses through my_table are preserved
 ?my_table["preserved1"]
 
 -- here, {preserved3=3} is not directly assigned to my_table and so needs its own hint
-my_table = setmetatable(--[[preserve-keys]]{preserved3=3}, my_meta)
+my_table = setmetatable(--[[$preserve-keys]]{preserved3=3}, my_meta)
 ?my_table["preserved3"]
 
 -- while assigning directly to _ENV no longer requires a hint, indirect assignment like below does:
-local env = --[[global-keys]]{assert=assert, add=add}
+local env = --[[$global-keys]]{assert=assert, add=add}
 do
   local _ENV = env
   assert(add({}, 1) == 1)
@@ -240,7 +240,7 @@ end
 This can be also be useful when assigning regular tables to _ENV:
 ```lua
 -- hints on an _ENV local affects all globals in its scope
-for --[[member-keys]]_ENV in all({{x=1,y=5}, {x=2,y=6}}) do
+for --[[$member-keys]]_ENV in all({{x=1,y=5}, {x=2,y=6}}) do
   x += y + y*x
 end
 ```
@@ -251,43 +251,43 @@ Say you have a function which takes a string like `"key1=str1,key2=str2"` and sp
 
 You can do that by specifying that the strings use the `split` sub-language - which comes builtin to shrinko8:
 ```lua
-mysplit(--[[language::split (member=string)s,]]"key1=str1,key2=str2")
+mysplit(--[[$language::split (member=string)s,]]"key1=str1,key2=str2")
 
 -- or, to avoid repeating yourself:
 
---deflanguage: mysplit = split (member=string)s,
-mysplit(--[[language::mysplit]]"key1=str1,key2=str2")
+--$deflanguage: mysplit = split (member=string)s,
+mysplit(--[[$language::mysplit]]"key1=str1,key2=str2")
 ```
 
 Here, `(member=string)s,` tells the split sub-language precisely how the string will be split. Some more examples will help explain the syntax:
 ```lua
 -- here, the string consists of a table member (key), a global, and a string (preserved) - 
 --   all separated by ';'
-mysplit2(--[[language::split member;global;string]]"member1;global1;string1")
+mysplit2(--[[$language::split member;global;string]]"member1;global1;string1")
 -- e.g. may result in "m;g;string1"
 
 -- here, notice the plural on 'globals'.
 -- this means the string consists of a table member at the start, a string at the end, 
 --   and any number of globals between them, all separated by ';'.
-mysplit3(--[[language::split member;globals;string]]"member1;global1;global2;global3;string1")
+mysplit3(--[[$language::split member;globals;string]]"member1;global1;global2;global3;string1")
 -- e.g. may result in "m;a;b;c;string1"
 
 -- here, instead of the middle parts being just globals, they're split further via the '=' characters.
 -- the plural "s" acts on the parentheses just as it did on the 'global' before.
-mysplit4(--[[language::split member;(global=string)s;string]]
+mysplit4(--[[$language::split member;(global=string)s;string]]
          "member1;global1=str1;global2=str2;global3=str3;endstr")
 -- e.g. may result in "m;a=str1;b=str2;c=str3;endstr"
 
 -- here, the trailing ',' is needed to specify the outer separator.
 -- the string consists of any number of 'global=string' splits, separated by ','
-mysplit5(--[[language::split (global=string)s,]]"glob1=str1,glob2=str2,glob3=str3")
+mysplit5(--[[$language::split (global=string)s,]]"glob1=str1,glob2=str2,glob3=str3")
 -- e.g. may result in "a=str1,b=str2,c=str3"
 -- it could also have been written as '(global=string)s,(global=string)'
 
 -- here, notice the plural on both 'members' and 'strings'
 -- this means the string consists of a global at the start,
 --   and then alternating table members and strings
-mysplit6(--[[language::split global,members,strings]]"global,member1,str1,member2,str2,member3,str3")
+mysplit6(--[[$language::split global,members,strings]]"global,member1,str1,member2,str2,member3,str3")
 -- e.g. may result in "g,a,str1,b,str2,c,str3"
 
 -- any separator can be used. '(' and ')' need escaping via '\(' and '\)'.
@@ -298,19 +298,19 @@ This will give you the power to appropriately rename strings in simple sub-langu
 
 ### Advanced - Controlling renaming of specific identifier occurrences
 
-The `--[[global]]`, `--[[member]]` and `--[[preserve]]` hints can also be used on a **specific** occurrence of an identifier to change the way it's renamed.
+The `--[[$global]]`, `--[[$member]]` and `--[[$preserve]]` hints can also be used on a **specific** occurrence of an identifier to change the way it's renamed.
 
 Usually, there are easier ways to control renaming (such as by [preserving identifiers across the entire cart](#preserving-identifiers-across-the-entire-cart) or [controlling renaming of all keys in a table](#controlling-renaming-of-all-keys-of-a-table)), but this option is here for cases where you need precise control over how to rename each occurence.
 
 ```lua
 do
-  -- NOTE: can be more easily achieved via --[[global-keys]]
-  local _ENV = {--[[global]]assert=assert}
+  -- NOTE: can be more easily achieved via --[[$global-keys]]
+  local _ENV = {--[[$global]]assert=assert}
   assert(true)
 end
--- NOTE: can be more easily achieved via --[[member-keys]]
+-- NOTE: can be more easily achieved via --[[$member-keys]]
 for _ENV in all({{x=1}, {x=2}}) do
-  --[[member]]x += 1
+  --[[$member]]x += 1
 end
 ```
 
@@ -319,13 +319,13 @@ end
 For cases like tweet-carts, when you use a builtin function multiple times throughout your cart, you often want to assign it to a shorter name at the beginning of the cart. With shrinko8, you can keep using the full name of the builtin, but tell the minifer to only preserve the builtin when it's first accessed, as follows:
 
 ```lua
---preserve: !circfill, !rectfill
-circfill, rectfill = --[[preserve]]circfill, --[[preserve]]rectfill
+--$preserve: !circfill, !rectfill
+circfill, rectfill = --[[$preserve]]circfill, --[[$preserve]]rectfill
 circfill(10,10,20); circfill(90,90,30)
 rectfill(0,0,100,100); rectfill(20,20,40,40)
 ```
 
-Above, all uses of circfill and rectfill are renamed except for the ones preceded by `--[[preserve]]`
+Above, all uses of circfill and rectfill are renamed except for the ones preceded by `--[[$preserve]]`
 
 Be aware that doing this won't reduce the compressed size of the cart, and will increases the token count (due to the assignment), so it's only for when you care about character count above all else.
 
@@ -336,8 +336,8 @@ While Shrinko8 has good heuristics for choosing identifier names, it's still pos
 In order to still be able to use Shrinko8 in such cases, a hint is provided to instruct Shrinko8 how to rename specific variables:
 
 ```lua
-function --[[rename::f]]func(--[[rename::a]]arg)
-    local --[[rename::b]]val = arg
+function --[[$rename::f]]func(--[[$rename::a]]arg)
+    local --[[$rename::b]]val = arg
 end
 ```
 
@@ -345,7 +345,7 @@ A rename hint affects all instances of the marked variable.
 
 ## Prevent merging of specific statements
 
-You can insert `--[[no-merge]]` between two statements to ensure they're not merged, e.g:
+You can insert `--[[$no-merge]]` between two statements to ensure they're not merged, e.g:
 
 ```lua
 -- note: this example requires --focus-tokens to see the effect
@@ -354,9 +354,9 @@ local weird_table = setmetatable({add_me=0}, {
 })
 -- the following statements do not do the same thing if combined into one
 -- aka: weird_table.add_me, weird_table.new_key = 3, 4
--- so we can add --[[no-merge]] between them to ensure they're not merged.
+-- so we can add --[[$no-merge]] between them to ensure they're not merged.
 weird_table.add_me = 3
---[[no-merge]]
+--[[$no-merge]]
 weird_table.new_key = 4
 ```
 
@@ -365,7 +365,7 @@ weird_table.new_key = 4
 You can keep specific comments in the output via:
 
 ```lua
---keep: This is a comment to keep
+--$keep: This is a comment to keep
 -- But this comment is gone after minify
 ```
 
@@ -385,28 +385,28 @@ func('the answer is: 7')
 
 If you don't want to minify, but still want to replace constants, you can pass `--minify-consts-only` to the command line.
 
-In addition, variables that are declared with the `--[[const]]` hint are treated as constants:
+In addition, variables that are declared with the `--[[$const]]` hint are treated as constants:
 
 ```lua
---[[const]] k_hero_spr = 4
+--[[$const]] k_hero_spr = 4
 spr(k_hero_spr, x, y)
 -- becomes:
 spr(4, x, y)
 
---[[const]] version = 'v1.2'
+--[[$const]] version = 'v1.2'
 ?'version: '..version
 -- becomes:
 ?'version: v1.2'
 
--- the --[[const]] hint can apply to either individual variables or entire local statements
---[[const]] local k_rock,k_box,k_wall = 4,5,6
+-- the --[[$const]] hint can apply to either individual variables or entire local statements
+--[[$const]] local k_rock,k_box,k_wall = 4,5,6
 objs={k_rock,k_wall,k_wall,k_box}
 -- becomes:
 objs={4,6,6,5}
 
 -- some builtin functions can be used inside const declarations
---[[const]] k_value = 2.5
---[[const]] derived = flr(mid(k_value, 1, 5))
+--[[$const]] k_value = 2.5
+--[[$const]] derived = flr(mid(k_value, 1, 5))
 ?derived
 -- becomes:
 ?2
@@ -415,8 +415,8 @@ objs={4,6,6,5}
 Furthermore, constant `if` and `elseif` branches are removed appropriately, allowing you to easily keep debug code in your source files, enabling it by simply changing the value of a variable:
 
 ```lua
---[[const]] TRACE = false
---[[const]] DEBUG = true
+--[[$const]] TRACE = false
+--[[$const]] DEBUG = true
 
 if (TRACE) ?"something happened!"
 if DEBUG then
@@ -428,10 +428,10 @@ spr(debug_spr,10,10)
 ```
 
 Some details to keep in mind:
-* *Local* variables that **aren't** declared as `--[[const]]` may still be treated as constants in cases where it's safe & advantageous to do so.
-* *Local* variables that **are** declared as `--[[const]]` still follow the usual lua scoping rules. They cannot be reassigned but new locals with the same name can be defined.
-* *Global* variables that **aren't** declared as `--[[const]]` are currently never treated as constants.
-* *Global* variables that **are** declared as `--[[const]]` are assumed to *always* have their constant value. They cannot be reassigned and can only be used below their declaration.
+* *Local* variables that **aren't** declared as `--[[$const]]` may still be treated as constants in cases where it's safe & advantageous to do so.
+* *Local* variables that **are** declared as `--[[$const]]` still follow the usual lua scoping rules. They cannot be reassigned but new locals with the same name can be defined.
+* *Global* variables that **aren't** declared as `--[[$const]]` are currently never treated as constants.
+* *Global* variables that **are** declared as `--[[$const]]` are assumed to *always* have their constant value. They cannot be reassigned and can only be used below their declaration.
 
 ## Passing constants via command line
 
@@ -440,7 +440,7 @@ You can even declare constants in the command line, if you prefer:
 `python shrinko8.py path-to-input.p8 path-to-output.p8 --minify-safe-only --const DEBUG true --const SPEED 2.5 --str-const VERSION v1.2`
 
 ```lua
---[[CONST]] SPEED = 0.5 -- default value
+--[[$const]] SPEED = 0.5 -- default value
 if DEBUG then
   ?'debug version ' .. (VERSION or '???')
 end
@@ -462,11 +462,11 @@ end
 
 ## Limitations
 
-Keep in mind that in some cases, Shrinko8 will play it safe and avoid a computation whose result is questionable or has a high potential to change between pico8 versions. If this prevents a `--[[const]]` variable from being assigned a constant, Shrinko8 will warn about this:
+Keep in mind that in some cases, Shrinko8 will play it safe and avoid a computation whose result is questionable or has a high potential to change between pico8 versions. If this prevents a `--[[$const]]` variable from being assigned a constant, Shrinko8 will warn about this:
 
 ```lua
 -- here, abs overflows (due to receiving -0x8000), and shrinko8 chooses not to rely on the overflow behaviour
---[[const]] x = abs(0x7fff+1)-1
+--[[$const]] x = abs(0x7fff+1)-1
 ?x
 
 -- warning:
@@ -481,7 +481,7 @@ If you find such limitations that you'd like to see lifted, feel free to open an
 
 Finally, note that:
 * You can turn off all constant replacement via `--no-minify-consts`.
-* You can prevent treating specific variables as constants by declaring them with a `--[[non-const]]` hint. (though normally, there is no reason to do this)
+* You can prevent treating specific variables as constants by declaring them with a `--[[$non-const]]` hint. (though normally, there is no reason to do this)
 
 # Linting
 
@@ -511,7 +511,7 @@ Normally, lint errors are displayed in a format useful for external editors, sho
 
 Misc. options:
 
-* `--lint-global` : Equivalent to specifying `--lint:` inside the cart itself
+* `--lint-global` : Equivalent to specifying `--$lint:` inside the cart itself
 
 ## Undefined variable lints
 
@@ -529,17 +529,17 @@ end
 
 The linter normally allows you to define global variables in the global scope or in the _init function. If you don't, your options are either:
 
-Tell the linter about the globals it didn't see you define via the `--lint:` hint:
+Tell the linter about the globals it didn't see you define via the `--$lint:` hint:
 ```lua
---lint: global_1, global_2
+--$lint: global_1, global_2
 function f()
     dostuff(global_1, global_2)
 end
 ```
 
-Tell the linter to allow you to define globals (by assigning to them) in a specific function via the `--lint: func::_init` hint:
+Tell the linter to allow you to define globals (by assigning to them) in a specific function via the `--$lint: func::_init` hint:
 ```lua
---lint: func::_init
+--$lint: func::_init
 function my_init()
     global_1, global_2 = 1, 2 -- these globals can be used anywhere since they're assigned here
 end
@@ -556,7 +556,7 @@ end
 
 If you do want to reassign some built-in global anywhere, you can use `--lint`:
 ```lua
---lint: print
+--$lint: print
 function f()
     local old_print = print
     print = function() end
@@ -581,9 +581,9 @@ end
 
 If you have false positives in your cart due to globals being used via `_ENV`, you can disable this check just for globals via `--no-lint-unused-global`.
 
-Another option is to use the `--lint: used::<var>` hint:
+Another option is to use the `--$lint: used::<var>` hint:
 ```lua
---lint: used::global_1, used::global_2
+--$lint: used::global_1, used::global_2
 function global_1() end
 global_2 = ""
 ```
@@ -792,7 +792,7 @@ You can also pass arguments to your script by putting them after `--script-args`
 Example python script showing the API and various capabilities:
 ```python
 # this is called after your cart is read but before any processing is done on it:
-def preprocess_main(cart, args, **_):
+def preprocess_main(cart, args, ctxt, **_): # '**_' allows other (including future) arguments to be ignored
     print("hello from preprocess_main!")
 
     # 'cart' contains 'code' and 'rom' attributes that can be used to read or modify it
@@ -812,7 +812,7 @@ def preprocess_main(cart, args, **_):
     with open("binary.dat", "rb") as f:
         cart.code = cart.code.replace("$$DATA$$", bytes_to_string_contents(f.read()))
 
-    # args.script_args contains any arguments sent to this script
+    # args.script_args contains any arguments sent to the script
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("arg", help="first arg sent to script", nargs="?")
@@ -820,8 +820,15 @@ def preprocess_main(cart, args, **_):
     opts = parser.parse_args(args.script_args)
     print("Received args:", opts.arg, opts.my_script_opt)
 
+    # ctxt contains some read-only information like `lang`, `version` and `builtins`
+    # you can also use ctxt.get/set_field to store extra information on it to pass between different stages
+    # (use a unique field name to avoid conflicts)
+    ctxt.set_field("my_script_data", [opts, other_cart])
+    # there is also:
+    # my_dict = ctxt.get_field("my_dict_field", dict) # initialized to dict() instead of None
+
 # this is called before your cart is written, after it was fully processed
-def postprocess_main(cart, **_):
+def postprocess_main(cart, ctxt, **_):
     print("hello from postprocess_main!")
 
     # dump the code of the cart to be written
@@ -841,6 +848,9 @@ def postprocess_main(cart, **_):
     from pico_defs import to_p8str
     new_cart = Cart(code=to_p8str("-- rom-only cart 🐱"), rom=cart.rom)
     write_cart("new_cart2.rom", new_cart, CartFormat.rom)
+
+    # can use the data stored in the preprocess stage:
+    opts, other_cart = ctxt.get_field("my_script_data")
 ```
 
 ## Advanced - custom sub-language
@@ -849,9 +859,9 @@ For **really** advanced usecases, if you're embedding a custom language inside t
 
 E.g. this allows renaming identifiers shared by both the pico-8 code and the custom language.
 
-Mark the language with `--[[language::<name>]]` in the code:
+Mark the language with `--[[$language::<name>]]` in the code:
 ```lua
-eval(--[[language::evally]][[
+eval(--[[$language::evally]][[
     circfill 50 50 20 7
     my_global_var <- pack
     rawset my_global_var .some_member 123
@@ -973,14 +983,14 @@ def sublanguage_main(lang, **_):
 
 You can pass arguments to a sub-language as follows:
 ```lua
-eval(--[[language::evally myarg1 --etc]]"(omitted)")
+eval(--[[$language::evally myarg1 --etc]]"(omitted)")
 ```
 Here, the `args` parameter in the constructor will be `myarg1 --etc` and can be parsed via shlex + argparse or in any other way
 
 Furthermore, you can define sub-languages in the p8 file itself, based on existing sub-languages:
 ```lua
---deflanguage: evally1 = evally myarg1 --etc
-eval(--[[language::evally1 --etc2]]"(omitted)")
+--$deflanguage: evally1 = evally myarg1 --etc
+eval(--[[$language::evally1 --etc2]]"(omitted)")
 ```
 Here, the `args` parameter in the constructor will be `myarg1 --etc --etc2`
 
@@ -992,7 +1002,7 @@ Shrinko8 comes with some built-in sub-languages (currently just [split](#advance
 
 If you have a useful sub-language (to go with an implementation in pico8 hosted elsewhere), you can open a merge-request to add it to the built-in sub-languages:
 - Create a `scripts/your_sub_language.py` containing your sublanguage_main and sub-language class.
-- The sublanguage_main will be called for `--[[language::your_sub_language]]`
+- The sublanguage_main will be called for `--[[$language::your_sub_language]]`
 
 ## Advanced - access to the Syntax Tree
 
@@ -1077,6 +1087,16 @@ By default, Shrinkotron repacks all POD files for better compression. There are 
 
 Notes:
 * Shrinkotron assumes calls to `include` are used to include other unmodified lua files. If this is not the case, minify may break even under `--minify-safe-only`
-* Shrinkotron processes the code files in `include` order, allowing you to use `--[[const]]` globals from an included code file.
+* Shrinkotron processes the code files in `include` order, allowing you to use `--[[$const]]` globals from an included code file.
     * This requires you to use `include` with literal strings specifying an absolute path (e.g. `include "utils.lua"`).
 * As Picotron evolves, there might be new globals or table keys that Shrinkotron isn't aware of. You can report such cases and use [`--preserve`](#preserving-identifiers-across-the-entire-cart) meanwhile.
+
+# Version Changes
+
+Starting from v1.2.7 - shrinko supports putting `$` before hint comments, aka:
+* `--$preserve:` instead of `--preserve:`
+* `--[[$member]]` instead of `--[[member]]`
+
+For newly introduced hints (such as `--$switch-compiler`), only the `$` variant is supported.
+
+At some later version, the variant without `$` might become deprecated, so it's recommended not to use it anymore.

@@ -6,13 +6,14 @@ from pico_export import read_cart_export, read_pod_file, ListOp
 from pico_tokenize import k_hint_split_re
 from pico_constfold import parse_constant
 from pico_defs import Language, get_latest_pico8_version, parse_pico8_version
+from pico_preprocess import IncludeNotFoundError
 from picotron_defs import PicotronContext, Cart64Source, get_latest_picotron_runtime
 from picotron_cart import Cart64Format, read_cart64, write_cart64, merge_cart64, filter_cart64, preproc_cart64
 from picotron_cart import write_cart64_compressed_size, write_cart64_version
 from picotron_export import read_cart64_export, read_sysrom_file
 import argparse
 
-k_version_raw = '1.2.6.7' # should have 4 parts, used directly by build script
+k_version_raw = '1.2.7.0' # should have 4 parts, used directly by build script
 
 def get_version():
     """convert our raw version to pico-style version"""
@@ -47,15 +48,26 @@ def lang_not_supported():
 def lang_do_nothing(*_, **__):
     pass
 
-def find_in_builtin_script(name, func_name):
+def find_in_builtin_script(name, kwargs, func_name):
     import importlib
+    module_name = "scripts." + str_before_first(name, ".")
     try:
-        module = importlib.import_module("scripts." + str_before_first(name, "."))
+        module = importlib.import_module(module_name)
     except ModuleNotFoundError:
-        return None
+        from run_pico import import_pico_script
+        try:
+            module = import_pico_script(module_name)
+        except ModuleNotFoundError:
+            return None
+        except IncludeNotFoundError as e:
+            eprint(f"{e} - could you be missing a 'git submodule update --init'?")
+            return None
     func = getattr(module, func_name, None)
     if func:
-        return func(name)
+        return func(name, **kwargs)
+
+class ErrCodes:
+    ok = 0; err = 1; warn = 2; fail = 3; include = 4
 
 def create_main(lang):
     is_pico8 = lang == Language.pico8
@@ -138,6 +150,7 @@ def create_main(lang):
         pgroup.add_argument("-m", "--minify", action="store_true", help="enable minification of the cart")
         pgroup.add_argument("-M", "--minify-safe-only", action="store_true", help="only do minification that's always safe to do")
         pgroup.add_argument("--minify-consts-only", action="store_true", help="only do constant folding - no other minification")
+        pgroup.add_argument("--minify-transform-only", action="store_true", help="only do transformations - no other minification")
         if is_pico8:
             pgroup.add_argument("-ot", "--focus-tokens", action="store_true", help="when minifying, focus on reducing the amount of tokens")
             pgroup.add_argument("-oc", "--focus-chars", action="store_true", help="when minifying, focus on reducing the amount of characters")
@@ -151,6 +164,7 @@ def create_main(lang):
         pgroup.add_argument("--no-minify-comments", action="store_true", help="disable comment removal in minification (requires --no-minify-spaces)")
         pgroup.add_argument("--no-minify-tokens", action="store_true", help="disable token removal/changes in minification")
         pgroup.add_argument("--no-minify-reorder", action="store_true", help="disable statement reordering in minification")
+        pgroup.add_argument("--no-minify-transform", action="store_true", help="disable transformations (--$switch-compiler & --$dynamic-include) in minification")
         pgroup.add_argument("-p", "--preserve", type=SplitBySeps, action="extend", help='preserve specific identifiers in minification, e.g. "global1, global2, *.member2, table3.*"')
         pgroup.add_argument("--no-preserve", type=SplitBySeps, action="extend", help='do not preserve specific built-in identifiers in minification, e.g. "circfill, rectfill"')
         pgroup.add_argument("--rename-members-as-globals", action="store_true", help='rename globals and members the same way (same as --preserve "*=*.*")')
@@ -160,6 +174,7 @@ def create_main(lang):
         pgroup.add_argument("--rename-map", help="log renaming of identifiers (from minify step) to this file")
         pgroup.add_argument("--const", nargs=2, action="append", metavar=("NAME", "VALUE"), help="define a constant that will be replaced with the VALUE across the entire file")
         pgroup.add_argument("--str-const", nargs=2, action="append", metavar=("NAME", "VALUE"), help="same as --const, but the value is interpreted as a string")
+        pgroup.add_argument("--default-compiler", help="same as a '--$switch-compiler: VALUE' hint at the beginning of the file")
 
         pgroup = parser.add_argument_group("lint options")
         pgroup.add_argument("-l", "--lint", action="store_true", help="enable checking the cart for common issues")
@@ -169,7 +184,7 @@ def create_main(lang):
         pgroup.add_argument("--no-lint-duplicate-global", action="store_true", help="don't print lint warnings on duplicate variables between a local and a global")
         pgroup.add_argument("--no-lint-undefined", action="store_true", help="don't print lint warnings on undefined variables")
         pgroup.add_argument("--no-lint-fail", action="store_true", help="create output cart even if there were lint warnings")
-        pgroup.add_argument("--lint-global", type=SplitBySeps, action="extend", help="don't print lint warnings for these globals (same as '--lint:' comment)")
+        pgroup.add_argument("--lint-global", type=SplitBySeps, action="extend", help="don't print lint warnings for these globals (same as '--$lint:' comment)")
         pgroup.add_argument("--error-format", type=EnumFromStr(ErrorFormat), help="how to format lint warnings & compilation errors {%s}" % EnumList(ErrorFormat))
 
         pgroup = parser.add_argument_group("count options")
@@ -197,7 +212,7 @@ def create_main(lang):
         pgroup.add_argument("--update-version", action="store_true", help=f"convert the cart to the latest supported version")
 
         pgroup = parser.add_argument_group("misc. options")
-        pgroup.add_argument("-s", "--script", action="append", help="manipulate the cart via a custom python script - see README for api details")
+        pgroup.add_argument("-s", "--script", action="append", help=f"manipulate the cart via a custom script (python or {pico_name}) - see README for api details")
         pgroup.add_argument("--script-args", nargs=argparse.REMAINDER, help="send arguments directly to --script", default=())
         pgroup.add_argument("--extra-output", nargs='+', action="append", metavar=("OUTPUT [FORMAT]", ""),
                             help="additional output file to produce (and optionally, the format to use)")
@@ -210,7 +225,9 @@ def create_main(lang):
                                 help=f"insert the specified file or directory INPUT into FSPATH. (FILTER can be a {sections_desc} to insert - relative to cart root)")
             pgroup.add_argument("--extract", nargs='+', action="append", metavar=(f"FSPATH [OUTPUT]", ""),
                                 help=f"extract the specified file or directory from FSPATH to OUTPUT ")
+            pgroup.set_defaults(list_includes=None)
         else:
+            pgroup.add_argument("--list-includes", action="store_true", help="list all includes inside the cart")
             pgroup.set_defaults(filter=None, insert=None, extract=None)
         
         pgroup.add_argument("--merge", nargs='+', action="append", metavar=(f"INPUT {sections_meta} [FORMAT]", ""),
@@ -341,8 +358,8 @@ def create_main(lang):
             args.input_format = CartFormatCls.png
 
         if (not args.lint and not args.count and not args.output and not args.input_count and not args.version and
-            not args.list and not args.dump and not args.script and not args.extract):
-            throw("No operation (--lint/--count/--script) or output file specified")
+            not args.list and not args.dump and not args.script and not args.extract and not args.list_includes):
+            throw("No operation (--lint/--count/--script/etc) or output file specified")
         if args.format and not args.output and not args.dump:
             throw("Output should be specified under --format")
         if args.minify and not args.output and not args.count:
@@ -380,21 +397,22 @@ def create_main(lang):
         if args.focus_tokens:
             args.focus.append("tokens")
 
-        if args.minify or args.minify_safe_only or args.minify_consts_only:
-            minify_default = not args.minify_consts_only
+        minify_limited = args.minify_consts_only or args.minify_transform_only
+        if args.minify or args.minify_safe_only or minify_limited:
             args.minify = {
                 "safe-reorder": args.minify_safe_only or args.reorder_safe_only,
                 "safe-builtins": args.minify_safe_only or args.builtins_safe_only,
-                "lines": minify_default and not args.no_minify_lines,
-                "wspace": minify_default and not args.no_minify_spaces,
-                "comments": minify_default and not args.no_minify_comments,
-                "tokens": minify_default and not args.no_minify_tokens,
-                "reorder": minify_default and not args.no_minify_reorder,
-                "consts": not args.no_minify_consts,
+                "lines": not minify_limited and not args.no_minify_lines,
+                "wspace": not minify_limited and not args.no_minify_spaces,
+                "comments": not minify_limited and not args.no_minify_comments,
+                "tokens": not minify_limited and not args.no_minify_tokens,
+                "reorder": not minify_limited and not args.no_minify_reorder,
+                "consts": (not minify_limited or args.minify_consts_only) and not args.no_minify_consts,
+                "transform": (not minify_limited or args.minify_transform_only) and not args.no_minify_transform,
                 "focus": args.focus,
             }
 
-        args.rename = bool(args.minify) and not args.no_minify_rename
+        args.rename = bool(args.minify) and not args.no_minify_rename and not minify_limited
         if args.rename:
             if args.no_preserve:
                 args.preserve = (args.preserve or []) + [f"!{item}" for item in args.no_preserve]
@@ -425,15 +443,32 @@ def create_main(lang):
             args.keep_meta_keys = default_keep_meta_keys
 
         args.preproc_cb, args.postproc_cb, args.preproc_syntax_cb = None, None, None
-        args.sublang_cb = lambda name: find_in_builtin_script(name, "sublanguage_main")
+        args.include_cb = lambda name, **kwargs: find_in_builtin_script(name, kwargs, "include_main")
+        args.sublang_cb = lambda name, **kwargs: find_in_builtin_script(name, kwargs, "sublanguage_main")
+        args.compiler_cb = lambda name, **kwargs: find_in_builtin_script(name, kwargs, "compiler_main")
         if args.script:
             for script in args.script:
-                preproc_main, postproc_main, preproc_syntax_main, sublang_main = import_from_script_by_path(script,
-                    "preprocess_main", "postprocess_main", "preprocess_syntax_main", "sublanguage_main")
+                script_ext = path_extension(script).lower()
+                if script_ext == ".py":
+                    script_obj = exec_script_by_path(script)
+                elif script_ext in (".lua", ".p8"):
+                    from run_pico import exec_pico_script_by_path, lua_type
+                    script_obj = exec_pico_script_by_path(script)
+                    if lua_type(script_obj) != "table":
+                        eprint(f"WARNING: script '{script}' didn't return a table")
+                        continue
+                else:
+                    throw(f"unrecognized script extension {script_ext} (can be .py/.lua/.p8)")
+
+                preproc_main, postproc_main, preproc_syntax_main, include_main, sublang_main, compiler_main = tuple(
+                    getattr(script_obj, name, None) for name in 
+                          ("preprocess_main", "postprocess_main", "preprocess_syntax_main", "include_main", "sublanguage_main", "compiler_main"))
                 args.preproc_cb = func_union(args.preproc_cb, preproc_main)
                 args.postproc_cb = func_union(postproc_main, args.postproc_cb) # (reverse order)
                 args.preproc_syntax_cb = func_union(args.preproc_syntax_cb, preproc_syntax_main)
+                args.include_cb = func_union(include_main, args.include_cb, return_early=e) # (reverse order)
                 args.sublang_cb = func_union(sublang_main, args.sublang_cb, return_early=e) # (reverse order)
+                args.compiler_cb = func_union(compiler_main, args.compiler_cb, return_early=e) # (reverse order)
 
         base_count_handler = ParsableCountHandler if args.parsable_count else True
         if args.input_count:
@@ -449,11 +484,11 @@ def create_main(lang):
         if args.input:
             cart, extra_carts = handle_input(args)
             if cart is None: # e.g. list/dump case
-                return 0
+                return ErrCodes.ok
             
             passed, ok = handle_processing(args, cart, extra_carts)
             if not passed:
-                return 2 if ok else 1
+                return ErrCodes.warn if ok else ErrCodes.err
             
         else: # output-only operations
             cart, extra_carts = None, ()
@@ -462,6 +497,9 @@ def create_main(lang):
     
     class InputDef(Tuple):
         input = format = name = sections = fspath = None
+
+    def print_include(path):
+        print(path_relative(path))
 
     def handle_input(args):
         allow_extra_input = is_pico8 and args.format and args.format.is_export
@@ -482,6 +520,7 @@ def create_main(lang):
             main_cart = read_cart_func(args.input, args.input_format, size_handler=args.input_count, 
                                        debug_handler=args.trace_input_compression, cart_name=args.cart,
                                        keep_compression=args.keep_compression,
+                                       include_notifier=print_include if args.list_includes else None,
                                        extra_carts=extra_carts if allow_extra_input and not args.cart else None)
         except OSError as err:
             throw(f"cannot read cart: {err}")
@@ -579,8 +618,11 @@ def create_main(lang):
             ctxt = ContextCls(extra_builtins=args.builtin, not_builtins=args.not_builtin, 
                               use_local_builtins=not args.global_builtins_only,
                               extra_local_builtins=args.local_builtin,
-                              srcmap=args.rename_map, sublang_getter=args.sublang_cb, version=cart.version_id,
-                              hint_comments=not args.ignore_hints, consts=args.const)
+                              srcmap=args.rename_map, version=cart.version_id, include_getter=args.include_cb,
+                              sublang_getter=args.sublang_cb, compiler_getter=args.compiler_cb,
+                              default_compiler=args.default_compiler,
+                              hint_comments=not args.ignore_hints, consts=args.const,
+                              ignore_transforms=args.no_minify_transform)
             if args.preproc_cb:
                 args.preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args)
 
@@ -614,7 +656,7 @@ def create_main(lang):
                 file_write_maybe_text(args.rename_map, "\n".join(ctxt.srcmap))
                 
             if args.postproc_cb:
-                args.postproc_cb(cart=cart, args=args)
+                args.postproc_cb(cart=cart, args=args, ctxt=ctxt)
             
             if args.count:
                 write_code_size_func(cart, handler=args.count)
@@ -623,6 +665,8 @@ def create_main(lang):
             
             if args.version:
                 write_cart_version_func(cart)
+            
+            ctxt.finish()
         
         return True, not had_warns
 
@@ -707,14 +751,17 @@ def create_main(lang):
 
             if not raw_args: # help is better than usage
                 parser.print_help(sys.stderr)
-                return 1
+                return ErrCodes.err
 
             args = parser.parse_intermixed_args(raw_args)
             return main_inner(args)
         except CheckError as err:
             sys.stdout.flush()
             eprint("ERROR: " + str(err))
-            return 1
+            if isinstance(err, IncludeNotFoundError):
+                return ErrCodes.include
+            else:
+                return ErrCodes.fail
     return main
 
 if __name__ == "__main__":

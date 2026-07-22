@@ -1,4 +1,5 @@
-'use strict';
+import * as Comlink from "https://cdn.jsdelivr.net/npm/comlink@4.4.2/dist/esm/comlink.min.js";
+import {getLowExt, getWithoutAllExts, getBaseName, joinPath, isFormatText, isFormatImg, isFormatExport, isFormatNeedZip, isFormatUrl} from "./utils.js";
 
 let targetLang = $("html").data("target");
 let isPico8 = targetLang === "pico8";
@@ -16,10 +17,19 @@ let isLoading = true;
 function showLoading() {
     isLoading = true;
     $("#loading-overlay").show();
+    let targetProgress = 0;
+
+    function updateProgressUi() {
+        if (isLoading) {
+            let value = $("#loading-progress").val();
+            value = Math.min(value + 2, targetProgress);
+            $("#loading-progress").val(value);
+            setTimeout(updateProgressUi, 10);
+        }
+    }
 
     function updateProgress() {
         api.getProgress().then(progress => {
-            console.log(progress);
             if (progress < 0) {
                 $("#loading-failed").show();
             } else if (progress >= 100) {
@@ -27,12 +37,13 @@ function showLoading() {
                 isLoading = false;
                 doShrinkoAction(); // initial
             } else {
-                $("#loading-progress").val(progress);
-                setTimeout(updateProgress, 100);
+                targetProgress = progress;
+                setTimeout(updateProgress, 10);
             }
         });
     }
 
+    updateProgressUi();
     updateProgress();
 }
 
@@ -173,7 +184,7 @@ async function loadInputFiles(inputs) {
     function onerror(text) {
         $("#input-overlay").hide();
         $("#input-error-overlay").show();
-        applyErrors(-1, text, "#input-error-output");
+        applyErrors(errcode_generr, text, "#input-error-output");
     }
 
     let allFiles = new Map();
@@ -275,7 +286,7 @@ async function loadInputFiles(inputs) {
 }
 
 // called when file input selection changed
-function loadSelectedFiles(input) {
+export function loadSelectedFiles(input) {
     let entries = input.webkitEntries;
     if (entries && entries.length > 0) {
         loadInputFiles(entries);
@@ -304,7 +315,7 @@ function getDragTarget(elem) {
     return jqelem;
 }
 
-function onDragEnter(elem, event) {
+export function onDragEnter(elem, event) {
     if (isFileDrag(event)) {
         event.preventDefault();
         event.dataTransfer.dropEffect = "copy";
@@ -312,13 +323,13 @@ function onDragEnter(elem, event) {
     }
 }
 
-function onDragLeave(elem, event) {
+export function onDragLeave(elem, event) {
     if (isFileDrag(event)) {
         getDragTarget(elem).removeClass("dragover");
     }
 }
 
-function onDrop(elem, event, type) {
+export function onDrop(elem, event, type) {
     if (isFileDrag(event)) {
         event.preventDefault();
         onDragLeave(elem, event);
@@ -329,7 +340,7 @@ function onDrop(elem, event, type) {
 }
 
 // called to close the input error overlay
-function onInputErrorClose() {
+export function onInputErrorClose() {
     $('#input-error-overlay').hide();
 }
 
@@ -407,17 +418,17 @@ async function beginInputSelect(paths, reason, initialSel) {
 }
 
 // called to finish selecting a file
-function onInputSelect() {
+export function onInputSelect() {
     inputSelectResolve();
 }
 
-function onInputSelectClose() {
+export function onInputSelectClose() {
     $('#input-select-overlay').hide();
 }
 
 let hasPicoDat = false;
 
-async function loadPicoDat(file) {
+export async function loadPicoDat(file) {
     let data = await readFile(file);
     await api.updatePicoDat(data);
     
@@ -427,11 +438,11 @@ async function loadPicoDat(file) {
     doShrinkoAction();
 }
 
-function preLoadExtraFile() {
+export function preLoadExtraFile() {
     $("#advanced-upload-ok").hide()
 }
 
-async function loadExtraFile(file) {
+export async function loadExtraFile(file) {
     let path = file.name // drop in root for simplicity
     let data = await readFile(file)
     await api.uploadExtraFile(path, data)
@@ -440,11 +451,16 @@ async function loadExtraFile(file) {
     outputCache = {}
 }
 
-let scriptMgr = new InputChangeMgr("#script-code", "updateScriptFile");
+let pythonScriptMgr = new InputChangeMgr("#script-code-python", "updatePythonScriptFile");
+let picoScriptMgr = new InputChangeMgr("#script-code-pico", "updatePicoScriptFile");
 
 // Called when the script value changes
-function onScriptChange(delta) {
-    scriptMgr.onChange();
+function onPythonScriptChange(delta) {
+    pythonScriptMgr.onChange();
+    outputCache = {}
+}
+function onPicoScriptChange(delta) {
+    picoScriptMgr.onChange();
     outputCache = {}
 }
 
@@ -465,7 +481,7 @@ function setImageUrl(selector, data) {
 }
 
 // copy the edu url to clipboard
-function copyUrlToClipboard() {
+export function copyUrlToClipboard() {
     navigator.clipboard.writeText($("#minify-url").attr("href"));
     $("#minify-url-copied").show();
 }
@@ -482,7 +498,7 @@ function getFormatExt(format) {
 }
 
 // download the output file
-async function saveOutputFile() {
+export async function saveOutputFile() {
     let format = $("#minify-format").val();
     let output = outputCache[format].output;
 
@@ -514,27 +530,28 @@ async function doShrinko(args, encoding, usePreview, doZip, extraNames) {
     let argStr = $("#extra-args").val();
 
     await inputMgr.flush();
-    await scriptMgr.flush();
-
-    let useScript = Boolean(scriptMgr.getValue());
+    await pythonScriptMgr.flush();
+    await picoScriptMgr.flush();
 
     try {
-        return await api.runShrinko(args, argStr, useScript, encoding, usePreview, doZip, extraNames);
+        return await api.runShrinko(args, argStr, encoding, usePreview, doZip, extraNames);
     } catch (e) {
         console.error(e);
         return [-1, e.message, undefined, undefined]
     }
 }
 
+const errcode_ok = 0, errcode_generr = 1, errcode_warn = 2, errcode_include = 4; // see ErrCodes on python side
+
 function applyErrors(code, stdouterr, selector) {
     let elem = $(selector);
-    elem.css("color", code == 0 ? "green" : code == 2 ? "darkgoldenrod" : "red");
+    elem.css("color", code == errcode_ok ? "green" : code == errcode_warn ? "darkgoldenrod" : "red");
 
     if (code == 0) {
         stdouterr += "Lint succesful - no issues found.";
     }
 
-    if (stdouterr.match(/^.*cannot open included cart/i)) { // pico8-specific
+    if (code == errcode_include) {
         stdouterr += "\nTo fix this, select (or drop) both the main p8 file and all its includes.";
         stdouterr += "\nIf your includes are inside subfolders, you can drag & drop the whole parent directory to the input area.";
     }
@@ -686,7 +703,7 @@ function updateMinifyResults(format) {
             $("#minify-preview").data("editor").setValue(preview, -1);
         }
         
-        applyErrors(2, stdouterr, "#minify-diag-output");
+        applyErrors(errcode_warn, stdouterr, "#minify-diag-output");
     }
 
     $("#minify-error-overlay").toggle(code != 0);
@@ -727,6 +744,24 @@ function updateLintResults() {
     let {code, stdouterr} = outputCache.lint;
 
     applyErrors(code, stdouterr, "#lint-output");
+}
+
+export function runHelp() {
+    let fullElem = $("#measure-full");
+    let charElem = $("#measure-char");
+    let columns = Math.floor(fullElem.width() / charElem.width());
+
+    api.getHelp(columns).then(help => {
+        let helpwin = window.open('', '_blank');
+        let pre = helpwin.document.createElement("pre");
+        pre.style.whiteSpace = "pre-wrap";
+        pre.innerHTML = help;
+        helpwin.document.body.style.margin = fullElem.css("margin");
+        helpwin.document.body.appendChild(pre);
+    }).catch(e => {
+        alert("--help failed");
+    });
+    return true;
 }
 
 // do the shrinko action for the current tab. returns awaitable
@@ -809,25 +844,45 @@ function onLintOptsChange(event) {
     }
 }
 
+// called when the script language changes
+export function onScriptLangChange() {
+    let lang = $("#script-lang").prop("value");
+    let isPython = lang == "python"
+    let isPico = lang == "pico";
+    $("#script-code-python").toggle(isPython);
+    $("#script-code-pico").toggle(isPico);
+    
+    if (isPython) {
+        initAceIfNeeded("#script-code-python", "python", onPythonScriptChange);
+    } else if (isPico) {
+        initAceIfNeeded("#script-code-pico", "lua", onPicoScriptChange);
+    }
+}
+
 // called when the tab changes
 function onTabChange() {
-    if (isLoading) {
-        let activeTab = $("#output-tabs").tabs("option", "active");
-        switch (activeTab) {
-            case 0: {
+    let activeTab = $("#output-tabs").tabs("option", "active");
+    switch (activeTab) {
+        case 0: {
+            if (isLoading) {
                 $("#loading-overlay").appendTo("#minify-overlay-parent");
-                break;
-            } case 1: {
-                $("#loading-overlay").appendTo("#lint-overlay-parent");
-                break;
             }
+            break;
+        } case 1: {
+            if (isLoading) {
+                $("#loading-overlay").appendTo("#lint-overlay-parent");
+            }
+            break;
+        } case 2: {
+            onScriptLangChange();
+            break;
         }
     }
     doShrinkoAction();
 }
 
 // called when the target (language) changes
-function onTargetChange() {
+export function onTargetChange() {
     let newTarget = $("#target").val()
     if (newTarget != targetLang) {
         if (newTarget == "pico8") {
@@ -885,12 +940,11 @@ async function runTests(mode, argsStr) {
 }
 
 $(() => {
-    self.api = Comlink.wrap(new Worker("worker.js?target=" + targetLang));
+    self.api = Comlink.wrap(new Worker("worker.js?target=" + targetLang, {"type": "module"}));
 
     showLoading();
     showVersion();
     initAceIfNeeded("#input-code", "lua", onInputChange);
-    initAceIfNeeded("#script-code", "python", onScriptChange);
     $("#output-tabs").tabs({activate: onTabChange});
 
     // (we call below functions with an undefined event, thus avoiding doShrinkoAction being called here)

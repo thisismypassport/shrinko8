@@ -77,6 +77,9 @@ def preprocess_code(path, code, start_line=0, **opts):
     flush_output()
     return "".join(outparts), outmappings
 
+class IncludeNotFoundError(CheckError):
+    pass
+
 def read_included_cart(orig_path, inc_name, out_i, outparts, outmappings, include_notifier=None, **opts):
     tab_idx = None
     if re.fullmatch(r".*:[0-9a-fA-F]", inc_name):
@@ -88,7 +91,7 @@ def read_included_cart(orig_path, inc_name, out_i, outparts, outmappings, includ
         # windows path outside windows, maybe?
         inc_path = inc_path.replace("\\", "/")
         if not path_exists(inc_path):
-            throw(f"cannot open included cart at: {inc_path}")
+            raise IncludeNotFoundError(f"cannot open included cart at: {inc_path}")
     
     if include_notifier:
         include_notifier(inc_path)

@@ -67,11 +67,6 @@ def exec_script_by_path(path, name=None):
     script_spec.loader.exec_module(script_mod)
     return script_mod
 
-def import_from_script_by_path(path, *func_names):
-    """executes script at 'path', importing the requested funcs from it - if they exist"""
-    script_mod = exec_script_by_path(path)
-    return tuple(getattr(script_mod, name, None) for name in func_names)
-
 def typename(obj):
     """returns the name of the object's type"""
     return type(obj).__name__
@@ -1466,12 +1461,12 @@ class BinaryBuffer:
         m.w_fill(addr, 0, count)
 
 def e(value):
-    """Return if 'value' is not None (for my sanity)"""
+    """Return if 'value' is not None (for my sanity and others' insanity)"""
     return value is not None
 
 def default(value, defval):
     """Return 'defval' if 'value' is None"""
-    return value if e(value) else defval
+    return value if value != None else defval
 
 def nop(value):
     """The identity function"""
@@ -2200,6 +2195,9 @@ class StdPath(CustomPath):
     def create_text(m, encoding, errors, newline):
         sys.stdout.reconfigure(encoding=encoding, errors=errors, newline=newline)
         return IOWrapper(sys.stdout)
+    
+    append = create
+    append_text = create_text
 
 class DataPath(CustomPath):
     """A path that refers to some data"""
@@ -2259,6 +2257,23 @@ def file_create_text(path, encoding = "utf-8", errors = None, newline = "\n"):
 def file_create_maybe_text(path, encoding = "utf-8", newline = "\n"):
     return file_create_text(path, encoding, "surrogateescape", newline)
 
+def file_prepare_append(path):
+    """Open or create a binary file for appending"""
+    if isinstance(path, CustomPath):
+        return path.append()
+    else:
+        return open(path, "ab")
+
+def file_prepare_append_text(path, encoding = "utf-8", errors = None, newline = "\n"):
+    """Open or create a text file for appending"""
+    if isinstance(path, CustomPath):
+        return path.append_text(encoding, errors, newline)
+    else:
+        return open(path, "a", encoding=encoding, errors=errors, newline=newline)
+
+def file_prepare_append_maybe_text(path, encoding = "utf-8", newline = "\n"):
+    return file_prepare_append_text(path, encoding, "surrogateescape", newline)
+
 def file_read(path, offset = 0, size = None):
     """Read all data from a binary file (or optionally, a subset of data)"""
     with file_open(path) as f:
@@ -2299,6 +2314,19 @@ def file_write_json(path, value, **json_kwargs):
     """Create or replace a json file, writing 'data' into it"""
     with file_create_text(path) as f:
         json.dump(value, f, **json_kwargs)
+
+def file_append(path, value):
+    """Open or create a binary file, appending 'value' into it"""
+    with file_prepare_append(path) as f:
+        f.write(value)
+        
+def file_append_text(path, value, encoding = "utf-8", errors = None, newline = "\n"):
+    """Open or create a text file, appending 'value' into it"""
+    with file_prepare_append_text(path, encoding, errors, newline) as f:
+        f.write(value)
+        
+def file_append_maybe_text(path, value, encoding = "utf-8", newline = "\n"):
+    file_append_text(path, value, encoding, "surrogateescape", newline)
 
 def try_file_read(path, defval = None):
     """Try reading all data from a binary file, or return 'defval' on any error"""

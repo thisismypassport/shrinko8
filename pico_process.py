@@ -158,8 +158,9 @@ class CartSource(Source):
         m.cart.set_code_without_title(val)
 
 class SubLanguageBase:
-    """Base class of a custom 'sub-language' (a language embedded in a pico8 string, see README for more info),
-    defining how to minify/lint/etc itself"""
+    """Base class of a custom 'sub-language' instance (a language embedded in a pico8 string, see README for more info),
+    defining how to minify/lint/etc itself.
+    See readme for documentation & description of members."""
     def __init__(m, str, **_):
         pass
     def get_defined_globals(m, **_):
@@ -168,7 +169,7 @@ class SubLanguageBase:
         return ()
     def lint(m, **_):
         pass
-    get_unminified_chars = None
+    get_unminified_chars = None # or def get_unminified_chars(m, **_):
     def get_global_usages(m, **_):
         return dict()
     def get_member_usages(m, **_):
@@ -177,13 +178,24 @@ class SubLanguageBase:
         return dict()
     def rename(m, **_):
         pass
-    minify = None
+    minify = None # or def minify(m, **_):
+
+class CompilerBase:
+    """Base class of a custom compiler instance (which can process pico8 code between rename and minify)
+    See readme for documentation & description of members."""
+    def __init__(m, **_):
+        pass
+    def get_dynamic_includes(m, **_):
+        return ()
+    def compile(m, root, **_):
+        pass
 
 class ContextBase:
     """Defines information for how code is to be processed, e.g. the supported builtins, the supported version, the language, etc."""
     def __init__(m, lang, builtins, local_builtins, builtins_with_callbacks, builtin_callbacks, builtin_members,
                  extra_builtins=None, not_builtins=None, use_local_builtins=True, extra_local_builtins=None, 
-                 srcmap=False, sublang_getter=None, version=sys.maxsize, hint_comments=True, consts=None):
+                 srcmap=False, include_getter=None, sublang_getter=None, compiler_getter=None, default_compiler=None,
+                 version=sys.maxsize, hint_comments=True, consts=None, ignore_transforms=False):
         m.builtins = builtins.copy()
         m.local_builtins = local_builtins.copy() if use_local_builtins else set()
         m.builtins_with_callbacks = builtins_with_callbacks
@@ -201,11 +213,19 @@ class ContextBase:
 
         m.srcmap = [] if srcmap else None
         m.consts = consts
+        m.ignore_transforms = ignore_transforms
+        m.include_getter = include_getter
         m.sublang_getter = sublang_getter
+        m.compiler_getter = compiler_getter
+        m.default_compiler = default_compiler
         m.custom_langdefs = None
         m.hint_comments = hint_comments
         m.version = version
         m.lang = lang
+        m.fields = {}
+        m.at_finish = []
+        
+    local_renames = global_renames = member_renames = label_renames = None
     
     def add_custom_langdef(m, source, target, args):
         if m.custom_langdefs is None:
@@ -220,7 +240,27 @@ class ContextBase:
                     args = pre_args + " " + args
                 else:
                     args = pre_args
-        return name, args
+        return name, args.strip()
+    
+    def get_field(m, name, cls=None):
+        """get a custom field, for convenience"""
+        if name in m.fields:
+            return m.fields[name]
+        elif cls is None:
+            raise Exception(f"field {name} doesn't exist on ctxt")
+        else:
+            field = cls()
+            m.fields[name] = field
+            return field
+    
+    def set_field(m, name, value):
+        """set a custom field, for convenience"""
+        m.fields[name] = value
+    
+    def finish(m):
+        at_finish, m.at_finish = m.at_finish, None
+        for cb in at_finish:
+            cb(ctxt=m)
 
 class PicoContext(ContextBase):
     """Specialization of ContextBase to pico8"""
@@ -260,6 +300,28 @@ def fixup_process_args(args):
         args = {}
     args_set = isinstance(args, dict)
     return args_set, args
+
+def process_compiler(token):
+    token.compiler.compile(token.compiler_root)
+    token.compiler_node.erase()
+    # compiler outputs are processed via placeholders
+
+def process_placeholder(ctxt, token, errors):
+    ph_name, ph_args = token.placeholder_name, token.placeholder_args
+    include_func = ctxt.include_getter(ph_name, placeholder=True)
+    if include_func:
+        ph_str = include_func(args=ph_args.strip(), ctxt=ctxt)
+        if ph_str != None:
+            ph_source = Source(ph_name, ph_str)
+            ph_tokens, ph_errors = tokenize(ph_source, ctxt, inner=True)
+            if not ph_errors:
+                ph_root, ph_errors = parse(ph_source, ph_tokens, ctxt, for_expr=token.placeholder_expr)
+                if not ph_errors:
+                    token.parent.replace_with(ph_root)
+                    return
+            errors += ph_errors
+    
+    eprint(f"placeholder '{ph_name}' is not recognized")
 
 def process_code(ctxt, source, input_count=False, count=False, lint=False, minify=False, rename=False, unminify=False, 
                  stop_on_lint=True, count_is_optional=False, preproc=None):
@@ -307,8 +369,11 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
                 
                 if need_rename:
                     rename_tokens(ctxt, root, rename)
+                
+                transform_code(ctxt, root, minify, errors)
 
                 minify_code(ctxt, root, minify)
+
                 for subsrc in source:
                     subsrc.text = output_code(ctxt, get_sub_root(root, subsrc), minify)
             
@@ -329,6 +394,16 @@ def simplify_code(ctxt, root, minify, errors):
     if fold:
         fold_consts(ctxt, minify, root, errors)
 
+def transform_code(ctxt, root, minify, errors):
+    transform = minify.get("transform", True)
+        
+    if transform:
+        for compiler_token in root.compiler_tokens:
+            process_compiler(compiler_token)
+        
+        for placeholder_token in root.placeholders:
+            process_placeholder(ctxt, placeholder_token, errors)
+
 def echo_code(code, ctxt, echo=True):
     code = from_langstr(code, ctxt.lang)
     if echo == True:
@@ -347,5 +422,5 @@ from pico_output import output_code
 from pico_rename import rename_tokens
 
 # re-export some things for examples/etc.
-from pico_tokenize import is_identifier, is_ident_char
+from pico_tokenize import is_identifier, is_ident_char, TokenType
 from pico_parse import Local, Global, Scope

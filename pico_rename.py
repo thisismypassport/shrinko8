@@ -497,3 +497,7 @@ def rename_tokens(ctxt, root, rename_opts):
             node.sublang.rename(globals=global_renames, members=effective_member_renames, locals=local_renames)
             
     root.traverse_nodes(update_idents, extra=True)
+
+    # save for optional later usage
+    ctxt.local_renames, ctxt.global_renames, ctxt.member_renames, ctxt.label_renames = (
+        local_renames, global_renames, member_renames, label_renames)

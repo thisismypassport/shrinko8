@@ -37,9 +37,20 @@ def init_tests(opts): # use: opts.exe, opts.install and opts.profile
             Target.pico8: "shrinko8.py",
             Target.picotron: "shrinkotron.py",
         }
-    
+
     import warnings
     warnings.simplefilter("error")
+    prepare_test_dir("test_input", "test_output", "test_compare")
+
+def prepare_test_dir(*test_subdirs):
+    if g_use_exe or g_use_install:
+        # to allow the test to run in a different dir, where it can't import the real source
+        dir_ensure_exists("test_directory")
+        for test_subdir in test_subdirs:
+            dest_test_subdir = path_join("test_directory", test_subdir)
+            if path_exists(test_subdir):
+                file_delete(dest_test_subdir)
+                os.symlink(path_join("..", test_subdir), dest_test_subdir)
 
 def start_test():
     global g_num_ran
@@ -103,9 +114,10 @@ def run_code(target, *args, exit_code=0):
         if g_use_exe or g_use_install:
             try:
                 if g_use_exe:
-                    stdout = subprocess.check_output([g_exe_paths[target], *args], encoding="utf8")
+                    cmd = [g_exe_paths[target], *args]
                 else:
-                    stdout = subprocess.check_output([sys.executable, "-m", g_install_scripts[target], *args], encoding="utf8")
+                    cmd = [sys.executable, "-m", g_install_scripts[target], *args]
+                stdout = subprocess.check_output(cmd, encoding="utf8", cwd="test_directory")
             except subprocess.CalledProcessError as e:
                 actual_code = e.returncode
                 stdout = e.stdout

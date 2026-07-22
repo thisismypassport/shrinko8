@@ -1,0 +1,3 @@
+[submodule "scripts/parens8"]
+	path = scripts/parens8_src
+	url = https://codeberg.org/wellspring-labs/parens-8.git

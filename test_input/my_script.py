@@ -1,5 +1,5 @@
 # this is called after your cart is read but before any processing is done on it:
-def preprocess_main(cart, args, **_):
+def preprocess_main(cart, args, ctxt, **_):
     print("hello from preprocess_main!")
 
     # copy the spritesheet from another cart
@@ -21,6 +21,11 @@ def preprocess_main(cart, args, **_):
     opts = parser.parse_args(args.script_args)
     print("Received args:", opts.arg, opts.my_script_opt)
     assert(opts.arg == "my-script-arg" and opts.my_script_opt == 123)
+    
+    # ctxt contains some read-only information like `lang`, `version` and `builtins`
+    # you can also use ctxt.get/set_field to store extra information on it to pass between different stages
+    # (use a unique field name to avoid conflicts)
+    ctxt.set_field("my_script_data", [opts, other_cart])
 
 # for testing purposes
 def assert_cart_equals(cart1, cart2):
@@ -28,7 +33,7 @@ def assert_cart_equals(cart1, cart2):
     assert(cart1.rom == cart2.rom)
 
 # this is called before your cart is written, after it was fully processed
-def postprocess_main(cart, **_):
+def postprocess_main(cart, ctxt, **_):
     print("hello from postprocess_main!")
 
     # dump the code of the cart to be written
@@ -62,6 +67,10 @@ def postprocess_main(cart, **_):
     assert(from_p8str(to_p8str(test_str)) == test_str)
     test_p8str = to_p8str(test_str)
     assert(decode_p8str(encode_p8str(test_p8str)) == test_p8str)
+    
+    # can use the data stored in the preprocess stage:
+    opts, other_cart = ctxt.get_field("my_script_data")
+    assert(opts.arg == "my-script-arg" and opts.my_script_opt == 123)
 
 # this is called after your cart is parsed into a syntax tree, but before it is transformed for minification
 def preprocess_syntax_main(cart, root, on_error, args, **_):

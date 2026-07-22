@@ -351,7 +351,9 @@ def measure_p8scii(text, **opts): # see P8sciiMeasurer's ctor for params
     else:
         return measurer.finish()
 
-def bytes_to_string_contents(bytes):
-    """convert a bytes objects to a pico8 string literal, without the surrounding "-s"""
+def bytes_to_string_contents(input):
+    """convert a p8str or bytes objects to a pico8 string literal, without the surrounding "-s"""
     from pico_output import format_string_literal # already implemented here...
-    return format_string_literal(decode_p8str(bytes), long=False, quote='"')[1:-1]
+    if not isinstance(input, str):
+        input = decode_p8str(input)
+    return format_string_literal(input, long=False, quote='"')[1:-1]

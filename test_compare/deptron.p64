@@ -25,7 +25,7 @@ print(6)
 print(14)
 :: unrelated.lua
 print"hi"
-l = {
+v = {
     1, -- comment1
     3, -- comment2
 }

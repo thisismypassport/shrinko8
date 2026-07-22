@@ -17,7 +17,6 @@
     <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
     <link href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.11.1/src-min/ace.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/comlink@4.4.1/dist/umd/comlink.min.js"></script>
     <style>
       .ace_placeholder {
         transform: scale(1);
@@ -380,11 +379,13 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
         </div>
 
         <div id="tab-advanced" class="flex-column margin" style="flex: 1">
-          <span style="color: gray; margin-bottom: 10px">
-            See <a href="https://github.com/thisismypassport/shrinko8#shrinko8" target="_blank">here</a> for the readme.
+          <span style="margin-bottom: 10px">
+            <strong>Command-line Arguments:</strong>
+            (See <a href="https://github.com/thisismypassport/shrinko8#shrinko8" target="_blank">Readme</a> and
+            <a href="#" onclick="runHelp()">--help</a> for details)
           </span>
           <textarea id="extra-args" style="flex: 3; margin-bottom: 5px" spellcheck="false"
-              placeholder="You can add custom {{webappname}} command line arguments here (see readme)"></textarea>
+              placeholder="You can add custom {{webappname}} command line arguments here"></textarea>
           <span>
             <label style="margin-left: 12px">Add additional files (for use in command line arguments):
               <input type="file" hidden onclick="preLoadExtraFile()" onchange="loadExtraFile(this.files[0])"/>
@@ -392,14 +393,37 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
             </label>
             <span id="advanced-upload-ok" style="color: darkgreen; display: none"></span>
           </span>
-          <div id="script-code" class="ace-textarea" style="flex: 6"
-              placeholder="You can paste a custom python script here that customizes how {{webappname}} operates.
+          <span style="padding-top: 10px; margin-bottom: 5px; border-top: 1px solid black;">
+            <select id="script-lang" onchange="onScriptLangChange()" aria-label="Script Language">
+              <option value="python" selected>Python</option>
+              {% if pico8 %}
+              <option value="pico">{{targetname}}</option>
+              {% endif %}
+            </select>
+            <strong>Script:</strong>
+          </span>
+          <div id="script-code" style="flex: 6" class="base">
+            <div id="script-code-python" class="ace-textarea full"
+                placeholder="You can paste a custom python script here that customizes how {{webappname}} operates.
 For example, you can paste the example sublanguage from the readme"></div>
+            <div id="script-code-pico" class="ace-textarea full"
+                placeholder="You can paste a custom {{targetname}} script here that customizes how {{webappname}} operates.
+For example, you can paste the example sublanguage from the readme"></div>
+          </div>
         </div>
       </div>
     </form>
+    <div class="full" style="visibility: hidden">
+      <div id="measure-full" style="margin: 8px">
+        <pre id="measure-char" style="position: absolute">M</pre>
+      </div>
+    </div>
 
-    <script src="utils.js"></script>
-    <script src="index.js"></script>
+    <script src="utils.js" type="module"></script>
+    <script src="index.js" type="module"></script>
+    <script type="module">
+      import * as cbs from './index.js';
+      Object.assign(window, cbs);
+    </script>
   </body>
 </html>

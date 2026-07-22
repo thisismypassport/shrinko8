@@ -20,14 +20,16 @@ class VarBase():
     keys_kind = None
     rename = None
     constval = None
+    compiler = None
         
     def __repr__(m):
         return f"{typename(m)}({m.name})"
 
 class Local(VarBase):
-    def __init__(m, name, scope, builtin=False):
+    def __init__(m, name, scope, compiler=None, builtin=False):
         super().__init__(VarKind.local, name)
         m.scope = scope
+        m.compiler = compiler
         m.builtin = builtin
         m.captured = False
 
@@ -40,9 +42,10 @@ class Member(VarBase):
         super().__init__(VarKind.member, name)
 
 class Label(VarBase):
-    def __init__(m, name, scope):
+    def __init__(m, name, scope, compiler=None):
         super().__init__(VarKind.label, name)
         m.scope = scope
+        m.compiler = compiler
 
 class Scope:
     """A scope that defines new Locals. Note that in lua, every 'local' statement creates a new Scope"""
@@ -134,7 +137,7 @@ class NodeType(Enum):
     table = table_index = table_member = varargs = assign = op_assign = ...
     local = function = if_ = elseif = else_ = while_ = repeat = until = ...
     for_ = for_in = return_ = break_ = goto = label = block = do = ...
-    sublang = super_root = ... # special
+    sublang = compiler = super_root = ... # special
 
 class Node(TokenNodeBase):
     """A pico8 syntax tree node, spanning 'source'.text['idx':'endidx']. Its 'type' is a NodeType
@@ -295,6 +298,7 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
     funcdepth = -1 # incremented in parse_root
     scope = Scope(None, depth, funcdepth)
     labelscope = LabelScope(None, funcdepth)
+    curr_compiler = None
     unresolved_labels = None
     errors = []
     if lang is None:
@@ -305,12 +309,16 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
     
     if super_root and super_root.children:
         globals, members, has_env = super_root.globals, super_root.members, super_root.has_env
+        compiler_tokens, placeholders = super_root.compiler_tokens, super_root.placeholders
     else:
         globals = LazyDict(lambda key: Global(key))
         members = LazyDict(lambda key: Member(key))
         has_env = False
+        compiler_tokens = []
+        placeholders = []
     
-    scope.add(Local("_ENV", scope))
+    root_env = Local("_ENV", scope)
+    scope.add(root_env)
 
     if ctxt and ctxt.local_builtins:
         for local in ctxt.local_builtins:
@@ -375,7 +383,7 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
             search_scope = labelscope
 
             if new:
-                var = Label(name, labelscope)
+                var = Label(name, labelscope, curr_compiler)
             # else, can't resolve until func ends
 
         else:
@@ -384,11 +392,13 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
 
             if new:
                 assert isinstance(new, Scope)
-                var = Local(name, new)
+                var = Local(name, new, curr_compiler)
             else:
                 var = scope.find(name)
                 if var and var.scope.funcdepth != scope.funcdepth:
                     var.captured = True
+                if var and var.compiler != curr_compiler and not var.builtin and var != root_env:
+                    add_error(f"cannot use a local '{name}' across a compiler switch - try using a global instead", -1)
             
             if not var:
                 kind = VarKind.global_
@@ -397,7 +407,7 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
                     var.is_const = True
                     var.constval = ctxt.consts[name]
             
-            if name == "_ENV" and not implicit:
+            if name == "_ENV" and not implicit and not getattr(token, "force_safe", None):
                 nonlocal has_env
                 has_env = True
 
@@ -429,7 +439,7 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
             nonlocal unresolved_labels
             if unresolved_labels is None:
                 unresolved_labels = []
-            unresolved_labels.append(node)
+            unresolved_labels.append((node, curr_compiler))
         
         if kind == VarKind.global_:
             env_token = Token.synthetic(TokenType.ident, "_ENV", token)
@@ -590,6 +600,9 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
             sublang_token = Token.synthetic(TokenType.string, "", token)
             node.add_extra_child(Node(NodeType.sublang, (sublang_token,), name=token.sublang_name, sublang=token.sublang))
 
+        if hasattr(token, "placeholder_name"):
+            placeholders.append(token)
+
         return node
 
     def parse_core_expr():
@@ -667,6 +680,14 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
     
     def short_state(vline):
         return k_nested if peek().vline == vline else True
+
+    def parse_do(token):
+        body = parse_block()
+        end = require("end")
+        node = Node(NodeType.do, [token, body, end], body=body)
+        if hasattr(token, "placeholder_name"):
+            placeholders.append(token)
+        return node
 
     def parse_if(type=NodeType.if_):
         tokens = [peek(-1)]
@@ -860,6 +881,21 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
         mark_reassign(first)
         return Node(NodeType.op_assign, [first, token, source], target=first, source=source, op=op)
 
+    def parse_compiler(token):
+        nonlocal scope, labelscope, tokens, idx, curr_compiler
+
+        old_tokens, tokens = tokens, token.compiler_tokens
+        old_idx, idx = idx, 0
+        old_compiler, curr_compiler = curr_compiler, token.compiler
+
+        token.compiler_root = parse_root(token.compiler_name, inline=True)
+        token.compiler_node = Node(NodeType.compiler, [token.compiler_root], root=token.compiler_root)
+        compiler_tokens.append(token)
+
+        tokens, idx, curr_compiler = old_tokens, old_idx, old_compiler
+
+        return token.compiler_node
+
     def parse_misc_stmt():
         nonlocal idx
         idx -= 1
@@ -879,9 +915,7 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
         if value == ";":
             return None
         elif value == "do":
-            body = parse_block()
-            end = require("end")
-            return Node(NodeType.do, [token, body, end], body=body)
+            return parse_do(token)
         elif value == "if":
             return parse_if()
         elif value == "while":
@@ -909,14 +943,17 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
             return Node(NodeType.label, [token, label, end], label=label)
         elif value == "function":
             return parse_function(stmt=True)
+        elif token.type == TokenType.compiler:
+            return parse_compiler(token)
         else:
             return parse_misc_stmt()
 
-    def parse_block(vline=None, with_until=False):
+    def parse_block(vline=None, with_until=False, inline=False):
         nonlocal scope, labelscope, depth
-        oldscope = scope
-        labelscope = LabelScope(labelscope, funcdepth)
-        depth += 1
+        if not inline:
+            oldscope = scope
+            labelscope = LabelScope(labelscope, funcdepth)
+            depth += 1
 
         stmts = []
         tokens = []
@@ -937,10 +974,11 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
         if with_until:
             until = parse_until()
 
-        depth -= 1
-        labelscope = labelscope.parent
-        while scope != oldscope:
-            scope = scope.parent
+        if not inline:
+            depth -= 1
+            labelscope = labelscope.parent
+            while scope != oldscope:
+                scope = scope.parent
         
         node = Node(NodeType.block, tokens, stmts=stmts)
         if with_until:
@@ -950,25 +988,30 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
     
     def late_resolve_labels():
         if unresolved_labels:
-            for node in unresolved_labels:
+            for node, node_compiler in unresolved_labels:
                 node.var = node.scope.find(node.name)
                 if not node.var:
                     add_error_at(f"Unknown label {node.name}", node.children[0])
+                elif node.var.compiler != node_compiler:
+                    add_error_at(f"Cannot goto label {node.name} across a compiler switch", node.children[0])
 
-    def parse_root():
-        nonlocal funcdepth
-        funcdepth += 1
+    def parse_root(compiler_name=None, for_expr=False, inline=False):
+        if for_expr:
+            root = parse_expr()
+        else:
+            root = parse_block(inline=inline)
 
-        root = parse_block()
-
-        funcdepth -= 1
-
-        late_resolve_labels()
         if peek().type != None:
-            add_error("Expected end of input")
-        if idx < len(tokens):
-            root.append_existing(take()) # extra comments/etc
-        assert scope.parent is None
+            if compiler_name:
+                add_error(f"Expected end of input for {compiler_name}", fail=True)
+            else:
+                add_error("Expected end of input", fail=True)
+        while idx < len(tokens):
+            token = take() # extra comments/etc
+            if e(token.type):
+                raise Exception("token after end of input")
+            root.append_existing(token)
+
         #verify_parse(root) # DEBUG
         return root
 
@@ -984,10 +1027,10 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
         assert idx == len(tokens)
 
     try:
-        if for_expr:
-            root = parse_expr()
-        else:
-            root = parse_root()
+        funcdepth += 1
+        root = parse_root(for_expr=for_expr)
+        funcdepth -= 1
+        late_resolve_labels()
     except ParseError:
         root = None
     
@@ -999,6 +1042,7 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
 
     if root:
         root.globals, root.members, root.has_env = globals, members, has_env
+        root.compiler_tokens, root.placeholders = compiler_tokens, placeholders
     
     return root, errors
 

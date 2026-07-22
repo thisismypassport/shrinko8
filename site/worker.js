@@ -1,7 +1,8 @@
-'use strict';
-importScripts("https://cdn.jsdelivr.net/npm/comlink@4.4.1/dist/umd/comlink.min.js");
-importScripts("https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js")
-importScripts("utils.js")
+import * as Comlink from "https://cdn.jsdelivr.net/npm/comlink@4.4.2/dist/esm/comlink.min.js";
+import {loadPyodide} from "https://cdn.jsdelivr.net/pyodide/v314.0.2/full/pyodide.mjs";
+import * as AnsiToHtml from 'https://cdn.jsdelivr.net/npm/ansi-to-html@0.7.2/+esm';
+import * as AnsiToText from 'https://cdn.jsdelivr.net/npm/strip-ansi@7.2.0/+esm';
+import {getLowExt, getParentDir, joinPath, isFormatText} from "./utils.js";
 
 let targetLang = new URLSearchParams(location.search).get("target");
 let isPico8 = targetLang === "pico8";
@@ -14,12 +15,17 @@ let extraInputFileTmpl = "__extrainput#." + srcExt;
 let outputFile = "__output.unk";
 let outputDir = "__output.dir";
 let previewFile = "__preview." + srcExt;
-let scriptFile = "__script.py";
+let pythonScriptFile = "__script.py";
+let picoScriptFile = "__script.lua";
 let picoDat = "__" + targetLang + ".dat";
 
 let outputCapture = undefined;
+let outputColumns = undefined;
+let outputHtml = false;
 let initProgress = 0;
 let hasPicoDat = false;
+let hasPythonScript = false;
+let hasPicoScript = false;
 
 function run_main(main, args, fail) {
     try {
@@ -35,7 +41,11 @@ function run_main(main, args, fail) {
         }
     } catch (e) {
         console.error(e);
-        if (!e.message || (e instanceof pyodide.ffi.PythonError && e.type == "SystemExit")) {
+        let isExit = e instanceof pyodide.ffi.PythonError && e.type == "SystemExit";
+        if (!e.message || isExit) {
+            if (isExit && fail === false) {
+                return [-1, outputCapture];
+            }
             e.message = outputCapture; // rest doesn't matter
         } else {
             e.message += "\n" + outputCapture;
@@ -50,32 +60,74 @@ function shrinko(args, fail) {
     return run_main(self.shrinko_main, args, fail)
 }
 
-function onOutput(msg, loggerFunc) {
-    loggerFunc(msg);
-    if (outputCapture != undefined) {
-        outputCapture += msg + "\n";
+class TtyOutput {
+    constructor(logger) {
+        this.logger = logger;
+        this.decoder = new TextDecoder();
+        this.htmlConverter = new AnsiToHtml.default({stream: true, escapeXML: true});
+        this.textConverter = AnsiToText.default;
+        this.rawBuffer = "";
+        this.isatty = true;
+    }
+
+    getTerminalSize() {
+        return { columns: outputColumns ?? 80, rows: 25 };
+    }
+
+    write(buffer) {
+        try {
+            this.rawBuffer += this.decoder.decode(buffer, {stream: true});
+
+            let ln;
+            while ((ln = this.rawBuffer.indexOf('\n')) >= 0) {
+                let line = this.rawBuffer.slice(0, ln + 1);
+                this.rawBuffer = this.rawBuffer.slice(ln + 1);
+
+                let cleanLine = this.textConverter(line);
+                this.logger(cleanLine);
+
+                if (outputCapture != undefined) {
+                    if (outputHtml) {
+                        outputCapture += this.htmlConverter.toHtml(line);
+                    } else {
+                        outputCapture += cleanLine;
+                    }
+                }
+            }
+
+            return buffer.length;
+        } catch (e) {
+            console.error("error in tty output:");
+            console.error(e);
+            return 0;
+        } 
     }
 }
 
 async function initShrinko() {
     try {
-        initProgress = 30;
-        self.pyodide = await loadPyodide({
-            fullStdLib: false,
-            stdout: msg => onOutput(msg, console.info),
-            stderr: msg => onOutput(msg, console.warn),
-        });
-        initProgress = 60;
+        initProgress = 50;
+        self.pyodide = await loadPyodide();
+
+        pyodide.setStdout(new TtyOutput(console.info));
+        pyodide.setStderr(new TtyOutput(console.warn));
 
         self.fs = pyodide.FS
         fs.writeFile(inputFile, "");
 
+        initProgress = 60;
         await pyodide.loadPackage("pillow");
+        initProgress = 70;
+        await pyodide.loadPackage("micropip");
+        initProgress = 80;
+        const micropip = pyodide.pyimport("micropip");
+        await micropip.install('lupaz8');
         initProgress = 90;
 
         let response = await fetch("shrinko.zip");
         await pyodide.unpackArchive(await response.arrayBuffer(), "zip");
 
+        initProgress = 99;
         self.shrinko_main =
             isPico8 ? pyodide.pyimport("shrinko8").main :
             isPicotron ? pyodide.pyimport("shrinkotron").main :
@@ -197,9 +249,15 @@ let api = {
         await initPromise; // includes fs init
         fs.writeFile(inputFile, text);
     },
-    updateScriptFile: async (text) => {
+    updatePythonScriptFile: async (text) => {
         await initPromise; // includes fs init
-        fs.writeFile(scriptFile, text);
+        fs.writeFile(pythonScriptFile, text);
+        hasPythonScript = Boolean(text);
+    },
+    updatePicoScriptFile: async (text) => {
+        await initPromise; // includes fs init
+        fs.writeFile(picoScriptFile, text);
+        hasPicoScript = Boolean(text);
     },
     updatePicoDat: async (data) => {
         await initPromise; // includes fs init
@@ -216,8 +274,20 @@ let api = {
         await initPromise;
         return shrinko(["--version"], true);
     },
+    getHelp: async (columns) => {
+        await initPromise;
+        try {
+            outputHtml = true;
+            outputColumns = columns;
+            let [_, stdout] = shrinko(["--help"], false);
+            return stdout;
+        } finally {
+            outputColumns = undefined;
+            outputHtml = false;
+        }
+    },
 
-    runShrinko: async (args, argStr, useScript, encoding, usePreview, doZip, extraNames) => {
+    runShrinko: async (args, argStr, encoding, usePreview, doZip, extraNames) => {
         await initPromise;
 
         let cmdline = [inputFile];
@@ -233,8 +303,11 @@ let api = {
         if (argStr) {
             cmdline.push(...shlex(argStr));
         }
-        if (useScript) {
-            cmdline.push("--script", scriptFile);
+        if (hasPythonScript) {
+            cmdline.push("--script", pythonScriptFile);
+        }
+        if (hasPicoScript) {
+            cmdline.push("--script", picoScriptFile);
         }
         if (usePreview) {
             cmdline.push("--extra-output", previewFile);
@@ -248,7 +321,8 @@ let api = {
                 cmdline.push("--extra-input", extraInputFile, srcExt, extraNames[i]);
             }
         }
-
+    
+        console.log(cmdline);
         let [code, stdout] = shrinko(cmdline);
 
         let output, preview;

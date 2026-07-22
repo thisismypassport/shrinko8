@@ -1,0 +1,13 @@
+pico-8 cartridge // http://www.pico-8.com
+version 42
+__lua__
+function f(n)return function()return n end end function n(e)e=all(split(e,16384,false))local n,r,t=16384,{}local function l()if(n==16384)t,n=e(),0
+end local function e()l()n+=1return ord(t,n)end local function u()return e()|e()<<8end local function d()return e()>>>16|e()>>>8|u()end local function o()local function i(n)n=n or add(r,{})for e,r in function()local n=o()return n,n~=nil and o()end do n[e]=r end return n end local c=e()local e=c&252~=252and c>>>2&63return select(c%4+1,function()return e and e-31or d()end,function()local e,o=e and e>>>16or d(),""repeat l()local r=min(e,16384-n>>>16)<<16o..=sub(t,n+1,n+r)n+=r e-=r>>16until e<=0return add(r,o)end,function()local n=add(r,{})for e=1,e or u()do n[e]=o()end return i(n)end,function()return select(e,f(),f(true),f(false),function()local n=u()return r[n]end,i)()end)()end return o()end function u(e,n,r,o)if(e>0)return c[n[1]](unpack(n,2)),u(e-1,r,o)
+return f(n),f(r),f(o)end function l(n)r,e={},f return u(1,n)(e())()(_ENV)end c={function(n)return function()return r[n]end end}for n,e in inext,split"0,0,0,2,2,2,2,0,1,0"do add(c,function(...)return f(add(r,(select(n,o(u(e,...))))))end)end function o(a,b,c)local n=e function e()a,b,c=a(),b(),c()return n()end return function()return a end,function()end,function(f)return f end,function(f)return a(f)==b(f)end,function(f)return a(f)(b(f))end,function(f)a(f)return b(f)end,function(f)local u={__index=a({},f)}return function(...)return b(setmetatable({...},u))end end,function(f)return f[a]end,function(f)f[b][c]=a(f)end,function(f)return f[a][b]end end l(n(chr(peek(0,155))))
+__gfx__
+e0c9608870e089214aa008087008505770e089214a3150000850c670e089214a31500008502770e089214a31500008505670e089214a31500008503670e08921
+4a3150000850f670e089e049e08a089116373756274770e009e08a0831c000706048707070e089e049a008c970e009e08a0831510070a0084a707070e049e08a
+0891072796e6478670a0481146f6e656707070707070707070707000000000000000000000000000000000000000000000000000000000000000000000000000
+__meta:title__
+
+note: this test can only switch compiler once!

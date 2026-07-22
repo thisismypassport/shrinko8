@@ -13,12 +13,20 @@ k_preserve_prefix = "preserve:"
 k_lint_prefix = "lint:"
 k_keep_prefix = "keep:"
 k_deflang_prefix = "deflanguage:"
+k_dynamic_include_prefix = "dynamic-include:"
+k_switch_compiler_prefix = "switch-compiler:"
 
 k_lint_func_prefix = "func::"
 k_lint_count_stop = "count::stop"
 
 k_language_prefix = "language::"
 k_rename_prefix = "rename::"
+k_placeholder_expr_prefix = "placeholder-expr::"
+k_placeholder_stmt_prefix = "placeholder-stmt::"
+
+def split_hint_args(data):
+    name, args = list_unpack(data.strip().split(" ", 1), 2, "")
+    return name.strip(), args.strip()
 
 class StopTraverse(BaseException):
     pass
@@ -179,6 +187,7 @@ class TokenNodeBase:
 
 class TokenType(Enum):
     number = string = ident = keyword = punct = ...
+    compiler = ... # special
 
 class Token(TokenNodeBase):
     """A pico8 token, at 'source'.text['idx':'endidx'] (which is equal to its 'value'). Its 'type' is a TokenType.
@@ -267,9 +276,9 @@ class CommentHint(Enum):
 class Comment(TokenNodeBase):
     """A pico8 comment, optionally holding some kind of hint"""
 
-    def __init__(m, hint, hintdata=None, source=None, idx=None, endidx=None):
+    def __init__(m, hint, hintdata=None, hintprefix="", source=None, idx=None, endidx=None, proper=False):
         super().__init__()
-        m.hint, m.hintdata, m.source, m.idx, m.endidx = hint, hintdata, source, idx, endidx
+        m.hint, m.hintdata, m.hintprefix, m.source, m.idx, m.endidx = hint, hintdata, hintprefix, source, idx, endidx
 
     @property
     def value(m):
@@ -288,7 +297,7 @@ k_hint_split_re = re.compile(r"[\s,]+")
 
 class NextTokenMods:
     def __init__(m):
-        m.var_kind = m.keys_kind = m.is_const = m.func_kind = m.merge_prev = m.sublang = m.rename = None
+        m.var_kind = m.keys_kind = m.is_const = m.func_kind = m.merge_prev = m.force_safe = m.sublang = m.rename = m.placeholder = None
         m.comments = None
         
     def add_comment(m, cmt):
@@ -296,14 +305,14 @@ class NextTokenMods:
             m.comments = []
         m.comments.append(cmt)
 
-def tokenize(source, ctxt=None, all_comments=False, lang=None):
+def tokenize(source, ctxt=None, all_comments=False, lang=None, inner=False):
     text = source.text
     idx = 0
     vline = 0
     tokens = []
     errors = []
+    real_tokens = None
     next_mods = None
-    process_hints = ctxt and ctxt.hint_comments
     if lang is None:
         lang = ctxt.lang if ctxt else Language.pico8
     
@@ -351,24 +360,62 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
         if next_mods != None:
             add_next_mods(token, next_mods)
             next_mods = None
+        return token
 
     def add_error(msg, off=-1):
         add_token(None, idx + off) # error token
         errors.append(Error(msg, tokens[-1]))
 
+    def add_dyn_include(include_data):
+        if ctxt and ctxt.include_getter and not ctxt.ignore_transforms:
+            include_name, include_args = split_hint_args(include_data)
+            include_func = ctxt.include_getter(include_name)
+            if include_func:
+                included_str = include_func(args=include_args, ctxt=ctxt)
+                if included_str != None:
+                    included_tokens, included_errors = tokenize(Source(include_name, included_str), ctxt, all_comments, inner=True)
+                    tokens.extend(included_tokens)
+                    errors.extend(included_errors)
+                    return
+            eprint("warning - ignoring unrecognized dynamic include '%s'" % include_name)
+
     def add_sublang(token, sublang_data):
         if ctxt and ctxt.sublang_getter and token.type == TokenType.string:
-            sublang_name, sublang_args = list_unpack(sublang_data.split(" ", 1), 2, "")
+            sublang_name, sublang_args = split_hint_args(sublang_data)
             sublang_name, sublang_args = ctxt.map_langdef(sublang_name, sublang_args)
 
             sublang_cls = ctxt.sublang_getter(sublang_name)
             if sublang_cls:
                 add_lang_error = lambda msg: add_error(f"{sublang_name}: {msg}")
                 token.sublang_name = sublang_name
-                token.sublang = sublang_cls(token.parsed_value, args=sublang_args.strip(),
+                token.sublang = sublang_cls(token.parsed_value, args=sublang_args,
                                             ctxt=ctxt, on_error=add_lang_error)
             else:
                 eprint("warning - ignoring unrecognized language '%s'" % sublang_name)
+
+    def switch_compiler(compiler_data):
+        nonlocal real_tokens, tokens
+        if real_tokens != None:
+            real_tokens, tokens = None, real_tokens
+
+        if compiler_data != None:
+            if ctxt and ctxt.compiler_getter and not ctxt.ignore_transforms:
+                compiler_name, compiler_args = split_hint_args(compiler_data)
+                if compiler_name != "none":
+                    compiler_cls = ctxt.compiler_getter(compiler_name)
+                    if compiler_cls:
+                        curr_compiler = compiler_cls(args=compiler_args, ctxt=ctxt, src=source)
+                        for dyn_include in curr_compiler.get_dynamic_includes():
+                            add_dyn_include(dyn_include)
+                        
+                        compiler_token = add_token(TokenType.compiler, idx, value="`compiler`")
+                        compiler_token.compiler_name = compiler_name
+                        compiler_token.compiler = curr_compiler
+                        compiler_token.compiler_tokens = []
+                        real_tokens, tokens = tokens, compiler_token.compiler_tokens
+
+                    else:
+                        eprint("warning - ignoring unrecognized compiler '%s'" % compiler_name)
 
     def add_next_mods(token, mods):
         if mods.comments != None:
@@ -383,15 +430,28 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
             token.func_kind = mods.func_kind
         if mods.merge_prev != None:
             token.merge_prev = mods.merge_prev
+        if mods.force_safe != None:
+            token.force_safe = mods.force_safe
         if mods.rename != None:
             token.rename = mods.rename
+        if mods.placeholder != None:
+            token.placeholder_name, token.placeholder_args = split_hint_args(mods.placeholder[0])
+            token.placeholder_expr = mods.placeholder[1]
+            if not (token.type == TokenType.string if token.placeholder_expr else token.value == 'do'):
+                eprint(f"invalid usage of $placeholder: {token.placeholder_name}")
         if mods.sublang != None:
             add_sublang(token, mods.sublang)
 
     def process_comment(orig_idx, comment, isblock):
-        hint, hintdata = CommentHint.none, None
+        hint, hintdata, hintprefix = CommentHint.none, None, ""
 
-        if process_hints:
+        if ctxt and ctxt.hint_comments:
+            proper = False
+            if comment.startswith("$"):
+                comment = comment[1:]
+                hintprefix = "$"
+                proper = True
+
             if comment.startswith(k_lint_prefix):
                 lints = k_hint_split_re.split(comment[len(k_lint_prefix):])
                 lints = [lint for lint in lints if lint]
@@ -408,11 +468,20 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
 
             elif comment.startswith(k_keep_prefix):
                 hint = CommentHint.keep
+                
+            elif comment.startswith(k_dynamic_include_prefix) and proper:
+                add_dyn_include(comment[len(k_dynamic_include_prefix):])
+                hint = CommentHint.auto
             
             elif comment.startswith(k_deflang_prefix):
                 sublang, sublang_def = list_unpack(comment[len(k_deflang_prefix):].split("=", 1), 2, "")
-                dest_sublang, dest_args = list_unpack(sublang_def.strip().split(" ", 1), 2, "")
-                ctxt.add_custom_langdef(sublang.strip(), dest_sublang, dest_args)
+                dest_sublang, dest_args = split_hint_args(sublang_def)
+                if ctxt and ctxt.add_custom_langdef:
+                    ctxt.add_custom_langdef(sublang.strip(), dest_sublang, dest_args)
+                hint = CommentHint.auto
+                
+            elif comment.startswith(k_switch_compiler_prefix) and proper:
+                switch_compiler(comment[len(k_switch_compiler_prefix):])
                 hint = CommentHint.auto
 
             elif isblock:
@@ -435,16 +504,26 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
                     get_next_mods().is_const = True
                 elif comment == "non-const":
                     get_next_mods().is_const = False
+                elif comment == "force-safe":
+                    get_next_mods().force_safe = True
                 elif comment.startswith(k_language_prefix):
                     get_next_mods().sublang = comment[len(k_language_prefix):]
                 elif comment.startswith(k_rename_prefix) and not any(ch.isspace() for ch in comment):
                     get_next_mods().rename = comment[len(k_rename_prefix):]
+                elif comment.startswith(k_placeholder_expr_prefix) and proper:
+                    get_next_mods().placeholder = (comment[len(k_placeholder_expr_prefix):], True)
+                elif comment.startswith(k_placeholder_stmt_prefix) and proper:
+                    get_next_mods().placeholder = (comment[len(k_placeholder_stmt_prefix):], False)
                 else:
                     hint = CommentHint.none
         
-        if all_comments or (hint != CommentHint.none and hint != CommentHint.auto):
-            get_next_mods().add_comment(Comment(hint, hintdata, source, orig_idx, idx))
+            if proper and hint == CommentHint.none:
+                eprint(f"unrecognized $-comment '{comment}'")
+            # at some point, warn about improper comments and so on?
 
+        if all_comments or (hint != CommentHint.none and hint != CommentHint.auto):
+            get_next_mods().add_comment(Comment(hint, hintdata, hintprefix, source, orig_idx, idx))
+        
     def tokenize_line_comment():
         nonlocal vline
         orig_idx = idx
@@ -562,6 +641,9 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
             add_token(TokenType.string, orig_idx)
         else:
             add_error("Invalid long brackets")
+    
+    if ctxt and ctxt.default_compiler and not inner:
+        switch_compiler(ctxt.default_compiler)
 
     while idx < len(text):
         ch = take()
@@ -608,9 +690,13 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None):
         else:
             add_error("invalid character")
     
-    if next_mods or all_comments:
-        add_token(None, idx) # end token, for ending whitespace/comments/etc
+    if (next_mods or all_comments) and not inner:
+        add_token(None, idx) # end token, for ending whitespace/comments/etc (TBD: lost if inner...)
+
+    if real_tokens != None:
+        switch_compiler(None)
     return tokens, errors
+    
 
 def count_tokens(tokens):
     count = 0
@@ -827,4 +913,4 @@ def parse_string_literal(str, lang=Language.pico8):
 
 from pico_parse import Node, VarKind, can_replace_with_unary
 from pico_output import format_fixnum, format_luanum, format_string_literal
-from pico_process import Error
+from pico_process import Error, Source

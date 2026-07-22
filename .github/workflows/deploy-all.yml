@@ -38,10 +38,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          submodules: true
         
       - name: Setup Pages
         uses: actions/configure-pages@v5
         
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.14"
+      
+      - name: Pre-package
+        run: |
+          python run_prepackage.py
+      
       - name: Zip
         run: |
           zip -r site/shrinko.zip `cat files.lst`
@@ -93,6 +104,8 @@ jobs:
         
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          submodules: true
 
       - name: Create Executable
         uses: sayyid5416/pyinstaller@v1
@@ -153,6 +166,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        with:
+          submodules: true
         
       - name: Set up Python
         uses: actions/setup-python@v3
