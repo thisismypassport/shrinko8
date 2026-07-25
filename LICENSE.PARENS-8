@@ -9,7 +9,7 @@ This Parens-8 Shrinko8 Integration Exception ("Exception") is an additional perm
 
 In an effort to streamline development of large software projects using both Shrinko8 and Parens-8, Shrinko8 integrates Parens-8 into its application package (the "Integration"), so that users may selectively virtualize (compile into Parens-8 bytecode, and generate a runtime capable of executing that bytecode) sections of their input source code via source code annotations. The purpose of this Exception is to allow distribution of the Shrinko8 package (a non-AGPL project) as object code (example: web application, windows executable), despite its inclusion of Parens-8 (an AGPL project).
 
-This Exception does not cover the output of Shrinko8. Parens-8 output included in the output of Shrinko8 remains covered work by the AGPL alone (via the inclusion of the Parens-8 runtime in the output). Users of this Integration are compelled to make their input source code available to the public, as if they had used Parens-8 directly.
+This Exception does not cover the output of Shrinko8. Parens-8 output included in the output of Shrinko8 remains covered by the AGPL alone (via the inclusion of the Parens-8 runtime in that output). Users of this Integration are compelled to make their input source code available to the public, as if they had used Parens-8 directly.
 
 Permission is granted to propagate object code distributions of Shrinko8 that integrate Parens-8, even if such propagation would otherwise violate the terms of AGPLv3.
 

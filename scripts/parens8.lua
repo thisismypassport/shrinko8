@@ -129,10 +129,6 @@ function Parens8Compiler:compile(root, opts)
         results[self.id] ..= format("chr(peek(`1`, `2`))", {rom_addr, max_len})
         byte_code = byte_code.get_block(max_len, #byte_code - max_len)
 
-        printh(format("parens8 - wrote `1` bytes to addresses `2` until `3` `4`",
-            {max_len, tohex(rom_addr), tohex(rom_addr + max_len),
-             #byte_code > 0 and format("(`1` bytes left)", {#byte_code}) or ""}))
-
         if (#byte_code == 0) return
         results[self.id] ..= ".."
     end
