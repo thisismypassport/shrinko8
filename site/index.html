@@ -203,6 +203,7 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
         <ul>
           <li><a href="#tab-minify">Minify</a></li>
           <li><a href="#tab-lint">Lint</a></li>
+          <li><a href="#tab-save-tokens">Save Tokens</a></li>
           <li><a href="#tab-advanced">Advanced</a></li>
         </ul>
 
@@ -291,7 +292,7 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
               </div>
             </div>
 
-            <div id="minify-diag-output" class="asis scroll border" style="flex: 0 0 20%; display: none; margin: 0 10px 0 170px"></div>
+            <div id="minify-diag-output" class="asis scroll border" style="flex: 0.1 0 10%; display: none; margin: 0 10px 0 170px"></div>
           </div>
 
           <div id="minify-opts" style="flex: 0 0 20%; padding-left: 10px; border-left: 1px solid black" class="flex-column">
@@ -376,6 +377,23 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
               <a href="https://github.com/thisismypassport/shrinko8#undefined-variable-lints" target="_blank">readme</a> for more info
             </span>
           </div>
+        </div>
+
+        <div id="tab-save-tokens" class="flex-column margin" style="flex: 1">
+          You can use Parens-8 to save tokens:
+          <pre style="color: #59636e; background-color: #f6f8fa; padding: 1rem;">
+--$switch-compiler: parens8
+-- Any code between these lines will cost 0 tokens, but will run slower
+--$switch-compiler: none</pre>
+
+          <span><strong>IMPORTANT</strong> - Parens-8 is available under the AGPLv3 license, so if you use it, you must:</span>
+          <ul>
+          <li>Make the source code (before any compilation or minification) available when distributing the resulting carts.</li>
+          <li>Make the <a href="https://github.com/thisismypassport/shrinko8/blob/main/scripts/parens8.MIN_LICENSE" target="_blank">
+              Parens-8 license</a> available when distributing the carts.</li>
+          </ul>
+
+          <span>For more details, see the <a href="https://github.com/thisismypassport/shrinko8#saving-tokens-via-parens-8" target="_blank">Readme</a>.</span>
         </div>
 
         <div id="tab-advanced" class="flex-column margin" style="flex: 1">

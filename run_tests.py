@@ -300,7 +300,7 @@ def run():
     ###run_test("parens8-repl", "repl.p8", "parens-repl.p8", "--minify-transform-only", "--default-compiler", "parens8 rom", pico8_output_val="finished")
     run_test("parens8", "parens8.p8", "parens8.p8", "--minify", pico8_output="parens8.p8.printh")
     run_test("parens8-safe", "parens8.p8", "parens8-safe.p8", "--minify-safe-only", pico8_output="parens8.p8.printh")
-    run_test("parens8-2", "parens8-2.p8", "parens8-2.p8", "--minify", pico8_output="parens8-2.p8.printh")
+    run_test("parens8-2", "parens8-2.p8", "parens8-2.p8", "--minify", pico8_output="parens8-2.p8.printh") # TODO - add "--lint" here!
     run_test("parens8-err", "parens8-err.p8", None, "--count", "--minify", stdout_output="parens8-err.txt", norm_stdout=norm_paths, exit_code=1)
     run_test("parens8-selflint", "scripts/parens8.lua", None, "--lint", "--no-lint-unused", "--no-lint-duplicate", from_source=True)
 

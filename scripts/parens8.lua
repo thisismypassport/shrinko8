@@ -167,7 +167,7 @@ function Parens8Compiler:compile(root, opts)
 
     if compress then
         local compressed_dict_lit = pico_output.format_string_literal(compressed_dict)
-        results[self.id] = format("`1`(`2`, `3`)", {rename("decompress"), results[self.id], compressed_dict_lit})
+        results[self.id] = format("`1`(`2`, `3`)", {rename("_ps8_decompress"), results[self.id], compressed_dict_lit})
     end
 end
 
@@ -183,13 +183,17 @@ function get_parens8_interpreter(opts)
         printh("error - interpreter already written out, can't write it again") -- or could we?
     else
         data.has_interpreter = true
+
+        printh("This cart is licensed via AGPLv3 and its source code & the license must be made available when distributing it")
         
         local decompressor = ""
         local cl_args = split_args(opts.args)
         if cl_args.compress then
-            decompressor = checked_gsub(lzw_decompressor, '^function', 'function decompress')
+            decompressor = checked_gsub(lzw_decompressor, '^function', 'function _ps8_decompress') -- _ for lint
             data.has_decompressor = true
         end
+
+        local hints = "--[[$lint: ps8_inst, ps8_binder]]"
 
         local template = checked_gsub(vm_template, '"`compiled_args`"', '--[[$placeholder-expr::parens8.interp_args]] ""')
         template = checked_gsub(template, 'return `runtime_ops`', '--[[$placeholder-stmt::parens8.interp_ops]] do end')
@@ -197,7 +201,7 @@ function get_parens8_interpreter(opts)
         template = checked_gsub(template, 'ps8_runtime%(a, b, c%)', 'ps8_runtime(--[[$rename::a]]a, --[[$rename::b]]b, --[[$rename::c]]c)')
         -- ignore the _ENV in the template for the purpose of safety checking, allowing to still rename globals
         template = checked_gsub(template, '%f[%w_]_ENV%f[^%w_]', '--[[$force-safe]]_ENV')
-        return fp_boilerplate .. decompressor .. deserializer .. template
+        return hints .. fp_boilerplate .. decompressor .. deserializer .. template
     end
 end
 

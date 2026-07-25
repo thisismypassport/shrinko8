@@ -764,6 +764,8 @@ export function runHelp() {
     return true;
 }
 
+const TAB_MINIFY = 0, TAB_LINT = 1, TAB_PARENS8 = 2, TAB_ADVANCED = 3;
+
 // do the shrinko action for the current tab. returns awaitable
 function doShrinkoAction() {
     if (isLoading) {
@@ -772,7 +774,7 @@ function doShrinkoAction() {
 
     let activeTab = $("#output-tabs").tabs("option", "active");
     switch (activeTab) {
-        case 0: { // minify
+        case TAB_MINIFY: {
             let format = $("#minify-format").val();
             if (!(format in outputCache)) {
                 outputCache[format] = null;
@@ -781,7 +783,7 @@ function doShrinkoAction() {
                 updateMinifyResults(format);
             }
             break;
-        } case 1: { // lint
+        } case TAB_LINT: {
             if (!("lint" in outputCache)) {
                 outputCache.lint = null;
                 return doLint();
@@ -863,17 +865,17 @@ export function onScriptLangChange() {
 function onTabChange() {
     let activeTab = $("#output-tabs").tabs("option", "active");
     switch (activeTab) {
-        case 0: {
+        case TAB_MINIFY: {
             if (isLoading) {
                 $("#loading-overlay").appendTo("#minify-overlay-parent");
             }
             break;
-        } case 1: {
+        } case TAB_LINT: {
             if (isLoading) {
                 $("#loading-overlay").appendTo("#lint-overlay-parent");
             }
             break;
-        } case 2: {
+        } case TAB_ADVANCED: {
             onScriptLangChange();
             break;
         }

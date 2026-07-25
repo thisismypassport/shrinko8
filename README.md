@@ -488,7 +488,61 @@ Finally, note that:
 
 # Saving Tokens via Parens-8
 
-[Parens-8](https://codeberg.org/wellspring-labs/parens-8) by Wellspring-Labs can compile .....
+[Parens-8](https://codeberg.org/wellspring-labs/parens-8) by Wellspring-Labs can compile regular lua code into a string or into rom - allowing it to be interpreted to save on tokens in exchange for decreasing performance.
+
+Shrinko8 can use Parens8 to compile sections of the cart enclosed between `--$switch-compiler: parens8` and `--$switch-compiler: none`, as well as automatically include the Parens8 interpreter, to allow the resulting cart to run as-is.
+
+You normally would want to use it on sections of the cart that execute rarely or aren't performance-critical. (It's also preferrable - but not required - to place all such code together to minimize the number of times you switch the compiler)
+
+**IMPORTANT** - Parens8 is licensed under AGPLv3 which means that for any carts you generate using Parens8 (whether through Shrinko or directly), you must:
+* Make the source code (before any compiling or minification) available when distributing the carts
+* Make the [Parens-8 license](https://github.com/thisismypassport/shrinko8/blob/main/scripts/parens8.MIN_LICENSE) available when distributing the carts
+
+(Shrinko8 itself is not licensed under AGPL and has a special exception to use Parens8 despite this)
+
+A simple example of using Parens8:
+```lua
+print("hello from normal pico8 code")
+
+--$switch-compiler: parens8
+print("hello from parens8-compiled code")
+--$switch-compiler: none
+
+print("hello - back in normal pico8 code")
+```
+
+Here, all the code between the `--$switch-compiler: parens8` hint and the `--$switch-compiler: none` hint are processed by Parens8 and altogether, the above is transformed into something like:
+```lua
+print("hello from normal pico8 code")
+
+function ps8_interpreter(code) <SNIP> end
+ps8_interpreter("<UNREADABLE BYTECODE>")
+
+print("hello - back in normal pico8 code")
+```
+
+Parens8 supports almost all pico8 syntax and semantics, but there are some limitations:
+* You can't use a local variable across multiple compiler blocks - you can use globals instead
+* Similarly, you can't use a goto label across multiple compiler blocks
+* By default, varargs (`...`) with nils in them don't work correctly. You can overcome this limitation by adding the `sparse_vararg` option to parens8 (see below)
+* There are a few other very subtle differences you're unlikely to encounter (see [Parens8 documentation](https://codeberg.org/wellspring-labs/parens-8) for more details)
+
+You can pass additional options to parens8 via `--$switch-compiler: parens8 options1 options2=value`. (For example: `--$switch-compiler: parens8 compress rom=0x3100 sparse_vararg`):
+* `rom=<address>` (e.g. `rom=0x3100`) - causes the compiled code to get written to the cart memory (rom) at the given address, instead of to a string in the code section of the cart. (This overwrites the previous content of the cart memory - e.g. gfx/map/sfx/etc). (`rom` is the same as `rom=0`)
+* `rom_end=<address>` (e.g. `rom_end=0x42bc`) - gives an upper bound on which addresses can be modified via `rom` - the address `rom_end` and above will not be modified and instead the remainder of the compiled code (if any) will be written to string.
+* `compress` - enables compression of the compiled code. This adds a decompressor to the cart, increasing token usage. Recommended only when using `rom`.
+* `specialized_for_ops` - improves performance of most compiled `for` loops, but increases token usage.
+* `sparse_vararg` - allows varargs with nils in them to work correctly
+* `vm_cleanup=<full/partial/none>` - (Advanced) controls what data is freed immediately after loading the compiled code. Shrinko provides a good default here.
+
+Normally, the interpreter is inserted right before the first `--$switch-compiler:` block, but you can control its placement directly via:
+```lua
+--$dynamic-include: parens8.interpreter
+```
+
+Parens8 compilation happens whenever a cart with parens8 hints is minified.
+* To compile parens8 without otherwise minifying your cart, you can pass `--minify-transform-only` in the command-line.
+* To skip compiling parens8 during minification, you can pass `--no-minify-transform` in the command-line.
 
 # Linting
 

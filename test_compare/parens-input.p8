@@ -1,7 +1,7 @@
 pico-8 cartridge // http://www.pico-8.com
 version 42
 __lua__
-function const(x) return function() return x end end
+--[[$lint: ps8_inst, ps8_binder]]function const(x) return function() return x end end
 function deserialize(data)
 	data = all(split(data, 0x4000, false))
 	local pos, refs, chunk = 0x4000, {}
