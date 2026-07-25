@@ -255,7 +255,7 @@ mysplit(--[[$language::split (member=string)s,]]"key1=str1,key2=str2")
 
 -- or, to avoid repeating yourself:
 
---$deflanguage: mysplit = split (member=string)s,
+--$def-alias: mysplit = split (member=string)s,
 mysplit(--[[$language::mysplit]]"key1=str1,key2=str2")
 ```
 
@@ -1287,7 +1287,7 @@ Here, the `args` parameter in the constructor will be `myarg1 --etc` and can be 
 
 Furthermore, you can define sub-languages in the p8 file itself, based on existing sub-languages:
 ```lua
---$deflanguage: evally1 = evally myarg1 --etc
+--$def-alias: evally1 = evally myarg1 --etc
 eval(--[[$language::evally1 --etc2]]"(omitted)")
 ```
 Here, the `args` parameter in the constructor will be `myarg1 --etc --etc2`

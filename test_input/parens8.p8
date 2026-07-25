@@ -14,4 +14,7 @@ globally_print("outside again")
 --$switch-compiler: parens8
 --$switch-compiler: none
 
+--[[$switch-compiler: parens8 rom=0x1000]]--[[$switch-compiler: none]]
+--[[$switch-compiler: parens8 rom=0x1000]]globally_print("inside tight")--[[$switch-compiler: none]]
+
 globally_print("outside finally")

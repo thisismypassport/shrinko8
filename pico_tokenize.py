@@ -9,24 +9,12 @@ keywords = {
     "while"
 }
 
-k_preserve_prefix = "preserve:"
-k_lint_prefix = "lint:"
-k_keep_prefix = "keep:"
-k_deflang_prefix = "deflanguage:"
-k_dynamic_include_prefix = "dynamic-include:"
-k_switch_compiler_prefix = "switch-compiler:"
-
-k_lint_func_prefix = "func::"
-k_lint_count_stop = "count::stop"
-
-k_language_prefix = "language::"
-k_rename_prefix = "rename::"
-k_placeholder_expr_prefix = "placeholder-expr::"
-k_placeholder_stmt_prefix = "placeholder-stmt::"
-
-def split_hint_args(data):
+def split_hint_args(data, ctxt=None):
     name, args = list_unpack(data.strip().split(" ", 1), 2, "")
-    return name.strip(), args.strip()
+    name, args = name.strip(), args.strip()
+    if ctxt and ctxt.map_aliases:
+        name, args = ctxt.map_aliases(name, args)
+    return name, args
 
 class StopTraverse(BaseException):
     pass
@@ -273,6 +261,8 @@ class ConstToken(Token):
 class CommentHint(Enum):
     none = auto = preserve = lint = keep = ...
 
+k_keep_prefix = "keep:"
+
 class Comment(TokenNodeBase):
     """A pico8 comment, optionally holding some kind of hint"""
 
@@ -368,7 +358,7 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None, inner=False):
 
     def add_dyn_include(include_data):
         if ctxt and ctxt.include_getter and not ctxt.ignore_transforms:
-            include_name, include_args = split_hint_args(include_data)
+            include_name, include_args = split_hint_args(include_data, ctxt)
             include_func = ctxt.include_getter(include_name)
             if include_func:
                 included_str = include_func(args=include_args, ctxt=ctxt)
@@ -381,8 +371,7 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None, inner=False):
 
     def add_sublang(token, sublang_data):
         if ctxt and ctxt.sublang_getter and token.type == TokenType.string:
-            sublang_name, sublang_args = split_hint_args(sublang_data)
-            sublang_name, sublang_args = ctxt.map_langdef(sublang_name, sublang_args)
+            sublang_name, sublang_args = split_hint_args(sublang_data, ctxt)
 
             sublang_cls = ctxt.sublang_getter(sublang_name)
             if sublang_cls:
@@ -400,7 +389,7 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None, inner=False):
 
         if compiler_data != None:
             if ctxt and ctxt.compiler_getter and not ctxt.ignore_transforms:
-                compiler_name, compiler_args = split_hint_args(compiler_data)
+                compiler_name, compiler_args = split_hint_args(compiler_data, ctxt)
                 if compiler_name != "none":
                     compiler_cls = ctxt.compiler_getter(compiler_name)
                     if compiler_cls:
@@ -435,7 +424,7 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None, inner=False):
         if mods.rename != None:
             token.rename = mods.rename
         if mods.placeholder != None:
-            token.placeholder_name, token.placeholder_args = split_hint_args(mods.placeholder[0])
+            token.placeholder_name, token.placeholder_args = split_hint_args(mods.placeholder[0], ctxt)
             token.placeholder_expr = mods.placeholder[1]
             if not (token.type == TokenType.string if token.placeholder_expr else token.value == 'do'):
                 eprint(f"invalid usage of $placeholder: {token.placeholder_name}")
@@ -452,36 +441,36 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None, inner=False):
                 hintprefix = "$"
                 proper = True
 
-            if comment.startswith(k_lint_prefix):
-                lints = k_hint_split_re.split(comment[len(k_lint_prefix):])
+            if comment.startswith("lint:"):
+                lints = k_hint_split_re.split(str_after_first(comment, ":"))
                 lints = [lint for lint in lints if lint]
                 hint, hintdata = CommentHint.lint, lints
 
                 for lint in lints:
-                    if lint.startswith(k_lint_func_prefix):
-                        get_next_mods().func_kind = lint[len(k_lint_func_prefix):]
+                    if lint.startswith("func::"):
+                        get_next_mods().func_kind = str_after_first(lint, "::")
 
-            elif comment.startswith(k_preserve_prefix):
-                preserves = k_hint_split_re.split(comment[len(k_preserve_prefix):])
+            elif comment.startswith("preserve:"):
+                preserves = k_hint_split_re.split(str_after_first(comment, ":"))
                 preserves = [preserve for preserve in preserves if preserve]
                 hint, hintdata = CommentHint.preserve, preserves
 
             elif comment.startswith(k_keep_prefix):
                 hint = CommentHint.keep
                 
-            elif comment.startswith(k_dynamic_include_prefix) and proper:
-                add_dyn_include(comment[len(k_dynamic_include_prefix):])
+            elif comment.startswith("dynamic-include:") and proper:
+                add_dyn_include(str_after_first(comment, ":"))
                 hint = CommentHint.auto
             
-            elif comment.startswith(k_deflang_prefix):
-                sublang, sublang_def = list_unpack(comment[len(k_deflang_prefix):].split("=", 1), 2, "")
-                dest_sublang, dest_args = split_hint_args(sublang_def)
-                if ctxt and ctxt.add_custom_langdef:
-                    ctxt.add_custom_langdef(sublang.strip(), dest_sublang, dest_args)
+            elif (comment.startswith("def-alias:") and proper) or comment.startswith("deflanguage:"): # deflanguage is deprecated
+                alias_name, alias_value = list_unpack(str_after_first(comment, ":").split("=", 1), 2, "")
+                dest_name, dest_args = split_hint_args(alias_value, ctxt)
+                if ctxt and ctxt.add_custom_alias:
+                    ctxt.add_custom_alias(alias_name.strip(), dest_name, dest_args)
                 hint = CommentHint.auto
                 
-            elif comment.startswith(k_switch_compiler_prefix) and proper:
-                switch_compiler(comment[len(k_switch_compiler_prefix):])
+            elif comment.startswith("switch-compiler:") and proper:
+                switch_compiler(str_after_first(comment, ":"))
                 hint = CommentHint.auto
 
             elif isblock:
@@ -506,14 +495,14 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None, inner=False):
                     get_next_mods().is_const = False
                 elif comment == "force-safe":
                     get_next_mods().force_safe = True
-                elif comment.startswith(k_language_prefix):
-                    get_next_mods().sublang = comment[len(k_language_prefix):]
-                elif comment.startswith(k_rename_prefix) and not any(ch.isspace() for ch in comment):
-                    get_next_mods().rename = comment[len(k_rename_prefix):]
-                elif comment.startswith(k_placeholder_expr_prefix) and proper:
-                    get_next_mods().placeholder = (comment[len(k_placeholder_expr_prefix):], True)
-                elif comment.startswith(k_placeholder_stmt_prefix) and proper:
-                    get_next_mods().placeholder = (comment[len(k_placeholder_stmt_prefix):], False)
+                elif comment.startswith("language::"):
+                    get_next_mods().sublang = str_after_first(comment, "::")
+                elif comment.startswith("rename::") and not any(ch.isspace() for ch in comment):
+                    get_next_mods().rename = str_after_first(comment, "::")
+                elif comment.startswith("placeholder-expr::") and proper:
+                    get_next_mods().placeholder = (str_after_first(comment, "::"), True)
+                elif comment.startswith("placeholder-stmt::") and proper:
+                    get_next_mods().placeholder = (str_after_first(comment, "::"), False)
                 else:
                     hint = CommentHint.none
         
@@ -703,7 +692,7 @@ def count_tokens(tokens):
     for i, token in enumerate(tokens):
         if token.children:
             for comment in token.children:
-                if comment.hint == CommentHint.lint and k_lint_count_stop in comment.hintdata:
+                if comment.hint == CommentHint.lint and "count::stop" in comment.hintdata:
                     return count
 
         if token.value in (",", ".", ":", ";", "::", ")", "]", "}", "end", "local", None):

@@ -218,7 +218,7 @@ class ContextBase:
         m.sublang_getter = sublang_getter
         m.compiler_getter = compiler_getter
         m.default_compiler = default_compiler
-        m.custom_langdefs = None
+        m.custom_aliases = None
         m.hint_comments = hint_comments
         m.version = version
         m.lang = lang
@@ -227,14 +227,14 @@ class ContextBase:
         
     local_renames = global_renames = member_renames = label_renames = None
     
-    def add_custom_langdef(m, source, target, args):
-        if m.custom_langdefs is None:
-            m.custom_langdefs = {}
-        m.custom_langdefs[source] = (target, args)
+    def add_custom_alias(m, source, target, args):
+        if m.custom_aliases is None:
+            m.custom_aliases = {}
+        m.custom_aliases[source] = (target, args)
     
-    def map_langdef(m, name, args):
-        while m.custom_langdefs and name in m.custom_langdefs:
-            name, pre_args = m.custom_langdefs[name]
+    def map_aliases(m, name, args):
+        while m.custom_aliases and name in m.custom_aliases:
+            name, pre_args = m.custom_aliases[name]
             if pre_args:
                 if args:
                     args = pre_args + " " + args

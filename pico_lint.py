@@ -3,8 +3,6 @@ from pico_tokenize import CommentHint, is_identifier
 from pico_parse import VarKind, NodeType
 from pico_parse import is_assign_target, is_function_target, is_any_assign_target, is_root_global_or_builtin_local
 
-k_lint_used_prefix = "used::"
-
 def lint_code(ctxt, root, lint_opts):
     errors = []
     builtin_globals = ctxt.builtins
@@ -35,8 +33,8 @@ def lint_code(ctxt, root, lint_opts):
                     for value in comment.hintdata:
                         if "::" not in value:
                             custom_globals.add(value)
-                        elif value.startswith(k_lint_used_prefix):
-                            used_globals.add(value[len(k_lint_used_prefix):])
+                        elif value.startswith("used::"):
+                            used_globals.add(str_after_first(value, "::"))
 
     def preprocess_vars(node):
         if node.type == NodeType.var:

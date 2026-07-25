@@ -1,25 +1,4 @@
---[[
-  This file can be fed to shrinko8 via '--pico-script <this file>'
-  Then, you can write:
-  
-    print("regular code")
-    --$switch-compiler: parens8
-    print("code transparently compiled into parens8")
-    --$switch-compiler: none
-    print("more regular code")
-
-  The interpreter is automatically added before the first compilation,
-  but you can also add it explicitly somewhere else via:
-    --$dynamic-include: parens8.interpreter
-
-  You can pass parens8 options to the compiler:
-    --$switch-compiler: parens8 sparse_vararg rom=0x800
-  All parens8 options are accepted, but the following are handled specially:
-    rom=<addr> - compile to rom at the given address, instead of to a string
-    rom_end=<addr> - finish compiling to rom at the given address.
-                     if there is data left over, it will be compiled as a string
-    vm_cleanup=<opt> - can be set to full or partial or none
-]]
+-- (see README for usage info)
 --$lint: python, shrinko, string, rommemcpy
 
 #include parens8_src/serializers/generic.lua
@@ -34,6 +13,8 @@ local module = {}
 local ROM_ENDADDR = 0x4300
 
 Parens8Compiler = python.class(pico_process.CompilerBase)
+
+-- TODO: consider moving all the ROM-related logic to shrinko itself? it's likely common across all compilers...
 
 function split_args(args_str)
     local args = {}
@@ -55,8 +36,27 @@ end
 
 function get_parens8_data(ctxt)
     return ctxt.get_field("parens8_data", function()
-        return {num_compilers=0, results={}} -- has_interpreter=False, needs_reset=False
+        return {num_compilers=0, results={}, rom_ranges={}} -- has_interpreter=False, needs_reset=False
     end)
+end
+
+function fixup_rom_range(ranges, addr, endaddr)
+    for range in all(ranges) do -- sorted!
+        local raddr, rendaddr = unpack(range)
+        if (addr >= raddr and addr < rendaddr) addr = rendaddr
+        if (endaddr > raddr and endaddr <= rendaddr) endaddr = raddr
+    end
+    return addr, endaddr
+end
+
+function add_rom_range(ranges, addr, endaddr)
+    for i, range in ipairs(ranges) do
+        if addr < range[1] then
+            add(ranges, {addr, endaddr}, i)
+            return ranges
+        end
+    end
+    add(ranges, {addr, endaddr})
 end
 
 function reset(opts)
@@ -124,13 +124,17 @@ function Parens8Compiler:compile(root, opts)
     results[self.id] = ""
 
     if rom_addr then
-        local max_len = python.builtins.min(rom_endaddr - rom_addr, #byte_code) -- #byte_code may be a python int
-        rommemcpy(self.src.cart.rom, rom_addr, byte_code, 0, max_len)
-        results[self.id] ..= format("chr(peek(`1`, `2`))", {rom_addr, max_len})
-        byte_code = byte_code.get_block(max_len, #byte_code - max_len)
+        rom_addr, rom_endaddr = fixup_rom_range(data.rom_ranges, rom_addr, rom_endaddr)
+        if rom_addr != rom_endaddr then
+            local max_len = python.builtins.min(rom_endaddr - rom_addr, #byte_code) -- #byte_code may be a python int
+            rommemcpy(self.src.cart.rom, rom_addr, byte_code, 0, max_len)
+            results[self.id] ..= format("chr(peek(`1`, `2`))", {rom_addr, max_len})
+            byte_code = byte_code.get_block(max_len, #byte_code - max_len)
+            add_rom_range(data.rom_ranges, rom_addr, rom_addr + max_len)
 
-        if (#byte_code == 0) return
-        results[self.id] ..= ".."
+            if (#byte_code == 0) return
+            results[self.id] ..= ".."
+        end
     end
 
     results[self.id] ..= pico_output.format_string_literal(shrinko.from_memory(byte_code))

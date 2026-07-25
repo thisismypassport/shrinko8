@@ -1,7 +1,8 @@
 __lua__
 
 -- note: this test can only switch compiler once!
---$switch-compiler: parens8 rom
+--$def-alias: go = parens8 rom
+--$switch-compiler: go
 
 -- (automatic full cleanup):
 assert(ps8_inst == nil)
