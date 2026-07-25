@@ -2,6 +2,9 @@ from utils import *
 from unittest.mock import patch
 import subprocess, pstats, cProfile
 from pico_defs import Language as Target
+from pico_cart import read_cart_autodetect
+from pico_process import builtin_globals, builtins_copied_to_locals
+from run_pico import create_runtime, StopError
 
 def init_tests(opts): # use: opts.exe, opts.install and opts.profile
     global g_num_ran, g_num_failed
@@ -149,25 +152,62 @@ def run_code(target, *args, exit_code=0):
         print(f"Exit with unexpected code {actual_code}")
         return False, stdout
 
-def run_pico8(p8_exe, cart_path, expected_printh=None, timeout=5.0, allow_timeout=False):
+def run_test_pico(cart):
+    noop = lambda *_: None
+
+    runtime = create_runtime()
+    p8globs = runtime.globals()
+    for glob in builtin_globals:
+        if not p8globs[glob]:
+            p8globs[glob] = noop
+    p8globs.__p8mem = bytes(cart.rom)
+    p8locals = ",".join(sorted(builtins_copied_to_locals))
+
+    code = ("local %s = %s\n" % (p8locals, p8locals) +
+        "poke(0, ord(__p8mem, 1, #__p8mem))\n" +
+        cart.code)
+
+    printh_io = StringIO()
+    ignored_io = StringIO()
     try:
-        stdout = subprocess.check_output([p8_exe, "-x", cart_path], encoding="utf8", errors='replace', stderr=subprocess.STDOUT, timeout=timeout)
-    except subprocess.SubprocessError as e:
-        if allow_timeout and isinstance(e, subprocess.TimeoutExpired):
-            stdout = e.stdout
-        else:
-            return False, f"Exception: {e}\n{e.stdout}"
+        with patch.object(sys, "stdout", ignored_io):
+            with patch.object(sys, "stderr", printh_io):
+                runtime.execute(code)
+    except StopError:
+        pass
     
-    actual_printh_lines = []
-    success = True
-    for line in stdout.splitlines():
-        if line.startswith("INFO:"):
-            actual_printh_lines.append(str_after_first(line, ':').strip())
-        elif line.startswith("runtime error") or line.startswith("syntax error"):
+    return printh_io.getvalue()
+
+def run_pico8(p8_exe, cart_path, expected_printh=None, timeout=5.0, allow_timeout=False):
+    if p8_exe:
+        try:
+            stdout = subprocess.check_output([p8_exe, "-x", cart_path], encoding="utf8", errors='replace', stderr=subprocess.STDOUT, timeout=timeout)
+        except subprocess.SubprocessError as e:
+            if allow_timeout and isinstance(e, subprocess.TimeoutExpired):
+                stdout = e.stdout
+            else:
+                return False, f"Exception: {e}\n{e.stdout}"
+        
+        actual_printh_lines = []
+        success = True
+        for line in stdout.splitlines():
+            if line.startswith("INFO:"):
+                actual_printh_lines.append(str_after_first(line, ':').strip())
+            elif line.startswith("runtime error") or line.startswith("syntax error"):
+                success = False
+        actual_printh = "\n".join(actual_printh_lines)
+    else:
+        cart = read_cart_autodetect(cart_path)
+        try:
+            stdout = run_test_pico(cart)
+            actual_printh = stdout.rstrip("\n")
+            success = True
+        except Exception as e:
+            traceback.print_exc()
+            actual_printh = stdout = ""
             success = False
 
     if success and expected_printh != None:
-        actual_printh = "\n".join(actual_printh_lines)
         success = actual_printh == expected_printh
         return success, actual_printh # more interesting than stdout
     else:

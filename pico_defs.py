@@ -159,7 +159,7 @@ k_palette = [
 
  # the pico8 character set
 k_charset = [
-    None, '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '\t', '\n', 'ᵇ', 'ᶜ', '\r', 'ᵉ', 'ᶠ',
+    '\0', '¹', '²', '³', '⁴', '⁵', '⁶', '⁷', '⁸', '\t', '\n', 'ᵇ', 'ᶜ', '\r', 'ᵉ', 'ᶠ',
     '▮', '■', '□', '⁙', '⁘', '‖', '◀', '▶', '「', '」', '¥', '•', '、', '。', '゛', '゜'
 ]
 for i in range(0x20, 0x7f):
@@ -179,7 +179,7 @@ k_charset += [
 assert len(k_charset) == 0x100
 
 # maps unicode characters or 2-char-strings to pico8 char index
-k_charset_map = {ch: i for i, ch in enumerate(k_charset) if ch != None}
+k_charset_map = {ch: i for i, ch in enumerate(k_charset)}
 
 k_unicap_chars = ['𝘢','𝘣','𝘤','𝘥','𝘦','𝘧','𝘨','𝘩','𝘪','𝘫','𝘬','𝘭','𝘮','𝘯','𝘰','𝘱','𝘲','𝘳','𝘴','𝘵','𝘶','𝘷','𝘸','𝘹','𝘺','𝘻']
 

@@ -131,12 +131,15 @@ function Parens8Compiler:compile(root, opts)
 
     local cl_code = compile_crescent(cl_args, code)
     local byte_code = serialize(cl_code)
-    assert(#byte_code != 0, "empty parens8 bytecode")
     
     local compressed_dict
     if compress then
         -- (triggers if has multiple compiler instances and the first [which is used to build the interpreter] didn't request compression)
         if (not data.has_decompressor) stop("you must explicitly add '--$dynamic-include: parens8.interpreter compress' before the compiler switchings")
+
+        -- TODO: removeme once parens8 fixes lzw_compress to supports bigstring
+        local len = select(3, bigstring(byte_code));
+        if (mid(len, 0x.7fff) != len) stop("large inputs currently cannot be compressed via parens8 - try splitting into multiple compilation blocks")
 
         local compressed_code = ""
 	    compressed_dict = lzw_compress(byte_code, bit_writer(function(byte) compressed_code..=chr(byte) end))
@@ -144,6 +147,7 @@ function Parens8Compiler:compile(root, opts)
     end
 
     byte_code = shrinko.to_memory(byte_code)
+    assert(#byte_code != 0, "empty parens8 bytecode")
 
     local results = data.results
     results[self.id] = ""
@@ -156,6 +160,10 @@ function Parens8Compiler:compile(root, opts)
             results[self.id] ..= format("chr(peek(`1`, `2`))", {rom_addr, max_len})
             byte_code = byte_code.get_block(max_len, #byte_code - max_len)
             add_rom_range(data.rom_ranges, rom_addr, rom_addr + max_len)
+
+            -- TODO: move this to a separate count report?
+            printh(format("parens8 - used `1` out of `2` rom bytes",
+                          {max_len, rom_endaddr - rom_addr}))
 
             if (#byte_code != 0) results[self.id] ..= ".."
         end
