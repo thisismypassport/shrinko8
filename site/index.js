@@ -883,6 +883,10 @@ function onTabChange() {
     doShrinkoAction();
 }
 
+export function switchToMinifyTab() {
+    $("#output-tabs").tabs("option", "active", TAB_MINIFY);
+}
+
 // called when the target (language) changes
 export function onTargetChange() {
     let newTarget = $("#target").val()
