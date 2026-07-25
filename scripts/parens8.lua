@@ -6,6 +6,7 @@
 #include parens8_src/compilers/core.lua
 #include parens8_src/compilers/platform/crescent_p8.lua
 #include parens8_src/compilers/crescent.lua
+#include parens8_src/util/lzw.lua
 
 local pico_process = python.import("pico_process")
 local pico_output = python.import("pico_output")
@@ -36,7 +37,7 @@ end
 
 function get_parens8_data(ctxt)
     return ctxt.get_field("parens8_data", function()
-        return {num_compilers=0, results={}, rom_ranges={}} -- has_interpreter=False, needs_reset=False
+        return {num_compilers=0, results={}, rom_ranges={}} -- has_interpreter=False, has_decompressor=False needs_reset=False
     end)
 end
 
@@ -94,14 +95,25 @@ function Parens8Compiler:compile(root, opts)
         python.attrs(self.ctxt.at_finish).append(reset)
         data.needs_reset = true
     end
+
+    local function rename(name)
+        if self.ctxt.global_renames then
+            name = python.attrs(self.ctxt.global_renames).get(name, name)
+        end
+        return name
+    end
     
     local cl_args = split_args(self.args)
 
     -- extract our options
     local rom_addr = cl_args.rom; cl_args.rom = nil
     if (rom_addr and type(rom_addr) != "number") rom_addr = 0
+
     local rom_endaddr = cl_args.rom_end; cl_args.rom_end = nil
     if (type(rom_endaddr) != "number" or rom_endaddr > ROM_ENDADDR) rom_endaddr = ROM_ENDADDR
+
+    local compress = cl_args.compress; cl_args.compress = nil
+    if (compress and type(compress) != "string") compress = "lzw"
 
     -- modify non-string options
     if not cl_args.vm_cleanup then
@@ -113,12 +125,25 @@ function Parens8Compiler:compile(root, opts)
     if self.ctxt.global_renames then -- need to rename cleanups in tandem...
         cl_args.vm_cleanup = copy(cl_args.vm_cleanup)
         for i, cleanup in pairs(cl_args.vm_cleanup) do
-            cl_args.vm_cleanup[i] = python.attrs(self.ctxt.global_renames).get(cleanup)
+            cl_args.vm_cleanup[i] = rename(cleanup)
         end
     end
 
     local cl_code = compile_crescent(cl_args, code)
-    local byte_code = shrinko.to_memory(serialize(cl_code))
+    local byte_code = serialize(cl_code)
+    assert(#byte_code != 0, "empty parens8 bytecode")
+    
+    local compressed_dict
+    if compress then
+        -- (triggers if has multiple compiler instances and the first [which is used to build the interpreter] didn't request compression)
+        if (not data.has_decompressor) stop("you must explicitly add '--$dynamic-include: parens8.interpreter compress' before the compiler switchings")
+
+        local compressed_code = ""
+	    compressed_dict = lzw_compress(byte_code, bit_writer(function(byte) compressed_code..=chr(byte) end))
+        byte_code = compressed_code
+    end
+
+    byte_code = shrinko.to_memory(byte_code)
 
     local results = data.results
     results[self.id] = ""
@@ -132,12 +157,18 @@ function Parens8Compiler:compile(root, opts)
             byte_code = byte_code.get_block(max_len, #byte_code - max_len)
             add_rom_range(data.rom_ranges, rom_addr, rom_addr + max_len)
 
-            if (#byte_code == 0) return
-            results[self.id] ..= ".."
+            if (#byte_code != 0) results[self.id] ..= ".."
         end
     end
 
-    results[self.id] ..= pico_output.format_string_literal(shrinko.from_memory(byte_code))
+    if #byte_code != 0 then
+        results[self.id] ..= pico_output.format_string_literal(shrinko.from_memory(byte_code))
+    end
+
+    if compress then
+        local compressed_dict_lit = pico_output.format_string_literal(compressed_dict)
+        results[self.id] = format("`1`(`2`, `3`)", {rename("decompress"), results[self.id], compressed_dict_lit})
+    end
 end
 
 function checked_gsub(tmpl, find, replace)
@@ -152,6 +183,13 @@ function get_parens8_interpreter(opts)
         printh("error - interpreter already written out, can't write it again") -- or could we?
     else
         data.has_interpreter = true
+        
+        local decompressor = ""
+        local cl_args = split_args(opts.args)
+        if cl_args.compress then
+            decompressor = checked_gsub(lzw_decompressor, '^function', 'function decompress')
+            data.has_decompressor = true
+        end
 
         local template = checked_gsub(vm_template, '"`compiled_args`"', '--[[$placeholder-expr::parens8.interp_args]] ""')
         template = checked_gsub(template, 'return `runtime_ops`', '--[[$placeholder-stmt::parens8.interp_ops]] do end')
@@ -159,7 +197,7 @@ function get_parens8_interpreter(opts)
         template = checked_gsub(template, 'ps8_runtime%(a, b, c%)', 'ps8_runtime(--[[$rename::a]]a, --[[$rename::b]]b, --[[$rename::c]]c)')
         -- ignore the _ENV in the template for the purpose of safety checking, allowing to still rename globals
         template = checked_gsub(template, '%f[%w_]_ENV%f[^%w_]', '--[[$force-safe]]_ENV')
-        return fp_boilerplate .. deserializer .. template
+        return fp_boilerplate .. decompressor .. deserializer .. template
     end
 end
 

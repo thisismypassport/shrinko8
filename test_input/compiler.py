@@ -14,7 +14,7 @@ class ReplCompiler(CompilerBase):
     # immediately after the --$switch-compiler: (resolved via include_main)
     # for simple cases, that's just the code that runs the underlying interpreter (+ placeholder for the compiled code)
     # for complex cases, you can also include the interpreter itself - unless previously included elsewhere
-    #   via an explicit --$dynamic-include: (can check via flag on ctxt)
+    #   via an explicit --$dynamic-include: (can check via field on ctxt)
     # and you can have placeholders in the interpreter too - allowing to add more ops to the interpreter
     #   depending on what ops are used in the compiled code
     def get_dynamic_includes(self, **_):

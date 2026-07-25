@@ -1,12 +1,14 @@
 __lua__
 function globally_print(x) printh(x) end
 
---$dynamic-include: parens8.interpreter
+--$dynamic-include: parens8.interpreter compress
 
 globally_print("outside")
 
 --$switch-compiler: parens8
 globally_print("inside")
+--$switch-compiler: parens8 rom compress
+globally_print("inside compressed")
 --$switch-compiler: none
 
 globally_print("outside again")

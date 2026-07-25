@@ -297,7 +297,7 @@ def run():
     run_test("pico-compiler", "compiler.p8", "compiler.p8", "--minify", "--script", path_join("test_input", "compiler.lua"))
     run_test("parens8-input", "input-parens.p8", "parens-input.p8", "--minify-transform-only", pico8_output="output.p8.printh")
     run_test("parens8-test", "test-parens.p8", "parens-test.p8", "--minify-transform-only", pico8_output_val="DONE")
-    #run_test("parens8-repl", "repl.p8", "parens-repl.p8", "--minify-transform-only", "--default-compiler", "parens8 rom", pico8_output_val="finished")
+    ###run_test("parens8-repl", "repl.p8", "parens-repl.p8", "--minify-transform-only", "--default-compiler", "parens8 rom", pico8_output_val="finished")
     run_test("parens8", "parens8.p8", "parens8.p8", "--minify", pico8_output="parens8.p8.printh")
     run_test("parens8-safe", "parens8.p8", "parens8-safe.p8", "--minify-safe-only", pico8_output="parens8.p8.printh")
     run_test("parens8-2", "parens8-2.p8", "parens8-2.p8", "--minify", pico8_output="parens8-2.p8.printh")

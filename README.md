@@ -15,6 +15,7 @@ Reading/Writing PNGs additionally requires the Pillow module (`python -m pip ins
 The major supported features are:
 * [Minification](#minification) - Reduce the token count, character count and compression ratio of your cart.
 * [Constants](#constants) - Replace constant expressions with their value. Also removes 'if' branches with a constant condition.
+* [Saving Tokens via Parens-8](#saving-tokens-via-parens-8) - Use Parens-8 to replace your tokens with a string.
 * [Linting](#linting) - Check for common code errors such as forgetting to declare a local.
 * [Getting Cart Size](#getting-cart-size) - Count the amount of tokens, characters, and compressed bytes your cart uses.
 * [Format Conversion](#format-conversion) - Convert between p8 files, pngs, and more. Achieves better code compression than Pico-8 when creating pngs.
@@ -29,6 +30,8 @@ Greatly reduces the character count of your cart, as well as greatly improves it
 There are command line [options](#minify-options) to choose how aggressively to minify, as well as what metric (compressed size or character count) to focus on minifying.
 
 It's recommended to combine minification with conversion to png (as seen in the examples below), as Shrinko8 is able to compress code better and can thus fit carts into pngs that Pico-8 cannot.
+
+If your goal is to save a larger number of tokens, you can do so via [Parens-8](#saving-tokens-via-parens-8)
 
 ## To minify your p8 cart:
 
@@ -483,6 +486,10 @@ Finally, note that:
 * You can turn off all constant replacement via `--no-minify-consts`.
 * You can prevent treating specific variables as constants by declaring them with a `--[[$non-const]]` hint. (though normally, there is no reason to do this)
 
+# Saving Tokens via Parens-8
+
+[Parens-8](https://codeberg.org/wellspring-labs/parens-8) by Wellspring-Labs can compile .....
+
 # Linting
 
 Linting finds common code issues in your cart, like forgetting to use a 'local' statement
@@ -775,8 +782,9 @@ Options:
 # Custom Pico8 and Python Scripts
 
 For advanced usecases, you can create a pico8 or python script that allow you to:
-* Preprocess or postprocess the cart before/after the other steps
-* Dynamically generate code via [dynamic includes](#creating-dynamic-includes)
+* Make programmatic modifications to the cart before/after other steps
+* Load other carts and merge them in custom ways with the main cart
+* Save other carts
 * And much more.
 
 To run, use `--script <path>`, here shown together with other tools:
@@ -813,7 +821,6 @@ def preprocess_main(cart, args, ctxt, **_): # '**_' allows other (including futu
 
     # encode binary data into a string in our cart
     # our cart's code should contain a string like so: "$$DATA$$"
-    # for more advanced cases, see dynamic includes further below
     from pico_utils import bytes_to_string_contents
     with open("binary.dat", "rb") as f:
         cart.code = cart.code.replace("$$DATA$$", bytes_to_string_contents(f.read()))
@@ -868,7 +875,7 @@ Pico8 scripts need to have an extension of `.p8` or `.lua`. They can import othe
 
 Usually, you'd have a pico8 script that's specific to shrinko's interface, which imports and uses a 'generic' pico8 script that's runnable in pico8 as well.
 
-Pico8 scripts run via lupaz8 - a fork of scoder's lupa using a fork of samhocevar's z8lua. In detail:
+Pico8 scripts run via [lupaz8](https://github.com/thisismypassport/lupaz8) - a fork of scoder's [lupa](https://github.com/scoder/lupa) using a [fork](https://github.com/thisismypassport/z8lua) of samhocevar's [z8lua](https://github.com/samhocevar/z8lua). In detail:
 * They're highly compatible with pico8 syntax and semantics (shorthands, 16.16 fixed-point numbers, etc.)
 * They support only a subset of pico8's global functions:
   * All math, string, table, memory, and lua functions are supported. (e.g: `abs`, `split`, `deli`, `memcpy`, `select`)
@@ -908,7 +915,6 @@ function module.preprocess_main(opts)
 
     -- encode binary data into a string in our cart
     -- our cart's code should contain a string like so: "$$DATA$$"
-    -- for more advanced cases, see dynamic includes further below
     local bytes_to_string_contents = python.import("pico_utils").bytes_to_string_contents
     local fh = io.open("test_input/binary.dat", "rb") -- lua io/os/etc are available for use
     local contents = bytes_to_string_contents(fh:read("*a"))
@@ -1279,6 +1285,7 @@ return module
 ```
 </details>
 <br>
+
 You can pass arguments to a sub-language as follows:
 ```lua
 eval(--[[$language::evally myarg1 --etc]]"(omitted)")
@@ -1291,14 +1298,6 @@ Furthermore, you can define sub-languages in the p8 file itself, based on existi
 eval(--[[$language::evally1 --etc2]]"(omitted)")
 ```
 Here, the `args` parameter in the constructor will be `myarg1 --etc --etc2`
-
-### Contributing a sub-language
-
-Shrinko8 comes with some built-in sub-languages (currently just [split](#advanced---the-split-sub-language)).
-
-If you have a useful sub-language (to go with an implementation in pico8 hosted elsewhere), you can open a merge-request to add it to the built-in sub-languages:
-- Create a `scripts/your_sub_language.py` (or `.lua`) containing your sublanguage_main and sub-language class.
-- The sublanguage_main will be called for `--[[$language::your_sub_language]]`
 
 ## Advanced - access to the Syntax Tree
 
@@ -1396,6 +1395,240 @@ To run, use `--script <path>` as described [before](#custom-python-script).
 
 You can check `pico_lint.py` for examples of how to use the syntax tree.
 
+## Advanced - custom compiler
+
+For **incredibly** advanced usecases, if you have a compiler that takes lua code and converts it into a string/bytecode/etc representation - you can use Shrinko8 to:
+* Allow writing the lua code to be fed to the compiler as if it were regular lua code (splitting the cart between 'native' code and compiled code)
+* Automate feeding the lua code to the compiler and generating the output
+* Perform variable renaming on the native code, the interpreter code, and the compiled code all together
+
+E.g. this allows renaming identifiers shared by both the native pico-8 code and the compiled language.
+
+Switch compiler via `--$switch-compiler:` in the code:
+```lua
+print("hello from native pico8 code")
+--$switch-compiler: repl
+print("hello from compiled code")
+--$switch-compiler: none
+print("hello from native pico8 code again")
+```
+
+The rest of the details are specific to the language you write the script in - expand the appropriate section:
+
+<details>
+<summary><b>Documentation & example for Python scripts</b></summary>
+
+Here is a complete example of how a compiler can be implemented: (minus the hard stuff!)
+```python
+from pico_process import CompilerBase
+
+class ReplCompiler(CompilerBase):
+    # A sample compiler that actually just inserts the compiled code
+    # as a string argument to a p8 function
+    # (E.g. could've been used for the repl at https://www.lexaloffle.com/bbs/?tid=36381)
+    def __init__(self, ctxt, src, args, **_):
+        self.ctxt = ctxt
+        self.args = args.split()
+        self.src = src
+        self.id = str(id(self)) # used to identify this compiler instance inside strings
+
+    # should return any names of dynamic includes that should be inserted in the code
+    # immediately after the --$switch-compiler: (resolved via include_main)
+    # for simple cases, that's just the code that runs the underlying interpreter (+ placeholder for the compiled code)
+    # for complex cases, you can also include the interpreter itself - unless previously included elsewhere
+    #   via an explicit --$dynamic-include: (can check via field on ctxt)
+    # and you can have placeholders in the interpreter too - allowing to add more ops to the interpreter
+    #   depending on what ops are used in the compiled code
+    def get_dynamic_includes(self, **_):
+        return ["repl.include " + self.id]
+    
+    # receives a syntax tree root node
+    # should compile it and store the results for later use by the placeholder(s)
+    def compile(self, root, **_):
+        # we have two options - compile the already parsed syntax tree 
+        #   (see preprocess_syntax_main in the README for how this could be done)
+        # or convert it into code and reparse it via some external library, if preferred.
+        #   (note - it's faster to convert to code without minifying)
+        
+        # here, we convert it into optionally minified code
+        from pico_output import output_node
+        code = output_node(root, self.ctxt, minify="+minify" in self.args)
+
+        # we'll store the code on the ctxt, for use by the placeholder
+        repl_code_dict = self.ctxt.get_field("repl_code", dict)
+        if "+rom" in self.args:
+            # a special mode in which the code will be encoded into rom
+            # (would probably want to supply the address via self.args too)
+            from pico_defs import encode_p8str
+            enc_code = encode_p8str(code)
+            enc_len = len(enc_code)
+            self.src.cart.rom[:enc_len] = enc_code
+            repl_code_dict[self.id] = f"chr(peek(0, {enc_len}))"
+        else:
+            # the regular mode in which the code is inserted in a string
+            from pico_output import format_string_literal
+            repl_code_dict[self.id] = format_string_literal(code)
+
+# this is called by request of ReplCompiler.get_dynamic_include
+def get_repl_include(args, **_):
+    # since this is an include, the returned code can freely access globals/etc
+    return f'execute_raw(--[[$placeholder-expr::repl.code {args}]]"", _ENV)'
+    # note: can also use e.g. --[[$placeholder-stmt::repl.statements]] do end
+
+# this is called by request of above --[[$placeholder-expr::...]], after rename but before minify
+def get_repl_code(args, ctxt, **_):
+    # since this is a placeholder, the returned code must not access any variables that might've been renamed
+    # (it can still access _ENVs and builtins)
+    repl_code_dict = ctxt.get_field("repl_code", dict)
+    return repl_code_dict.get(args) # in our case, args is the compiler's id we passed through the include and the placeholder
+
+# this is called to get any includes & placeholders for the compiler
+def include_main(name, **_):
+    if name == "repl.include":
+        return get_repl_include
+    elif name == "repl.code":
+        return get_repl_code
+
+# this is called to get a compiler class by name
+def compiler_main(name, **_):
+    if name == "repl":
+        return ReplCompiler
+```
+
+You can see another sub-language example in Shrinko8's `scripts/split.py`.
+
+</details>
+<br>
+<details>
+<summary><b>Documentation & example for Pico8 scripts</b></summary>
+
+Here is a complete example of how a compiler can be implemented: (minus the hard stuff!)
+```lua
+local CompilerBase = python.import("pico_process").CompilerBase
+local module = {}
+
+ReplCompiler = python.class(CompilerBase)
+
+-- we store a table on the ctxt with all the code
+function ctxt_get_repl_code_table(ctxt)
+    return ctxt.get_field("repl_code", function() return {} end)
+end
+
+-- A sample compiler that actually just inserts the compiled code
+-- as a string argument to a p8 function
+-- (E.g. could've been used for the repl at https://www.lexaloffle.com/bbs/?tid=36381)
+function ReplCompiler:__init(opts)
+    self.args = {}
+    for arg in all(split(opts.args, ' ')) do
+        self.args[arg] = true
+    end
+
+    self.ctxt = opts.ctxt
+    self.src = opts.src
+    self.id = tostr(self, 1) -- used to identify this compiler instance inside strings
+end
+
+-- should return any names of dynamic includes that should be inserted in the code
+-- immediately after the --$switch-compiler: (resolved via include_main)
+-- for simple cases, that's just the code that runs the underlying interpreter (+ placeholder for the compiled code)
+-- for complex cases, you can also include the interpreter itself - unless previously included elsewhere
+--   via an explicit --$dynamic-include: (can check via field on ctxt)
+-- and you can have placeholders in the interpreter too - allowing to add more ops to the interpreter
+--   depending on what ops are used in the compiled code
+function ReplCompiler:get_dynamic_includes()
+    local includes = {"repl.include " .. self.id}
+    return python.list(includes)
+end
+
+-- receives a syntax tree root node
+-- should compile it and store the results for later use by the placeholder(s)
+function ReplCompiler:compile(root)
+    -- for p8 scripts, we currently have only one viable option -
+    -- convert the syntax tree into code and reparse it via some p8 code
+    -- (note - it's faster to convert to code without minifying)
+    
+    -- here, we convert it into optionally minified code
+    local output_node = python.import("pico_output").output_node
+    local minify = self.args["+minify"]
+    local code = output_node(root, self.ctxt, minify)
+
+    local repl_code_map = ctxt_get_repl_code_table(self.ctxt)
+    if self.args["+rom"] then
+        -- a special mode in which the code will be encoded into rom
+        -- (would probably want to supply the address via self.args too)
+        rommemcpy(self.src.cart.rom, 0, shrinko.to_memory(code), 0, #code)
+        repl_code_map[self.id] = "chr(peek(0, "..#code.."))"
+    else
+        -- the regular mode in which the code is inserted in a string
+        local format_string_literal = python.import("pico_output").format_string_literal
+        repl_code_map[self.id] = format_string_literal(code)
+    end
+end
+
+-- this is called by request of ReplCompiler.get_dynamic_include
+function get_repl_include(opts)
+    -- since this is an include, the returned code can freely access globals/etc
+    return 'execute_raw(--[[$placeholder-expr::repl.code '..opts.args..']]"", _ENV)'
+    -- note: can also use e.g. --[[$placeholder-stmt::repl.statements]] do end
+end
+
+-- this is called by request of above --[[$placeholder-expr::...]], after rename but before minify
+function get_repl_code(opts)
+    -- since this is a placeholder, the returned code must not access any variables that might've been renamed
+    -- (it can still access _ENVs and builtins)
+    local repl_code_map = ctxt_get_repl_code_table(opts.ctxt)
+    return repl_code_map[opts.args] -- in our case, args is the compiler's id we passed through the include and the placeholder
+end
+
+-- this is called to get any includes & placeholders for the compiler
+function module.include_main(name)
+    if (name == "repl.include") return get_repl_include
+    if (name == "repl.code") return get_repl_code
+end
+
+-- this is called to get a compiler class by name
+function module.compiler_main(name)
+    if (name == "repl") return ReplCompiler
+end
+
+return module
+```
+
+You can also see a more complete example in `scripts/parens8.lua`
+</details>
+<br>
+
+You can pass arguments to a compiler as follows:
+```lua
+--$switch-compiler: repl +minify and more args
+```
+Here, the `args` parameter in the constructor will be `+minify and more args` and can be parsed via shlex + argparse or in any other way
+
+Furthermore, you can define sub-languages in the p8 file itself, based on existing sub-languages:
+```lua
+--$def-alias: repl1 = repl +minify and more args
+--$switch-compiler: repl1 and even more args
+```
+Here, the `args` parameter in the constructor will be `+minify and more args and even more args`
+
+If you use _ENV in your compiler's interpreter, you probably want to write it as `--[[$force-safe]] _ENV` to tell Shrinko8 that this usage of _ENV should not prevent certain minifications under `--minify-safe-only`
+
+You can use `--$dynamic-include: <...>` and `--[[$placeholder-expr::<...>]] ""`/`--[[$placeholder-stmt::<...>]] do end` for other uses outside a compiler - if you have any - but they're currently not documented by themselves.
+
+The compiler is called whenever the cart is minified.
+* To call the compiler without otherwise minifying your cart, you can pass `--minify-transform-only` in the command-line.
+* To skip calling the compiler during minification, you can pass `--no-minify-transform` in the command-line.
+
+## Contributing a script
+
+Shrinko8 comes with some built-in scripts (as of this writing - the [split](#advanced---the-split-sub-language) and the [parens8](#saving-tokens-via-parens-8) compiler).
+
+If you have a useful sub-language or compiler, you can open a merge-request to add it to the built-in scripts:
+- Create a `scripts/YOUR_SCRIPT.py` (or `.lua`) containing your implementation
+- If the script contains sublanguage_main, it will be called for `--[[$language::YOUR_SCRIPT]]` and e.g. `--[[$language::YOUR_SCRIPT.ANYTHING ANY_ARGS]]`
+- If the script contains compiler_main, it will be called for `--$switch-compiler: YOUR_SCRIPT` and e.g. `--$switch-compiler: YOUR_SCRIPT.ANYTHING ANY_ARGS`
+- Note that preprocess/postprocess_main are NOT called. If you need to do any cleanups, you can append a function to `ctxt.at_finish`
+
 # Picotron Support
 
 The support is currently still experimental, and will remain as such at least while Picotron itself is experimental.
@@ -1452,6 +1685,6 @@ Starting from v1.2.7 - shrinko supports putting `$` before hint comments, aka:
 * `--$preserve:` instead of `--preserve:`
 * `--[[$member]]` instead of `--[[member]]`
 
-For newly introduced hints (such as `--$switch-compiler`), only the `$` variant is supported.
+For newly introduced hints (such as `--$switch-compiler:`), only the `$` variant is supported.
 
 At some later version, the variant without `$` might become deprecated, so it's recommended not to use it anymore.
