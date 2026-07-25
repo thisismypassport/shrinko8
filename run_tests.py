@@ -14,7 +14,7 @@ parser.add_argument("--no-private", action="store_true", help="do not run privat
 parser.add_argument("-v", "--verbose", action="store_true", help="print test successes")
 parser.add_argument("-x", "--exe", action="store_true", help="test a packaged exe instead of the python script")
 parser.add_argument("-I", "--install", action="store_true", help="test a pip install instead of the python script")
-parser.add_argument("-p", "--pico8", action="append", help="specify a pico8 exe to test the results with")
+parser.add_argument("-p", "--pico8", action="append", default=[None], help="specify a pico8 exe to test the results with")
 parser.add_argument("-P", "--no-pico8", action="store_true", help="disable running pico8 even if exe is supplied (for convenience)")
 parser.add_argument("--profile", action="store_true", help="enable profiling")
 
@@ -58,7 +58,7 @@ def try_read_dir_contents(dir):
 
 def run_test(name, input, output, *args, private=False, check_output=True, from_output=False, from_source=False, alt_compare=None,
              stdout_output=None, norm_stdout=nop, exit_code=0, extra_outputs=None, output_reader=try_read_file_norm,
-             pico8_output_val=None, pico8_output=None, pico8_run=None, copy_in_to_out=False, update_version=True,
+             pico8_output_val=None, pico8_output=None, allow_real_pico8=True, copy_in_to_out=False, update_version=True,
              target=Target.pico8):
     if g_opts.test:
         for wanted_test in g_opts.test:
@@ -125,10 +125,12 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
                 stdouts.append(f"ERROR: Extra output difference: {extra_outpath}, {extra_cmppath}")
                 success = False
 
-    if run_success and g_opts.pico8 and not g_opts.no_pico8 and (pico8_output != None or pico8_output_val != None or pico8_run):
+    if run_success and (pico8_output != None or pico8_output_val != None):
         if pico8_output_val is None and pico8_output != None:
             pico8_output_val = file_read_text(path_join(prefix + "test_compare", pico8_output))
         for pico8_exe in g_opts.pico8:
+            if pico8_exe and (not allow_real_pico8 or g_opts.no_pico8):
+                continue
             p8_success, p8_stdout = run_pico8(pico8_exe, outpath, expected_printh=pico8_output_val)
             if not p8_success:
                 stdouts.append(f"ERROR: Pico8 run failure with {pico8_exe}")
@@ -297,7 +299,8 @@ def run():
     run_test("pico-compiler", "compiler.p8", "compiler.p8", "--minify", "--script", path_join("test_input", "compiler.lua"))
     run_test("parens8-input", "input-parens.p8", "parens-input.p8", "--minify-transform-only", pico8_output="output.p8.printh")
     run_test("parens8-test", "test-parens.p8", "parens-test.p8", "--minify-transform-only", pico8_output_val="DONE")
-    ###run_test("parens8-repl", "repl.p8", "parens-repl.p8", "--minify-transform-only", "--default-compiler", "parens8 rom", pico8_output_val="finished")
+    run_test("parens8-repl", "repl.p8", "parens-repl.p8", "--minify", "--default-compiler", "parens8 rom sparse_vararg",
+             pico8_output_val="finished", allow_real_pico8=False) # parens8 gives OOM in real pico8, unless split [which is tricky for repl specifically]
     run_test("parens8", "parens8.p8", "parens8.p8", "--minify", pico8_output="parens8.p8.printh")
     run_test("parens8-safe", "parens8.p8", "parens8-safe.p8", "--minify-safe-only", pico8_output="parens8.p8.printh")
     run_test("parens8-2", "parens8-2.p8", "parens8-2.p8", "--minify", pico8_output="parens8-2.p8.printh") # TODO - add "--lint" here!

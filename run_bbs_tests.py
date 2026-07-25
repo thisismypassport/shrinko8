@@ -32,7 +32,6 @@ parser.add_argument("-v", "--verbose", action="store_true", help="print changes 
 parser.add_argument("-x", "--exe", action="store_true", help="use a packaged exe instead of the python script")
 parser.add_argument("-I", "--install", action="store_true", help="use a pip install instead of the python script")
 parser.add_argument("-p", "--pico8", action="append", help="specify a pico8 exe to test the results with")
-parser.add_argument("-P", "--no-pico8", action="store_true", help="disable running pico8 even if exe is supplied (for convenience)")
 parser.add_argument("-t", "--pico8-time", type=float, help="how long to run pico8 carts for")
 parser.add_argument("-T", "--pico8-interact", action="store_true", help="show real pico8 windows and randomly interact with them (windows-only!)")
 parser.add_argument("-H", "--pico8-home", default="private_pico8_home", help="home directory for pico8 when running under --pico8-interact")
