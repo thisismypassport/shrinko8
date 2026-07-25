@@ -330,9 +330,9 @@ def main(raw_args=None):
 
     global g_opts
     g_opts = parser.parse_args(raw_args)
+    dir_ensure_exists("test_output")
     init_tests(g_opts)
     
-    dir_ensure_exists("test_output")
     run()
 
     if not g_opts.no_private:
