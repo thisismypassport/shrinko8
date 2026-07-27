@@ -615,58 +615,56 @@ def create_main(lang):
             if args.input_count:
                 write_code_size_func(cart, handler=args.input_count, input=True)
                 
-            ctxt = ContextCls(extra_builtins=args.builtin, not_builtins=args.not_builtin, 
-                              use_local_builtins=not args.global_builtins_only,
-                              extra_local_builtins=args.local_builtin,
-                              srcmap=args.rename_map, version=cart.version_id, include_getter=args.include_cb,
-                              sublang_getter=args.sublang_cb, compiler_getter=args.compiler_cb,
-                              default_compiler=args.default_compiler,
-                              hint_comments=not args.ignore_hints, consts=args.const,
-                              ignore_transforms=args.no_minify_transform)
-            if args.preproc_cb:
-                args.preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args)
+            with ContextCls(extra_builtins=args.builtin, not_builtins=args.not_builtin, 
+                            use_local_builtins=not args.global_builtins_only,
+                            extra_local_builtins=args.local_builtin,
+                            srcmap=args.rename_map, version=cart.version_id, include_getter=args.include_cb,
+                            sublang_getter=args.sublang_cb, compiler_getter=args.compiler_cb,
+                            default_compiler=args.default_compiler,
+                            hint_comments=not args.ignore_hints, consts=args.const,
+                            ignore_transforms=args.no_minify_transform) as ctxt:
+                if args.preproc_cb:
+                    args.preproc_cb(cart=cart, src=src, ctxt=ctxt, args=args)
 
-            def preproc_syntax_call(root, on_error):
-                args.preproc_syntax_cb(cart=cart, src=src, root=root, on_error=on_error, ctxt=ctxt, args=args)
+                def preproc_syntax_call(root, on_error):
+                    args.preproc_syntax_cb(cart=cart, src=src, root=root, on_error=on_error, ctxt=ctxt, args=args)
 
-            ok, errors = process_code(ctxt, src,
-                                      input_count=is_pico8 and args.input_count,
-                                      count=is_pico8 and args.count,
-                                      lint=args.lint, minify=args.minify, rename=args.rename,
-                                      unminify=args.unminify, stop_on_lint=not args.no_lint_fail,
-                                      count_is_optional=args.no_count_tokenize,
-                                      preproc=preproc_syntax_call if args.preproc_syntax_cb else None)
-            if errors:
-                had_warns = True
+                ok, errors = process_code(ctxt, src,
+                                        input_count=is_pico8 and args.input_count,
+                                        count=is_pico8 and args.count,
+                                        lint=args.lint, minify=args.minify, rename=args.rename,
+                                        unminify=args.unminify, stop_on_lint=not args.no_lint_fail,
+                                        count_is_optional=args.no_count_tokenize,
+                                        preproc=preproc_syntax_call if args.preproc_syntax_cb else None)
+                if errors:
+                    had_warns = True
 
-                if not ok:
-                    print("Compilation errors:")
-                elif args.lint:
-                    print("Lint warnings:")
-                else:
-                    print("Hint usage warnings:")
+                    if not ok:
+                        print("Compilation errors:")
+                    elif args.lint:
+                        print("Lint warnings:")
+                    else:
+                        print("Hint usage warnings:")
+                    
+                    for error in sorted(errors):
+                        print(error.format(args.error_format))
+                    
+                    if not ok or (args.lint and not args.no_lint_fail):
+                        return False, ok
+
+                if args.rename_map:
+                    file_write_maybe_text(args.rename_map, "\n".join(ctxt.srcmap))
+                    
+                if args.postproc_cb:
+                    args.postproc_cb(cart=cart, args=args, ctxt=ctxt)
                 
-                for error in sorted(errors):
-                    print(error.format(args.error_format))
+                if args.count:
+                    write_code_size_func(cart, handler=args.count)
+                    if not (args.output and not args.format.is_src) and not args.no_count_compress: # else, will be done in write_cart
+                        write_compressed_size_func(cart, handler=args.count, fast_compress=args.fast_compression, debug_handler=args.trace_compression)
                 
-                if not ok or (args.lint and not args.no_lint_fail):
-                    return False, ok
-
-            if args.rename_map:
-                file_write_maybe_text(args.rename_map, "\n".join(ctxt.srcmap))
-                
-            if args.postproc_cb:
-                args.postproc_cb(cart=cart, args=args, ctxt=ctxt)
-            
-            if args.count:
-                write_code_size_func(cart, handler=args.count)
-                if not (args.output and not args.format.is_src) and not args.no_count_compress: # else, will be done in write_cart
-                    write_compressed_size_func(cart, handler=args.count, fast_compress=args.fast_compression, debug_handler=args.trace_compression)
-            
-            if args.version:
-                write_cart_version_func(cart)
-            
-            ctxt.finish()
+                if args.version:
+                    write_cart_version_func(cart)
         
         return True, not had_warns
 

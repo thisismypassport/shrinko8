@@ -1,9 +1,9 @@
 pico-8 cartridge // http://www.pico-8.com
 version 42
 __lua__
-function c(n)return function()return n end end function n(d,l)local o,u,n,r,e,c={},1,2,0,0,split",3,7,15,31,63,127,255,511,1023,2047,4095,8191,16383,32767,-1"local function t(e)add(o,e)if(count(o)+1>=shl(1,n))n+=1
-end for n in all(l)do t(n)end local function l()while(e<n)r=bor(shl(r,8),lshr(ord(d,u),16))e+=8u+=1
-e-=n local n=band(lshr(r,e-16),c[n])if(n~=0)return n
+function c(n)return function()return n end end function n(d,l)local o,u,n,r,e,c={},1,2,0,0,split",3,7,15,31,63,127,255,511,1023,2047,4095,8191,16383,32767,-1"local function t(e)add(o,e)if(#o+1>=1<<n)n+=1
+end for n in all(l)do t(n)end local function l()while(e<n)r<<=8r|=ord(d,u)>>>16e+=8u+=1
+e-=n local n=r>>>e-16&c[n]if(n~=0)return n
 end local n=o[l()]local e=n for r in l do e=(function(n)if(n)t(e..n[1])return n
 n=e..e[1]t(n)return n end)(o[r])n..=e end return n end function u(r)local e=0local function n()e+=1return ord(r,e)end local function t()return n()>>>16|n()>>>8|n()|n()<<8end return function()local n,o=n()o,n=n&252~=252and n>>>2&63,n%4if(n==0)return o and o-31or t()
 if(n==3)return({true,false})[o]

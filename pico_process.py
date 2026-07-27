@@ -190,6 +190,7 @@ class CompilerBase:
     def compile(m, root, **_):
         pass
 
+@context_manager("finish")
 class ContextBase:
     """Defines information for how code is to be processed, e.g. the supported builtins, the supported version, the language, etc."""
     def __init__(m, lang, builtins, local_builtins, builtins_with_callbacks, builtin_callbacks, builtin_members,

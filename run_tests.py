@@ -300,7 +300,8 @@ def run():
     run_test("parens8-input", "input-parens.p8", "parens-input.p8", "--minify-transform-only", pico8_output="output.p8.printh")
     run_test("parens8-test", "test-parens.p8", "parens-test.p8", "--minify-transform-only", pico8_output_val="DONE")
     run_test("parens8-repl", "repl.p8", "parens-repl.p8", "--minify", "--default-compiler", "parens8 rom sparse_vararg", pico8_output_val="finished")
-    #run_test("parens8-replv2", "replv2.p8", "parens-replv2.p8", "--minify", "--default-compiler", "parens8 rom sparse_vararg", pico8_output_val="finished")
+    run_test("parens8-replv2", "replv2.p8", "parens-replv2.p8", "--minify-safe-only",
+             "--default-compiler", "parens8 rom bigstring sparse_vararg", pico8_output_val="finished") # TODO: add compress
     run_test("parens8", "parens8.p8", "parens8.p8", "--minify", pico8_output="parens8.p8.printh")
     run_test("parens8-safe", "parens8.p8", "parens8-safe.p8", "--minify-safe-only", pico8_output="parens8.p8.printh")
     run_test("parens8-2", "parens8-2.p8", "parens8-2.p8", "--minify", "--lint", pico8_output="parens8-2.p8.printh")

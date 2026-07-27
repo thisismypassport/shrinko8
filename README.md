@@ -532,6 +532,7 @@ You can pass additional options to parens8 via `--$switch-compiler: parens8 opti
 * `rom=<address>` (e.g. `rom=0x3100`) - causes the compiled code to get written to the cart memory (rom) at the given address, instead of to a string in the code section of the cart. (This overwrites the previous content of the cart memory - e.g. gfx/map/sfx/etc). (`rom` is the same as `rom=0`)
 * `rom_end=<address>` (e.g. `rom_end=0x42bc`) - gives an upper bound on which addresses can be modified via `rom` - the address `rom_end` and above will not be modified and instead the remainder of the compiled code (if any) will be written to string.
 * `compress` - enables compression of the compiled code. This adds a decompressor to the cart, increasing token usage. Recommended only when using `rom`.
+* `bigstring` - only enable if directed to by an error message, allows compiling huge amounts of code at once (but costs more tokens/etc)
 * `specialized_for_ops` - improves performance of most compiled `for` loops, but increases token usage.
 * `sparse_vararg` - allows varargs with nils in them to work correctly
 * `vm_cleanup=none` - by default, once the last compiler block runs, no further compilation is possible in exchange for lowering memory usage. setting `vm_cleanup` to none on the last (or only) compiler block avoids this cleanup. Useful if you want to compile stuff again later.

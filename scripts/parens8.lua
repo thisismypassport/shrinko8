@@ -34,10 +34,14 @@ end
 function tohex(v)
     return sub(tostr(v, 1), 1, 6)
 end
+function isbigstr(v)
+    local len = select(3, bigstring(v));
+    return mid(len, 0x.7fff) != len
+end
 
 function get_parens8_data(ctxt)
     return ctxt.get_field("parens8_data", function()
-        return {num_compilers=0, results={}, rom_ranges={}} -- has_interpreter=False, has_decompressor=False needs_reset=False
+        return {num_compilers=0, results={}, rom_ranges={}} -- has_interpreter=False, has_decompressor=False, is_bigstring=False, needs_reset=False
     end)
 end
 
@@ -116,7 +120,7 @@ function Parens8Compiler:compile(root, opts)
     if (compress and type(compress) != "string") compress = "lzw"
 
     -- modify non-string options
-    get_parens8_data(self.ctxt).num_compilers -= 1 -- to go...
+    data.num_compilers -= 1 -- to go...
     if not cl_args.vm_cleanup and data.num_compilers == 0 then
         cl_args.vm_cleanup = "full"
     end
@@ -136,9 +140,19 @@ function Parens8Compiler:compile(root, opts)
         -- (triggers if has multiple compiler instances and the first [which is used to build the interpreter] didn't request compression)
         if (not data.has_decompressor) stop("you must explicitly add '--$dynamic-include: parens8.interpreter compress' before the compiler switchings")
 
+        -- TODO: removeme once parens8 fixes lzw_compress to supports bigstring
+        if (isbigstr(byte_code)) stop("large inputs currently cannot be compressed via parens8 - try splitting into multiple compilation blocks")
+
         local compressed_code = ""
 	    compressed_dict = lzw_compress(byte_code, bit_writer(function(byte) compressed_code..=chr(byte) end))
         byte_code = compressed_code
+    end
+    
+    if cl_args.bigstring != data.is_bigstring then
+        stop("all parens8 comments ('--$switch-compiler:' and '--$dynamic-include:') should either have 'bigstring' as an option or not have it as an option")
+    end
+    if isbigstr(byte_code) and not data.is_bigstring then
+        stop("input too large - add 'bigstring' to *all* parens8 comments to support large inputs (e.g. '--$switch-compiler: parens8 bigstring')")
     end
 
     byte_code = shrinko.to_memory(byte_code)
@@ -192,8 +206,11 @@ function get_parens8_interpreter(opts)
         local decompressor = ""
         local cl_args = split_args(opts.args)
         if cl_args.compress then
-            decompressor = checked_gsub(lzw_decompressor, '^function', 'function _ps8_decompress') -- _ for lint
+            decompressor = checked_gsub(lzw_decompressor_native, '^function', 'function _ps8_decompress') -- _ for lint
             data.has_decompressor = true
+        end
+        if cl_args.bigstring then
+            data.is_bigstring = true
         end
 
         local const_name = 'ps8_const'
@@ -211,7 +228,9 @@ function get_parens8_interpreter(opts)
         template = checked_gsub(template, '`deserializer`', deserializer_name)
         template = checked_gsub(template, '`const`', const_name)
         
-        local deserializer = checked_gsub(deserializer_flat, '`funcname`', deserializer_name)
+        local deserializer = data.is_bigstring and deserializer_flat_bs or deserializer_flat
+        deserializer = checked_gsub(deserializer, '`funcname`', deserializer_name)
+        
         local boilerplate = checked_gsub(fp_boilerplate, '`funcname`', const_name)
         return hints .. boilerplate .. decompressor .. deserializer .. template
     end

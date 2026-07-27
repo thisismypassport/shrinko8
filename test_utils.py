@@ -154,9 +154,11 @@ def run_code(target, *args, exit_code=0):
 
 def run_test_pico(cart):
     noop = lambda *_: None
+    zoop = lambda *_: 0
 
     runtime = create_runtime()
     p8globs = runtime.globals()
+    p8globs.stat = zoop
     for glob in builtin_globals:
         if not p8globs[glob]:
             p8globs[glob] = noop
