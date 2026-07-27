@@ -534,7 +534,7 @@ You can pass additional options to parens8 via `--$switch-compiler: parens8 opti
 * `compress` - enables compression of the compiled code. This adds a decompressor to the cart, increasing token usage. Recommended only when using `rom`.
 * `specialized_for_ops` - improves performance of most compiled `for` loops, but increases token usage.
 * `sparse_vararg` - allows varargs with nils in them to work correctly
-* `vm_cleanup=<full/partial/none>` - (Advanced) controls what data is freed immediately after loading the compiled code. Shrinko provides a good default here.
+* `vm_cleanup=none` - by default, once the last compiler block runs, no further compilation is possible in exchange for lowering memory usage. setting `vm_cleanup` to none on the last (or only) compiler block avoids this cleanup. Useful if you want to compile stuff again later.
 
 Normally, the interpreter is inserted right before the first `--$switch-compiler:` block, but you can control its placement directly via:
 ```lua
@@ -1735,6 +1735,8 @@ Notes:
 * As Picotron evolves, there might be new globals or table keys that Shrinkotron isn't aware of. You can report such cases and use [`--preserve`](#preserving-identifiers-across-the-entire-cart) meanwhile.
 
 # Version Changes
+
+To see the full list of changes, see [The Changelog](https://github.com/thisismypassport/shrinko8/blob/main/CHANGELOG.md).
 
 Starting from v1.2.7 - shrinko supports putting `$` before hint comments, aka:
 * `--$preserve:` instead of `--preserve:`

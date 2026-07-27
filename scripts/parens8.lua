@@ -116,30 +116,25 @@ function Parens8Compiler:compile(root, opts)
     if (compress and type(compress) != "string") compress = "lzw"
 
     -- modify non-string options
-    if not cl_args.vm_cleanup then
-        cl_args.vm_cleanup = data.num_compilers == 1 and "full" or "partial"
+    get_parens8_data(self.ctxt).num_compilers -= 1 -- to go...
+    if not cl_args.vm_cleanup and data.num_compilers == 0 then
+        cl_args.vm_cleanup = "full"
     end
-    cl_args.vm_cleanup = cl_args.vm_cleanup == "full" and vm_cleanup_full or
-        cl_args.vm_cleanup != "none" and vm_cleanup_partial -- else empty
+    cl_args.vm_cleanup = cl_args.vm_cleanup == "full" and vm_cleanup_full -- else empty
     
-    if self.ctxt.global_renames then -- need to rename cleanups in tandem...
+    if self.ctxt.global_renames and cl_args.vm_cleanup then -- need to rename cleanups in tandem...
         cl_args.vm_cleanup = copy(cl_args.vm_cleanup)
         for i, cleanup in pairs(cl_args.vm_cleanup) do
             cl_args.vm_cleanup[i] = rename(cleanup)
         end
     end
 
-    local cl_code = compile_crescent(cl_args, code)
-    local byte_code = serialize(cl_code)
+    local byte_code = compile_crescent(cl_args, code)
     
     local compressed_dict
     if compress then
         -- (triggers if has multiple compiler instances and the first [which is used to build the interpreter] didn't request compression)
         if (not data.has_decompressor) stop("you must explicitly add '--$dynamic-include: parens8.interpreter compress' before the compiler switchings")
-
-        -- TODO: removeme once parens8 fixes lzw_compress to supports bigstring
-        local len = select(3, bigstring(byte_code));
-        if (mid(len, 0x.7fff) != len) stop("large inputs currently cannot be compressed via parens8 - try splitting into multiple compilation blocks")
 
         local compressed_code = ""
 	    compressed_dict = lzw_compress(byte_code, bit_writer(function(byte) compressed_code..=chr(byte) end))
@@ -201,15 +196,24 @@ function get_parens8_interpreter(opts)
             data.has_decompressor = true
         end
 
-        local hints = "--[[$lint: ps8_inst, ps8_binder]]"
+        local const_name = 'ps8_const'
+        local deserializer_name = 'ps8_decode'
+
+        local hints = "--[[$lint: ps8_inst, ps8_val, ps8_binder]]"
 
         local template = checked_gsub(vm_template, '"`compiled_args`"', '--[[$placeholder-expr::parens8.interp_args]] ""')
+        template = checked_gsub(template, '"`argcounts`"', '--[[$placeholder-expr::parens8.interp_argcounts]] ""')
         template = checked_gsub(template, 'return `runtime_ops`', '--[[$placeholder-stmt::parens8.interp_ops]] do end')
         -- 'preserve' locals used by vm ops. ideally we'd use ctxt.local_renames to rename them, but that's not trivial and not worth it
         template = checked_gsub(template, 'ps8_runtime%(a, b, c%)', 'ps8_runtime(--[[$rename::a]]a, --[[$rename::b]]b, --[[$rename::c]]c)')
         -- ignore the _ENV in the template for the purpose of safety checking, allowing to still rename globals
         template = checked_gsub(template, '%f[%w_]_ENV%f[^%w_]', '--[[$force-safe]]_ENV')
-        return hints .. fp_boilerplate .. decompressor .. deserializer .. template
+        template = checked_gsub(template, '`deserializer`', deserializer_name)
+        template = checked_gsub(template, '`const`', const_name)
+        
+        local deserializer = checked_gsub(deserializer_flat, '`funcname`', deserializer_name)
+        local boilerplate = checked_gsub(fp_boilerplate, '`funcname`', const_name)
+        return hints .. boilerplate .. decompressor .. deserializer .. template
     end
 end
 
@@ -229,8 +233,16 @@ function get_parens8_interp_args(opts)
 	return '"' .. join(compiled_args, ",") .. '"'
 end
 
+function get_parens8_interp_argcounts(opts)
+    local compiled_args = {}
+    for opcode, vm_op in ipairs(vm_ops) do
+		compiled_args[opcode] = vm_op[4]
+	end
+	return '"' .. join(compiled_args, ",") .. '"'
+end
+
 function get_parens8_run_code(opts)
-    return format('run_ps8(deserialize(--[[$placeholder-expr::parens8.result `1`]] ""))', {opts.args})
+    return format('run_ps8(--[[$placeholder-expr::parens8.result `1`]] "")', {opts.args})
 end
 
 function get_parens8_result(opts)
@@ -241,6 +253,7 @@ function module.include_main(name)
     if (name == "parens8.interpreter") return get_parens8_interpreter
     if (name == "parens8.interp_ops") return get_parens8_interp_ops
     if (name == "parens8.interp_args") return get_parens8_interp_args
+    if (name == "parens8.interp_argcounts") return get_parens8_interp_argcounts
     if (name == "parens8.run") return get_parens8_run_code
     if (name == "parens8.result") return get_parens8_result
 end

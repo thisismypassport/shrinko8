@@ -6,6 +6,6 @@ __lua__
 
 -- (automatic full cleanup):
 assert(ps8_inst == nil)
-assert(ps8_runtime == nil)
+assert(run_ps8 == nil)
 
 printh("done")
