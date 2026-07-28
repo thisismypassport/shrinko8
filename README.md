@@ -525,7 +525,7 @@ Parens8 supports almost all pico8 syntax and semantics, but there are some limit
 * You can't use a local variable across multiple compiler blocks - you can use globals instead
 * Similarly, you can't use a goto label across multiple compiler blocks
 * By default, varargs (`...`) with nils in them don't work correctly. You can overcome this limitation by adding the `sparse_vararg` option to parens8 (see below)
-* There are a few other very subtle differences you're unlikely to encounter (see [Parens8 documentation](https://codeberg.org/wellspring-labs/parens-8) for more details)
+* There are a few other very subtle differences you're unlikely to encounter (see [Parens8 documentation](https://codeberg.org/wellspring-labs/parens-8#readme) for more details)
 * Assignment to _ENV is not observed outside of the compiler block
 
 You can pass additional options to parens8 via `--$switch-compiler: parens8 options1 options2=value`. (For example: `--$switch-compiler: parens8 compress rom=0x3100 sparse_vararg`):
