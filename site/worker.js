@@ -1,5 +1,5 @@
 import * as Comlink from "https://cdn.jsdelivr.net/npm/comlink@4.4.2/dist/esm/comlink.min.js";
-import {loadPyodide} from "https://cdn.jsdelivr.net/pyodide/v314.0.2/full/pyodide.mjs";
+import {loadPyodide} from "https://cdn.jsdelivr.net/pyodide/v314.0.3/full/pyodide.mjs";
 import * as AnsiToHtml from 'https://cdn.jsdelivr.net/npm/ansi-to-html@0.7.2/+esm';
 import * as AnsiToText from 'https://cdn.jsdelivr.net/npm/strip-ansi@7.2.0/+esm';
 import {getLowExt, getParentDir, joinPath, isFormatText} from "./utils.js";
@@ -18,6 +18,8 @@ let previewFile = "__preview." + srcExt;
 let pythonScriptFile = "__script.py";
 let picoScriptFile = "__script.lua";
 let picoDat = "__" + targetLang + ".dat";
+let extractDir = "__extract";
+let tempZip = "__save.zip";
 
 let outputCapture = undefined;
 let outputColumns = undefined;
@@ -108,6 +110,7 @@ async function initShrinko() {
     try {
         initProgress = 50;
         self.pyodide = await loadPyodide();
+        console.log(pyodide.FS.readdir("."));
 
         pyodide.setStdout(new TtyOutput(console.info));
         pyodide.setStderr(new TtyOutput(console.warn));
@@ -125,12 +128,12 @@ async function initShrinko() {
         initProgress = 90;
 
         let response = await fetch("shrinko.zip");
-        await pyodide.unpackArchive(await response.arrayBuffer(), "zip");
+        await pyodide.unpackArchive(await response.arrayBuffer(), "zip", {extractDir});
 
         initProgress = 99;
         self.shrinko_main =
-            isPico8 ? pyodide.pyimport("shrinko8").main :
-            isPicotron ? pyodide.pyimport("shrinkotron").main :
+            isPico8 ? pyodide.pyimport(extractDir + ".shrinko8").main :
+            isPicotron ? pyodide.pyimport(extractDir + ".shrinkotron").main :
             null;
         initProgress = 100;
     } catch (e) {
@@ -160,6 +163,19 @@ function makeArchive(outputFile, ...args) {
     if (outputFile !== zipName) {
         shutil_module.move(zipName, outputFile)
     }
+}
+
+let zipfile_module;
+function makeArchiveFrom(outputFile, files) {
+    if (!zipfile_module) {
+        zipfile_module = pyodide.pyimport("zipfile");
+    }
+
+    let zip = zipfile_module.ZipFile(outputFile, "w");
+    for (let file of files) {
+        zip.write(file);
+    }
+    zip.close();
 }
 
 function rmdirRec(path) {
@@ -268,6 +284,19 @@ let api = {
         await initPromise; // includes fs init
         fs.writeFile(path, new Uint8Array(data));
     },
+    listExtraFiles: async (path) => {
+        await initPromise; // includes fs init
+        return fs.readdir(path).filter(f => !f.startsWith(".") && !f.startsWith("__"));
+    },
+    downloadExtraFiles: async (paths) => {
+        await initPromise; // includes fs init
+        if (paths.length == 1) {
+            return fs.readFile(paths[0]);
+        } else {
+            makeArchiveFrom(tempZip, paths);
+            return fs.readFile(tempZip);
+        }
+    },
     
     getProgress: () => initProgress,
     getVersion: async () => {
@@ -346,11 +375,14 @@ let api = {
         
         if (!self.shrinko_run_tests) {
             let response = await fetch("shrinko_test.zip");
-            await pyodide.unpackArchive(await response.arrayBuffer(), "zip");
+            await pyodide.unpackArchive(await response.arrayBuffer(), "zip", {extractDir});
 
-            let run_tests = pyodide.pyimport("run_tests")
+            let run_tests = pyodide.pyimport(extractDir + ".run_tests")
             self.shrinko_run_tests = run_tests.main
         }
+        
+        let oldCwd = fs.cwd();
+        fs.chdir(extractDir);
 
         let args = [];
         if (argsStr) {
@@ -369,9 +401,11 @@ let api = {
                 fs.rename("private_test_output", "test_output/private")
             }
 
-            makeArchive("save.zip", "zip", "test_output", ".");
-            saveData = fs.readFile("save.zip");
+            makeArchive(tempZip, "zip", "test_output", ".");
+            saveData = fs.readFile(tempZip);
         }
+
+        fs.chdir(oldCwd);
 
         return [exitcode, output, saveData]
     },

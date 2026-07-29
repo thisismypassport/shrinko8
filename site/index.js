@@ -358,9 +358,8 @@ async function beginInputSelect(paths, reason, initialSel) {
     $("#input-select-extra-label").toggle(reason == "main");
     let selectExtra = $("#input-select-extra");
     selectExtra.prop("checked", false);
-    selectExtra.click(() => {
-        inExtraMode = !inExtraMode;
-    })
+    selectExtra.off();
+    selectExtra.click(() => { inExtraMode = !inExtraMode; });
 
     let elem = $('#input-select-list');
     elem.empty();
@@ -438,17 +437,98 @@ export async function loadPicoDat(file) {
     doShrinkoAction();
 }
 
-export function preLoadExtraFile() {
+export function preLoadExtraFiles() {
     $("#advanced-upload-ok").hide()
 }
 
-export async function loadExtraFile(file) {
-    let path = file.name // drop in root for simplicity
-    let data = await readFile(file)
-    await api.uploadExtraFile(path, data)
+export async function loadExtraFiles(files) {
+    let anyPath;
+    await Promise.all(Array.prototype.map.call(files, async file => {
+        let path = file.name // drop in root for simplicity
+        let data = await readFile(file)
+        await api.uploadExtraFile(path, data)
+        anyPath = path;
+    }));
+    
     $("#advanced-upload-ok").show()
-    $("#advanced-upload-ok").text(`Successfully added ${path}`)
+    if (files.length == 1) {
+        $("#advanced-upload-ok").text(`Successfully added ${anyPath}`);
+    } else {
+        $("#advanced-upload-ok").text(`Successfully added ${files.length} files`);
+    }
     outputCache = {}
+}
+
+export async function downloadExtraFiles() {
+    let paths = await api.listExtraFiles(".");
+
+    let elem = $('#advanced-download-list');
+    elem.empty();
+    
+    let prevDiv;
+    for (let path of paths) {
+        let div = $("<div/>");
+        div.text(path);
+        div.css("cursor", "pointer");
+        div.css("user-select", "none");
+
+        div.click(event => {
+            if (!event.ctrlKey) {
+                elem.children().removeClass("selected");
+            }
+
+            if (event.shiftKey && prevDiv) {
+                let prevIdx = elem.children().index(prevDiv);
+                let idx = elem.children().index(div);
+                if (idx > prevIdx) {
+                    prevDiv.nextUntil(div).addClass("selected");
+                } else if (idx < prevIdx) {
+                    div.nextUntil(prevDiv).addClass("selected");
+                }
+                div.addClass("selected");
+                prevDiv.addClass("selected");
+            } else if (event.ctrlKey && div.hasClass("selected")) {
+                div.removeClass("selected");
+                prevDiv = undefined;
+            } else {
+                div.addClass("selected");
+                prevDiv = div;
+            }
+        });
+
+        elem.append(div);
+    }
+
+    let empty = paths.length == 0;
+    $("#advanced-download-list").toggle(!empty);
+    $("#advanced-download-ok").toggle(!empty);
+    $("#advanced-download-prompt").toggle(!empty);
+    $("#advanced-download-empty").toggle(empty);
+
+    $("#advanced-download-overlay").show();
+}
+
+export async function onDownloadExtra() {
+    let elem = $('#advanced-download-list');
+    let divs = elem.children().filter(".selected");
+    if (divs.length == 0) {
+        divs = elem.children();
+    }
+    let paths = divs.map((_, div) => $(div).text()).get();
+
+    let data = await api.downloadExtraFiles(paths);
+    
+    if (paths.length === 1) {
+        download(data, paths[0], "application/octet-stream");
+    } else {
+        download(data, "files.zip", "application/zip");
+    }
+
+    onDownloadExtraClose();
+}
+
+export function onDownloadExtraClose() {
+    $("#advanced-download-overlay").hide();
 }
 
 let pythonScriptMgr = new InputChangeMgr("#script-code-python", "updatePythonScriptFile");
@@ -610,7 +690,7 @@ function applyCounts(stdouterr) {
 let activeMinifies = 0;
 
 async function doMinify() {
-    $("#minify-diag-output").hide();
+    $("#minify-diag-overlay").hide();
     $("#minify-overlay").show();
     activeMinifies++;
 
@@ -707,7 +787,7 @@ function updateMinifyResults(format) {
     }
 
     $("#minify-error-overlay").toggle(code != 0);
-    $("#minify-diag-output").toggle(code == 0 && stdouterr !== "");
+    $("#minify-diag-overlay").toggle(code == 0 && stdouterr !== "");
 }
 
 let activeLints = 0;
@@ -758,6 +838,7 @@ export function runHelp() {
         pre.innerHTML = help;
         helpwin.document.body.style.margin = fullElem.css("margin");
         helpwin.document.body.appendChild(pre);
+        helpwin.document.title = "Shrink8 --help";
     }).catch(e => {
         alert("--help failed");
     });
@@ -914,6 +995,18 @@ function initAceIfNeeded(id, lang, cb) {
         elem.data("editor", editor);
         if (cb) {
             editor.session.on("change", cb);
+        }
+    }
+}
+
+export function globalKeyDown(event) {
+    if (event.key === 'Escape') {
+        if ($('#input-select-overlay').isShown()) {
+            onInputSelectClose();
+            return true;
+        } else if ($('#advanced-download-overlay').isShown()) {
+            onDownloadExtraClose();
+            return true;
         }
     }
 }
