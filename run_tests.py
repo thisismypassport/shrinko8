@@ -325,6 +325,7 @@ def run():
     if run_test("TRON_user", "usertron.p64", "usertron_c.p64", target=Target.picotron):
         run_test("TRON_user_u", "usertron_c.p64", "usertron.p64", "--uncompress-pods", from_output=True, target=Target.picotron)
     run_test("TRON_dep", "deptron.p64", "deptron.p64", "--minify-consts-only", target=Target.picotron)
+    run_test("TRON_char", "charmix.p64", "charmix.p64", target=Target.picotron)
 
 def main(raw_args=None):
     raw_args = default(raw_args, sys.argv[1:])

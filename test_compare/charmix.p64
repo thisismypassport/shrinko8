@@ -1,0 +1,12 @@
+picotron cartridge // www.picotron.net
+version 2
+
+:: main.lua
+b64$LS1bW3BvZF9mb3JtYXQ9InJhdyIsY3JlYXRlZD0iMjAyNi0wNy0yOSAwODoyMDo0OSIsbW9k
+aWZpZWQ9IjIwMjYtMDctMjkgMDg6Mjg6NTUiLHJldmlzaW9uPTE1XV0Kc3RyPSdceDgwXHg4Mlx4
+ZmVceGZmXHgxMCcKP3N0cgo-I3N0cgpzdHI9J4CC-v8QJwo-c3RyCj8jc3RyCnN0cj0nXHV7ODB9
+XHV7ZmZmZn1cdXs3ZmZmZmZmZn0nCj9zdHIKPyNzdHIKc3RyPSfil4vwn5Cx4qyH77iP4pal44GC
+44Ki4pec4ped4pauJwo-c3RyCj8jc3Ry
+:: .info.pod
+--[[pod,created="2026-07-29 08:40:06",modified="2026-07-29 08:40:59",runtime=21,workspaces={{location="main.lua",workspace_index=1}}]]nil
+:: [eoc]

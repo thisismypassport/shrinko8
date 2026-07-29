@@ -239,6 +239,7 @@ def decode_luastr(bytes):
     return bytes.decode(errors="surrogateescape")
 
 # langstr - p8str or luastr
+# (in practice, picotron also uses p8scii, but at a 'higher level' than pico8 does)
 
 def to_langstr(text, lang):
     if lang == Language.pico8:
