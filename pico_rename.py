@@ -418,9 +418,8 @@ def rename_tokens(ctxt, root, rename_opts):
 
         avoid_locals = avoid_globals = avoid_members = ()
         if ctxt.lang == Language.pico8:
-            for ch in "bxBX": # these chars cause extra space if placed after 0
-                if ident.startswith(ch):
-                    avoid_locals, avoid_globals, avoid_members = locals_after_zero, globals_after_zero, members_after_zero
+            if ident[0] in "bxBX": # these chars cause extra space if placed after 0
+                avoid_locals, avoid_globals, avoid_members = locals_after_zero, globals_after_zero, members_after_zero
 
         if ident != "_ENV":
             excluded = []

@@ -1,3 +1,4 @@
+This cart is licensed via AGPLv3 and its source code & the license must be made available when distributing it
 Compilation errors:
 test_input/parens8-err.p8:6:13: Cannot goto label inner_label across a compiler switch
 test_input/parens8-err.p8:12:21: cannot use a local 'outer_local' across a compiler switch - try using a global instead

@@ -120,7 +120,7 @@ def run_code(target, *args, exit_code=0):
                     cmd = [g_exe_paths[target], *args]
                 else:
                     cmd = [sys.executable, "-m", g_install_scripts[target], *args]
-                stdout = subprocess.check_output(cmd, encoding="utf8", cwd="test_directory")
+                stdout = subprocess.check_output(cmd, encoding="utf8", stderr=subprocess.STDOUT, cwd="test_directory")
             except subprocess.CalledProcessError as e:
                 actual_code = e.returncode
                 stdout = e.stdout
@@ -128,7 +128,7 @@ def run_code(target, *args, exit_code=0):
             stdout_io = StringIO()
             try:
                 with patch.object(sys, "argv", ["dontcare", *args]):
-                    with patch.object(sys, "stdout", stdout_io):
+                    with patch.object(sys, "stdout", stdout_io), patch.object(sys, "stderr", stdout_io):
                         exec_script_by_path(g_code_files[target], name="__main__")
             except SystemExit as e:
                 actual_code = e.code or 0
@@ -172,9 +172,8 @@ def run_test_pico(cart):
     printh_io = StringIO()
     ignored_io = StringIO()
     try:
-        with patch.object(sys, "stdout", ignored_io):
-            with patch.object(sys, "stderr", printh_io):
-                runtime.execute(code)
+        with patch.object(sys, "stdout", ignored_io), patch.object(sys, "stderr", printh_io):
+            runtime.execute(code)
     except StopError:
         pass
     

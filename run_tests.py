@@ -6,7 +6,7 @@ import argparse, fnmatch
 parser = argparse.ArgumentParser()
 parser.add_argument("--measure", action="store_true", help="print the input/output counts for successful tests")
 parser.add_argument("--no-measure", action="store_true", help="don't print the input/output counts for failed tests")
-parser.add_argument("--stdout", action="store_true", help="print the stdout of shrinko8 while running the tests")
+parser.add_argument("--stdout", action="store_true", help="print the stdout & stderr of shrinko8 while running the tests")
 parser.add_argument("-t", "--test", action="append", help="specify a specific test to run, optionally with wildcards")
 parser.add_argument("-r", "--target", type=Target, help="run only tests with this target")
 parser.add_argument("--test-from", help="specify a specific test to start running from")
