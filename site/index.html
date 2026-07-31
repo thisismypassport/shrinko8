@@ -304,8 +304,8 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
               <label><input type="radio" name="minify" value="--unminify">Undo Minification (Beautify)</label><br/>
               <label><input type="radio" name="minify" value="">No Minification (Convert Format)</label><br/>
               <label><input type="radio" name="minify" 
-                value="--minify-safe-only --no-minify-rename --no-minify-lines">Minimal Minification (Easy to read &amp; debug)</label><br/>
-              <label><input type="radio" name="minify" value="--minify-safe-only" checked>Safe Minification</label><br/>
+                value="--minify-safe-only --no-minify-rename --no-minify-lines" id="minify-min">Minimal Minification (Easy to read &amp; debug)</label><br/>
+              <label><input type="radio" name="minify" value="--minify-safe-only" id="minify-safe" checked>Safe Minification</label><br/>
               <label><input type="radio" name="minify" value="--minify" id="minify-agg">Aggressive Minification</label><br/>
 
               <div id="minify-max-div">
@@ -319,7 +319,7 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
                 </div>
               </div>
 
-              <label style="display: block; margin-top: 10px; {{display(pico8)}}">Focus on reducing:
+              <label id="minify-focus-parent" style="display: block; margin-top: 10px; {{display(pico8)}}">Focus on reducing:
                 <select id="minify-focus">
                   <option value="">(Balanced)</option>
                   <option value="--focus-tokens">Tokens</option>
@@ -330,10 +330,17 @@ It can be a .{{srcext}} file, a .png cart, {{"a whole directory, " if picotron}}
                 </select>
               </label>
 
-              <label><input type="checkbox" style="margin-top: 20px" id="minify-keep-lines">Keep linebreaks (Helps debugging)</label>
+              <label id="minify-keep-lines-parent">
+                <input type="checkbox" style="margin-top: 20px" id="minify-keep-lines">Keep linebreaks (Helps debugging)
+              </label>
             </div>
             
             <div style="flex: 0">
+              <span id="minify-request">
+                <a href="https://github.com/thisismypassport/shrinko8#sharing-the-minified-cart" target="_blank" style="color: darkgreen" >
+                  Consider sharing your source code
+                </a>
+              </span>
               <table class="count-table" style="margin-top: 15px">
                 <tr style="{{display(pico8)}}">
                   <td>Tokens: </td>

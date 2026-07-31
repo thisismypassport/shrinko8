@@ -65,6 +65,24 @@ If the minified cart errors or misbehaves, here are some tips:
 
     * If `--minify-safe-only` costs too much for you, though, read on to see [how to help Shrinko8 minify your cart correctly without safe minification](#pitfalls-of-full-minification).
 
+## Sharing the minified cart
+
+When sharing the minified cart, especially in the BBS, please consider also sharing the source code before minification - so that others can learn from your cart, which is in the spirit of the Pico-8 community. Some possible ways to share it are:
+
+1) In the BBS, add something like the following to your post: (As of this writing, it won't be syntax-highlighted, but maybe one day...)
+````
+Source Code:
+[hidden]
+```lua
+<put the source code here>
+```
+[/hidden]
+````
+
+2) If you have a GitHub account, create a project or a [gist](https://gist.github.com/) with the source code and share a link to it. (Give the file a lua extension if you want syntax highlighting)
+
+Also - if you have some spare characters & bytes - you can add a [kept comment](#keeping-comments) at the top of your cart, telling that (or where) the source is available.
+
 ## Minify options
 
 You can specify what the minification should focus on reducing via additional command-line options:
@@ -495,7 +513,7 @@ Shrinko8 can use Parens8 to compile sections of the cart enclosed between `--$sw
 You normally would want to use it on sections of the cart that execute rarely or aren't performance-critical. (It's also preferrable - but not required - to place all such code together to minimize the number of times you switch the compiler)
 
 **IMPORTANT** - Parens8 is licensed under AGPLv3 which means that for any carts you generate using Parens8 (whether through Shrinko or directly), you must:
-* Make the source code (before any compiling or minification) available when distributing the carts
+* Make the source code (before any compiling or minification) [available](#sharing-the-minified-cart) when distributing the carts
 * Make the [Parens-8 license](https://github.com/thisismypassport/shrinko8/blob/main/scripts/parens8.MIN_LICENSE) available when distributing the carts
 
 (Shrinko8 itself is not licensed under AGPL and has a special exception to use Parens8 despite this)

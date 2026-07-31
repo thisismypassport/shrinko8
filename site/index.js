@@ -838,7 +838,7 @@ export function runHelp() {
         pre.innerHTML = help;
         helpwin.document.body.style.margin = fullElem.css("margin");
         helpwin.document.body.appendChild(pre);
-        helpwin.document.title = "Shrink8 --help";
+        helpwin.document.title = "Shrinko --help";
     }).catch(e => {
         alert("--help failed");
     });
@@ -878,11 +878,16 @@ function doShrinkoAction() {
 
 // called when the minify options change
 function onMinifyOptsChange(event) {
-    let aggressive = $("#minify-agg").isChecked();
-    $("#minify-max-div").toggle(aggressive);
+    let minifyAggressive = $("#minify-agg").isChecked();
+    let minifyMajor = minifyAggressive || $("#minify-safe").isChecked();
+    let minifyAny = minifyMajor || $("#minify-min").isChecked();
+    $("#minify-max-div").toggle(minifyAggressive);
+    $("#minify-keep-lines-parent").toggle(minifyMajor);
+    $("#minify-request").toggle(minifyAny);
+    $("#minify-focus-parent").toggle(minifyAny);
 
-    let needTable = $("#minify-focus").val().includes("--focus-tokens");
-    $("#minify-max-table").toggle(aggressive && needTable);
+    let needTable = $("#minify-focus").val().includes("--focus-tokens"); // makes sense if you think about it, so it doesn't really...
+    $("#minify-max-table").toggle(minifyAggressive && needTable);
 
     if (event) {
         $("#minify-format option").each(function () {
