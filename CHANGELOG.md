@@ -1,4 +1,7 @@
 
+## v1.2.7c (In progress)
+* parens8 - support not running immediately
+
 ## v1.2.7b
 * Updated to newer version of Parens8 with reduced token/compressed/char costs.
 * Added the changelog you're reading right now.

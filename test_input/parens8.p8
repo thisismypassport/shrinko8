@@ -13,6 +13,8 @@ globally_print("inside rom")
 globally_print("inside compressed rom")
 --$switch-compiler: parens8 compress
 globally_print("inside compressed")
+--$switch-compiler: parens8 dest=my_glob
+globally_print("inside my_glob")
 --$switch-compiler: none
 
 globally_print("outside again")
@@ -22,5 +24,7 @@ globally_print("outside again")
 
 --[[$switch-compiler: parens8 rom=0x1000]]--[[$switch-compiler: none]]
 --[[$switch-compiler: parens8 rom=0x1000]]globally_print("inside tight")--[[$switch-compiler: none]]
+
+run_ps8(my_glob)
 
 globally_print("outside finally")

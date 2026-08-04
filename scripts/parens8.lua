@@ -41,7 +41,7 @@ end
 
 function get_parens8_data(ctxt)
     return ctxt.get_field("parens8_data", function()
-        return {num_compilers=0, results={}, rom_ranges={}} -- has_interpreter=False, has_decompressor=False, is_bigstring=False, needs_reset=False
+        return {num_compilers=0, results={}, rom_ranges={}}
     end)
 end
 
@@ -70,8 +70,16 @@ function reset(opts)
     -- we don't copy here - they'll be copied in their initial state again next compilation
 end
 
+function rename(ctxt, name)
+    if ctxt.global_renames then
+        name = python.attrs(ctxt.global_renames).get(name, name)
+    end
+    return name
+end
+
 function Parens8Compiler:__init(opts)
-    self.args = opts.args
+    self.raw_args = opts.args
+    self.cl_args = split_args(self.raw_args)
     self.ctxt = opts.ctxt
     self.src = opts.src
     self.id = tostr(self, 1) -- used to identify this compiler instance inside strings
@@ -80,12 +88,21 @@ function Parens8Compiler:__init(opts)
 end
 
 function Parens8Compiler:get_dynamic_includes()
+    local data = get_parens8_data(self.ctxt)
+
     local includes = {}
-    if not get_parens8_data(self.ctxt).has_interpreter then
-        add(includes, "parens8.interpreter " .. self.args)
+    if not data.has_interpreter then
+        add(includes, "parens8.interpreter " .. self.raw_args)
         -- (guaranteed to set parens8.interpreter before next compilation)
     end
-    add(includes, "parens8.run " .. self.id)
+
+    if self.cl_args.dest then
+        data.disable_cleanup = true
+        add(includes, "parens8.assign " .. self.cl_args.dest .. " " .. self.id)
+    else
+        add(includes, "parens8.run " .. self.id)
+    end
+    
     return python.list(includes)
 end
 
@@ -99,41 +116,36 @@ function Parens8Compiler:compile(root, opts)
         python.attrs(self.ctxt.at_finish).append(reset)
         data.needs_reset = true
     end
-
-    local function rename(name)
-        if self.ctxt.global_renames then
-            name = python.attrs(self.ctxt.global_renames).get(name, name)
-        end
-        return name
-    end
     
-    local cl_args = split_args(self.args)
-
     -- extract our options
-    local rom_addr = cl_args.rom; cl_args.rom = nil
+    local parens_args = copy(self.cl_args)
+    
+    local rom_addr = self.cl_args.rom; parens_args.rom = nil
     if (rom_addr and type(rom_addr) != "number") rom_addr = 0
 
-    local rom_endaddr = cl_args.rom_end; cl_args.rom_end = nil
+    local rom_endaddr = self.cl_args.rom_end; parens_args.rom_end = nil
     if (type(rom_endaddr) != "number" or rom_endaddr > ROM_ENDADDR) rom_endaddr = ROM_ENDADDR
 
-    local compress = cl_args.compress; cl_args.compress = nil
+    local compress = self.cl_args.compress; parens_args.compress = nil
     if (compress and type(compress) != "string") compress = "lzw"
+    
+    parens_args.dest = nil; parens_args.bigstring = nil; parens_args.deserialize = nil
 
     -- modify non-string options
     data.num_compilers -= 1 -- to go...
-    if not cl_args.vm_cleanup and data.num_compilers == 0 then
-        cl_args.vm_cleanup = "full"
+    if not parens_args.vm_cleanup and data.num_compilers == 0 and not data.disable_cleanup then
+        parens_args.vm_cleanup = "full"
     end
-    cl_args.vm_cleanup = cl_args.vm_cleanup == "full" and vm_cleanup_full -- else empty
+    parens_args.vm_cleanup = parens_args.vm_cleanup == "full" and vm_cleanup_full -- else empty
     
-    if self.ctxt.global_renames and cl_args.vm_cleanup then -- need to rename cleanups in tandem...
-        cl_args.vm_cleanup = copy(cl_args.vm_cleanup)
-        for i, cleanup in pairs(cl_args.vm_cleanup) do
-            cl_args.vm_cleanup[i] = rename(cleanup)
+    if self.ctxt.global_renames and parens_args.vm_cleanup then -- need to rename cleanups in tandem...
+        parens_args.vm_cleanup = copy(parens_args.vm_cleanup)
+        for i, cleanup in pairs(parens_args.vm_cleanup) do
+            parens_args.vm_cleanup[i] = rename(self.ctxt, cleanup)
         end
     end
 
-    local byte_code = compile_crescent(cl_args, code)
+    local byte_code = compile_crescent(parens_args, code)
     
     local compressed_dict
     if compress then
@@ -148,7 +160,10 @@ function Parens8Compiler:compile(root, opts)
         byte_code = compressed_code
     end
     
-    if cl_args.bigstring != data.is_bigstring then
+    if self.cl_args.deserialize and not data.deserialize_kind then
+        stop("the `deserialize` option should be supplied on the first `--$switch-compiler:`, or on the `--$dynamic-include:` if it exists")
+    end
+    if self.cl_args.bigstring != data.is_bigstring then
         stop("all parens8 comments ('--$switch-compiler:' and '--$dynamic-include:') should either have 'bigstring' as an option or not have it as an option")
     end
     if isbigstr(byte_code) and not data.is_bigstring then
@@ -184,7 +199,7 @@ function Parens8Compiler:compile(root, opts)
 
     if compress then
         local compressed_dict_lit = pico_output.format_string_literal(compressed_dict)
-        results[self.id] = format("`1`(`2`, `3`)", {rename("_ps8_decompress"), results[self.id], compressed_dict_lit})
+        results[self.id] = format("`1`(`2`, `3`)", {rename(self.ctxt, "_ps8_decompress"), results[self.id], compressed_dict_lit})
     end
 end
 
@@ -212,6 +227,9 @@ function get_parens8_interpreter(opts)
         if cl_args.bigstring then
             data.is_bigstring = true
         end
+        if cl_args.deserialize then
+            data.deserialize_kind = cl_args.deserialize
+        end
 
         local const_name = 'ps8_const'
         local deserializer_name = 'ps8_decode'
@@ -228,7 +246,8 @@ function get_parens8_interpreter(opts)
         template = checked_gsub(template, '`deserializer`', deserializer_name)
         template = checked_gsub(template, '`const`', const_name)
         
-        local deserializer = data.is_bigstring and deserializer_flat_bs or deserializer_flat
+        local deserializer = data.deserialize_kind == "full" and deserializer_full or 
+                             data.is_bigstring and deserializer_flat_bs or deserializer_flat
         deserializer = checked_gsub(deserializer, '`funcname`', deserializer_name)
         
         local boilerplate = checked_gsub(fp_boilerplate, '`funcname`', const_name)
@@ -261,7 +280,15 @@ function get_parens8_interp_argcounts(opts)
 end
 
 function get_parens8_run_code(opts)
-    return format('run_ps8(--[[$placeholder-expr::parens8.result `1`]] "")', {opts.args})
+    local result_id = opts.args
+    return format('run_ps8(--[[$placeholder-expr::parens8.result `1`]] "")', {result_id})
+end
+
+function get_parens8_assign_code(opts)
+    local sep = string.find(opts.args, " ")
+    local dest = rename(opts.ctxt, sub(opts.args, 1, sep - 1))
+    local result_id = sub(opts.args, sep + 1)
+    return format('`1` = --[[$placeholder-expr::parens8.result `2`]] ""', {dest, result_id})
 end
 
 function get_parens8_result(opts)
@@ -274,6 +301,7 @@ function module.include_main(name)
     if (name == "parens8.interp_args") return get_parens8_interp_args
     if (name == "parens8.interp_argcounts") return get_parens8_interp_argcounts
     if (name == "parens8.run") return get_parens8_run_code
+    if (name == "parens8.assign") return get_parens8_assign_code
     if (name == "parens8.result") return get_parens8_result
 end
 

@@ -553,7 +553,6 @@ You can pass additional options to parens8 via `--$switch-compiler: parens8 opti
 * `bigstring` - only enable if directed to by an error message, allows compiling huge amounts of code at once (but costs more tokens/etc)
 * `specialized_for_ops` - improves performance of most compiled `for` loops, but increases token usage.
 * `sparse_vararg` - allows varargs with nils in them to work correctly
-* `vm_cleanup=none` - by default, once the last compiler block runs, no further compilation is possible in exchange for lowering memory usage. setting `vm_cleanup` to none on the last (or only) compiler block avoids this cleanup. Useful if you want to compile stuff again later.
 
 Normally, the interpreter is inserted right before the first `--$switch-compiler:` block, but you can control its placement directly via:
 ```lua
@@ -563,6 +562,11 @@ Normally, the interpreter is inserted right before the first `--$switch-compiler
 Parens8 compilation happens whenever a cart with parens8 hints is minified.
 * To compile parens8 without otherwise minifying your cart, you can pass `--minify-transform-only` in the command-line.
 * To skip compiling parens8 during minification, you can pass `--no-minify-transform` in the command-line.
+
+You are free to use the functions included when using Parens8 yourself for other purposes:
+* `run_ps8` - takes a string, decodes it and runs it. To compile into a string, you can pass the `dest=<global variable>` option to parens8 to have it assign the result to a global variable instead of calling run_ps8 immediately. (The compiled string will not work on other parens8 interpreters, however, as each interpreter is unique)
+* `ps8_decode` - takes a string, returns a function that returns the next lua object decoded from the string each time it's called. To encode such a string, call serialize from [here](https://codeberg.org/wellspring-labs/parens-8/src/commit/9950db65bb487e5cfc933170115b323469855c46/serializers/generic.lua). By default doesn't support tables, can add option `deserialize=full` if you want to encode/decode tables.
+* `_ps8_decompress` - available only if option `compress` is added to parens8. takes 2 strings produced by the compressor and returns a decompressed string. To compress a string into these 2 strings, do `output2 = lzw_compress(input, bit_writer(function(byte) output1..=chr(byte) end))` using functions from [here](https://codeberg.org/wellspring-labs/parens-8/src/commit/9950db65bb487e5cfc933170115b323469855c46/util/lzw.lua).
 
 # Linting
 
