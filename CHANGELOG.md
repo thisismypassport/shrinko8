@@ -1,6 +1,6 @@
 
 ## v1.2.7c (In progress)
-* parens8 - support not running immediately
+* parens8 - support `dest` and `deserialize` options
 
 ## v1.2.7b
 * Updated to newer version of Parens8 with reduced token/compressed/char costs.
