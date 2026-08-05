@@ -281,6 +281,7 @@ def run():
              "--ignore-hints", pico8_output="reorder.p8.printh")
     run_test("reorder_safe_2", "reorder.p8", "reorder_safe_2.p8", "-m", "--focus-tokens", "--no-minify-lines", "--no-minify-consts", 
              "--reorder-safe-only", pico8_output="reorder.p8.printh")
+    run_test("reorder_part", "reorder_part.p8", "reorder_part.p8", "-M", "--focus-tokens", "--no-minify-lines", "--no-minify-consts")
     
     run_test("short", "short.p8", "short.p8", "-m", "--no-minify-consts", "--focus-chars", pico8_output_val="K\nK")
     run_test("short-lines", "short.p8", "short-lines.p8", "-m", "--no-minify-consts", "--no-minify-lines", "--focus-chars", pico8_output_val="K\nK")

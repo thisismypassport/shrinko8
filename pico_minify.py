@@ -217,13 +217,13 @@ def node_contains_vars(root, vars):
     except StopTraverse:
         return True
 
-def expr_is_trivial(root, ctxt, safe_only, allow_member=True, allow_index=True, allow_call=True):
+def expr_is_trivial(root, ctxt, safe_only, allow_member=True, allow_index=True, allow_call=True, has_env=True):
     def visitor(expr):
         # nodes that cannot call user-defined code in any case
         if expr.type in (NodeType.const, NodeType.varargs, NodeType.group,
                          NodeType.table, NodeType.table_member, NodeType.table_index): # (since new tables have no metatable)
             pass
-        elif expr.type == NodeType.var and expr.kind != VarKind.global_:
+        elif expr.type == NodeType.var and (expr.kind != VarKind.global_ or not has_env):
             pass
         elif expr.type == NodeType.unary_op and expr.op == "not":
             pass
@@ -252,7 +252,7 @@ def expr_is_trivial(root, ctxt, safe_only, allow_member=True, allow_index=True, 
     except StopTraverse:
         return False
 
-def minify_merge_assignments(prev, next, ctxt, safe_only):
+def minify_merge_assignments(prev, next, ctxt, safe_only, has_env):
     if len(prev.targets) < len(prev.sources):
         return
     
@@ -289,13 +289,13 @@ def minify_merge_assignments(prev, next, ctxt, safe_only):
     for node in next.sources:
         if target_vars and node_contains_vars(node, target_vars):
             return
-        if require_trivial and not expr_is_trivial(node, ctxt, safe_only, allow_member, allow_index):
+        if require_trivial and not expr_is_trivial(node, ctxt, safe_only, allow_member, allow_index, has_env=has_env):
             return
         
     for node in next.targets:
         if target_vars and node_contains_vars(node, target_vars):
             return
-        if require_trivial and not expr_is_trivial(node, ctxt, safe_only, allow_member, allow_index, allow_call=False):
+        if require_trivial and not expr_is_trivial(node, ctxt, safe_only, allow_member, allow_index, allow_call=False, has_env=has_env):
             return
     
     # when reordering local declarations, ensure we don't change which local wins out among identically-named locals
@@ -431,7 +431,7 @@ def minify_code(ctxt, root, minify_opts):
                 while prev and prev.type == None: # skip erased
                     prev = prev.prev_sibling()
                 if prev and prev.type == node.type:
-                    minify_merge_assignments(prev, node, ctxt, safe_reorder)
+                    minify_merge_assignments(prev, node, ctxt, safe_reorder, root.has_env)
 
     def fixup_tokens(token):
         

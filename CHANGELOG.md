@@ -1,6 +1,7 @@
 
 ## v1.2.7c (In progress)
 * parens8 - support `dest` and `deserialize` options
+* Allow merging assignments to/from globals in safe-minify mode if there's no _ENV
 
 ## v1.2.7b
 * Updated to newer version of Parens8 with reduced token/compressed/char costs.
