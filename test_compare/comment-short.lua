@@ -1,0 +1,1 @@
+--[[this if becomes short]] if (n) --[[ true]]e=1 --[[ else incoming! ]]else --[[end here:]]--[[ false]]e=--[[ this is a really small number ]]0

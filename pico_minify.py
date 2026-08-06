@@ -20,10 +20,6 @@ def minify_string_literal(ctxt, token, focus, value=None):
         # haven't found a good balanced heuristic for 'long' yet
         return format_string_literal(value, long=token.value.startswith('['))
 
-def minify_needs_comments(minify):
-    # returns whether minify_code makes use of the tokens' comments
-    return not minify.get("wspace", True)
-    
 def get_node_bodies(node):
     if node.type in (NodeType.if_, NodeType.elseif):
         yield node.then
@@ -154,6 +150,8 @@ def on_enable_shorthand(node):
     vline = node.first_token().vline
     def fix_vlines(token):
         token.vline = vline
+        for comment in token.children:
+            comment.vline = vline
     node.traverse_tokens(fix_vlines)
 
 def minify_change_block_shorthand(node, new_short):
@@ -200,8 +198,8 @@ def minify_change_print_shorthand(node, new_short):
         node.remove_token(1, "(")
         node.remove_token(-1, ")")
     
+    node.insert_token(1, TokenType.punct, "?", near_next=True)
     node.remove_child(0)
-    node.insert_token(0, TokenType.punct, "?", near_next=True)
     node.func = node.children[0]
 
     on_enable_shorthand(node)

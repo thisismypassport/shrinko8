@@ -1,6 +1,6 @@
 from utils import *
 from pico_defs import *
-from pico_tokenize import Token, TokenType, ConstToken, k_skip_children, tokenize
+from pico_tokenize import Token, TokenType, ConstToken, k_skip_children, tokenize, KeepCommentFlags
 from pico_parse import Node, NodeType, VarKind, is_root_global_or_builtin_local, is_vararg_expr
 from pico_output import format_fixnum, format_luanum
 
@@ -643,30 +643,37 @@ def fold_consts(ctxt, minify_opts, root, errors):
                     if constval:
                         set_const(node, constval, ctxt, focus, in_const_ctxt)
         
-        elif node.type == NodeType.if_:
+        elif node.type in (NodeType.if_, NodeType.elseif):
             constval = get_const(node.cond)
             if constval:
                 if constval.is_truthy:
-                    node.replace_with(create_do_node_if_needed(node.then))
-                elif not node.else_:
-                    node.erase()
-                elif node.else_.type == NodeType.else_:
-                    node.replace_with(create_do_node_if_needed(node.else_.body))
-                else: # elseif
-                    node.replace_with(node.else_)
-                    node.modify_token(0, "if", expected="elseif")
-                    node.type = NodeType.if_
+                    if node.else_:
+                        node.else_.erase(KeepCommentFlags.first)
                     
-        elif node.type == NodeType.elseif:
-            constval = get_const(node.cond)
-            if constval:
-                if constval.is_truthy:
-                    node.replace_with(create_else_node(node.then, node.short))
-                elif not node.else_:
-                    remove_else_node(node.parent)
+                    if node.type == NodeType.if_:
+                        node.replace_with(create_do_node_if_needed(node.then))
+                    else:
+                        node.replace_with(create_else_node(node.then, node.short))
                 else:
-                    node.replace_with(node.else_)
+                    node.then.erase(keep_comments=False)
+                    if node.else_:
+                        node.else_.first_token().remove_comments()
 
+                    if node.type == NodeType.if_:
+                        if not node.else_:
+                            node.erase(KeepCommentFlags.first)
+                        elif node.else_.type == NodeType.else_:
+                            node.replace_with(create_do_node_if_needed(node.else_.body))
+                        else: # elseif
+                            node.replace_with(node.else_)
+                            node.modify_token(0, "if", expected="elseif")
+                            node.type = NodeType.if_
+                    else:
+                        if not node.else_:
+                            remove_else_node(node.parent)
+                        else:
+                            node.replace_with(node.else_)
+    
         # store which node was expected to be const but isn't
         if in_const_ctxt and node.type != NodeType.const and const_ctxt_fail is None:
             if node.parent.type == NodeType.call and node == node.parent.func:

@@ -98,7 +98,7 @@ You can disable parts of the minification process via additional command-line op
 * `--no-minify-consts` : Disable replacements of constant expressions with their value (see [constants](#constants))
 * `--no-minify-spaces` : Disable removal of spaces (and line breaks)
 * `--no-minify-lines` : Disable removal of line breaks
-* `--no-minify-comments` : Disable removal of comments (requires `--no-minify-spaces`)
+* `--no-minify-comments` : Disable removal of comments
 * `--no-minify-tokens` : Disable removal and alteration of tokens (not including identifier renaming)
 * `--no-minify-reorder` : Disable reordering of statements
 

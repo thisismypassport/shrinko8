@@ -3,7 +3,9 @@ version 42
 __lua__
 
 if (true) printh"K" else printh"NOPE"
+
 while (true) printh"K" break
+
 if e==0 do
     ?1
 else

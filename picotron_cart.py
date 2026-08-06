@@ -480,8 +480,8 @@ def read_cart64_from_source(data, path=None, raw=False, **_):
 
     return cart
 
-k_max_bad_p64_char_re = re.compile(b"[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f-\xff]|^" + k_p64_file_prefix, re.M)
-k_min_bad_p64_char_re = re.compile(b"\x00|^" + k_p64_file_prefix, re.M)
+k_max_bad_p64_char_re = b"[\x00-\x08\x0b-\x0c\x0e-\x1f\x7f-\xff]|^" + k_p64_file_prefix
+k_min_bad_p64_char_re = b"\x00|^" + k_p64_file_prefix
 
 def preview_order_key(pair):
     # we prefer to sort p64 files for better visibility of code, e.g. in the webapp's preview
@@ -511,7 +511,7 @@ def write_cart64_to_source(cart, avoid_base64=False, **opts):
     for fspath, file in sorted(cart.files.items(), key=preview_order_key):
         lines.append(k_p64_file_prefix + encode_luastr(fspath))
         if e(file.data):
-            if bad_p64_char_re.search(file.data):
+            if re.search(bad_p64_char_re, file.data, re.M):
                 data = k_p64_b64_prefix + pico_base64_encode(file.data)
                 for line in str_chunk(data, k_p64_b64_line_size):
                     lines.append(line)

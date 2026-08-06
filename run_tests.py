@@ -168,6 +168,9 @@ def run():
     run_test("semiobfuscate", "input.p8", "output_semiob.p8", "--minify", "--no-minify-consts",
              "--preserve", "*.*,preserved_glob",
              "--no-minify-spaces", "--no-minify-lines", pico8_output="output.p8.printh")
+    run_test("keepcomments", "input.p8", "output_keepcom.p8", "--minify", "--no-minify-consts",
+             "--preserve", "*.*,preserved_glob",
+             "--no-minify-comments", pico8_output="output.p8.printh")
     run_test("minrename", "input.p8", "output_minrename.p8", "--minify", "--no-minify-consts",
              "--preserve", "*,*.*", pico8_output="output.p8.printh")
     run_test("auto_minrename", "input.p8", "output_minrename-ih.p8", "--minify", "--no-minify-consts", "--rename-safe-only",
@@ -272,6 +275,7 @@ def run():
 
     run_test("notnil", "notnil.p8", "notnil.p8", "--minify", pico8_output_val="passed")
     run_test("wildcards", "wildcards.p8", "wildcards.p8", "--minify", "--no-minify-consts")
+    run_test("newline", "newline.rom", "newline.p8", "--minify")
 
     run_test("reorder", "reorder.p8", "reorder.p8", "-m", "--focus-tokens", "--no-minify-lines", "--no-minify-consts",
              pico8_output="reorder.p8.printh")
@@ -288,6 +292,8 @@ def run():
     run_test("short-spaces", "short.p8", "short-spaces.p8", "-m", "--no-minify-consts", "--no-minify-spaces", "--focus-chars", pico8_output_val="K\nK")
     run_test("short2", "short2.p8", "short2.p8", "-m", "--no-minify-consts", "--focus-compressed", "--no-minify-spaces")
     run_test("comment", "comment.lua", "comment.lua", "-m")
+    run_test("comment-min", "comment.lua", "comment-min.lua", "-m", "--no-minify-comments", "--no-minify-spaces")
+    run_test("comment-short", "comment-short.lua", "comment-short.lua", "-m", "--no-minify-comments", "--no-minify-spaces")
 
     run_test("version-latest", "versioned.p8", "versioned-latest.p8", "-m", "-oc", pico8_output="versioned.p8.printh")
     run_test("version-orig", "versioned.p8", "versioned-orig.p8", "-m", "-oc", update_version=False, pico8_output="versioned.p8.printh")

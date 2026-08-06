@@ -225,9 +225,9 @@ class Node(TokenNodeBase):
     def append_existing(m, existing, near_next=False):
         m.insert_existing(len(m.children), existing, near_next)
 
-    def remove_child(m, i):
+    def remove_child(m, i, keep_comments=True):
         child = m.children[i]
-        lost_comments = child.collect_comments(irrelevant=True)
+        lost_comments = child.collect_comments(irrelevant=True, flags=keep_comments) if keep_comments else None
         del m.children[i]
 
         # avoid losing irrelevant comments
@@ -235,8 +235,9 @@ class Node(TokenNodeBase):
             token, after = m.find_or_create_token(child_i=i)
             token.add_comments(lost_comments, first=after)
 
-    def replace_with(m, target): # target must not reference m, but may reference m.copy() or m.move()
-        old_comments = m.collect_comments(irrelevant=True)
+    # target must not reference m, but may reference m.copy() or m.move()
+    def replace_with(m, target, keep_comments=True):
+        old_comments = m.collect_comments(irrelevant=True, flags=keep_comments) if keep_comments else None
         old_parent = m.parent
         m.__dict__ = target.__dict__.copy() # the copy is needed due to a python bug/regression
         m.parent = old_parent
@@ -245,13 +246,18 @@ class Node(TokenNodeBase):
         
         # avoid losing irrelevant comments
         if old_comments:
-            new_comments = set(m.collect_comments())
-            lost_comments = [cmnt for cmnt in old_comments if cmnt not in new_comments]
+            new_comments = m.collect_comments()
+            new_comments_set = set(new_comments)
+            new_comments_idx = new_comments[-1].endidx if new_comments else sys.maxsize
+            lost_pre_comments = [cmnt for cmnt in old_comments if cmnt.idx <= new_comments_idx and cmnt not in new_comments_set]
+            lost_post_comments = [cmnt for cmnt in old_comments if cmnt.idx > new_comments_idx and cmnt not in new_comments_set]
             token, after = m.find_or_create_token()
-            token.add_comments(lost_comments, first=after)
+            token.add_comments(lost_pre_comments, first=after)
+            token, after = m.find_or_create_token(last=True)
+            token.add_comments(lost_post_comments, first=after)
     
-    def erase(m):
-        m.replace_with(Node(None, []))
+    def erase(m, keep_comments=True):
+        m.replace_with(Node(None, []), keep_comments)
 
 class ParseError(Exception):
     pass
@@ -586,7 +592,7 @@ def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False)
         node = Node(NodeType.const, [token], token=token)
 
         if getattr(token, "var_kind", None):
-            node.extra_names = k_identifier_split_re.split(token.parsed_value)
+            node.extra_names = re.split(k_identifier_split_re, token.parsed_value)
             for i, value in enumerate(node.extra_names):
                 if is_identifier(value, lang):
                     subtoken = Token.synthetic(TokenType.ident, value, token)

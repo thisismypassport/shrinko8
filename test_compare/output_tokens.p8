@@ -18,7 +18,7 @@ t()
   (also, testing comment removal)
 ]]
 
-x,b=0,0--[[]]
+x,--[[]]b=0,0--[[]]--
 b=0
 
 -- include
@@ -159,7 +159,9 @@ local obv = obj + obj + (obj and _ENV)
 if(true) ?"sh1"
 if (true) ?"sh2"
 if(true) if false do else print"sh3" end
-if (true) if false do else print"sh4" end 
+if (true) if false do else print"sh4" end
+
+-- renaming bugs
 l="renaming bug"
 function fff()
   local l1,l2,l3,l4,l5,l6,l7,l8,l9,l10,l11,l12,l13,l14,l15,l16,l17,l18,l19,l10,l20,l21,l22,l23,l24,l25,l26

@@ -6,7 +6,7 @@ local real_assert = assert
 function assert(cond, num)
     if (num == 38 or num == 68 or num == 69) return cond -- nothing serious, just undocumented minutae
     return real_assert(cond, num)
-end function ps8_const(x) return function() return x end end
+end--[[$lint: ps8_inst, ps8_val, ps8_binder]]function ps8_const(x) return function() return x end end
 
 function ps8_decode(data)
 	local pos = 0

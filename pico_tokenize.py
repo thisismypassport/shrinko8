@@ -21,6 +21,9 @@ class StopTraverse(BaseException):
 
 k_skip_children = True # value returnable from traverse's pre-function
 
+class KeepCommentFlags(Bitmask):
+    first = last = ...
+
 class TokenNodeBase:
     """Baseclass for syntax Tokens, syntax Nodes, and Comments.
     The syntax tree is comprised of these and can be traversed via traverse_nodes or traverse_tokens"""
@@ -88,8 +91,8 @@ class TokenNodeBase:
     def first_token(m): return m._find_token(1)
     def last_token(m): return m._find_token(-1)
 
-    def find_or_create_token(m, child_i=0):
-        for_child = child_i < len(m.children)
+    def find_or_create_token(m, child_i=0, last=False):
+        for_child = child_i < len(m.children) and not last
         if for_child:
             m = m.children[child_i]
         token = m.first_token() if for_child else m.next_token()
@@ -135,12 +138,22 @@ class TokenNodeBase:
             visit(parent)
             parent = parent.parent
 
-    def collect_comments(m, irrelevant=False):
+    def collect_comments(m, irrelevant=False, flags=None):
         comments = []
         def visit(token):
             nonlocal comments
             comments += token.children
-        m.traverse_tokens(visit)
+        
+        if isinstance(flags, KeepCommentFlags):
+            first_token = m.first_token() if flags.first else None
+            last_token = m.last_token() if flags.last else None
+            if first_token:
+                visit(first_token)
+            if last_token and last_token != first_token:
+                visit(last_token)
+        else:
+            m.traverse_tokens(visit)
+
         if irrelevant:
             comments = [c for c in comments if c.hint != CommentHint.auto]
         return comments
@@ -211,6 +224,9 @@ class Token(TokenNodeBase):
             m.children[0:0] = comments
         else:
             m.children += comments
+    
+    def remove_comments(m):
+        m.children = ()
 
     @lazy_property
     def parsed_value(m):
@@ -266,9 +282,14 @@ k_keep_prefix = "keep:"
 class Comment(TokenNodeBase):
     """A pico8 comment, optionally holding some kind of hint"""
 
-    def __init__(m, hint, hintdata=None, hintprefix="", source=None, idx=None, endidx=None, proper=False):
+    def __init__(m, isblock, hint, hintdata=None, hintprefix="", source=None, idx=None, endidx=None, vline=None, modified=False):
         super().__init__()
-        m.hint, m.hintdata, m.hintprefix, m.source, m.idx, m.endidx = hint, hintdata, hintprefix, source, idx, endidx
+        m.isblock, m.hint, m.hintdata, m.hintprefix = isblock, hint, hintdata, hintprefix
+        m.source, m.idx, m.endidx, m.vline, m.modified = source, idx, endidx, vline, modified
+
+    def modify(m, value):
+        m.value = value
+        m.modified = True
 
     @property
     def value(m):
@@ -281,7 +302,7 @@ def is_ident_char(ch, lang=Language.pico8):
 def is_identifier(str, lang=Language.pico8):
     return str and all(is_ident_char(ch, lang) for ch in str) and not str[:1].isdigit() and str not in keywords
     
-k_identifier_split_re = re.compile(r"([0-9A-Za-z_\x1e\x1f\x80-\xff]+)")
+k_identifier_split_re = r"([0-9A-Za-z_\x1e\x1f\x80-\xff]+)"
 
 k_hint_split_re = re.compile(r"[\s,]+")
 
@@ -511,15 +532,15 @@ def tokenize(source, ctxt=None, all_comments=False, lang=None, inner=False):
             # at some point, warn about improper comments and so on?
 
         if all_comments or (hint != CommentHint.none and hint != CommentHint.auto):
-            get_next_mods().add_comment(Comment(hint, hintdata, hintprefix, source, orig_idx, idx))
+            get_next_mods().add_comment(Comment(isblock, hint, hintdata, hintprefix, source, orig_idx, idx, vline))
         
     def tokenize_line_comment():
         nonlocal vline
         orig_idx = idx
         while take() not in ('\n', ''): pass
-        vline += 1
 
         process_comment(orig_idx - 2, text[orig_idx:idx], isblock=False)
+        vline += 1
 
     def tokenize_long_brackets(off):
         nonlocal idx
@@ -877,10 +898,11 @@ def parse_string_literal(str, lang=Language.pico8):
     """parse a pico8 string from a pico8 string literal"""
     if str.startswith("["):
         start = str.index("[", 1) + 1
-        end = -start
-        if str[start] == '\n':
-            start += 1
-        return str[start:end]
+        lit = str[start:-start]
+        lit = re.sub(r"\n\r?|\r\n?", "\n", lit)
+        if lit.startswith('\n'):
+            lit = lit[1:]
+        return lit
 
     else:
         litparts = []

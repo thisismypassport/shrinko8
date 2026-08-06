@@ -274,17 +274,17 @@ local --[[non-const]] ncval = 4
 ?false
 if (ERROR) ?#65533
 -- misc2
---[[const]] ; ?61.5
---[[const]] ; ?579
+ ; ?61.5
+ ; ?579 
 --[[const]] ssog5 = 456, 789; ?579
---[[const]] ; ?123
+ ; ?123
 ?nil
-bar, bar2 = foo(), foo(); ?123
---[[const]] bar = foo(); ?579
---[[const]] ssog14, --[[const]] ssog15 = foo(); ?ssog15
+bar, bar2 = foo(), foo(); ?123 
+bar = foo(); ?579
+--[[const]] ssog14, --[[const]] ssog15 = foo(); ?ssog15 
 --[[const]] ssog22 =nil ; ?5
 ssog22=1
---[[const]] ; ?5
+ ; ?5
 ?nil
 local ssog26 ; ?5
 ssog26=1
@@ -294,13 +294,13 @@ local ssog31; ssog31=ssog31,ssog31; ssog31,ssog31=ssog31; ?nil
 -- misc3
 local a0 = foo()
 ;({}).x=foo()
---[[const]];({}).x=foo()
 ;({}).x=foo()
-?foo()
---[[const]];({}).x = 4
+;({}).x=foo()
+?foo() 
+;({}).x = 4
 -- if
-print(true) 
-?false
+ print(true) 
+?false 
 print(true) 
 print(false) 
 print(true) 
@@ -309,32 +309,32 @@ print(false)
 print(nil) 
 print(0) 
 print(false) 
-if foo then print(nil) else print(false) end
+if foo then print(nil) else print(false) end 
 print(nil) 
-print(true) 
-if foo then print(true) else print(nil)end 
+print(true)
+if foo then print(true) else print(nil)end
 if foo then print(true) else print(false) end
-if foo then print(true) else print(nil)end 
-if foo then print(true)end 
-if foo then print(true) else print(nil)end 
-if foo then print(true) else print(0)end 
+if foo then print(true) else print(nil)end
+if foo then print(true)end
+if foo then print(true) else print(nil)end
+if foo then print(true) else print(0)end
 if foo then print(true) else print(false) end
-if foo then print(true) elseif bar then print(1) else print(nil)end 
+if foo then print(true) elseif bar then print(1) else print(nil)end
 if foo then print(true) elseif bar then print(1) else print(false) end
-if foo then print(true) elseif bar then print(1) else print(nil)end 
-if foo then print(true) elseif bar then print(1)end 
-if foo then print(true) elseif bar then print(1) else print(nil)end 
-if foo then print(true) elseif bar then print(1) else print(0)end 
+if foo then print(true) elseif bar then print(1) else print(nil)end
+if foo then print(true) elseif bar then print(1)end
+if foo then print(true) elseif bar then print(1) else print(nil)end
+if foo then print(true) elseif bar then print(1) else print(0)end
 if foo then print(true) elseif bar then print(1) else print(false) end
 ?""
 -- if misc
-?""
-do local a=3end ?a
-?a
-if foo then --[[non-const]] local a=3 end ?a
-?a
-do local function a() end end ?a
+?"" 
+do--[[non-const]] local a=3end ?a 
+?a 
+if foo then --[[non-const]] local a=3 end ?a 
+?a 
+do local function a() end end ?a 
 ?a
 do do::a::end goto a end ::a::
-do goto b end ::b::
+do goto b end ::b:: 
 do return end ?3

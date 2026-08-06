@@ -1,7 +1,7 @@
 from utils import *
 from pico_defs import k_fixnum_mask, k_luaint_mask, float_is_negative
 from pico_tokenize import tokenize, parse_fixnum
-from pico_tokenize import Token, k_char_escapes, CommentHint, k_keep_prefix
+from pico_tokenize import Token, k_char_escapes, Comment, CommentHint, k_keep_prefix
 from pico_parse import k_nested
 
 def float_str_add_1(str):
@@ -211,6 +211,12 @@ k_char_escapes_rev.update({"\0": "0", "\x0e": "14", "\x0f": "15"})
 
 k_char_escapes_rev_min = {k: v for k, v in k_char_escapes_rev.items() if k in "\0\n\r\"'\\"}
 
+def get_long_brackets_equals(value):
+    for i in itertools.count():
+        eqs = "=" * i
+        if f"]{eqs}]" not in value:
+            return eqs
+
 def format_string_literal(value, use_ctrl_chars=True, use_complex_long=True, long=None, quote=None):
     """format a pico8 string to a pico8 string literal"""
 
@@ -218,11 +224,7 @@ def format_string_literal(value, use_ctrl_chars=True, use_complex_long=True, lon
         if "\0" not in value and "\r" not in value and (use_complex_long or "]]" not in value):
             newline = "\n" if value.startswith("\n") else ""
 
-            for i in itertools.count():
-                eqs = "=" * i
-                if f"]{eqs}]" not in value:
-                    break
-            
+            eqs = get_long_brackets_equals(value)
             strlong = f"[{eqs}[{newline}{value}]{eqs}]"
             if long == True:
                 return strlong
@@ -254,10 +256,13 @@ def format_string_literal(value, use_ctrl_chars=True, use_complex_long=True, lon
 
     return strlong if len(strlong) < len(strlit) else strlit
 
-def need_whitespace_between(ctxt, prev_token, token):
-    combined = prev_token.value + token.value
+def need_whitespace_between(ctxt, prev, next):
+    if isinstance(prev, Comment) or isinstance(next, Comment):
+        return False
+
+    combined = prev.value + next.value
     ct, ce = tokenize(Source("<output>", combined), lang=ctxt.lang) # TODO: optimize?
-    return ce or len(ct) != 2 or (ct[0].type, ct[0].value, ct[1].type, ct[1].value) != (prev_token.type, prev_token.value, token.type, token.value)
+    return ce or len(ct) != 2 or (ct[0].type, ct[0].value, ct[1].type, ct[1].value) != (prev.type, prev.value, next.type, next.value)
 
 def is_non_nested_short(node):
     # k_nested is set for shorthands used in the middle of a line
@@ -267,13 +272,20 @@ def get_orig_wspace(pre, post, ctxt, allow_linebreaks, need_linebreak=False):
     source = default(pre.source, post.source)
     text = source.text[pre.endidx:post.idx]
     
-    if not text.isspace():
-        # verify this range contains only whitespace/comments (may contain more due to reorders/removes)
+    if text and not text.isspace():
         tokens, _ = tokenize(Source("<output>", text), lang=ctxt.lang) # TODO: optimize?
         if tokens:
             if "\n" in text and allow_linebreaks:
                 need_linebreak = True
-            text = text[:tokens[0].idx] or text[tokens[-1].endidx:]
+            text = text[tokens[-1].endidx:] or text[:tokens[0].idx]
+        
+        newlines = min(text.count("\n"), 2)
+        if newlines:
+            text = text[text.rfind("\n")+1:]
+
+        num_lspace = len(text) - len(text.lstrip(" "))
+        num_rspace = len(text) - len(text.rstrip(" "))
+        text = "\n" * newlines + " " * max(num_lspace, num_rspace)
 
     if not allow_linebreaks and "\n" in text:
         text = text[:text.index("\n")] + " "
@@ -290,76 +302,73 @@ def output_node(root, ctxt, minify=True, minify_wspace=None, minify_lines=None, 
     exclude_comments = default(exclude_comments, minify)
     
     output = []
-    prev_token = Token.none
-    prev_vline = 0
+    prev_token_or_comment = Token.none
     need_linebreak = False
     short_level = 0
 
-    def output_with_min_wspace(token):
-        nonlocal prev_token, prev_vline, need_linebreak
-
-        if token.children:
-            for comment in token.children:
-                if comment.hint == CommentHint.keep:
-                    output.append(comment.value.replace(comment.hintprefix + k_keep_prefix, "", 1))
-
-        if token.value is None:
-            return
-
-        # (modified tokens may require whitespace not previously required - e.g. 0b/0x)
-        if (prev_token.endidx < token.idx or prev_token.source != token.source or prev_token.modified or token.modified) and prev_token.value:
-            # TODO: can we systemtically add whitespace to imrpove compression? (failed so far)
-
-            if need_linebreak or (not minify_lines and token.vline != prev_vline):
-                output.append("\n")
-                need_linebreak = False
-            elif need_whitespace_between(ctxt, prev_token, token):
-                output.append(" ")
-
-        output.append(token.value)
-        prev_token = token
-        prev_vline = token.vline
-
-    def output_with_orig_wspace(token):
-        nonlocal prev_token, prev_vline, need_linebreak
-
-        # TODO - change this to go over comment objects and ensure they all get added?
-        # (and move the below check further down to avoid excluding final comments...)
-        # can test via comment.lua + --minify-consts-only
+    def wspace_output(next_token_or_comment, can_need_linebreak=True):
+        nonlocal prev_token_or_comment, need_linebreak
+        prev, next = prev_token_or_comment, next_token_or_comment
         
-        if token.value is None:
-            return
-        
-        if prev_token.endidx != token.idx or prev_token.modified or token.modified:
-            allow_linebreaks = token.vline != prev_vline
-            wspace = get_orig_wspace(prev_token, token, ctxt, allow_linebreaks, need_linebreak)
+        if minify_wspace:
+            # (modified tokens may require whitespace not previously required - e.g. 0b/0x)
+            if (prev.endidx < next.idx or prev.source != next.source or prev.modified or next.modified) and prev.value:
+                # TODO: can we systemtically add whitespace to imrpove compression? (failed so far)
 
-            if not wspace and prev_token.value != None and need_whitespace_between(ctxt, prev_token, token):
-                wspace += " "
-
-            if exclude_comments and token.children:
-                # only output spacing before and after the comments between the tokens
-                prespace = get_orig_wspace(prev_token, token.children[0], ctxt, allow_linebreaks)
-                postspace = get_orig_wspace(token.children[-1], token, ctxt, allow_linebreaks)
-                for comment in token.children:
-                    if comment.hint == CommentHint.keep:
-                        prespace += comment.value.replace(comment.hintprefix + k_keep_prefix, "", 1)
-                
-                output.append(prespace)
-                if "\n" in wspace and "\n" not in prespace and "\n" not in postspace:
+                if (need_linebreak and can_need_linebreak) or (not minify_lines and next.vline != prev.vline):
                     output.append("\n")
-                elif wspace and not prespace and not postspace:
+                    need_linebreak = False
+                elif need_whitespace_between(ctxt, prev, next):
                     output.append(" ")
-                output.append(postspace)
-            else:
-                output.append(wspace)
+
+        else:
+            allow_linebreaks = next.vline != prev.vline
+            wspace = get_orig_wspace(prev, next, ctxt, allow_linebreaks, need_linebreak and can_need_linebreak)
+
+            if not wspace and prev.value != None and need_whitespace_between(ctxt, prev, next):
+                wspace += " "
             
-            need_linebreak = False
+            output.append(wspace)
+            if "\n" in wspace:
+                need_linebreak = False
+
+        prev_token_or_comment = next
+
+    def comment_output(comment, allow_linebreaks):
+        nonlocal prev_token_or_comment, need_linebreak
+
+        if exclude_comments:
+            if comment.hint == CommentHint.keep:
+                comment_out = comment.value.replace(comment.hintprefix + k_keep_prefix, "", 1)
+            else:
+                return
+        else:
+            if not allow_linebreaks and "\n" in comment.value:
+                if comment.isblock:
+                    comment_out = re.sub(r"\n\s*", " ", comment.value)
+                else:
+                    eqs = get_long_brackets_equals(comment.value)
+                    comment_out = f"--[{eqs}[{comment.value[2:-1]}]{eqs}]"
+            else:
+                comment_out = comment.value
         
-        output.append(token.value)            
-        prev_token = token
-        prev_vline = token.vline
-    
+        wspace_output(comment, can_need_linebreak=False)
+        output.append(comment_out)
+
+        if need_linebreak and "\n" in comment_out:
+            need_linebreak = False
+
+    def token_output(token):
+        if token.children:
+            allow_linebreaks = prev_token_or_comment.vline != token.vline
+
+            for comment in token.children:
+                comment_output(comment, allow_linebreaks)
+
+        if token.value != None:
+            wspace_output(token)
+            output.append(token.value)
+
     def pre_node_output(node):
         nonlocal short_level
         if is_non_nested_short(node):
@@ -372,8 +381,7 @@ def output_node(root, ctxt, minify=True, minify_wspace=None, minify_lines=None, 
             if short_level == 0:
                 need_linebreak = True
     
-    root.traverse_nodes(tokens=output_with_min_wspace if minify_wspace else output_with_orig_wspace,
-                        pre=pre_node_output, post=post_node_output)
+    root.traverse_nodes(tokens=token_output, pre=pre_node_output, post=post_node_output)
     return "".join(output)
 
 def output_code(ctxt, root, minify_opts):
@@ -383,4 +391,7 @@ def output_code(ctxt, root, minify_opts):
 
     return output_node(root, ctxt, None, minify_wspace, minify_lines, minify_comments)
 
+def output_needs_comments(minify_opts):
+    return not minify_opts.get("comments", True)
+    
 from pico_process import Source

@@ -1,7 +1,8 @@
 pico-8 cartridge // http://www.pico-8.com
 version 42
 __lua__
-print=printh 
+print=printh
+
 ?"hello ᶜ7there♥ら"
 🐱,r,s,x,k,y,e,e=11,12,13,14,15,16,17,17
 
@@ -10,9 +11,7 @@ t(stat(band()))
 -- this one comment, i do want!
 t()
 
-
-
-d=0 l=0
+d=0l=0
 l=0
 
 print"this is included"
@@ -27,13 +26,15 @@ print(
 )
 
 local e,l = "preserved_key",{preserved_key=123}
-?l[e] 
+?l[e]
+
 local e = "preserved_glob"
 preserved_glob = 123
-?_ENV[e] 
+?_ENV[e]
+
 local e = {}
 e["whatever"] = 123
-?e.whatever 
+?e.whatever
 function e.subfunc() end
 function e:subfunc() end
 ?e:subfunc()
@@ -51,7 +52,7 @@ o = 123
 local e = "key1:key2#~~key3,", "!key1_still$key2█ア+123-key123\nif\nif◝"
 
 do
-  local _ENV = { assert=assert}
+  local _ENV = {assert=assert}
   assert(true)
 end
 for _ENV in all{{x=1}, {x=2}} do
@@ -63,13 +64,13 @@ some_future_pico8_api(1,2,3)
 local e = {preserved1=1, preserved2=2}
 e.preserved1 += 1
 ?e["preserved1"]
-e = setmetatable( {preserved3=3}, f)
+e = setmetatable({preserved3=3}, f)
 ?e["preserved3"]
 
 n = {preserved1=1, preserved2=2}
 n.preserved1 += 1
 ?n["preserved1"]
-n = setmetatable( {preserved3=3}, f)
+n = setmetatable({preserved3=3}, f)
 ?n["preserved3"]
 
 local e = {assert=assert, add=add}
@@ -85,11 +86,12 @@ end
 local e
 for _ENV in all{{x=1,y=5}, {x=2,y=6}} do
   x += y + y*x
-  e = deli{2} 
+  e = deli{2}
 end
-assert(e == 2) 
-local e = {key1=1,key2=2, other=3}
-e.key1 = e. other
+assert(e == 2)
+
+local e = {key1=1,key2=2,other=3}
+e.key1 = e.other
 
 while (1==0);
 while (1==0) sin=cos cos=sin
@@ -140,7 +142,8 @@ local e = e + e + (e and _ENV)
 if(true) ?"sh1"
 if (true) ?"sh2"
 if(true) if false do else print"sh3" end
-if (true) if false do else print"sh4" end 
+if (true) if false do else print"sh4" end
+
 j="renaming bug"
 function u()
   local e,l,n,o,f,c,r,d,i,a,t,u,h,s,x,k,y,v,p,b,w,g,_,m,E,N,D
@@ -152,11 +155,11 @@ d=0d=1
 function new_name(new_name, e)
   return new_name.new_member, e.new_member
 end
-function new_name( new_name2, e, l)
+function new_name(new_name2, e, l)
   local e, l
-  return new_name2. new_member
+  return new_name2.new_member
 end
-function h( l, e, f, n, o, c)
+function h(l, e, f, n, o, c)
   return l+e+f+n+o+c
 end
 ?h(1,2,4,8,16,32)

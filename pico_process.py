@@ -304,7 +304,7 @@ def fixup_process_args(args):
 
 def process_compiler(token):
     token.compiler.compile(token.compiler_root)
-    token.compiler_node.erase()
+    token.compiler_node.erase(keep_comments=False)
     # compiler outputs are processed via placeholders
 
 def process_placeholder(ctxt, token, errors):
@@ -335,7 +335,7 @@ def process_code(ctxt, source, input_count=False, count=False, lint=False, minif
         return True, ()
     
     need_parse = need_lint or need_minify or need_unminify or preproc
-    need_all_comments = need_unminify or (need_minify and minify_needs_comments(minify))
+    need_all_comments = need_unminify or (need_minify and output_needs_comments(minify))
 
     errors = ()
     root = create_super_root() if source.is_super else None
@@ -416,10 +416,10 @@ def echo_code(code, ctxt, echo=True):
 from pico_tokenize import tokenize, count_tokens
 from pico_parse import parse, create_super_root, get_sub_root
 from pico_lint import lint_code
-from pico_minify import minify_code, minify_needs_comments, Focus
+from pico_minify import minify_code, Focus
 from pico_unminify import unminify_code
 from pico_constfold import fold_consts
-from pico_output import output_code
+from pico_output import output_code, output_needs_comments
 from pico_rename import rename_tokens
 
 # re-export some things for examples/etc.
