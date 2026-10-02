@@ -951,9 +951,9 @@ def postprocess_main(cart, ctxt, **_):
 <details>
 <summary><b>Documentation & example for Pico8 scripts</b></summary>
 
-Pico8 scripts need to have an extension of `.p8` or `.lua`. They can import other `.p8` or `.lua` scripts (and the scripts they import can import scripts themselves, unlike in native pico8)
+Pico8 scripts need to have an extension of `.p8` or `.lua`. They can include other `.p8` or `.lua` scripts (and the scripts they include can include scripts themselves, unlike in native pico8)
 
-Usually, you'd have a pico8 script that's specific to shrinko's interface, which imports and uses a 'generic' pico8 script that's runnable in pico8 as well.
+Usually, you'd have a pico8 script that's specific to shrinko's interface, which includes and uses a 'generic' pico8 script that's runnable in pico8 as well.
 
 Pico8 scripts run via [lupaz8](https://github.com/thisismypassport/lupaz8) - a fork of scoder's [lupa](https://github.com/scoder/lupa) using a [fork](https://github.com/thisismypassport/z8lua) of samhocevar's [z8lua](https://github.com/samhocevar/z8lua). In detail:
 * They're highly compatible with pico8 syntax and semantics (shorthands, 16.16 fixed-point numbers, etc.)
@@ -1051,6 +1051,8 @@ Python/pico8 integration - more details:
 * Usually, accessing attributes and items of python objects directly will work - but for dicts, use e.g. `python.attrs(dict).get(key)` to access attributes.
 * You can convert python lists & dicts into tables via `python.table(obj)`
 * You can convert tables into python lists via `python.list(tbl)` and into python dicts via `python.dict(tbl)`
+
+You can also run pico8 scripts directly via `run_pico.py script.p8`.
 
 </details>
 
