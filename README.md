@@ -516,6 +516,8 @@ You normally would want to use it on sections of the cart that execute rarely or
 * Make the source code (before any compiling or minification) [available](#sharing-the-minified-cart) when distributing the carts
 * Make the [Parens-8 license](https://github.com/thisismypassport/shrinko8/blob/main/scripts/parens8.MIN_LICENSE) available when distributing the carts
 
+For more details and suggestions on how to uphold the license, see [Parens8's own documentation on the subject](https://codeberg.org/wellspring-labs/parens-8#licensing).
+
 (Shrinko8 itself is not licensed under AGPL and has a special exception to use Parens8 despite this)
 
 A simple example of using Parens8:
@@ -547,8 +549,9 @@ Parens8 supports almost all pico8 syntax and semantics, but there are some limit
 * Assignment to _ENV is not observed outside of the compiler block
 
 You can pass additional options to parens8 via `--$switch-compiler: parens8 options1 options2=value`. (For example: `--$switch-compiler: parens8 compress rom=0x3100 sparse_vararg`):
-* `rom=<address>` (e.g. `rom=0x3100`) - causes the compiled code to get written to the cart memory (rom) at the given address, instead of to a string in the code section of the cart. (This overwrites the previous content of the cart memory - e.g. gfx/map/sfx/etc). (`rom` is the same as `rom=0`)
+* `rom=<address>` (e.g. `rom=0x3100`) - causes the compiled code to get written to the cart memory (rom) at the given address, instead of to a string in the code section of the cart. (This overwrites the previous content of the cart memory - e.g. gfx/map/sfx/etc. However, if some of the memory is already used by another parens8 block, only the unused space will be written to). (`rom` is the same as `rom=0`)
 * `rom_end=<address>` (e.g. `rom_end=0x42bc`) - gives an upper bound on which addresses can be modified via `rom` - the address `rom_end` and above will not be modified and instead the remainder of the compiled code (if any) will be written to string.
+* `rom_ranges=<start:end,start2:end2,etc>` (e.g. `rom_ranges=0x1000:0x2000,0x3100:0x3200`) - can be used instead of `rom` to be able to specify multiple rom ranges (end address is exclusive) that compiled code can be written to. (Code may straddle multiple ranges)
 * `compress` - enables compression of the compiled code. This adds a decompressor to the cart, increasing token usage. Recommended only when using `rom`.
 * `bigstring` - only enable if directed to by an error message, allows compiling huge amounts of code at once (but costs more tokens/etc)
 * `specialized_for_ops` - improves performance of most compiled `for` loops, but increases token usage.
@@ -557,6 +560,12 @@ You can pass additional options to parens8 via `--$switch-compiler: parens8 opti
 Normally, the interpreter is inserted right before the first `--$switch-compiler:` block, but you can control its placement directly via:
 ```lua
 --$dynamic-include: parens8.interpreter
+```
+
+If you have multiple compiler blocks with common options, you can use `--$def-alias:` to avoid specifying them every time:
+```lua
+--$def-alias: my_parens8 = parens8 sparse_vararg rom_ranges=0x0:0x1000,0x3000:0x3200 compress
+--$switch-compiler my_parens8
 ```
 
 Parens8 compilation happens whenever a cart with parens8 hints is minified.

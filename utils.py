@@ -2005,6 +2005,84 @@ class HeapQueue:
     def __repr__(m):
         return f"HeapQueue({repr(m.list)})"
 
+class RangeSet:
+    """A set of non-empty non-overlapping/touching ranges (tuples of (start,stop))"""
+    def __init__(m, ranges=None):
+        m.list = []
+        for range in ranges or ():
+            m.add(range)
+    
+    def add(m, v):
+        v_start, v_stop = v
+        if v_start >= v_stop:
+            return
+        i_start = i_end = bisect.bisect_right(m.list, (v_start, math.inf))
+
+        if i_start > 0:
+            prev_start, prev_stop = m.list[i_start - 1] # prev_start <= v_start
+            if prev_stop >= v_start:
+                if prev_stop >= v_stop:
+                    return
+                i_start -= 1
+                v = (v_start := prev_start, v_stop)
+
+        while i_end < len(m.list):
+            next_start, next_stop = m.list[i_end] # next_start > v_start
+            if next_start > v_stop:
+                break
+            i_end += 1
+            if next_stop > v_stop:
+                v = (v_start, v_stop := next_stop)
+                break
+        
+        if not isinstance(v, tuple):
+            v = (v_start, v_stop)
+        m.list[i_start:i_end] = (v,)
+    
+    def remove(m, v):
+        v_start, v_stop = v
+        if v_start >= v_stop:
+            return
+        i_start = i_end = bisect.bisect_left(m.list, (v_start, -math.inf))
+        repls = ()
+        
+        if i_start > 0:
+            prev_start, prev_stop = m.list[i_start - 1] # prev_start < v_start
+            if prev_stop > v_start:
+                i_start -= 1
+                repls = (*repls, (prev_start, v_start))
+                if prev_stop > v_stop:
+                    repls = (*repls, (v_stop, prev_stop))
+
+        while i_end < len(m.list):
+            next_start, next_stop = m.list[i_end] # next_start >= v_start
+            if next_start >= v_stop:
+                break
+            i_end += 1
+            if next_stop > v_stop:
+                repls = (*repls, (v_stop, next_stop))
+                break
+        
+        if i_end != i_start:
+            m.list[i_start:i_end] = repls
+
+    def __iadd__(m, o):
+        for v in o:
+            m.add(v)
+    __ior__ = __iadd__
+    def __isub__(m, o):
+        for v in o:
+            m.remove(v)
+
+    def __bool__(m):
+        return bool(m.list)
+    # __len__ - len or sum-lens?
+    def __iter__(m):
+        return iter(m.list)
+
+    def __repr__(m):
+        return f"RangeSet({repr(m.list)})"
+
 class RawIOBaseWSeek(io.RawIOBase):
     """Like RawIOBase, but allows seeking"""
     def seek(m, position, whence=io.SEEK_SET):

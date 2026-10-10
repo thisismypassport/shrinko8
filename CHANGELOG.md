@@ -1,6 +1,7 @@
 
 ## v1.2.7c (In progress)
 * parens8 - support `dest` and `deserialize` options
+* parens8 - allow specifying multiple rom ranges that can be used
 * Allow merging assignments to/from globals in safe-minify mode if there's no _ENV
 * Fix `--no-minify-comments` and support it even if minifying spaces
 
@@ -9,7 +10,7 @@
 * Added the changelog you're reading right now.
 
 ## v1.2.7
-* Added Parens8 (by Wellspring-Labs) support (--$switch) (`--$switch-compiler: parens8`)
+* Added Parens8 (by Wellspring-Labs) support (`--$switch-compiler: parens8`)
 * Added support for compilers (like Parens8): `--$switch-compiler:`, `--$dynamic-include:`, etc
 * Added support for running pico8 scripts (like Parens8, notice a pattern?) from Shrinko itself
 * Add a `$` prefix character in all comment hints (old comment hints can still be used without the `$` (for now?), but new ones require it)

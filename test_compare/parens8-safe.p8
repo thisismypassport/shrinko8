@@ -1,15 +1,16 @@
 pico-8 cartridge // http://www.pico-8.com
 version 42
 __lua__
-function n(n)printh(n)end function c(n)return function()return n end end function r(u,t)local o,r,n,i,e,l={},1,2,0,0,split",3,7,15,31,63,127,255,511,1023,2047,4095,8191,16383,32767,-1"local function d(e)add(o,e)if(#o+1>=1<<n)n+=1
+function n(n)printh(n)end function l(n)return function()return n end end function r(u,t)local o,r,n,i,e,c={},1,2,0,0,split",3,7,15,31,63,127,255,511,1023,2047,4095,8191,16383,32767,-1"local function d(e)add(o,e)if(#o+1>=1<<n)n+=1
 end for n in all(t)do d(n)end local function t()while(e<n)i<<=8i|=ord(u,r)>>>16e+=8r+=1
-e-=n local n=i>>>e-16&l[n]if(n~=0)return n
+e-=n local n=i>>>e-16&c[n]if(n~=0)return n
 end local n=o[t()]local e=n for i in t do e=(function(n)if(n)d(e..n[1])return n
 n=e..e[1]d(n)return n end)(o[i])n..=e end return n end function d(i)local e=0local function n()e+=1return ord(i,e)end local function d()return n()>>>16|n()>>>8|n()|n()<<8end return function()local n,o=n()o,n=n&252~=252and n>>>2&63,n%4if(n==0)return o and o-31or d()
 if(n==3)return({true,false})[o]
-local n=o or d()<<16e+=n return sub(i,e-n+1,e)end end do local n,i={function()local n=u()return function()return l[n]end end},split"1,0,0,2,2,2,1,2"function e(e)l,u,o={},d(e),function()l,u,o=nil end return n[u()]()(o())()(_ENV)end local function d(a,b,c)local n=o function o()a,b,c=a(),b(),c()return n()end return function()return a end,function()end,function(f)return f end,function(f)return a(f)(b(f))end,function(f)a(f)return b(f)end,function(f)local u={__index=a({},f)}return function(...)return b(setmetatable({...},u))end end,function(f)return f[a]end,function(f)return f[a][b]end end for o,r in inext,split"0,0,0,2,2,2,0,0"do local function e(e)return e<r and n[u()]()or c(e<i[o]and u())end add(n,function()return c(add(l,(select(o,d(e(0),e(1),e(2))))))end)end end n"outside"e"▤☉⬆️…き█⁵n░」inside██"e(chr(peek(0,22)))e(r(chr(peek(22,24)),"▤☉⬆️…き█⁵n░Uisde compr"))e(r("⁸●B▤ヘJ∧⬇️ᵇ4ネオE$ケ8れᵉ4a█","▤☉⬆️…き█⁵n░Eisde compr"))i="▤☉⬆️…き█⁵n░9inside my_glob██"n"outside again"e"▤☉██"e(chr(peek(4096,4)))e(chr(peek(4100,24)))e(i)n"outside finally"
+local n=o or d()<<16e+=n return sub(i,e-n+1,e)end end do local n,i={function()local n=u()return function()return c[n]end end},split"1,0,0,2,2,2,1,2,2,2,3,2"function e(e)c,u,o={},d(e),function()c,u,o=nil end return n[u()]()(o())()(_ENV)end local function d(a,b,c)local n=o function o()a,b,c=a(),b(),c()return n()end return function()return a end,function()end,function(f)return f end,function(f)return a(f)(b(f))end,function(f)a(f)return b(f)end,function(f)local u={__index=a({},f)}return function(...)return b(setmetatable({...},u))end end,function(f)return f[a]end,function(f)return f[a][b]end,function(...)return a(...)+b(...)end,function(f)return a(f)>b(f)end,function(f)if(a(f))return b(f)
+return c(f)end,function(f)f[b]=a(f)end end for o,r in inext,split"0,0,0,2,2,2,0,0,2,2,3,1"do local function e(e)return e<r and n[u()]()or l(e<i[o]and u())end add(n,function()return l(add(c,(select(o,d(e(0),e(1),e(2))))))end)end end n"outside"e"▤☉⬆️…き█⁵n░」inside██"e(chr(peek(0,22)))e(r(chr(peek(22,24)),"▤☉⬆️…き█⁵n░Uisde compr"))e(r("⁸●B▤ヘJ∧⬇️ᵇ4ネオE$ケ8れᵉ4a█","▤☉⬆️…き█⁵n░Eisde compr"))i="▤☉⬆️…き█⁵n░9inside my_glob██"n"outside again"e"▤☉██"e(chr(peek(4096,4)))e(chr(peek(4100,24)))e(r(chr(peek(46,18))..chr(peek(4124,36))..chr(peek(8192,22)),"▤☉⬆️…き█⁵n░]isde romagtてfぬうxそュ\0Uさナま"))n"outside yet again"e(r(chr(peek(8214,23)),"▤☉⬆️…き█⁵n░Qisde romag#2"))n"outside once more"e(i)n"outside finally"
 __gfx__
-898849090a0850e6489296e6379646560227f6d60808806824898ea46938b0433e0d54424d833ce0435f72810600000000000000000000000000000000000000
+898849090a0850e6489296e6379646560227f6d60808806824898ea46938b0433e0d54424d833ce0435f7281060040024c41168c422a8c033be4d340259c2341
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
@@ -73,4 +74,6 @@ __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-89880808898849090a0850e6481396e6379646560247967686470808000000000000000000000000000000000000000000000000000000000000000000000000
+89880808898849090a0850e6481396e6379646560247967686470808833ccc5543a069c4c18b33114868a2469a2a6c3c9121079e1d7a256021422f5ccc9143c6
+__map__
+e1d0f1c206860d18f9935acd46d947595a3bd006420008864298e84a8b20c2cd38f4114a74c850e30f556186000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000

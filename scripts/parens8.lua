@@ -10,6 +10,7 @@
 
 local pico_process = python.import("pico_process")
 local pico_output = python.import("pico_output")
+local RangeSet = python.import("utils").RangeSet
 local module = {}
 local ROM_ENDADDR = 0x4300
 
@@ -41,27 +42,8 @@ end
 
 function get_parens8_data(ctxt)
     return ctxt.get_field("parens8_data", function()
-        return {num_compilers=0, results={}, rom_ranges={}}
+        return {num_compilers=0, results={}, rom_ranges=RangeSet()}
     end)
-end
-
-function fixup_rom_range(ranges, addr, endaddr)
-    for range in all(ranges) do -- sorted!
-        local raddr, rendaddr = unpack(range)
-        if (addr >= raddr and addr < rendaddr) addr = rendaddr
-        if (endaddr > raddr and endaddr <= rendaddr) endaddr = raddr
-    end
-    return addr, endaddr
-end
-
-function add_rom_range(ranges, addr, endaddr)
-    for i, range in ipairs(ranges) do
-        if addr < range[1] then
-            add(ranges, {addr, endaddr}, i)
-            return ranges
-        end
-    end
-    add(ranges, {addr, endaddr})
 end
 
 function reset(opts)
@@ -119,12 +101,27 @@ function Parens8Compiler:compile(root, opts)
     
     -- extract our options
     local parens_args = copy(self.cl_args)
+
+    local rom_ranges = RangeSet()
+    local rom_ranges_str = self.cl_args.rom_ranges; parens_args.rom_ranges = nil
+    if rom_ranges_str then
+        for range in all(split(rom_ranges_str, ',', false)) do
+            range = split(range, ':')
+            if #range != 2 then
+                printh("parens8 - invalid rom range specified - format is start..end")
+            else
+                rom_ranges.add(python.list(range))
+            end
+        end
+    end
     
     local rom_addr = self.cl_args.rom; parens_args.rom = nil
     if (rom_addr and type(rom_addr) != "number") rom_addr = 0
 
     local rom_endaddr = self.cl_args.rom_end; parens_args.rom_end = nil
     if (type(rom_endaddr) != "number" or rom_endaddr > ROM_ENDADDR) rom_endaddr = ROM_ENDADDR
+
+    if (rom_addr) rom_ranges.add(python.list{rom_addr, rom_endaddr})
 
     local compress = self.cl_args.compress; parens_args.compress = nil
     if (compress and type(compress) != "string") compress = "lzw"
@@ -176,21 +173,27 @@ function Parens8Compiler:compile(root, opts)
     local results = data.results
     results[self.id] = ""
 
-    if rom_addr then
-        rom_addr, rom_endaddr = fixup_rom_range(data.rom_ranges, rom_addr, rom_endaddr)
-        if rom_addr != rom_endaddr then
+    if python.builtins.bool(rom_ranges) then
+        local total_len = 0
+        local total_range = 0
+
+        rom_ranges.__isub__(data.rom_ranges) -- lua has no proper -= metamethod
+        for rom_addr, rom_endaddr in python.iterex(rom_ranges) do
             local max_len = python.builtins.min(rom_endaddr - rom_addr, #byte_code) -- #byte_code may be a python int
             rommemcpy(self.src.cart.rom, rom_addr, byte_code, 0, max_len)
             results[self.id] ..= format("chr(peek(`1`, `2`))", {rom_addr, max_len})
-            byte_code = byte_code.get_block(max_len, #byte_code - max_len)
-            add_rom_range(data.rom_ranges, rom_addr, rom_addr + max_len)
 
-            -- TODO: move this to a separate count report?
-            printh(format("parens8 - used `1` out of `2` rom bytes",
-                          {max_len, rom_endaddr - rom_addr}))
-
+            -- ideally, we'd track an offset instead, but the offset may overflow, which is tricky to handle in lua
+            byte_code = shrinko.to_memory(byte_code.get_block(max_len, #byte_code - max_len))
+            data.rom_ranges.add(python.list{rom_addr, rom_addr + max_len})
             if (#byte_code != 0) results[self.id] ..= ".."
+
+            total_len += max_len
+            total_range += rom_endaddr - rom_addr
         end
+        
+        -- TODO: move this to a separate count report?
+        printh(format("parens8 - used `1` out of `2` rom bytes", {total_len, total_range}))
     end
 
     if #byte_code != 0 then
@@ -212,7 +215,7 @@ end
 function get_parens8_interpreter(opts)
     local data = get_parens8_data(opts.ctxt)
     if data.has_interpreter then
-        printh("error - interpreter already written out, can't write it again") -- or could we?
+        printh("error - parens8 interpreter already written out, can't write it again") -- or could we?
     else
         data.has_interpreter = true
 
