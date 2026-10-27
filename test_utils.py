@@ -161,6 +161,8 @@ def run_script(script):
             return True # not possible
         elif g_use_install:
             return True # problematic, let's just run it for normal tests
+        elif sys.platform == 'emscripten':
+            return True # not supported in site tests, either
         else:
             exec_script_by_path(script, name="__main__")
         return True
