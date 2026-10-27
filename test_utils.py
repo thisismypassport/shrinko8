@@ -152,6 +152,27 @@ def run_code(target, *args, exit_code=0):
         print(f"Exit with unexpected code {actual_code}")
         return False, stdout
 
+def run_script(script):
+    if g_profile:
+        g_profile.enable()
+
+    try:
+        if g_use_exe:
+            return True # not possible
+        elif g_use_install:
+            return True # problematic, let's just run it for normal tests
+        else:
+            exec_script_by_path(script, name="__main__")
+        return True
+
+    except Exception:
+        traceback.print_exc()
+        return False
+
+    finally:
+        if g_profile:
+            g_profile.disable()
+
 def run_test_pico(cart):
     noop = lambda *_: None
     zoop = lambda *_: 0

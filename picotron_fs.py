@@ -1,8 +1,14 @@
+"""Types and functions for dealing with the picotron filesystem - including PODs, files, metadata..."""
+
 from utils import *
 from pico_defs import Language, encode_luastr, decode_luastr
+from pico_srcdefs import Source, Error
 from pico_cart import pico_base64_decode, pico_base64_encode
 from pico_export import lz4_compress, lz4_uncompress
 from pico_compress import update_mtf
+from pico_tokenize import tokenize, TokenType, is_identifier
+from pico_parse import parse, NodeType
+from pico_output import format_luanum, format_string_literal
 
 # (note - picotron pods have nothing to do with pico8 pods)
 
@@ -534,8 +540,3 @@ class PicotronDir(PicotronFile):
         super().__init__(None)
     
     is_dir = True
-
-from pico_tokenize import tokenize, TokenType, is_identifier
-from pico_parse import parse, NodeType
-from pico_output import format_luanum, format_string_literal
-from pico_process import Source, Error

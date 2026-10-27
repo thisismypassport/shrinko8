@@ -48,6 +48,11 @@ jobs:
         uses: actions/setup-python@v3
         with:
           python-version: "3.14"
+
+      - name: Add API Docs
+        run: |
+          python -m pip install pdoc
+          python -m pdoc `cat files.lst` -o site/apidocs
       
       - name: Pre-package
         run: |

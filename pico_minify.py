@@ -1,14 +1,13 @@
+"""Functions to minify a cart - that is specifically removing or replacing tokens (doesn't include renaming / etc)"""
+
 from utils import *
 from pico_defs import fixnum_is_negative, float_is_negative, Language
+from pico_srcdefs import Focus
 from pico_tokenize import Token, TokenType, StopTraverse, k_skip_children
 from pico_parse import Node, NodeType, VarKind
 from pico_parse import k_unary_ops_prec, get_precedence, is_right_assoc, can_replace_with_unary
 from pico_parse import is_vararg_expr, is_short_block_stmt, is_root_global_or_builtin_local
 from pico_output import format_luanum, format_fixnum, format_string_literal
-
-class Focus(Bitmask):
-    chars = compressed = tokens = ...
-    none = 0
 
 def minify_string_literal(ctxt, token, focus, value=None):
     if value is None:
@@ -194,7 +193,7 @@ def minify_change_print_shorthand(node, new_short):
     node.add_extra_child(node.func)
 
     end_paren = node.children[-1]
-    if isinstance(end_paren, Token) and end_paren.value == ")": # else, this is a paren-less call
+    if end_paren.is_token and end_paren.value == ")": # else, this is a paren-less call
         node.remove_token(1, "(")
         node.remove_token(-1, ")")
     
@@ -350,6 +349,8 @@ def value_is_negative(ctxt, value):
         return float_is_negative(value)
 
 def minify_code(ctxt, root, minify_opts):
+    """minify `root` in-place (replacing/removing/rearranging tokens - doesn't include renaming/etc)"""
+
     safe_reorder = minify_opts.get("safe-reorder", False)
     safe_builtins = minify_opts.get("safe-builtins", False)
     minify_tokens = minify_opts.get("tokens", True)

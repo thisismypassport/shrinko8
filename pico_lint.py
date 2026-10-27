@@ -1,9 +1,14 @@
+"""Functions to lint a cart - reporting potential issues in it"""
+
 from utils import *
+from pico_srcdefs import Error
 from pico_tokenize import CommentHint, is_identifier
 from pico_parse import VarKind, NodeType
 from pico_parse import is_assign_target, is_function_target, is_any_assign_target, is_root_global_or_builtin_local
 
 def lint_code(ctxt, root, lint_opts):
+    """lint `root`, returning a list of 'errors'"""
+
     errors = []
     builtin_globals = ctxt.builtins
 
@@ -150,5 +155,3 @@ def lint_code(ctxt, root, lint_opts):
 
     root.traverse_nodes(lint_pre, extra=True)
     return errors
-
-from pico_process import Error

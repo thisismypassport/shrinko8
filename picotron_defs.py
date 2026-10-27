@@ -1,7 +1,11 @@
+"""Definitions specific to picotron"""
+
 from utils import *
 from media_utils import Color
 from pico_defs import Language, decode_luastr, encode_luastr, k_palette
-from pico_process import ContextBase, Source, get_source_location
+from pico_srcdefs import ContextBase, Source, get_source_location
+from pico_tokenize import TokenType
+from pico_parse import NodeType, is_root_global_or_builtin_local
 import fnmatch
 
 k_palette_64 = [
@@ -268,6 +272,3 @@ class Cart64Source(Source):
             deps[node] = node_deps
 
         root.children = m.topologic_sort(deps)
-
-from pico_tokenize import TokenType
-from pico_parse import NodeType, is_root_global_or_builtin_local

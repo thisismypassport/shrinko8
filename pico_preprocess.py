@@ -1,3 +1,5 @@
+"""Functions to preprocess pico8 source - that is handle #include-s"""
+
 from utils import *
 
 class CodeMapping(Tuple):

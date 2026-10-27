@@ -1,8 +1,10 @@
+"""Wrapper over PIL. (Used to be a wrapper over SDL2)"""
+
 from utils import *
 
-# (used to use sdl, now uses pil)
-
 class Color(Tuple):
+    """An (r,g,b,a) color tuple"""
+
     r = g = b = ...; a = 0xff
 
     @staticmethod
@@ -50,21 +52,21 @@ def _pil_module():
         throw("ERROR: You need pillow (or PIL) to read/write PNGs (do 'python -m pip install pillow')")
     return Image
 
-class Surface:
+class Image:
     @staticmethod
     def load(f, fmt=None):
-        surf = Surface(_pil_module().open(f))
+        surf = Image(_pil_module().open(f))
         if e(fmt) and surf.format != fmt:
             surf = surf.convert(fmt)
         return surf
 
     @staticmethod
     def create(w, h, fmt=PixelFormat.rgba8):
-        return Surface(_pil_module().new(fmt._pil_fmt, (w, h)), fmt)
+        return Image(_pil_module().new(fmt._pil_fmt, (w, h)), fmt)
     
     @staticmethod
     def from_data(w, h, fmt, data, pitch=None):
-        return Surface(_pil_module().frombytes(fmt._pil_fmt, (w, h), data, "raw", fmt._pil_raw_fmt, pitch or 0), fmt)
+        return Image(_pil_module().frombytes(fmt._pil_fmt, (w, h), data, "raw", fmt._pil_raw_fmt, pitch or 0), fmt)
 
     def __init__(m, pil, fmt=None):
         m.pil = pil
@@ -84,7 +86,7 @@ class Surface:
         m.pil.save(dest, format, **format_opts)
 
     def convert(m, fmt):
-        return Surface(m.pil.convert(fmt._pil_fmt))
+        return Image(m.pil.convert(fmt._pil_fmt))
 
     @property
     def width(m):
@@ -97,13 +99,13 @@ class Surface:
         return Point(m.width, m.height)
 
     def resize(m, size):
-        return Surface(m.pil.resize(size, _pil_module().NEAREST))
+        return Image(m.pil.resize(size, _pil_module().NEAREST))
     def scale(m, factor):
         return m.resize(m.size * factor)
 
     @property
     def alpha(m):
-        return Surface(m.pil.getchannel('A'))
+        return Image(m.pil.getchannel('A'))
 
     @property
     def format(m):
@@ -116,10 +118,10 @@ class Surface:
         return m.pil.load()
 
     def copy(m):
-        return Surface(m.pil.copy())
+        return Image(m.pil.copy())
     
     def slice(m, rect):
-        return Surface(m.pil.crop(_to_pil_tuple(rect)))
+        return Image(m.pil.crop(_to_pil_tuple(rect)))
 
     def draw(m, src, dest=None, srcrect=None):
         src = src.pil.crop(_to_pil_tuple(srcrect)) if e(srcrect) else src.pil
@@ -131,6 +133,8 @@ class Surface:
     @writeonly_property
     def palette(m, pal):
         m.pil.putpalette(pal.raw, "RGBA")
+
+Surface = Image # old SDL2-style name
 
 class Palette: # (pil's ImagePalette doesn't seem fit for purpose)
     @staticmethod
@@ -150,4 +154,4 @@ class Palette: # (pil's ImagePalette doesn't seem fit for purpose)
         m.raw[4 * i : 4 * (i + 1)] = v
 
     def to_surface(m):
-        return Surface.from_data(len(m), 1, PixelFormat.rgba8, bytes(m.raw))
+        return Image.from_data(len(m), 1, PixelFormat.rgba8, bytes(m.raw))

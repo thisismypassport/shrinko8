@@ -1,5 +1,7 @@
+"""Functions for reading/writing picotron carts"""
+
 from utils import *
-from media_utils import Surface, Color, PixelFormat
+from media_utils import Image, Color, PixelFormat
 from pico_cart import load_image_of_size, get_res_path, pico_base64_decode, pico_base64_encode
 from pico_cart import k_png_header, k_qoi_header
 from pico_export import lz4_uncompress, lz4_compress
@@ -121,7 +123,7 @@ class Cart64:
                 if i >= len(k_palette_64):
                     i = 0
                 data += bytes(k_palette_64[i] if i else Color(0, 0, 0, 0))
-            return Surface.from_data(icon.width, icon.height, PixelFormat.rgba8, data)
+            return Image.from_data(icon.width, icon.height, PixelFormat.rgba8, data)
 
     def set_raw_icon(m, icon):
         m.raw_icon = icon
@@ -311,7 +313,7 @@ def read_cart64_from_image(data, **opts):
 
     _, label = cart.label
     if label is None:
-        label = Surface.create(*k_label_size)
+        label = Image.create(*k_label_size)
         label_pixels = label.pixels
         
         for y in range(k_label_size.y):
@@ -330,7 +332,7 @@ def draw_title_on_image(image, title, subtitle, offset, width, suboffset):
     # TODO: there seems to be some kerning?!
 
     with file_open(path_join(get_res_path(), "font64.png")) as font_f:
-        font_surf = Surface.load(font_f).alpha
+        font_surf = Image.load(font_f).alpha
         font_pixels = font_surf.pixels
         char_widths = {}
 

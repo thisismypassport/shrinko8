@@ -1,7 +1,10 @@
+"""The main logic for the shrinko command line"""
+
 from utils import *
 from pico_process import PicoContext, process_code, CartSource, ErrorFormat
 from pico_compress import write_code_size, write_compressed_size, CompressionTracer
-from pico_cart import CartFormat, read_cart, write_cart, get_bbs_cart_url, merge_cart, write_cart_version
+from pico_cart import CartFormat, read_cart, write_cart, get_bbs_cart_url
+from pico_cart import merge_cart, write_cart_version, k_pico_sections
 from pico_export import read_cart_export, read_pod_file, ListOp
 from pico_tokenize import k_hint_split_re
 from pico_constfold import parse_constant
@@ -13,7 +16,7 @@ from picotron_cart import write_cart64_compressed_size, write_cart64_version
 from picotron_export import read_cart64_export, read_sysrom_file
 import argparse
 
-k_version_raw = '1.2.7.3' # should have 4 parts, used directly by build script (last part becomes letter 0->'', 1->b, etc.)
+k_version_raw = '1.2.7.4' # should have 4 parts, used directly by build script (last part becomes letter 0->'', 1->b, etc.)
 
 def get_version():
     """convert our raw version to pico-style version"""
@@ -70,6 +73,8 @@ class ErrCodes:
     ok = 0; err = 1; warn = 2; fail = 3; include = 4
 
 def create_main(lang):
+    """Return a 'main' function for the given language. The main function optionally receives raw arguments and returns an exit code"""
+
     is_pico8 = lang == Language.pico8
     is_picotron = lang == Language.picotron
 
@@ -124,7 +129,7 @@ def create_main(lang):
     def create_parser():
         if is_pico8:
             sections_str = "sections"
-            sections_desc = "comma separated list of sections out of {%s}" % ",".join(("lua", "gfx", "map", "gff", "sfx", "music", "label", "meta:*"))
+            sections_desc = "comma separated list of sections out of {%s}" % ",".join(k_pico_sections)
             version_desc = "either a string like 'v0.2.6b' or a raw number from the p8 'version' field like '42'"
         else:
             sections_str = "files"

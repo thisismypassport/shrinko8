@@ -9,10 +9,8 @@ parser.add_argument("-d", "--dir", required=True, help="the directory with the s
 parser.add_argument("-t", "--timeout", type=int, help="the timeout in seconds (reset on every request)")
 parser.add_argument("-T", "--test", action="store_true", help="test the site via playwright")
 parser.add_argument("--test-args", nargs=argparse.REMAINDER, help="test arguments for playwright test")
-opts = parser.parse_args()
 
-os.chdir(opts.dir)
-
+g_opts = None
 g_exitcode = None
 
 class SiteTestHandler(SimpleHTTPRequestHandler):
@@ -33,15 +31,14 @@ class SiteTestHandler(SimpleHTTPRequestHandler):
             super().do_post()
 
 class SiteTestServer(TCPServer):
-    timeout = opts.timeout
-
     def handle_timeout(m):
         print("timeout!")
         global g_exitcode
         g_exitcode = 2
     
     def __init__(m):
-        super().__init__((opts.address, opts.port), SiteTestHandler)
+        super().__init__((g_opts.address, g_opts.port), SiteTestHandler)
+        m.timeout = g_opts.timeout
 
 def run_playwright(address, port):
     from playwright.sync_api import sync_playwright # type: ignore
@@ -59,20 +56,23 @@ def run_playwright(address, port):
             page.on("console", on_console)
             
             url = f"http://{address}:{port}/?test=post"
-            if opts.test_args:
-                url += f"&test-args={urlescape(shlex.join(opts.test_args))}"
+            if g_opts.test_args:
+                url += f"&test-args={urlescape(shlex.join(g_opts.test_args))}"
             page.goto(url)
             print(f"playwright launched. title: {page.title()}")
             
-            page.wait_for_function("() => window.testsFinished", timeout=(opts.timeout or 0)*1000)
+            page.wait_for_function("() => window.testsFinished", timeout=(g_opts.timeout or 0)*1000)
             print("playwright finished")
             browser.close()
     
     Thread(target=run).start()
 
 if __name__ == '__main__':
+    g_opts = parser.parse_args()
+    os.chdir(g_opts.dir)
+
     with SiteTestServer() as server:
-        if opts.test:
+        if g_opts.test:
             run_playwright(*server.server_address)
         while g_exitcode is None:
             server.handle_request()

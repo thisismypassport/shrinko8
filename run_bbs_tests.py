@@ -39,24 +39,7 @@ parser.add_argument("-H", "--pico8-home", default="private_pico8_home", help="ho
 parser.add_argument("-j", "--parallel-jobs", type=int, help="how many processes to run in parallel")
 parser.add_argument("--profile", action="store_true", help="enable profiling")
 parser.add_argument("--private", action="store_true", help="store results in a private folder")
-g_opts = parser.parse_args()
-
-if not g_opts.pico8_time:
-    g_opts.pico8_time = 15.0 if g_opts.pico8_interact else 2.0
-
-if g_opts.carts_file and not g_opts.carts:
-    g_opts.carts = file_read_text(g_opts.carts_file).splitlines()
-
-if not g_opts.carts:
-    raise Exception("no carts specified!")
-
-if g_opts.input_redownload:
-    g_opts.input_reprocess = True
-
-if not g_opts.parallel_jobs:
-    g_opts.parallel_jobs = mp.cpu_count()
-
-g_opts.all = not g_opts.only_compress and not g_opts.only_safe_minify and not g_opts.only_unsafe_minify and not g_opts.none
+g_opts = None
 
 class DeltaInfoDictionary(defaultdict):
     class Info(Struct):
@@ -318,7 +301,27 @@ def run_all():
         focus = "chars" if g_opts.focus_chars else "compressed" if g_opts.focus_compressed else "tokens" if g_opts.focus_tokens else None
         run(focus)
 
-if __name__ == "__main__":
+def main(raw_args=None):
+    global g_opts
+    g_opts = parser.parse_args(raw_args)
+
+    if not g_opts.pico8_time:
+        g_opts.pico8_time = 15.0 if g_opts.pico8_interact else 2.0
+
+    if g_opts.carts_file and not g_opts.carts:
+        g_opts.carts = file_read_text(g_opts.carts_file).splitlines()
+
+    if not g_opts.carts:
+        raise Exception("no carts specified!")
+
+    if g_opts.input_redownload:
+        g_opts.input_reprocess = True
+
+    if not g_opts.parallel_jobs:
+        g_opts.parallel_jobs = mp.cpu_count()
+
+    g_opts.all = not g_opts.only_compress and not g_opts.only_safe_minify and not g_opts.only_unsafe_minify and not g_opts.none
+
     init_tests(g_opts)
     dir_ensure_exists("test_bbs")
     prefix = "private_" if g_opts.private else ""
@@ -326,4 +329,7 @@ if __name__ == "__main__":
         dir_ensure_exists(path_join(prefix + dir, "bbs"))
     
     run_all()
-    sys.exit(end_tests())
+    return end_tests()
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,13 +1,13 @@
+"""Definition of our syntax tree, and functions to parse it from a string"""
+
 from utils import *
 from pico_defs import Language
-from pico_tokenize import TokenNodeBase, Token, TokenType
+from pico_srcdefs import Error
+from pico_tokenize import TokenNodeBase, Token, TokenType, VarKind
 from pico_tokenize import is_identifier, k_identifier_split_re
 
 k_nested = object()
 
-class VarKind(Enum):
-    local = global_ = member = label = ...
-    
 class VarBase():
     """A variable (a Local, Global, table Member key, or Label)"""
     def __init__(m, kind, name):
@@ -26,6 +26,7 @@ class VarBase():
         return f"{typename(m)}({m.name})"
 
 class Local(VarBase):
+    """A local variable"""
     def __init__(m, name, scope, compiler=None, builtin=False):
         super().__init__(VarKind.local, name)
         m.scope = scope
@@ -34,14 +35,17 @@ class Local(VarBase):
         m.captured = False
 
 class Global(VarBase):
+    """A global variable"""
     def __init__(m, name):
         super().__init__(VarKind.global_, name)
 
 class Member(VarBase):
+    """A table key 'variable'"""
     def __init__(m, name):
         super().__init__(VarKind.member, name)
 
 class Label(VarBase):
+    """A goto label"""
     def __init__(m, name, scope, compiler=None):
         super().__init__(VarKind.label, name)
         m.scope = scope
@@ -133,6 +137,7 @@ class LabelScope:
         return False
 
 class NodeType(Enum):
+    """The types of syntax nodes"""
     var = index = member = const = group = unary_op = binary_op = call = ...
     table = table_index = table_member = varargs = assign = op_assign = ...
     local = function = if_ = elseif = else_ = while_ = repeat = until = ...
@@ -152,6 +157,10 @@ class Node(TokenNodeBase):
 
         for child in children:
             child.parent = m
+    
+    @property
+    def is_node(m):
+        return True
     
     def get_tokens(m): # (not including erased tokens, whereas traverse includes them)
         tokens = []
@@ -299,6 +308,8 @@ k_block_ends = ("end", "else", "elseif", "until")
 k_prefix_types = (NodeType.var, NodeType.member, NodeType.index, NodeType.call, NodeType.group)
 
 def parse(source, tokens, ctxt=None, super_root=None, lang=None, for_expr=False):
+    """Parse a list of tokens into a syntax tree"""
+
     idx = 0
     depth = -1 # incremented in parse_block
     funcdepth = -1 # incremented in parse_root
@@ -1106,5 +1117,3 @@ def can_replace_with_unary(node):
     else:
         prec = get_precedence(parent)
         return prec is None or prec < k_unary_ops_prec
-
-from pico_process import Error

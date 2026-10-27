@@ -1,5 +1,8 @@
+"""Functions for writing a syntax tree into a string (either minifying or preserving whitespace)"""
+
 from utils import *
-from pico_defs import k_fixnum_mask, k_luaint_mask, float_is_negative
+from pico_defs import k_fixnum_mask, k_luaint_mask, float_is_negative    
+from pico_srcdefs import Source
 from pico_tokenize import tokenize, parse_fixnum
 from pico_tokenize import Token, k_char_escapes, Comment, CommentHint, k_keep_prefix
 from pico_parse import k_nested
@@ -393,5 +396,3 @@ def output_code(ctxt, root, minify_opts):
 
 def output_needs_comments(minify_opts):
     return not minify_opts.get("comments", True)
-    
-from pico_process import Source

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from test_utils import *
-from media_utils import Surface
+from media_utils import Image
 import argparse, fnmatch
 
 parser = argparse.ArgumentParser()
@@ -18,11 +18,6 @@ parser.add_argument("-p", "--pico8", action="append", default=[None], help="spec
 parser.add_argument("-P", "--no-pico8", action="store_true", help="disable running pico8 even if exe is supplied (for convenience)")
 parser.add_argument("--profile", action="store_true", help="enable profiling")
 
-# for test consistency:
-os.environ["PICO8_EXPORT_REPRO_TIME"] = '1577934245'
-os.environ["PICO8_PLATFORM_CHAR"] = 'w'
-os.environ["PICO8_VERSION_LATEST_IS_DEFAULT"] = 't'
-
 def norm_paths(output):
     return output.replace("\\", "/")
 
@@ -39,7 +34,7 @@ def try_read_file_norm(path, ext=None):
     if not ext:
         ext = path_extension(path)
     if ext == ".png" and data:
-        img = Surface.load(BytesIO(data))
+        img = Image.load(BytesIO(data))
         data = (img.size, img.format, img.to_data())
     return data
 
@@ -56,22 +51,27 @@ def try_read_dir_contents(dir):
             results.append((name, try_read_file_norm(child)))
     return results
 
-def run_test(name, input, output, *args, private=False, check_output=True, from_output=False, from_source=False, alt_compare=None,
-             stdout_output=None, norm_stdout=nop, exit_code=0, extra_outputs=None, output_reader=try_read_file_norm,
-             pico8_output_val=None, pico8_output=None, allow_real_pico8=True, copy_in_to_out=False, update_version=True,
-             target=Target.pico8):
+def filter_test(name, target):
     if g_opts.test:
         for wanted_test in g_opts.test:
             if fnmatch.fnmatch(name, wanted_test):
                 break
         else:
-            return None
+            return False
     if g_opts.test_from:
         if name == g_opts.test_from:
             g_opts.test_from = None
         else:
-            return None
+            return False
     if e(g_opts.target) and g_opts.target != target:
+        return False
+    return True
+
+def run_test(name, input, output, *args, private=False, check_output=True, from_output=False, from_source=False, alt_compare=None,
+             stdout_output=None, norm_stdout=nop, exit_code=0, extra_outputs=None, output_reader=try_read_file_norm,
+             pico8_output_val=None, pico8_output=None, allow_real_pico8=True, copy_in_to_out=False, update_version=True,
+             target=Target.pico8):
+    if not filter_test(name, target):
         return None
 
     start_test()
@@ -156,6 +156,20 @@ def run_test(name, input, output, *args, private=False, check_output=True, from_
         print(f"\nTest {name} succeeded")
     if g_opts.stdout:
         print(stdout)
+    return True
+
+def run_script_test(name):
+    if not filter_test(name, None):
+        return None
+
+    start_test()
+    script_path = path_join("test_input", name + ".py")
+    if not run_script(script_path):
+        print(f"\nERROR - test {name} failed")
+        fail_test()
+        return False
+    elif g_opts.verbose:
+        print(f"\nTest {name} succeeded")
     return True
 
 def run():
@@ -334,7 +348,14 @@ def run():
     run_test("TRON_dep", "deptron.p64", "deptron.p64", "--minify-consts-only", target=Target.picotron)
     run_test("TRON_char", "charmix.p64", "charmix.p64", target=Target.picotron)
 
+    run_script_test("import_all")
+
 def main(raw_args=None):
+    # for test consistency:
+    os.environ["PICO8_EXPORT_REPRO_TIME"] = '1577934245'
+    os.environ["PICO8_PLATFORM_CHAR"] = 'w'
+    os.environ["PICO8_VERSION_LATEST_IS_DEFAULT"] = 't'
+
     raw_args = default(raw_args, sys.argv[1:])
 
     global g_opts

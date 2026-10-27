@@ -1,3 +1,5 @@
+"""General utilities, many used by shrinko. Sorry not sorry?"""
+
 import os, sys, io, bisect, random, copy, collections, itertools, struct, array, re, traceback, hashlib, math, string, weakref, operator, heapq, time, json, tempfile, shutil
 from datetime import datetime, timedelta, timezone
 from functools import reduce, total_ordering, lru_cache, cmp_to_key

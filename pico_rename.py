@@ -1,9 +1,11 @@
+"""Functions to rename variables in a syntax tree for minification purposes"""
+
 from utils import *
 from pico_defs import Language, from_langstr
+from pico_srcdefs import Focus
 from pico_tokenize import TokenType, is_identifier, keywords, CommentHint
 from pico_output import format_string_literal
 from pico_parse import VarKind, NodeType, VarBase
-from pico_minify import Focus
 import fnmatch
 
 class IncludeExcludeMapping:
@@ -84,6 +86,8 @@ class TableMemberPairIncludeExcludeMapping:
         return bool(value)
 
 def rename_tokens(ctxt, root, rename_opts):
+    """Rename variables in the given syntax tree in-place"""
+    
     global_strings_cpy = ctxt.builtins | ctxt.builtin_callbacks
     preserved_globals = IncludeExcludeMapping(global_strings_cpy)
     preserved_members = TableMemberPairIncludeExcludeMapping(members=ctxt.builtin_members)

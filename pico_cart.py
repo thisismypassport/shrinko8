@@ -1,5 +1,7 @@
+"""Functions for working with pico8 carts (See `Cart`, `read_cart`, `write_cart`)"""
+
 from utils import *
-from media_utils import Surface, PixelFormat
+from media_utils import Image, PixelFormat
 from pico_defs import *
 from pico_compress import compress_code, uncompress_code, get_compressed_size, print_size
 import hashlib, base64
@@ -185,7 +187,7 @@ def load_image_of_size(f, valid_size, format=PixelFormat.rgba8, is_qoi=False):
             throw("Not a valid png")
         r.subpos(8)
 
-    image = Surface.load(f, format)
+    image = Image.load(f, format)
     if image.size != valid_size:
         throw("Png has wrong size")
 
@@ -220,7 +222,7 @@ def read_cart_from_image(data, **opts):
 
 def draw_text_on_image(image, text, offset, size, spacing=Point.zero):
     with file_open(path_join(get_res_path(), "font.png")) as font_f:
-        font_surf = Surface.load(font_f)
+        font_surf = Image.load(font_f)
         x, y = 0, 0
         for ch in text:
             chi = ord(ch)
@@ -239,7 +241,7 @@ def draw_text_on_image(image, text, offset, size, spacing=Point.zero):
             x = new_x
 
 def create_screenshot_surface(screenshot, transparent=False):
-    screenshot_surf = Surface.create(*k_label_size)
+    screenshot_surf = Image.create(*k_label_size)
     screenshot_pixels = screenshot_surf.pixels
     for y in range(k_label_size.y):
         for x in range(k_label_size.x):
@@ -682,7 +684,7 @@ def read_cart_autodetect(path, **opts):
     # plain text?
     return read_cart_from_source(text, raw=True, path=path, **opts)
 
-def read_cart(path, format=None, **opts):
+def read_cart(path: str, format: CartFormat = None, **opts):
     """Read a cart from the given path, assuming it is in the given format"""
     if format in (None, CartFormat.auto):
         return read_cart_autodetect(path, **opts)
@@ -707,7 +709,7 @@ def read_cart(path, format=None, **opts):
     else:
         throw(f"invalid format for reading: {format}")
 
-def write_cart(path, cart, format, **opts):
+def write_cart(path: str, cart: Cart, format: CartFormat, **opts):
     """Writes a cart to the given path in the given format"""
     if format == CartFormat.p8:
         file_write_text(path, write_cart_to_source(cart, **opts))
@@ -750,7 +752,11 @@ def get_bbs_cart_url(id, lang=Language.pico8):
 
     return "https://www.lexaloffle.com/bbs/get_cart.php?" + urlencode(params)
 
-def merge_cart(dest, src, sections):
+k_pico_sections = ("lua", "gfx", "map", "gff", "sfx", "music", "label", "meta:*")
+
+def merge_cart(dest: Cart, src: Cart, sections: list):
+    """Copy the given sections (see k_pico_sections) from src to dest"""
+
     for section in sections:
         if section == "lua":
             dest.code, dest.code_map, dest.code_rom = src.code, src.code_map, src.code_rom

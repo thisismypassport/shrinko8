@@ -1,3 +1,5 @@
+"""Functions for compressing/decompressing the pico8 source"""
+
 from utils import *
 from pico_defs import *
 
@@ -43,7 +45,9 @@ def update_mtf(mtf, idx, ch):
         mtf[ii] = mtf[ii - 1]
     mtf[0] = ch
 
-def uncompress_code(r, max_code_size=k_code_size, size_handler=None, debug_handler=None, **_):
+def uncompress_code(r: BinaryReader, max_code_size=k_code_size, size_handler=None, debug_handler=None, **_) -> str:
+    """Uncompress the code read from `r`"""
+
     start_pos = r.pos()
     header = r.bytes(4, allow_eof=True)
 
@@ -410,8 +414,10 @@ def get_lz77(code, min_c=3, max_c=0x7fff, max_o=0x7fff, measure=None, min_cost=N
     
     assert not curr_adv
 
-def compress_code(w, code, size_handler=None, debug_handler=None, force_compress=False, 
+def compress_code(w: BinaryWriter, code: str, size_handler=None, debug_handler=None, force_compress=False, 
                   fail_on_error=True, fast_compress=False, old_compress=False, **_):
+    """Compress code into `w`"""
+
     is_new = not old_compress
     min_c = 3
     

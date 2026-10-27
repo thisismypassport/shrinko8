@@ -1,8 +1,10 @@
+"""Functions to unminify/beautify/format pico8 code from a syntax tree"""
+
 from utils import *
 from pico_tokenize import TokenType, Token
 from pico_parse import NodeType, is_function_stmt, is_short_block_stmt
 
-def unminify_code(root, unminify_opts):    
+def unminify_code(root, unminify_opts):
     indent_str = unminify_opts.get("indent", 2)
 
     output = []

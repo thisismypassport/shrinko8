@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Execute pico8 code that doesn't depend on graphics/sound apis. (This module can also be executed directly to do this)"""
 from utils import *
 from pico_defs import encode_p8str, decode_p8str, from_p8str, to_p8str, Memory, get_res_path
 from pico_cart import read_cart_autodetect

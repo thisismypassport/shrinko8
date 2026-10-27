@@ -1,6 +1,9 @@
+"""Definitions of pico8 tokens, and functions for parsing them from a string"""
+
 from utils import *
 from pico_preprocess import k_wspace
 from pico_defs import Language, k_fixnum_mask, num_to_fixnum, num_to_luaint, is_luaint_in_range
+from pico_srcdefs import Error, Source
 
 keywords = {
     "and", "break", "do", "else", "elseif", "end", "false", 
@@ -44,6 +47,13 @@ class TokenNodeBase:
         return "%s(%s)" % (typename(m), ", ".join(reprlist))
     
     @property
+    def is_token(m):
+        return False
+    @property
+    def is_node(m):
+        return False
+
+    @property
     def source_text(m):
         if m.source and m.idx != None and m.endidx != None:
             return m.source.text[m.idx:m.endidx]
@@ -78,7 +88,7 @@ class TokenNodeBase:
         i = 0 if delta > 0 else -1
         if adjacent:
             m = m._adjacent(delta)
-        while isinstance(m, Node):
+        while m and m.is_node:
             if m.children:
                 m = m.children[i]
             else:
@@ -113,7 +123,7 @@ class TokenNodeBase:
         skip = pre(m) if pre else None
         if not skip:
             for child in m.children:
-                if isinstance(child, Node):
+                if child.is_node:
                     child.traverse_nodes(pre, post, tokens, extra)
                 elif tokens:
                     tokens(child)
@@ -123,11 +133,11 @@ class TokenNodeBase:
         if post: post(m)
 
     def traverse_tokens(m, visit):
-        if isinstance(m, Token):
+        if m.is_token:
             visit(m)
         else:
             for child in m.children:
-                if isinstance(child, Node):
+                if child.is_node:
                     child.traverse_tokens(visit)
                 else:
                     visit(child)
@@ -199,6 +209,10 @@ class Token(TokenNodeBase):
         super().__init__()
         m.type, m.value, m.source, m.idx, m.endidx, m.vline, m.lang, m.modified = type, value, source, idx, endidx, vline, lang, modified
     
+    @property
+    def is_token(m):
+        return True
+
     def check(m, expected):
         if isinstance(expected, tuple):
             assert m.value in expected
@@ -254,26 +268,6 @@ class Token(TokenNodeBase):
 
 Token.none = Token.dummy(None)
 
-class ConstToken(Token):
-    def __init__(m, type, parsed_value, other):
-        super().__init__(type, None, other.source, other.idx, other.endidx, other.vline, other.lang, modified=True)
-        m.parsed_value = parsed_value
-        lazy_property.clear(m, "value")
-
-    @lazy_property
-    def value(m): # used during going over chars for rename (tsk...) and for output when not minify-tokens
-                  # (but not used for output under minify-tokens)
-        if isinstance(m.parsed_value, (int, float)):
-            allow_unary = can_replace_with_unary(m.parent) if m.parent else True
-            format_num = format_fixnum if m.lang == Language.pico8 else format_luanum
-            return format_num(m.parsed_value, sign=None if allow_unary else "")
-        else:
-            return format_string_literal(m.parsed_value, long=False)
-
-    @post_property_change
-    def parent(m, old, new):
-        lazy_property.clear(m, "value")
-
 class CommentHint(Enum):
     none = auto = preserve = lint = keep = ...
 
@@ -306,6 +300,9 @@ k_identifier_split_re = r"([0-9A-Za-z_\x1e\x1f\x80-\xff]+)"
 
 k_hint_split_re = re.compile(r"[\s,]+")
 
+class VarKind(Enum):
+    local = global_ = member = label = ...
+    
 class NextTokenMods:
     def __init__(m):
         m.var_kind = m.keys_kind = m.is_const = m.func_kind = m.merge_prev = m.force_safe = m.sublang = m.rename = m.placeholder = None
@@ -317,6 +314,8 @@ class NextTokenMods:
         m.comments.append(cmt)
 
 def tokenize(source, ctxt=None, all_comments=False, lang=None, inner=False):
+    """Parse a string (in source.text), returning a list of tokens and a list of errors"""
+
     text = source.text
     idx = 0
     vline = 0
@@ -777,6 +776,7 @@ def parse_fixnum(origstr):
     return fixnum
 
 def parse_luanum(origstr):
+    """Parse a picotron lua number from a string"""
     str = origstr.lower()
 
     neg = False
@@ -921,7 +921,3 @@ def parse_string_literal(str, lang=Language.pico8):
             litparts.append(esc)
                 
         return "".join(litparts)
-
-from pico_parse import Node, VarKind, can_replace_with_unary
-from pico_output import format_fixnum, format_luanum, format_string_literal
-from pico_process import Error, Source

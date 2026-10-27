@@ -1,7 +1,8 @@
+"""Functions to read/write picotron exports"""
+
 from utils import *
 from media_utils import PixelFormat
 from pico_defs import get_res_path
-from picotron_cart import read_cart64_from_rom, write_cart64_to_rom, write_cart64, k_rom_header_sig, Cart64Format
 from pico_export import FullExportBase
 from zipfile import ZipFile
 import base64
@@ -277,3 +278,5 @@ def write_to_cart64_export(path, cart, format, pico_dat=None, export_name=None, 
     export = create_cart64_export(format, pico_dat, cart=cart, export_name=export_name)
     export.set_cart(cart, **opts)
     write_cart64_export(path, export, delete_existing)
+
+from picotron_cart import read_cart64_from_rom, write_cart64_to_rom, write_cart64, k_rom_header_sig, Cart64Format

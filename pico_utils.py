@@ -1,3 +1,5 @@
+"""Utilities not used anywhere else (but can be used from your own scripts)"""
+
 from utils import *
 from pico_defs import decode_p8str
 
@@ -63,6 +65,8 @@ def get_p8scii_param(str, pos):
 
 # WARNING: a lot of this is not tested yet
 def parse_p8scii(str):
+    """Parse a pico8 string (`p8str`) that may contain p8scii sequences, yielding them in parsed form"""
+
     start = 0
     while start < len(str):
         end = start
@@ -343,7 +347,8 @@ class P8sciiMeasurer:
         m.advance_line(0)
         return Point(m.max_x, m.max_y)
 
-def measure_p8scii(text, **opts): # see P8sciiMeasurer's ctor for params
+def measure_p8scii(text, **opts):
+    """Measures the width of a p8scii string (see P8sciiMeasurer's ctor for which params to give)"""
     measurer = P8sciiMeasurer(**opts)
     text = measurer.process(text)
     if e(text):

@@ -6,11 +6,12 @@ A set of Pico-8 & Picotron cart tools, with a focus on shrinking code size.
 
 [You can download the latest Windows Executable here.](https://github.com/thisismypassport/shrinko8/releases/tag/latest)
 
-Otherwise, requires [Python](https://www.python.org/) 3.8 or above to run.
-
-Reading/Writing PNGs additionally requires the Pillow module (`python -m pip install pillow` to install)
-
-[Download the latest version of the source here.](https://github.com/thisismypassport/shrinko8/archive/refs/heads/main.zip)
+Otherwise, requires [Python](https://www.python.org/) 3.8 or above to run. For this, you can either:
+* Install it via `python -m pip install shrinko`, then use `python -m shrinko.shrinko8` to run (instead of `python shrinko8.py` as used in the rest of this document)
+* Download/pull this repo somewhere and use that directly.
+    * For example, you can [download the latest version of the source here.](https://github.com/thisismypassport/shrinko8/archive/refs/heads/main.zip)
+    * Reading/Writing PNGs additionally requires the Pillow module (`python -m pip install pillow` to install)
+    * Running pico8 scripts (including the parens8 integration) requires the lupaz8 module (`python -m pip install lupaz8` to install)
 
 The major supported features are:
 * [Minification](#minification) - Reduce the token count, character count and compression ratio of your cart.
@@ -876,6 +877,8 @@ For advanced usecases, you can create a pico8 or python script that allow you to
 * Save other carts
 * And much more.
 
+See [documentation of the APIs here](https://thisismypassport.github.io/shrinko8/apidocs).
+
 To run, use `--script <path>`, here shown together with other tools:
 
 `python shrinko8.py path-to-input.p8 path-to-output.png --count --lint --minify --script path-to-script.py`
@@ -954,6 +957,10 @@ def postprocess_main(cart, ctxt, **_):
     # can use the data stored in the preprocess stage:
     opts, other_cart = ctxt.get_field("my_script_data")
 ```
+
+You can also use shrinko as a library:
+* If you downloaded or pulled it manually, just import from it normally (`import pico_cart`)
+* If you installed it via pip, you have to do `import shrinko.shrinko8` first, and then import normally (without the package, e.g. `import pico_cart`)
 
 </details>
 <br>
@@ -1064,6 +1071,10 @@ Python/pico8 integration - more details:
 You can also run pico8 scripts directly via `run_pico.py script.p8`.
 
 </details>
+
+## API documentation
+
+You can find the API documentation [in this link](https://thisismypassport.github.io/shrinko8/apidocs).
 
 ## Advanced - custom sub-language
 

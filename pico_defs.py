@@ -1,7 +1,11 @@
+"""Definitions from the pico8 world - such as `Memory`, `p8str`, `fixnum`, etc."""
+
 from utils import *
 from media_utils import Color
 
 class Language(Enum):
+    """The supported lua languages"""
+
     pico8 = picotron = ...
 
 class Memory(bytearray):
@@ -189,9 +193,11 @@ k_charset_map.update((ch, i) for i, ch in enumerate(k_unicap_chars, start=ord('A
 k_unicap_charset = k_charset[:ord('A')] + k_unicap_chars + k_charset[ord('Z')+1:]
 assert len(k_unicap_charset) == 0x100
 
-# p8str - a string where each character is between '\0' and '\xff' and represents
-# the corresponding pico8 character. 
-# (in the future, this might become a real type. Now, it's just an agreement on how str is used)
+class p8str:
+    """A string where each character is between '\0' and '\xff' and represents
+       the corresponding pico8 character.
+       Currently, this isn't actually a real type but a convention on how python's `str` is used -
+       use `to_p8str` and `from_p8str` (or `encode_p8str` and `decode_p8str`) instead of this class"""
 
 def to_p8str(text):
     """Convert a unicode string to a pico8 string"""
@@ -227,8 +233,8 @@ def decode_p8str(bytes):
     """Decodes bytes into a pico8 string"""
     return "".join(chr(b) for b in bytes)
 
-to_pico_chars = to_p8str # legacy name
-from_pico_chars = from_p8str # legacy name
+to_pico_chars = to_p8str ; """@private legacy name"""
+from_pico_chars = from_p8str ; """@private legacy name"""
 
 # luastr - uses python's standard surrogate scheme to handle non-unicode chars
 
@@ -253,9 +259,10 @@ def from_langstr(text, lang):
     else:
         return text # up to caller to properly handle utf errors
 
-# fixnum - an integer representing a 16.16 pico8 fixed-point number
-# e.g. 
-# This may become a class in the future, but is a convention now.
+class fixnum:
+    """An integer representing a 16.16 pico8 fixed-point number
+       Currently, this isn't actually a real type but a convention on how python's `int` is used - 
+       use `num_to_fixnum`, `fixnum_to_num`, etc"""
 
 k_fixnum_mask = 0xffffffff
 
@@ -335,21 +342,25 @@ k_version_tuples = {
 }
 
 def get_default_pico8_version():
+    """The default pico8 version we generate (not necessarily the latest we support)"""
     version_id = 42 # TODO - update as newer versions get more common
     return maybe_int(os.getenv("PICO8_VERSION_ID"), version_id)
 
 def get_latest_pico8_version():
+    """The latest pico8 version we support"""
     if os.getenv("PICO8_VERSION_LATEST_IS_DEFAULT"): # for tests
         return get_default_pico8_version()
     else:
         return max(k_version_tuples)
 
 def get_default_platform():
+    """The default platform we generate"""
     # (there's also 'E' - see format_platform)
     platform = 'w' if os.name == 'nt' else 'x' if sys.platform == 'darwin' else 'l'
     return os.getenv("PICO8_PLATFORM_CHAR", platform)
 
 def format_platform(platform):
+    """given a platform char, return a description of the platform"""
     if platform == 'w':
         return '[w]indows'
     elif platform == 'x':
@@ -377,6 +388,7 @@ def get_pico8_version_tuple(id):
     return version
 
 def format_pico8_version(tuple):
+    """given a version id, return the textual form of the pico8 version"""
     if tuple[1] >= 2:
         letter = string.ascii_lowercase[tuple[3]] if 26 > tuple[3] > 0 else ""
         return "v%d.%d.%d%s" % (tuple[0], tuple[1], tuple[2], letter)
@@ -384,6 +396,7 @@ def format_pico8_version(tuple):
         return "pre-v0.2.0" # the tuple doesn't correspond to the real version here (TBD - find out the old versions per version id)
 
 def parse_pico8_version(str):
+    """parse a textual form of the pico8 version into a version id"""
     match = re.fullmatch(r"v(\d+).(\d+).(\d+)([a-z]?)", str)
     if match:
         tuple = match.groups()

@@ -1,8 +1,33 @@
+"""Evaluation of constant pico expressions to produce a constant (note that we play it safe and don't support potentially unstable operations)"""
+
 from utils import *
 from pico_defs import *
-from pico_tokenize import Token, TokenType, ConstToken, k_skip_children, tokenize, KeepCommentFlags
-from pico_parse import Node, NodeType, VarKind, is_root_global_or_builtin_local, is_vararg_expr
-from pico_output import format_fixnum, format_luanum
+from pico_srcdefs import Error, Source, Focus
+from pico_tokenize import Token, TokenType, k_skip_children, tokenize, KeepCommentFlags
+from pico_parse import Node, NodeType, VarKind, is_root_global_or_builtin_local, is_vararg_expr, can_replace_with_unary
+from pico_output import output_node, format_fixnum, format_luanum, format_string_literal
+
+class ConstToken(Token):
+    """A token that's created from a value, instead of from a string"""
+
+    def __init__(m, type, parsed_value, other):
+        super().__init__(type, None, other.source, other.idx, other.endidx, other.vline, other.lang, modified=True)
+        m.parsed_value = parsed_value
+        lazy_property.clear(m, "value")
+
+    @lazy_property
+    def value(m): # used during going over chars for rename (tsk...) and for output when not minify-tokens
+                  # (but not used for output under minify-tokens)
+        if isinstance(m.parsed_value, (int, float)):
+            allow_unary = can_replace_with_unary(m.parent) if m.parent else True
+            format_num = format_fixnum if m.lang == Language.pico8 else format_luanum
+            return format_num(m.parsed_value, sign=None if allow_unary else "")
+        else:
+            return format_string_literal(m.parsed_value, long=False)
+
+    @post_property_change
+    def parent(m, old, new):
+        lazy_property.clear(m, "value")
 
 class LuaType(Enum):
     """A lua (or pico8) type for the purpose of constant folding"""
@@ -758,7 +783,3 @@ def parse_constant(value, lang, as_str=False):
             constval = const_from_token(token)
             if constval:
                 return constval
-
-from pico_process import Error, Source
-from pico_minify import Focus
-from pico_output import output_node

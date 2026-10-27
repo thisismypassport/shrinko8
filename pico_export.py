@@ -1,8 +1,8 @@
+"""Functions for reading/writing pico8 exports (javascript, native, etc)"""
+
 from utils import *
-from media_utils import Surface, Color, Palette, PixelFormat
+from media_utils import Image, Color, Palette, PixelFormat
 from pico_defs import *
-from pico_cart import CartFormat, write_cart, read_cart_from_rom, write_cart_to_rom
-from pico_cart import read_cart_from_source, write_cart_to_source, create_screenshot_surface
 from pico_compress import get_lz77, Lz77Entry
 from zipfile import ZipFile, ZipInfo, ZIP_STORED, ZIP_DEFLATED
 import base64
@@ -256,7 +256,7 @@ class PodFile:
                         data = r.bytes(size - 0x14)
                     
                     fmt = PixelFormat.i8 if bpp == 8 else PixelFormat.bgra8 if bpp == 32 else throw("unknown POD bmp bpp %d" % bpp)
-                    content = Surface.from_data(w, h, fmt, data)
+                    content = Image.from_data(w, h, fmt, data)
                     if fmt == PixelFormat.i8:
                         content.palette = default(palette, m.default_palette)
 
@@ -346,7 +346,7 @@ class PodFile:
                 w.zstr(name, 0x40)
                 write_bytes(w, content)
             
-            elif isinstance(content, Surface):
+            elif isinstance(content, Image):
                 if content.format.bpp == 8:
                     format = PixelFormat.i8
                 elif content.format.bpp == 32:
@@ -425,7 +425,7 @@ class PodFile:
         for i, e in enumerate(m.entries):
             if isinstance(e.content, bytes):
                 m.dump_file(dest, fmt, misc, i, e.name, e.content)
-            elif isinstance(e.content, Surface):
+            elif isinstance(e.content, Image):
                 with file_create(path_join(dest, f"{i}.png")) as f:
                     e.content.save(f)
             elif isinstance(e.content, Palette):
@@ -656,7 +656,7 @@ class PodExport(CartExport, PodFile):
                     if cart and cart.label:
                         content = create_screenshot_surface(cart.label)
 
-                new_pod.append_content(e.name, content, compress=isinstance(content, Surface))
+                new_pod.append_content(e.name, content, compress=isinstance(content, Image))
 
             m.append_content("", bytes(new_pod.data))
         return m
@@ -997,3 +997,6 @@ def write_to_cart_export(path, cart, format, extra_carts=None, cart_name=None, t
             export.write_cart(extra_cart, **opts)
     
     write_cart_export(path, export, delete_existing)
+
+from pico_cart import CartFormat, write_cart, read_cart_from_rom, write_cart_to_rom
+from pico_cart import read_cart_from_source, write_cart_to_source, create_screenshot_surface
