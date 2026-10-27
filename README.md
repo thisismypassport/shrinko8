@@ -2,6 +2,8 @@
 
 A set of Pico-8 & Picotron cart tools, with a focus on shrinking code size.
 
+## Running
+
 ### [You can run the latest version directly in your browser here.](https://thisismypassport.github.io/shrinko8)
 
 [You can download the latest Windows Executable here.](https://github.com/thisismypassport/shrinko8/releases/tag/latest)
@@ -12,6 +14,8 @@ Otherwise, requires [Python](https://www.python.org/) 3.8 or above to run. For t
     * For example, you can [download the latest version of the source here.](https://github.com/thisismypassport/shrinko8/archive/refs/heads/main.zip)
     * Reading/Writing PNGs additionally requires the Pillow module (`python -m pip install pillow` to install)
     * Running pico8 scripts (including the parens8 integration) requires the lupaz8 module (`python -m pip install lupaz8` to install)
+
+## Features
 
 The major supported features are:
 * [Minification](#minification) - Reduce the token count, character count and compression ratio of your cart.
