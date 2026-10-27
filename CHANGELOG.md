@@ -1,7 +1,6 @@
 
 ## v1.2.7e
-* Added [API documentation](https://thisismypassport.github.io/shrinko8/apidocs)
-* Better support for using shrinko as a library
+* Better support for using shrinko as a library. (Including [API documentation](https://thisismypassport.github.io/shrinko8/apidocs), also useful for scripts)
 
 ## v1.2.7d
 * parens8 - allow specifying multiple rom ranges that can be used
