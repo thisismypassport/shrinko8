@@ -16,7 +16,7 @@ from picotron_cart import write_cart64_compressed_size, write_cart64_version
 from picotron_export import read_cart64_export, read_sysrom_file
 import argparse
 
-k_version_raw = '1.2.7.4' # should have 4 parts, used directly by build script (last part becomes letter 0->'', 1->b, etc.)
+k_version_raw = '1.2.7.5' # should have 4 parts, used directly by build script (last part becomes letter 0->'', 1->b, etc.)
 
 def get_version():
     """convert our raw version to pico-style version"""

@@ -22,7 +22,14 @@ end
  --keep: in-else-3
     ?-99
     --keep: out-else-3
- 
+
+
+function _init()
+    n=1
+    --keep: comment 1
+    --keep: comment 2
+    i=2
+end 
 --keep: in-if-4
 
 

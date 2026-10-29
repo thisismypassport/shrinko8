@@ -11,5 +11,7 @@ end-- pre-if-2
 -- pre-if-3
 -- in-else-3
 ?-99-- out-else-3
--- in-if-4
+function _init()n=1-- comment 1
+-- comment 2
+i=2end-- in-if-4
 -- final comment (add nothing else below)

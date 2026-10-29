@@ -318,7 +318,8 @@ def output_node(root, ctxt, minify=True, minify_wspace=None, minify_lines=None, 
             if (prev.endidx < next.idx or prev.source != next.source or prev.modified or next.modified) and prev.value:
                 # TODO: can we systemtically add whitespace to imrpove compression? (failed so far)
 
-                if (need_linebreak and can_need_linebreak) or (not minify_lines and next.vline != prev.vline):
+                if ((need_linebreak and can_need_linebreak) or 
+                        (not minify_lines and next.vline != prev.vline and not prev.value.endswith("\n"))):
                     output.append("\n")
                     need_linebreak = False
                 elif need_whitespace_between(ctxt, prev, next):
@@ -342,23 +343,23 @@ def output_node(root, ctxt, minify=True, minify_wspace=None, minify_lines=None, 
 
         if exclude_comments:
             if comment.hint == CommentHint.keep:
-                comment_out = comment.value.replace(comment.hintprefix + k_keep_prefix, "", 1)
+                comment_text = comment.value.replace(comment.hintprefix + k_keep_prefix, "", 1)
             else:
                 return
         else:
-            if not allow_linebreaks and "\n" in comment.value:
-                if comment.isblock:
-                    comment_out = re.sub(r"\n\s*", " ", comment.value)
-                else:
-                    eqs = get_long_brackets_equals(comment.value)
-                    comment_out = f"--[{eqs}[{comment.value[2:-1]}]{eqs}]"
+            comment_text = comment.value
+
+        if not allow_linebreaks and "\n" in comment_text:
+            if comment.isblock:
+                comment_text = re.sub(r"\n\s*", " ", comment_text)
             else:
-                comment_out = comment.value
+                eqs = get_long_brackets_equals(comment_text)
+                comment_text = f"--[{eqs}[{comment_text[2:-1]}]{eqs}]"
         
         wspace_output(comment, can_need_linebreak=False)
-        output.append(comment_out)
+        output.append(comment_text)
 
-        if need_linebreak and "\n" in comment_out:
+        if need_linebreak and "\n" in comment_text:
             need_linebreak = False
 
     def token_output(token):

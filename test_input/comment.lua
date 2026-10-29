@@ -38,6 +38,13 @@ else
     --keep: out-else-3
 end
 
+function _init()
+    x=1
+    --keep: comment 1
+    --keep: comment 2
+    y=2
+end
+
 if true then --keep: in-if-4
 end
 
