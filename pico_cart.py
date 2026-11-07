@@ -172,7 +172,10 @@ k_title_offset = Point(18, 167)
 k_title_spacing = Point(0, 2)
 k_title_size = Point(31 * 4, 16)
 
-k_palette_rgb_6bpp_map = {(c.r & ~3, c.g & ~3, c.b & ~3): i for i, c in enumerate(k_palette)}
+def palette_to_palmap(palette):
+    return {(c.r & ~3, c.g & ~3, c.b & ~3): i for i, c in enumerate(palette)}
+
+k_palette_rgb_6bpp_map = palette_to_palmap(k_palette)
 k_png_header = b"\x89PNG\r\n\x1a\n"
 k_qoi_header = b"qoif"
 
@@ -193,13 +196,24 @@ def load_image_of_size(f, valid_size, format=PixelFormat.rgba8, is_qoi=False):
 
     return image
 
-def surface_pixels_to_screenshot(pixels, offset=Point.zero):
+def find_best_in_palette_map(palmap, r, g, b):
+    min_delta, best_idx = math.inf, 0
+    for (tr, tg, tb), idx in palmap.items():
+        delta = abs(tr - r) + abs(tg - g) + abs(tb - b)
+        if delta < min_delta:
+            min_delta, best_idx = delta, idx
+    return best_idx
+
+def surface_pixels_to_screenshot(pixels, offset=Point.zero, palmap=k_palette_rgb_6bpp_map):
     screenshot = MultidimArray(k_label_size, 0)
 
     for y in range(k_label_size.y):
         for x in range(k_label_size.x):
             r, g, b, a = pixels[Point(x, y) + offset]
-            screenshot[x, y] = k_palette_rgb_6bpp_map.get((r & ~3, g & ~3, b & ~3), 0)
+            palidx = palmap.get((r & ~3, g & ~3, b & ~3))
+            if palidx is None:
+                palidx = find_best_in_palette_map(palmap, r, g, b)
+            screenshot[x, y] = palidx
 
     return screenshot
 
@@ -240,13 +254,13 @@ def draw_text_on_image(image, text, offset, size, spacing=Point.zero):
                 image.draw(font_surf, offset + Point(x, y), chrect)
             x = new_x
 
-def create_screenshot_surface(screenshot, transparent=False):
+def create_screenshot_surface(screenshot, transparent=False, palette=k_palette):
     screenshot_surf = Image.create(*k_label_size)
     screenshot_pixels = screenshot_surf.pixels
     for y in range(k_label_size.y):
         for x in range(k_label_size.x):
             i = screenshot[x, y]
-            color = k_palette[i]
+            color = palette[i]
             if transparent and i == 0:
                 color = color.set_a(0)
             screenshot_pixels[x, y] = color
@@ -287,15 +301,35 @@ def write_cart_to_image(cart, template_image=None, template_only=False, optimize
         else:
             return image.save()
 
+def get_real_palette(idx_palette=None, return_palmap=False):
+    if idx_palette is None:
+        palette = k_palette
+    else:
+        palette = []
+        for idx in idx_palette:
+            if 0 <= idx < 0x10:
+                palette.append(k_palette[idx])
+            else: # accept just about anything for alt. colors
+                palette.append(k_palette[0x10 + (idx & 0xf)])
+        while len(palette) < 0x10:
+            palette.append(k_palette[len(palette)])
+    
+    if return_palmap:
+        return palette_to_palmap(palette)
+    else:
+        return palette
+
 def read_cart_label(data, path=None, **_):
     image = load_image_of_size(BytesIO(data), k_label_size)
     label = surface_pixels_to_screenshot(image.pixels)
 
     return Cart(path=path, label=label)
 
-def read_cart_spritesheet(data, path=None, **_):
+def read_cart_spritesheet(data, path=None, palette=None, **_):
     image = load_image_of_size(BytesIO(data), k_label_size)
-    spritesheet = surface_pixels_to_screenshot(image.pixels)
+
+    palmap = get_real_palette(palette, return_palmap=True)
+    spritesheet = surface_pixels_to_screenshot(image.pixels, palmap=palmap)
 
     cart = Cart(path=path)
     for y in range(128):
@@ -307,13 +341,14 @@ def write_cart_label(cart, **_):
     label = cart.label or MultidimArray(k_label_size, 0)
     return create_screenshot_surface(label, transparent=True).save()
 
-def write_cart_spritesheet(cart, **_):
+def write_cart_spritesheet(cart, palette=None, **_):
     spritesheet = MultidimArray(k_label_size, 0)    
     for y in range(128):
         for x in range(128):
             spritesheet[x, y] = cart.rom.get4(mem_sprite_addr(x, y))
 
-    return create_screenshot_surface(spritesheet).save()
+    palette = get_real_palette(palette)
+    return create_screenshot_surface(spritesheet, palette=palette).save()
 
 k_p8_prefix = "pico-8 cartridge"
 k_meta_prefix = "meta:"

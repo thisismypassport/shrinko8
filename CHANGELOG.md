@@ -1,6 +1,7 @@
 
 ## v1.2.7f (In-Progress)
 * Fix extra linebreaks in kept comments
+* Added `--palette` for spritesheet imports/exports
 
 ## v1.2.7e
 * Better support for using shrinko as a library. (Including [API documentation](https://thisismypassport.github.io/shrinko8/apidocs), also useful for scripts)

@@ -28,6 +28,9 @@ def get_version():
 def SplitBySeps(val):
     return k_hint_split_re.split(val)
 
+def IntSplitBySeps(val):
+    return [int(val) for val in SplitBySeps(val)]
+
 def Indent(val):
     return "\t" if val == "tabs" else " " * int(val)
 
@@ -210,6 +213,7 @@ def create_main(lang):
                             help=f"text to use as the title (default: taken from first two comments like {lang} does). Use twice for a second line")
         pgroup.add_argument("--template-image", help=f"template image to use for png carts, instead of the default {lang} template")
         pgroup.add_argument("--template-only", action="store_true", help="when creating the png cart, ignore the label & title, using just the template")
+        pgroup.add_argument("--palette", type=IntSplitBySeps, help="palette to use when importing/exporting spritesheets - a comma-separated list of indices")
 
         pgroup = parser.add_argument_group("version options")
         pgroup.add_argument("--version", action="store_true", help=f"print version of cart. (if no cart is provided - print {shrinko_name} version and exit)")
@@ -524,7 +528,7 @@ def create_main(lang):
 
             main_cart = read_cart_func(args.input, args.input_format, size_handler=args.input_count, 
                                        debug_handler=args.trace_input_compression, cart_name=args.cart,
-                                       keep_compression=args.keep_compression,
+                                       keep_compression=args.keep_compression, palette=args.palette,
                                        include_notifier=print_include if args.list_includes else None,
                                        extra_carts=extra_carts if allow_extra_input and not args.cart else None)
         except OSError as err:
@@ -578,7 +582,7 @@ def create_main(lang):
         # read additional carts
         for input, input_format, input_name, merge_sections, fspath in extra_inputs:
             cart = read_cart_func(input, input_format, fspath=fspath, sections=merge_sections,
-                                  keep_compression=args.keep_compression)
+                                  keep_compression=args.keep_compression, palette=args.palette)
             
             if input_name:
                 cart.name = input_name
@@ -739,7 +743,7 @@ def create_main(lang):
                                 force_compress=args.count or args.force_compression,
                                 fast_compress=args.fast_compression, keep_compression=args.keep_compression,
                                 template_image=args.template_image, template_only=args.template_only,
-                                optimize_image=args.optimize_png_compression,
+                                optimize_image=args.optimize_png_compression, palette=args.palette,
                                 sections=args.output_sections, avoid_base64=args.avoid_base64,
                                 cart_op=output_cart_op, cart_name=output_cart_name, target_name=output_cart_target,
                                 target_export=target_export, export_name=args.export_name, pico_dat=pico_dat)

@@ -759,7 +759,7 @@ Shrinko8 supports multiple cart formats, and allows converting between them:
 * url - Pico-8 education version url (code & gfx only)
 * js, pod - Exported formats, see [section on how to read or write them](#reading-and-writing-exported-formats).
 * label - A 128x128 image of a cart's label (label only)
-* spritesheet - A 128x128 image of a cart's spritesheet (gfx only)
+* spritesheet - A 128x128 image of a cart's spritesheet (gfx only, can also use `--palette`)
 * auto - try to determine automatically from content
 
 E.g:
