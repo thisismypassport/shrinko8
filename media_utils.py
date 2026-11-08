@@ -49,7 +49,7 @@ def _pil_module():
     try:
         from PIL import Image # type: ignore
     except ImportError:
-        throw("ERROR: You need pillow (or PIL) to read/write PNGs (do 'python -m pip install pillow')")
+        throw("You need pillow (or PIL) to read/write PNGs (do 'python -m pip install pillow')")
     return Image
 
 class Image:

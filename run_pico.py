@@ -9,7 +9,7 @@ def _lupaz8_module():
     try:
         from lupaz8 import luaz8 # type: ignore
     except ImportError:
-        throw("ERROR: You need lupaz8 (a fork of lupa) to execute pico8 scripts (do 'python -m pip install lupaz8')")
+        throw("You need lupaz8 (a fork of lupa) to execute pico8 scripts (do 'python -m pip install lupaz8')")
     return luaz8
 
 k_p8_codec = CodecInfo(lambda i: (encode_p8str(i), len(i)), 

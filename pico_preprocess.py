@@ -92,13 +92,14 @@ def read_included_cart(orig_path, inc_name, out_i, outparts, outmappings, includ
     if not path_exists(inc_path):
         # windows path outside windows, maybe?
         inc_path = inc_path.replace("\\", "/")
-        if not path_exists(inc_path):
-            raise IncludeNotFoundError(f"cannot open included cart at: {inc_path}")
-    
-    if include_notifier:
+        
+    if include_notifier: # before existance check, so that a fs watcher can catch it appearing
         include_notifier(inc_path)
 
-    inc_cart = read_cart(inc_path, **opts)
+    if not path_exists(inc_path):
+        raise IncludeNotFoundError(f"cannot open included cart at: {inc_path}")
+    
+    inc_cart = read_cart(inc_path, include_notifier=include_notifier, **opts)
     if e(tab_idx):
         trim_cart_to_tab(inc_cart, tab_idx)
 

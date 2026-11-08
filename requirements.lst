@@ -1,2 +1,3 @@
 pillow
 lupaz8 >= 2.8.0.1
+watchdog >= 4.0.2

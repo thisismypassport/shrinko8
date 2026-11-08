@@ -72,6 +72,62 @@ def find_in_builtin_script(name, kwargs, func_name):
     if func:
         return func(name, **kwargs)
 
+class OneShotFileChangeWatcher:
+    def __init__(m):
+        try:
+            import watchdog.events, watchdog.observers, threading
+        except ImportError:
+            throw("You need watchdog to use --watch (do 'python -m pip install watchdog')")
+
+        class Handler(watchdog.events.FileSystemEventHandler):
+            def on_path(mh, path):
+                dir, name = path_split_name(path)
+                if dir in m.files_per_dir and name in m.files_per_dir[dir] and not m.event.is_set():
+                    eprint("%s changed - repeating operation" % name)
+                    m.event.set()
+
+            def on_modified(mh, ev):
+                mh.on_path(ev.src_path)
+            
+            on_deleted = on_created = on_modified
+
+            def on_moved(mh, ev):
+                mh.on_path(ev.src_path)
+                mh.on_path(ev.dest_path)
+
+        # we support older versions of watchdog, so can't schedule files yet
+        # (plus, we support non-existent files, not sure if watchdog's file scheduling does)
+        m.files_per_dir = defaultdict(set)
+        # high timeout (like the default) seems 'blocky' on some watchdog versions...
+        m.observer = watchdog.observers.Observer(timeout=0.1)
+        m.handler = Handler()
+        m.event = threading.Event()
+        m.filter = (watchdog.events.FileModifiedEvent, watchdog.events.FileCreatedEvent,
+                    watchdog.events.FileDeletedEvent, watchdog.events.FileMovedEvent)
+
+    def add(m, path):
+        if not isinstance(path, CustomPath):
+            dir, name = path_split_name(path_absolute(path))
+            if path_exists(dir):
+                m.files_per_dir[dir].add(name)
+
+    def wait(m):
+        for dir in m.files_per_dir:
+            m.observer.schedule(m.handler, dir, event_filter=m.filter)
+        
+        m.observer.start()
+        try:
+            # use timeout to allow ctrl+c on windows on earlier python versions
+            while not m.event.wait(timeout=0.5): pass
+        except KeyboardInterrupt:
+            return False
+        finally:
+            m.observer.stop()
+            m.observer.join()
+            
+        time.sleep(0.05) # debounce, for platforms that ignore timeout param
+        return True
+
 class ErrCodes:
     ok = 0; err = 1; warn = 2; fail = 3; include = 4
 
@@ -149,6 +205,7 @@ def create_main(lang):
         parser.add_argument("-F", "--input-format", type=EnumFromStr(CartFormatCls),
                             help="input cart format {%s}" % EnumList(CartFormatCls, lambda e: e.is_input and e.is_exposed))
         parser.add_argument("-i", "--in-place", action="store_true", help="modify the input file in-place")
+        parser.add_argument("-w", "--watch", action="store_true", help="watch for changes in the source file(s) (and any includes) and repeat the operation on change")
         if is_pico8:
             parser.add_argument("-u", "--unicode-caps", action="store_true", help="write capitals as italicized unicode characters (better for copy/paste)")
         else:
@@ -335,6 +392,9 @@ def create_main(lang):
         if args.version and not args.input:
             print("v" + get_version())
             return
+        
+        if args.watch:
+            args.watch = OneShotFileChangeWatcher()
 
         if args.additional_inputs and not args.output:
             args.output = args.additional_inputs[-1] # argparse doesn't support nargs=* followed by nargs=?
@@ -457,6 +517,9 @@ def create_main(lang):
         args.compiler_cb = lambda name, **kwargs: find_in_builtin_script(name, kwargs, "compiler_main")
         if args.script:
             for script in args.script:
+                if args.watch:
+                    args.watch.add(script) # doesn't extend to imports, though
+
                 script_ext = path_extension(script).lower()
                 if script_ext == ".py":
                     script_obj = exec_script_by_path(script)
@@ -503,19 +566,29 @@ def create_main(lang):
             cart, extra_carts = None, ()
 
         handle_output(args, cart, extra_carts)
-    
+
     class InputDef(Tuple):
         input = format = name = sections = fspath = None
 
-    def print_include(path):
-        print(path_relative(path))
+    def on_include(args, path):
+        if args.watch:
+            args.watch.add(path)
+        if args.list_includes:
+            print(path_relative(path))
 
     def handle_input(args):
         allow_extra_input = is_pico8 and args.format and args.format.is_export
 
+        common_input_args = dict(keep_compression=args.keep_compression, palette=args.palette,
+                                 debug_handler=args.trace_input_compression, size_handler=args.input_count,
+                                 include_notifier=lambda path: on_include(args, path))
+
         # read the main cart
         extra_carts = []
         try:
+            if args.watch:
+                args.watch.add(args.input)
+
             if (is_pico8 and args.list) or args.dump:
                 export = read_cart_export_func(args.input, args.input_format)
                 if args.list:
@@ -526,11 +599,9 @@ def create_main(lang):
                     export.dump_contents(args.dump, default(args.format, CartFormatCls.default_src), misc=args.dump_misc_too)
                 return None, None
 
-            main_cart = read_cart_func(args.input, args.input_format, size_handler=args.input_count, 
-                                       debug_handler=args.trace_input_compression, cart_name=args.cart,
-                                       keep_compression=args.keep_compression, palette=args.palette,
-                                       include_notifier=print_include if args.list_includes else None,
-                                       extra_carts=extra_carts if allow_extra_input and not args.cart else None)
+            main_cart = read_cart_func(args.input, args.input_format, cart_name=args.cart,
+                                       extra_carts=extra_carts if allow_extra_input and not args.cart else None,
+                                       **common_input_args)
         except OSError as err:
             throw(f"cannot read cart: {err}")
         
@@ -581,8 +652,10 @@ def create_main(lang):
 
         # read additional carts
         for input, input_format, input_name, merge_sections, fspath in extra_inputs:
-            cart = read_cart_func(input, input_format, fspath=fspath, sections=merge_sections,
-                                  keep_compression=args.keep_compression, palette=args.palette)
+            if args.watch:
+                args.watch.add(input)
+                               
+            cart = read_cart_func(input, input_format, fspath=fspath, sections=merge_sections, **common_input_args)
             
             if input_name:
                 cart.name = input_name
@@ -752,23 +825,47 @@ def create_main(lang):
 
     parser = create_parser()
 
-    def main(raw_args=None):
+    def main_once(args):
         try:
-            raw_args = default(raw_args, sys.argv[1:])
+            result = main_inner(args)
+            return result
 
-            if not raw_args: # help is better than usage
-                parser.print_help(sys.stderr)
-                return ErrCodes.err
-
-            args = parser.parse_intermixed_args(raw_args)
-            return main_inner(args)
         except CheckError as err:
             sys.stdout.flush()
             eprint("ERROR: " + str(err))
             if isinstance(err, IncludeNotFoundError):
-                return ErrCodes.include
+                errcode = ErrCodes.include
             else:
-                return ErrCodes.fail
+                errcode = ErrCodes.fail
+            return errcode
+
+        except Exception:
+            if not args.watch:
+                raise # ideally we won't have any raw exceptions
+            traceback.print_exc()
+            return ErrCodes.fail
+            
+    def main(raw_args=None):
+        raw_args = default(raw_args, sys.argv[1:])
+
+        if not raw_args: # help is better than usage
+            parser.print_help(sys.stderr)
+            return ErrCodes.err
+        
+        first = True
+        while True:
+            args = parser.parse_intermixed_args(raw_args)
+            errcode = main_once(args)
+
+            if not args.watch or args.watch == True:
+                return errcode
+
+            eprint(f"{'Starting' if first else 'Resuming'} watch... (Ctrl+C to terminate)\n")
+            first = False
+            
+            if not args.watch.wait():
+                return errcode
+
     return main
 
 if __name__ == "__main__":
