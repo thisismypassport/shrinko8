@@ -1,5 +1,9 @@
 
-## v1.2.7f (In-Progress)
+## v1.2.7g
+* Added `--watch` to automatically recreate the output cart when the input cart(s) change
+* parens8 - update to v5.0.1 (token savings)
+
+## v1.2.7f
 * Fix extra linebreaks in kept comments
 * Added `--palette` for spritesheet imports/exports
 

@@ -16,7 +16,7 @@ from picotron_cart import write_cart64_compressed_size, write_cart64_version
 from picotron_export import read_cart64_export, read_sysrom_file
 import argparse
 
-k_version_raw = '1.2.7.5' # should have 4 parts, used directly by build script (last part becomes letter 0->'', 1->b, etc.)
+k_version_raw = '1.2.7.6' # should have 4 parts, used directly by build script (last part becomes letter 0->'', 1->b, etc.)
 
 def get_version():
     """convert our raw version to pico-style version"""
@@ -367,7 +367,8 @@ def create_main(lang):
         pgroup.add_argument("--builtin", type=SplitBySeps, action="extend", help=f"treat identifier(s) as a {pico_name} builtin (for minify, lint, etc.)")
         pgroup.add_argument("--not-builtin", type=SplitBySeps, action="extend", help=f"do not treat identifier(s) as a {pico_name} builtin (for minify, lint, etc.)")
         pgroup.add_argument("--export-name", help="name to use for the export (by default, taken from output name)")
-        pgroup.add_argument("--clean-output-dir", action="store_true", help="when the output is a directory, delete any existing files from the directory first")
+        pgroup.add_argument("--clean-output-dir", action="store_true",
+                            help="when the output is a directory, delete any existing files and subdirectories from the directory first (use with caution!)")
         if is_pico8:
             pgroup.add_argument("--global-builtins-only", action="store_true", help="assume all builtins are global, corresponds to pico8's -global_api option")
             pgroup.add_argument("--local-builtin", type=SplitBySeps, action="extend", help="treat identifier(s) as a local builtin (probably no use outside of testing)")

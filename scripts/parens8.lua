@@ -266,10 +266,14 @@ function get_parens8_interp_ops(opts)
 	return "return " .. join(opfuncs, ",\n")
 end
 
+function encode_arg(i)
+    return ("abcd")[i + 1]
+end
+
 function get_parens8_interp_args(opts)
     local compiled_args = {}
     for opcode, vm_op in ipairs(vm_ops) do
-		compiled_args[opcode] = vm_op[1]
+		compiled_args[opcode] = encode_arg(vm_op[1])
 	end
 	return '"' .. join(compiled_args, ",") .. '"'
 end
@@ -277,7 +281,7 @@ end
 function get_parens8_interp_argcounts(opts)
     local compiled_args = {}
     for opcode, vm_op in ipairs(vm_ops) do
-		compiled_args[opcode] = vm_op[4]
+		compiled_args[opcode] = encode_arg(vm_op[4])
 	end
 	return '"' .. join(compiled_args, ",") .. '"'
 end

@@ -60,6 +60,10 @@ You can also minify to a p8 file (or a lua file), e.g:
 
 `python shrinko8.py path-to-input.p8 path-to-output.p8 --minify-safe-only`
 
+You can use `--watch` to watch for changes in the input file (and any includes it contains) and regenerate the resulting cart whenever it changes:
+
+`python shrinko8.py path-to-input.p8 path-to-output.png --minify --watch`
+
 ## Debugging the minified cart
 
 If the minified cart errors or misbehaves, here are some tips:
